@@ -7,6 +7,7 @@ use craft\base\Element;
 use craft\helpers\Db;
 use craft\helpers\StringHelper;
 use fabianhaef\simpleform\elements\db\FormQuery;
+use fabianhaef\simpleform\Plugin;
 use fabianhaef\simpleform\traits\HasPropagation;
 
 class Form extends Element
@@ -54,9 +55,69 @@ class Form extends Element
         return new FormQuery(static::class);
     }
 
+    /**
+     * Pre-resolved field set for this form/site, primed by
+     * {@see self::eagerLoadFields()} so a forms listing avoids an N+1.
+     *
+     * @var array<int,array<string,mixed>>|null
+     */
+    private ?array $eagerFields = null;
+
     public function __toString(): string
     {
         return $this->title ?? $this->name ?? '';
+    }
+
+    /**
+     * The form's resolved field set (decoded config + this site's label/help
+     * text), served from the structure cache. When pre-loaded via
+     * {@see self::eagerLoadFields()} the primed set is returned with no query.
+     *
+     * @return array<int,array<string,mixed>>
+     */
+    public function getFields(): array
+    {
+        if ($this->eagerFields !== null) {
+            return $this->eagerFields;
+        }
+
+        if (!$this->id) {
+            return [];
+        }
+
+        return Plugin::getInstance()->getFormStructure()->getFieldSet((int)$this->id, (int)$this->siteId);
+    }
+
+    /**
+     * Batch-load the field sets for a list of forms in a bounded number of
+     * queries (instead of one per form) and prime each form so a later
+     * {@see self::getFields()} is query-free. Forms are grouped by site so the
+     * per-site label/help-text join stays correct.
+     *
+     * @param array<int,self> $forms
+     */
+    public static function eagerLoadFields(array $forms): void
+    {
+        $structure = Plugin::getInstance()->getFormStructure();
+
+        // Group form ids by their resolved site so each site batches into one query.
+        $bySite = [];
+        foreach ($forms as $form) {
+            if ($form->id) {
+                $bySite[(int)$form->siteId][] = (int)$form->id;
+            }
+        }
+
+        $sets = [];
+        foreach ($bySite as $siteId => $formIds) {
+            $sets[$siteId] = $structure->getFieldSets($formIds, $siteId);
+        }
+
+        foreach ($forms as $form) {
+            if ($form->id) {
+                $form->eagerFields = $sets[(int)$form->siteId][(int)$form->id] ?? [];
+            }
+        }
     }
 
     protected static function defineSearchableAttributes(): array
@@ -195,9 +256,24 @@ class Form extends Element
             ], ['formId' => $this->id, 'siteId' => $this->siteId])->execute();
         }
 
+        // Per-site label/option/config edits also flow through a form save, so
+        // invalidating here covers every structural change for all sites.
+        if ($this->id) {
+            Plugin::getInstance()->getFormStructure()->invalidate((int)$this->id);
+        }
+
         parent::afterSave($isNew);
     }
 
     // simpleform_forms (and its cascades) is removed automatically when the element row is deleted
     // via the id -> elements.id foreign key, so no explicit beforeDelete cleanup is required.
+
+    public function afterDelete(): void
+    {
+        if ($this->id) {
+            Plugin::getInstance()->getFormStructure()->invalidate((int)$this->id);
+        }
+
+        parent::afterDelete();
+    }
 }

@@ -33,6 +33,28 @@ class Settings extends Model
     public string $errorMessage = 'There was an error submitting your form. Please try again.';
 
     /**
+     * Whether the resolved form structure (decoded field config + per-site
+     * labels/help text) is cached via Craft's cache component and reused across
+     * renders until the form is saved/deleted.
+     *
+     * Caching is always bypassed when `devMode` is on or Craft's cache is a
+     * dummy/disabled cache, so local development never serves stale structure.
+     * Set this to false to force a fresh DB read on every render regardless of
+     * environment.
+     */
+    public bool $cacheFormStructure = true;
+
+    /**
+     * Whether the form's CSS/JS are delivered inline in the rendered markup
+     * instead of via a registered, cache-bustable Craft asset bundle.
+     *
+     * Defaults to false (bundle). Set to true as an escape hatch for
+     * environments that need fully self-contained inline output (e.g. email
+     * previews or pages rendered outside the normal web request/asset pipeline).
+     */
+    public bool $inlineFormAssets = false;
+
+    /**
      * Minimum score (0.0–1.0) a reCAPTCHA v3 response must meet to pass.
      */
     public float $recaptchaV3MinScore = 0.5;
@@ -67,7 +89,7 @@ class Settings extends Model
                 'email',
                 'when' => fn(): bool => !$this->isEnvReference($this->defaultEmailSender),
             ],
-            [['enableHoneypot', 'enableCaptcha'], 'boolean'],
+            [['enableHoneypot', 'enableCaptcha', 'cacheFormStructure', 'inlineFormAssets'], 'boolean'],
             [['captchaType'], 'in', 'range' => [self::CAPTCHA_V3, self::CAPTCHA_V2]],
             [['storageLocation'], 'in', 'range' => ['database']],
             [['recaptchaV3MinScore'], 'number', 'min' => 0, 'max' => 1],

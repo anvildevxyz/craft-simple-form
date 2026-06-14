@@ -9,6 +9,7 @@ use craft\web\Controller;
 use fabianhaef\simpleform\elements\Form;
 use fabianhaef\simpleform\helpers\SimpleFormPermissions;
 use fabianhaef\simpleform\helpers\SiteHelper;
+use fabianhaef\simpleform\Plugin;
 use yii\web\NotFoundHttpException;
 use yii\web\Response;
 
@@ -79,6 +80,8 @@ class FieldsController extends Controller
                 ])->execute();
             }
 
+            Plugin::getInstance()->getFormStructure()->invalidate((int)$formId);
+
             return $this->asJson([
                 'success' => true,
                 'fieldId' => $fieldId,
@@ -142,6 +145,8 @@ class FieldsController extends Controller
                 'dateUpdated' => $now,
             ])->execute();
 
+            Plugin::getInstance()->getFormStructure()->invalidate((int)$field['formId']);
+
             return $this->asJson(['success' => true, 'message' => 'Field updated successfully']);
         } catch (\Exception $e) {
             Craft::warning('Error updating field: ' . $e->getMessage(), 'simple-form');
@@ -165,6 +170,7 @@ class FieldsController extends Controller
         try {
             // _sites rows cascade via FK.
             $db->createCommand()->delete('{{%simpleform_fields}}', ['id' => $fieldId])->execute();
+            Plugin::getInstance()->getFormStructure()->invalidate((int)$field['formId']);
             return $this->asJson(['success' => true, 'message' => 'Field deleted successfully']);
         } catch (\Exception $e) {
             Craft::warning('Error deleting field: ' . $e->getMessage(), 'simple-form');
@@ -186,14 +192,28 @@ class FieldsController extends Controller
         $db = Craft::$app->getDb();
 
         try {
+            $fieldIds = [];
             foreach ($fields as $index => $field) {
                 if (!isset($field['id'])) {
                     continue;
                 }
+                $fieldIds[] = (int)$field['id'];
                 $db->createCommand()->update('{{%simpleform_fields}}', [
                     'sortOrder' => $index + 1,
                     'dateUpdated' => date('Y-m-d H:i:s'),
                 ], ['id' => $field['id']])->execute();
+            }
+
+            // Reorder changes the rendered field order, so invalidate each
+            // affected form's cached structure (one invalidate per distinct form).
+            $formIds = (new Query())
+                ->select(['formId'])
+                ->distinct()
+                ->from('{{%simpleform_fields}}')
+                ->where(['id' => $fieldIds])
+                ->column();
+            foreach ($formIds as $formId) {
+                Plugin::getInstance()->getFormStructure()->invalidate((int)$formId);
             }
 
             return $this->asJson(['success' => true, 'message' => 'Fields reordered successfully']);

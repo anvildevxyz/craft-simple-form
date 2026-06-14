@@ -14,6 +14,7 @@ use fabianhaef\simpleform\models\Settings;
 use fabianhaef\simpleform\services\CaptchaService;
 use fabianhaef\simpleform\services\EmailService;
 use fabianhaef\simpleform\services\FieldTypeRegistry;
+use fabianhaef\simpleform\services\FormStructureService;
 use fabianhaef\simpleform\services\SubmissionService;
 use yii\base\Event;
 
@@ -44,6 +45,7 @@ class Plugin extends BasePlugin
             'emailService' => EmailService::class,
             'submissionService' => SubmissionService::class,
             'captchaService' => CaptchaService::class,
+            'formStructure' => FormStructureService::class,
         ]);
 
         Craft::$app->getI18n()->translations['simple-form'] ??= [
@@ -94,6 +96,13 @@ class Plugin extends BasePlugin
         /** @var FieldTypeRegistry $registry */
         $registry = $this->get('fieldTypeRegistry');
         return $registry;
+    }
+
+    public function getFormStructure(): FormStructureService
+    {
+        /** @var FormStructureService $service */
+        $service = $this->get('formStructure');
+        return $service;
     }
 
     public function getName(): string
