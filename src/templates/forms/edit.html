@@ -714,14 +714,18 @@ document.addEventListener('DOMContentLoaded', function() {
 .modal {
     background: white;
     border-radius: 3px;
-    padding: 24px;
     max-width: 500px;
     width: 90%;
+    max-height: 90vh;
+    display: flex;
+    flex-direction: column;
     box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
 }
 
 .modal-header {
+    padding: 24px 24px 0 24px;
     margin-bottom: 20px;
+    flex-shrink: 0;
 }
 
 .modal-header h2 {
@@ -730,7 +734,10 @@ document.addEventListener('DOMContentLoaded', function() {
 }
 
 .modal-body {
+    padding: 0 24px;
     margin-bottom: 20px;
+    overflow-y: auto;
+    flex: 1;
 }
 
 .modal-body .form-group {
@@ -785,6 +792,10 @@ document.addEventListener('DOMContentLoaded', function() {
     display: flex;
     justify-content: flex-end;
     gap: 10px;
+    padding: 0 24px 24px 24px;
+    flex-shrink: 0;
+    border-top: 1px solid #e0e0e0;
+    margin-top: 20px;
 }
 
 .modal-footer button {
