@@ -4,6 +4,7 @@ namespace fabianhaef\simpleform\models;
 
 use Craft;
 use fabianhaef\simpleform\elements\Form;
+use fabianhaef\simpleform\helpers\FieldQueryHelper;
 use yii\base\Model;
 
 class FormModel extends Model
@@ -20,12 +21,8 @@ class FormModel extends Model
 
     private function loadFields(): void
     {
-        $db = Craft::$app->getDb();
-        $rawFields = $db->createCommand(
-            'SELECT id, type, name, label, helpText, config FROM {{%simpleform_fields}} WHERE formId = :formId ORDER BY sortOrder ASC'
-        )
-            ->bindValues([':formId' => $this->form->id])
-            ->queryAll();
+        // Use the form's own site so labels/help text match the loaded form's language.
+        $rawFields = FieldQueryHelper::fieldsForForm((int)$this->form->id, $this->form->siteId);
 
         foreach ($rawFields as $rawField) {
             $this->fields[$rawField['id']] = new FieldModel(
@@ -34,7 +31,7 @@ class FormModel extends Model
                 $rawField['name'],
                 $rawField['label'],
                 $rawField['helpText'] ?? '',
-                $rawField['config'] ? json_decode($rawField['config'], true) : []
+                $rawField['config'] // already decoded array
             );
         }
     }

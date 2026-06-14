@@ -3,9 +3,11 @@
 namespace fabianhaef\simpleform\services;
 
 use Craft;
-use craft\mail\Message;
+use craft\helpers\App;
 use fabianhaef\simpleform\elements\Form;
 use fabianhaef\simpleform\elements\Submission;
+use fabianhaef\simpleform\models\Settings;
+use fabianhaef\simpleform\Plugin;
 use yii\base\Component;
 
 class EmailService extends Component
@@ -26,10 +28,14 @@ class EmailService extends Component
                 ->setSubject($subject)
                 ->setHtmlBody($body);
 
-            // Set from address
-            $fromEmail = Craft::$app->getSystemSettings()->getEmailFromEmail();
-            $fromName = Craft::$app->getSystemSettings()->getEmailFromName();
-            $mail->setFrom("$fromName <$fromEmail>");
+            // Set from address: prefer the plugin's configured sender, falling
+            // back to Craft's system email settings.
+            $mailSettings = App::mailSettings();
+            $fromEmail = $this->getSettings()->getSenderEmail() ?? App::parseEnv($mailSettings->fromEmail);
+            $fromName = $this->getSettings()->getSenderName() ?? App::parseEnv($mailSettings->fromName);
+            if ($fromEmail) {
+                $mail->setFrom($fromName ? [$fromEmail => $fromName] : $fromEmail);
+            }
 
             // Set reply-to if configured
             if ($form->emailReplyTo) {
@@ -41,6 +47,11 @@ class EmailService extends Component
             Craft::warning('Failed to send form submission email: ' . $e->getMessage(), 'simple-form');
             return false;
         }
+    }
+
+    private function getSettings(): Settings
+    {
+        return Plugin::getInstance()->getSettings();
     }
 
     private function renderSubject(Form $form): string

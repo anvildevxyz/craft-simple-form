@@ -3,6 +3,7 @@
 namespace fabianhaef\simpleform;
 
 use Craft;
+use craft\base\Model;
 use craft\base\Plugin as BasePlugin;
 use craft\events\RegisterCpNavItemsEvent;
 use craft\events\RegisterUrlRulesEvent;
@@ -11,17 +12,22 @@ use craft\services\UserPermissions;
 use craft\web\UrlManager;
 use craft\web\twig\variables\Cp;
 use fabianhaef\simpleform\helpers\SimpleFormPermissions;
+use fabianhaef\simpleform\models\Settings;
+use fabianhaef\simpleform\services\CaptchaService;
 use fabianhaef\simpleform\services\EmailService;
 use fabianhaef\simpleform\services\FieldTypeRegistry;
 use fabianhaef\simpleform\services\SubmissionService;
 use yii\base\Event;
 
+/**
+ * @method Settings getSettings()
+ */
 class Plugin extends BasePlugin
 {
     public const EVENT_BEFORE_SUBMISSION_SAVE = 'beforeSubmissionSave';
     public const EVENT_AFTER_SUBMISSION_SAVE = 'afterSubmissionSave';
 
-    public string $schemaVersion = '1.0.0';
+    public string $schemaVersion = '2.0.0';
     public bool $hasCpSection = true;
     public bool $hasCpSettings = false;
     public bool $hasCpPermissions = true;
@@ -39,6 +45,7 @@ class Plugin extends BasePlugin
             'fieldTypeRegistry' => FieldTypeRegistry::class,
             'emailService' => EmailService::class,
             'submissionService' => SubmissionService::class,
+            'captchaService' => CaptchaService::class,
         ]);
 
         Craft::$app->getI18n()->translations['simple-form'] ??= [
@@ -70,6 +77,16 @@ class Plugin extends BasePlugin
         Craft::$app->getUrlManager()->addRules([
             'simple-form/submit' => 'simple-form/submit/index',
         ]);
+    }
+
+    protected function createSettingsModel(): ?Model
+    {
+        return new Settings();
+    }
+
+    public function getCaptchaService(): CaptchaService
+    {
+        return $this->get('captchaService');
     }
 
     public function getFieldTypeRegistry(): FieldTypeRegistry

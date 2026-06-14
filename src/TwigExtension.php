@@ -3,7 +3,10 @@
 namespace fabianhaef\simpleform;
 
 use Craft;
+use craft\helpers\App;
 use fabianhaef\simpleform\elements\Form;
+use fabianhaef\simpleform\helpers\FieldQueryHelper;
+use fabianhaef\simpleform\models\Settings;
 use Twig\Extension\AbstractExtension;
 use Twig\TwigFunction;
 
@@ -37,24 +40,23 @@ class TwigExtension extends AbstractExtension
 
         $fieldTypeRegistry = Plugin::getInstance()->getFieldTypeRegistry();
 
-        // Get form fields from database
-        $db = Craft::$app->getDb();
-        $fields = $db->createCommand(
-            'SELECT id, type, name, label, helpText, config FROM {{%simpleform_fields}} WHERE formId = :formId ORDER BY sortOrder ASC'
-        )
-            ->bindValues([':formId' => $form->id])
-            ->queryAll();
+        // Get form fields with the current site's translatable label/helpText.
+        $fields = FieldQueryHelper::fieldsForForm((int)$form->id);
 
         $html = '<form class="simple-form" method="POST" action="' . Craft::$app->getUrlManager()->createUrl('simple-form/submit') . '">';
         $html .= Craft::$app->getView()->renderString('{{ csrfInput() }}');
         $html .= '<input type="hidden" name="formHandle" value="' . htmlspecialchars($handle) . '">';
 
-        // Add honeypot field
-        $html .= '<input type="hidden" name="__honeypot" value="" style="display:none;">';
+        $settings = Plugin::getInstance()->getSettings();
+
+        // Add honeypot field when enabled
+        if ($settings->enableHoneypot) {
+            $html .= '<input type="hidden" name="__honeypot" value="" style="display:none;">';
+        }
 
         // Render form fields
         foreach ($fields as $field) {
-            $fieldConfig = $field['config'] ? json_decode($field['config'], true) : [];
+            $fieldConfig = $field['config']; // already decoded, with "required" merged in
             $fieldType = $fieldTypeRegistry->getFieldType($field['type'], $fieldConfig);
 
             if (!$fieldType) {
@@ -67,7 +69,7 @@ class TwigExtension extends AbstractExtension
 
             $html .= '<div class="simple-form-group">';
             if ($label) {
-                $required = $fieldConfig['required'] ? ' <span class="required">*</span>' : '';
+                $required = !empty($fieldConfig['required']) ? ' <span class="required">*</span>' : '';
                 $html .= '<label for="' . htmlspecialchars($fieldName) . '">' . htmlspecialchars($label) . $required . '</label>';
             }
             if ($helpText) {
@@ -79,6 +81,9 @@ class TwigExtension extends AbstractExtension
             $html .= '</div>';
             $html .= '</div>';
         }
+
+        // Captcha widget when enabled
+        $html .= $this->renderCaptcha($settings);
 
         // Submit button
         $submitText = $options['submitText'] ?? 'Submit';
@@ -179,5 +184,58 @@ class TwigExtension extends AbstractExtension
         </script>';
 
         return $html;
+    }
+
+    /**
+     * Render the reCAPTCHA widget markup for the configured captcha type, or an
+     * empty string when captcha is disabled or unconfigured.
+     */
+    private function renderCaptcha(Settings $settings): string
+    {
+        if (!$settings->enableCaptcha) {
+            return '';
+        }
+
+        $siteKey = $settings->getActiveSiteKey();
+        if (!$siteKey) {
+            return '';
+        }
+        // Site keys may be stored as env references; resolve before output.
+        $siteKey = App::parseEnv($siteKey);
+        if (!$siteKey) {
+            return '';
+        }
+        $siteKey = htmlspecialchars($siteKey, ENT_QUOTES);
+
+        if ($settings->captchaType === Settings::CAPTCHA_V2) {
+            // The v2 widget injects its own `g-recaptcha-response` field on submit.
+            return '<div class="simple-form-group">'
+                . '<div class="g-recaptcha" data-sitekey="' . $siteKey . '"></div>'
+                . '</div>'
+                . '<script src="https://www.google.com/recaptcha/api.js" async defer></script>';
+        }
+
+        // v3 is invisible: keep a fresh token in a hidden field that rides along
+        // with the form\'s existing fetch submit.
+        return '<input type="hidden" name="g-recaptcha-response" value="">'
+            . '<script src="https://www.google.com/recaptcha/api.js?render=' . $siteKey . '"></script>'
+            . '<script>
+                (function() {
+                    var siteKey = "' . $siteKey . '";
+                    function refreshToken() {
+                        if (typeof grecaptcha === "undefined") { return; }
+                        grecaptcha.ready(function() {
+                            grecaptcha.execute(siteKey, { action: "submit" }).then(function(token) {
+                                document.querySelectorAll("input[name=\'g-recaptcha-response\']").forEach(function(input) {
+                                    input.value = token;
+                                });
+                            });
+                        });
+                    }
+                    refreshToken();
+                    // Tokens expire after ~2 minutes; refresh well before that.
+                    setInterval(refreshToken, 90000);
+                })();
+            </script>';
     }
 }

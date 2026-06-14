@@ -2,17 +2,22 @@
 
 namespace fabianhaef\simpleform\elements;
 
+use Craft;
 use craft\base\Element;
-use craft\db\Query;
-use craft\db\Table;
-use craft\elements\db\ElementQuery;
+use craft\helpers\Db;
+use craft\helpers\StringHelper;
 use fabianhaef\simpleform\elements\db\FormQuery;
-use yii\db\Expression;
+use fabianhaef\simpleform\traits\HasPropagation;
 
 class Form extends Element
 {
+    use HasPropagation;
+
+    // Shared across sites
     public ?string $name = null;
     public ?string $handle = null;
+
+    // Per-site (translatable). title is stored in elements_sites via hasTitles().
     public ?string $title = null;
     public ?string $description = null;
     public ?string $emailTo = null;
@@ -93,52 +98,84 @@ class Form extends Element
         $rules[] = [['title', 'description'], 'string'];
         $rules[] = [['emailTo', 'emailSubject', 'emailReplyTo'], 'string', 'max' => 255];
 
+        // handle is shared across sites, so it must be globally unique
+        $rules[] = [['handle'], 'validateHandleUnique'];
+
         return $rules;
+    }
+
+    public function validateHandleUnique(string $attribute): void
+    {
+        if (empty($this->handle)) {
+            return;
+        }
+
+        $query = (new \craft\db\Query())
+            ->from('{{%simpleform_forms}}')
+            ->where(['handle' => $this->handle]);
+
+        if ($this->id) {
+            $query->andWhere(['not', ['id' => $this->id]]);
+        }
+
+        if ($query->exists()) {
+            $this->addError($attribute, Craft::t('simple-form', 'This handle is already in use.'));
+        }
     }
 
     public function afterSave(bool $isNew): void
     {
-        if (!$this->propagating) {
-            $db = \Craft::$app->getDb();
+        $db = Craft::$app->getDb();
+        $now = Db::prepareDateForDb(new \DateTime());
 
-            if ($isNew) {
-                $db->createCommand()->insert('simpleform_forms', [
+        // (a) SHARED row in simpleform_forms — keyed by element id, written once (canonical save only)
+        if (!$this->propagating) {
+            $shared = [
+                'handle' => $this->handle,
+                'name' => $this->name,
+                'propagationMethod' => $this->propagationMethod->value,
+                'dateUpdated' => $now,
+            ];
+
+            $exists = (new \craft\db\Query())
+                ->from('{{%simpleform_forms}}')
+                ->where(['id' => $this->id])
+                ->exists();
+
+            if (!$exists) {
+                $db->createCommand()->insert('{{%simpleform_forms}}', $shared + [
                     'id' => $this->id,
-                    'siteId' => $this->siteId,
-                    'name' => $this->name,
-                    'handle' => $this->handle,
-                    'title' => $this->title,
-                    'description' => $this->description,
-                    'emailTo' => $this->emailTo,
-                    'emailSubject' => $this->emailSubject,
-                    'emailReplyTo' => $this->emailReplyTo,
+                    'dateCreated' => $now,
+                    'uid' => StringHelper::UUID(),
                 ])->execute();
             } else {
-                $db->createCommand()->update('simpleform_forms', [
-                    'name' => $this->name,
-                    'handle' => $this->handle,
-                    'title' => $this->title,
-                    'description' => $this->description,
-                    'emailTo' => $this->emailTo,
-                    'emailSubject' => $this->emailSubject,
-                    'emailReplyTo' => $this->emailReplyTo,
-                ], ['id' => $this->id])->execute();
+                $db->createCommand()->update('{{%simpleform_forms}}', $shared, ['id' => $this->id])->execute();
             }
         }
+
+        // (b) PER-SITE row in simpleform_forms_sites — written on EVERY save (incl. propagating),
+        // so each supported site gets its own translatable content row. title lives in elements_sites.
+        $db->createCommand()->upsert('{{%simpleform_forms_sites}}', [
+            'formId' => $this->id,
+            'siteId' => $this->siteId,
+            'description' => $this->description,
+            'emailTo' => $this->emailTo,
+            'emailSubject' => $this->emailSubject,
+            'emailReplyTo' => $this->emailReplyTo,
+            'dateCreated' => $now,
+            'dateUpdated' => $now,
+            'uid' => StringHelper::UUID(),
+        ], [
+            'description' => $this->description,
+            'emailTo' => $this->emailTo,
+            'emailSubject' => $this->emailSubject,
+            'emailReplyTo' => $this->emailReplyTo,
+            'dateUpdated' => $now,
+        ])->execute();
 
         parent::afterSave($isNew);
     }
 
-    public function beforeDelete(): bool
-    {
-        if (!parent::beforeDelete()) {
-            return false;
-        }
-
-        \Craft::$app->getDb()->createCommand()
-            ->delete('simpleform_forms', ['id' => $this->id])
-            ->execute();
-
-        return true;
-    }
+    // simpleform_forms (and its cascades) is removed automatically when the element row is deleted
+    // via the id -> elements.id foreign key, so no explicit beforeDelete cleanup is required.
 }

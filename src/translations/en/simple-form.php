@@ -21,4 +21,8 @@ return [
     'Save' => 'Save',
     'Delete' => 'Delete',
     'Settings' => 'Settings',
+    'Settings saved.' => 'Settings saved.',
+    'Couldn’t save settings.' => 'Couldn’t save settings.',
+    'Captcha verification failed. Please try again.' => 'Captcha verification failed. Please try again.',
+    'reCAPTCHA v3 Minimum Score' => 'reCAPTCHA v3 Minimum Score',
 ];

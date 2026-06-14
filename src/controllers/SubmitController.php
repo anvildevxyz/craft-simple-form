@@ -7,6 +7,7 @@ use craft\web\Controller;
 use fabianhaef\simpleform\elements\Form;
 use fabianhaef\simpleform\elements\Submission;
 use fabianhaef\simpleform\events\SubmissionEvent;
+use fabianhaef\simpleform\helpers\FieldQueryHelper;
 use fabianhaef\simpleform\Plugin;
 use fabianhaef\simpleform\services\EmailService;
 use yii\web\Response;
@@ -28,10 +29,25 @@ class SubmitController extends Controller
             ]);
         }
 
-        $honeypot = (string) $request->getBodyParam('__honeypot', '');
-        if (!empty($honeypot)) {
-            // Silently fail honeypot attempts
-            return $this->redirect($request->getReferrer() ?? '/');
+        $settings = Plugin::getInstance()->getSettings();
+
+        if ($settings->enableHoneypot) {
+            $honeypot = (string) $request->getBodyParam('__honeypot', '');
+            if ($honeypot !== '') {
+                // Silently accept honeypot hits: report success so bots get no
+                // signal, but never persist the submission.
+                return $this->asJson([
+                    'success' => true,
+                    'message' => $settings->submitMessage,
+                ]);
+            }
+        }
+
+        if (!Plugin::getInstance()->getCaptchaService()->verify()) {
+            return $this->asJson([
+                'success' => false,
+                'errors' => ['captcha' => [Craft::t('simple-form', 'Captcha verification failed. Please try again.')]],
+            ]);
         }
 
         // Get form
@@ -100,7 +116,7 @@ class SubmitController extends Controller
         if (!Craft::$app->getElements()->saveElement($submission)) {
             return $this->asJson([
                 'success' => false,
-                'errors' => ['general' => ['Failed to save submission']],
+                'errors' => ['general' => [$settings->errorMessage]],
             ]);
         }
 
@@ -116,24 +132,14 @@ class SubmitController extends Controller
 
         return $this->asJson([
             'success' => true,
-            'message' => 'Form submitted successfully',
+            'message' => $settings->submitMessage,
         ]);
     }
 
     private function getFormFields(int $formId): array
     {
-        $db = Craft::$app->getDb();
-        $fields = $db->createCommand(
-            'SELECT id, formId, type, name, label, config FROM {{%simpleform_fields}} WHERE formId = :formId ORDER BY sortOrder ASC'
-        )
-            ->bindValues([':formId' => $formId])
-            ->queryAll();
-
-        foreach ($fields as &$field) {
-            $field['config'] = $field['config'] ? json_decode($field['config'], true) : [];
-        }
-
-        return $fields;
+        // Use the current site so the captured label matches the visitor's language.
+        return FieldQueryHelper::fieldsForForm($formId);
     }
 
 }

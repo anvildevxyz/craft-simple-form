@@ -11,8 +11,24 @@
     <input type="hidden" name="formId" value="{{ form.id }}">
 {% endif %}
 
+{# Tells the save/field-AJAX actions which site's translatable content is being edited #}
+<input type="hidden" name="siteId" value="{{ currentSite.id }}">
+
 {{ redirectInput('simple-form/forms') }}
 {{ csrfInput() }}
+
+{% if craft.app.isMultiSite and form.id and supportedSites|length > 1 %}
+    <div class="simple-form-site-selector" style="margin-bottom: 24px;">
+        <div class="btngroup">
+            {% for s in supportedSites %}
+                <a class="btn{{ s.id == currentSite.id ? ' active' }}"
+                   href="{{ url('simple-form/forms/edit/' ~ form.id, { site: s.handle }) }}">
+                    {{ s.name|t('site') }}
+                </a>
+            {% endfor %}
+        </div>
+    </div>
+{% endif %}
 
 {{ forms.textField({
     label: 'Name'|t('simple-form'),
@@ -39,6 +55,7 @@
     name: 'title',
     value: form.title,
     errors: form.getErrors('title'),
+    translatable: true,
 }) }}
 
 {{ forms.textareaField({
@@ -47,6 +64,7 @@
     name: 'description',
     value: form.description,
     errors: form.getErrors('description'),
+    translatable: true,
 }) }}
 
 <hr>
@@ -61,6 +79,7 @@
     value: form.emailTo,
     errors: form.getErrors('emailTo'),
     instructions: 'Email address where submissions will be sent'|t('simple-form'),
+    translatable: true,
 }) }}
 
 {{ forms.textField({
@@ -70,6 +89,7 @@
     value: form.emailSubject,
     errors: form.getErrors('emailSubject'),
     instructions: 'Subject line for notification emails'|t('simple-form'),
+    translatable: true,
 }) }}
 
 {{ forms.textField({
@@ -80,7 +100,29 @@
     value: form.emailReplyTo,
     errors: form.getErrors('emailReplyTo'),
     instructions: 'Reply-to email address (optional)'|t('simple-form'),
+    translatable: true,
 }) }}
+
+{% if craft.app.isMultiSite %}
+<hr>
+
+<h2>{{ 'Multi-Site'|t('simple-form') }}</h2>
+
+{{ forms.selectField({
+    label: 'Save to'|t('simple-form'),
+    instructions: 'Which sites this form should be saved to. Title, description, email settings and field labels can be translated per site.'|t('simple-form'),
+    id: 'propagationMethod',
+    name: 'propagationMethod',
+    value: form.propagationMethod.value ?? 'none',
+    options: [
+        { label: 'Only the site it is created in'|t('simple-form'), value: 'none' },
+        { label: 'All sites'|t('simple-form'), value: 'all' },
+        { label: 'Sites in the same site group'|t('simple-form'), value: 'siteGroup' },
+        { label: 'Sites with the same language'|t('simple-form'), value: 'language' },
+    ],
+    errors: form.getErrors('propagationMethod'),
+}) }}
+{% endif %}
 
 {% if form.id %}
 <hr>
@@ -98,6 +140,7 @@
                  data-field-type="{{ field.type }}"
                  data-field-label="{{ field.label }}"
                  data-field-handle="{{ field.name }}"
+                 data-field-required="{{ field.required ? '1' : '0' }}"
                  data-field-helptext="{{ field.helpText ?? '' }}"
                  data-field-config="{{ field.config|json_encode }}"
                  style="cursor: grab;">
@@ -185,6 +228,7 @@ document.addEventListener('DOMContentLoaded', function() {
         const type = fieldRow.dataset.fieldType;
         const label = fieldRow.dataset.fieldLabel;
         const handle = fieldRow.dataset.fieldHandle;
+        const required = fieldRow.dataset.fieldRequired === '1';
         const helpText = fieldRow.dataset.fieldHelptext || '';
         const configStr = fieldRow.dataset.fieldConfig;
 
@@ -199,6 +243,7 @@ document.addEventListener('DOMContentLoaded', function() {
         fieldTypeSelect.value = type;
         fieldLabelInput.value = label;
         fieldHandleInput.value = handle;
+        fieldRequiredCheckbox.checked = required;
         fieldHelpTextInput.value = helpText;
 
         // Show appropriate config section
@@ -543,6 +588,12 @@ document.addEventListener('DOMContentLoaded', function() {
             data.append('fieldId', fieldId);
         } else {
             data.append('formId', formId);
+        }
+
+        // The site whose label/help text we're editing (per-site translatable content)
+        const siteIdInput = document.querySelector('input[name="siteId"]');
+        if (siteIdInput) {
+            data.append('siteId', siteIdInput.value);
         }
 
         data.append('type', type);

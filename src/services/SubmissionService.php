@@ -39,10 +39,17 @@ class SubmissionService extends Component
             $form = new FormModel($form);
         }
 
-        // Check honeypot
-        if (!empty($request->getBodyParam('__honeypot'))) {
+        $settings = Plugin::getInstance()->getSettings();
+
+        // Check honeypot when enabled
+        if ($settings->enableHoneypot && !empty($request->getBodyParam('__honeypot'))) {
             // Silently fail
             return ['submission' => null, 'errors' => null];
+        }
+
+        // Verify captcha when enabled
+        if (!Plugin::getInstance()->getCaptchaService()->verify()) {
+            return ['submission' => null, 'errors' => ['captcha' => ['Captcha verification failed']]];
         }
 
         // Validate all fields
