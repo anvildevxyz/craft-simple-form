@@ -11,6 +11,9 @@
     <input type="hidden" name="formId" value="{{ form.id }}">
 {% endif %}
 
+{{ redirectInput('simple-form/forms') }}
+{{ csrfInput() }}
+
 {{ forms.textField({
     label: 'Name'|t('simple-form'),
     id: 'name',
@@ -78,4 +81,893 @@
     errors: form.getErrors('emailReplyTo'),
     instructions: 'Reply-to email address (optional)'|t('simple-form'),
 }) }}
+
+{% if form.id %}
+<hr>
+
+<h2>{{ 'Form Fields'|t('simple-form') }}</h2>
+
+<div id="fields-list" class="matrix">
+    {% if fields|length %}
+        <div class="matrix-block-container">
+            {% for field in fields %}
+            <div class="matrixblock"
+                 draggable="true"
+                 data-field-id="{{ field.id }}"
+                 data-sortorder="{{ field.sortOrder }}"
+                 data-field-type="{{ field.type }}"
+                 data-field-label="{{ field.label }}"
+                 data-field-handle="{{ field.name }}"
+                 data-field-helptext="{{ field.helpText ?? '' }}"
+                 data-field-config="{{ field.config|json_encode }}"
+                 style="cursor: grab;">
+                <div class="blocktype" style="display: flex; align-items: center; gap: 10px;">
+                    <span class="blocktype-name">
+                        <strong>{{ field.label }}</strong>
+                        {% if field.type in ['select', 'checkbox', 'radio'] %}
+                            <span class="info">({{ field.type|capitalize }})</span>
+                        {% else %}
+                            <span class="info">({{ field.type }})</span>
+                        {% endif %}
+                        {% if field.helpText %}
+                            <br><em>{{ field.helpText }}</em>
+                        {% endif %}
+                    </span>
+                </div>
+                <div class="actions">
+                    <a class="edit-field-btn" href="#" data-field-id="{{ field.id }}" title="Edit field">{{ 'Edit'|t }}</a>
+                    <a class="delete-field-btn" href="#" data-field-id="{{ field.id }}" title="Delete field">{{ 'Delete'|t }}</a>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    {% else %}
+        <p class="zilch">{{ 'No fields yet. Add one to get started.'|t('simple-form') }}</p>
+    {% endif %}
+</div>
+
+<div style="margin-top: 15px;">
+    <button type="button" class="btn add-field-btn" id="new-field-btn">{{ 'Add Field'|t('simple-form') }}</button>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const formId = {{ form.id }};
+    const modalOverlay = document.getElementById('field-modal-overlay');
+    const fieldModal = document.getElementById('field-modal');
+    const fieldIdInput = document.getElementById('field-id');
+    const fieldTypeSelect = document.getElementById('field-type');
+    const fieldLabelInput = document.getElementById('field-label');
+    const fieldHandleInput = document.getElementById('field-handle');
+    const fieldRequiredCheckbox = document.getElementById('field-required');
+    const fieldHelpTextInput = document.getElementById('field-helptext');
+    const fieldModalTitle = document.getElementById('field-modal-title');
+    const fieldModalSaveBtn = document.getElementById('field-modal-save');
+    const fieldModalCancelBtn = document.getElementById('field-modal-cancel');
+    const newFieldBtn = document.getElementById('new-field-btn');
+
+    // Get CSRF token from the page (Craft uses CRAFT_CSRF_TOKEN or just name the hidden input)
+    const csrfTokenInput = document.querySelector('input[name="CRAFT_CSRF_TOKEN"]') ||
+                          document.querySelector('input[name="_csrf"]');
+    const csrfToken = csrfTokenInput ? csrfTokenInput.value : '';
+
+    // Modal management
+    function openModal(fieldId = null) {
+        fieldIdInput.value = fieldId || '';
+        fieldTypeSelect.value = 'text';
+        fieldLabelInput.value = '';
+        fieldHandleInput.value = '';
+        fieldRequiredCheckbox.checked = false;
+        fieldHelpTextInput.value = '';
+
+        // Clear all option rows
+        document.querySelectorAll('.option-row').forEach(row => row.remove());
+
+        if (fieldId) {
+            fieldModalTitle.textContent = 'Edit Field';
+            fieldModalSaveBtn.textContent = 'Update Field';
+            loadFieldData(fieldId);
+        } else {
+            fieldModalTitle.textContent = 'Add Field';
+            fieldModalSaveBtn.textContent = 'Save Field';
+            // Show text field config by default
+            document.getElementById('config-text').style.display = 'block';
+        }
+
+        modalOverlay.classList.add('show');
+        clearErrors();
+    }
+
+    function loadFieldData(fieldId) {
+        const fieldRow = document.querySelector(`[data-field-id="${fieldId}"]`);
+        if (!fieldRow) return;
+
+        const type = fieldRow.dataset.fieldType;
+        const label = fieldRow.dataset.fieldLabel;
+        const handle = fieldRow.dataset.fieldHandle;
+        const helpText = fieldRow.dataset.fieldHelptext || '';
+        const configStr = fieldRow.dataset.fieldConfig;
+
+        let config = {};
+        try {
+            config = JSON.parse(configStr || '{}');
+        } catch (e) {
+            console.error('Error parsing config:', e);
+        }
+
+        // Populate basic fields
+        fieldTypeSelect.value = type;
+        fieldLabelInput.value = label;
+        fieldHandleInput.value = handle;
+        fieldHelpTextInput.value = helpText;
+
+        // Show appropriate config section
+        document.querySelectorAll('.field-type-config').forEach(el => {
+            el.style.display = 'none';
+        });
+        const configElement = document.getElementById('config-' + type);
+        if (configElement) {
+            configElement.style.display = 'block';
+        }
+
+        // Populate type-specific config
+        switch(type) {
+            case 'text':
+                if (config.minLength) document.getElementById('field-minLength').value = config.minLength;
+                if (config.maxLength) document.getElementById('field-maxLength').value = config.maxLength;
+                break;
+
+            case 'textarea':
+                if (config.minLength) document.getElementById('field-textareaMinLength').value = config.minLength;
+                if (config.maxLength) document.getElementById('field-textareaMaxLength').value = config.maxLength;
+                break;
+
+            case 'select':
+            case 'checkbox':
+            case 'radio':
+                const containerId = type === 'select' ? 'field-select-options' :
+                                   type === 'checkbox' ? 'field-checkbox-options' : 'field-radio-options';
+                const container = document.getElementById(containerId);
+                container.querySelectorAll('.option-row').forEach(row => row.remove());
+
+                if (config.options && Array.isArray(config.options)) {
+                    config.options.forEach(opt => {
+                        const row = document.createElement('div');
+                        row.className = 'option-row';
+                        row.style.cssText = 'display: flex; gap: 8px; margin-bottom: 8px;';
+                        row.innerHTML = `
+                            <input type="text" class="option-label" placeholder="Label" value="${opt.label || ''}" style="flex: 1; padding: 6px; border: 1px solid #ddd; border-radius: 3px;">
+                            <input type="text" class="option-value" placeholder="Value" value="${opt.value || ''}" style="flex: 1; padding: 6px; border: 1px solid #ddd; border-radius: 3px;">
+                            <button type="button" class="remove-option" style="padding: 6px 12px; background: #f0f0f0; border: none; border-radius: 3px; cursor: pointer;">Remove</button>
+                        `;
+                        container.appendChild(row);
+                    });
+                }
+                break;
+
+            case 'date':
+                if (config.format) document.getElementById('field-dateFormat').value = config.format;
+                if (config.minDate) document.getElementById('field-minDate').value = config.minDate;
+                if (config.maxDate) document.getElementById('field-maxDate').value = config.maxDate;
+                break;
+
+            case 'number':
+                if (config.min) document.getElementById('field-numberMin').value = config.min;
+                if (config.max) document.getElementById('field-numberMax').value = config.max;
+                break;
+        }
+    }
+
+    function closeModal() {
+        modalOverlay.classList.remove('show');
+    }
+
+    function clearErrors() {
+        document.querySelectorAll('.error').forEach(el => {
+            el.style.display = 'none';
+            el.textContent = '';
+        });
+    }
+
+    // Modal event handlers
+    newFieldBtn.addEventListener('click', function(e) {
+        e.preventDefault();
+        openModal();
+    });
+
+    fieldModalCancelBtn.addEventListener('click', function(e) {
+        e.preventDefault();
+        closeModal();
+    });
+
+    fieldModalSaveBtn.addEventListener('click', function(e) {
+        e.preventDefault();
+        saveField();
+    });
+
+    // Close modal on overlay click
+    modalOverlay.addEventListener('click', function(e) {
+        if (e.target === modalOverlay) {
+            closeModal();
+        }
+    });
+
+    // Auto-generate handle from label
+    fieldLabelInput.addEventListener('input', function() {
+        if (!fieldIdInput.value) {
+            const label = this.value;
+            const handle = label
+                .toLowerCase()
+                .replace(/[^a-z0-9_]/g, '')
+                .replace(/^[0-9]/, '_')
+                || '';
+            fieldHandleInput.value = handle;
+        }
+    });
+
+    // Show/hide field-type-specific config sections
+    fieldTypeSelect.addEventListener('change', function() {
+        // Hide all config sections
+        document.querySelectorAll('.field-type-config').forEach(el => {
+            el.style.display = 'none';
+        });
+
+        // Show the relevant config section
+        const configElement = document.getElementById('config-' + this.value);
+        if (configElement) {
+            configElement.style.display = 'block';
+        }
+    });
+
+    // Option management for select/checkbox/radio
+    function setupOptionHandlers(containerId, addBtnId) {
+        const container = document.getElementById(containerId);
+        const addBtn = document.getElementById(addBtnId);
+
+        if (!addBtn) return;
+
+        addBtn.addEventListener('click', function(e) {
+            e.preventDefault();
+            addOption(container);
+        });
+
+        container.addEventListener('click', function(e) {
+            if (e.target.classList.contains('remove-option')) {
+                e.preventDefault();
+                e.target.closest('.option-row').remove();
+            }
+        });
+    }
+
+    function addOption(container) {
+        const row = document.createElement('div');
+        row.className = 'option-row';
+        row.style.cssText = 'display: flex; gap: 8px; margin-bottom: 8px;';
+        row.innerHTML = `
+            <input type="text" class="option-label" placeholder="Label" style="flex: 1; padding: 6px; border: 1px solid #ddd; border-radius: 3px;">
+            <input type="text" class="option-value" placeholder="Value" style="flex: 1; padding: 6px; border: 1px solid #ddd; border-radius: 3px;">
+            <button type="button" class="remove-option" style="padding: 6px 12px; background: #f0f0f0; border: none; border-radius: 3px; cursor: pointer;">Remove</button>
+        `;
+        container.appendChild(row);
+    }
+
+    // Setup option handlers for each field type
+    setupOptionHandlers('field-select-options', 'add-select-option');
+    setupOptionHandlers('field-checkbox-options', 'add-checkbox-option');
+    setupOptionHandlers('field-radio-options', 'add-radio-option');
+
+    // Drag and drop for field reordering
+    let draggedElement = null;
+
+    document.addEventListener('dragstart', function(e) {
+        if (e.target.classList.contains('matrixblock')) {
+            draggedElement = e.target;
+            e.target.style.opacity = '0.5';
+            e.dataTransfer.effectAllowed = 'move';
+        }
+    });
+
+    document.addEventListener('dragend', function(e) {
+        if (e.target.classList.contains('matrixblock')) {
+            e.target.style.opacity = '1';
+            draggedElement = null;
+        }
+    });
+
+    document.addEventListener('dragover', function(e) {
+        if (draggedElement && e.target.closest('.matrixblock')) {
+            e.preventDefault();
+            e.dataTransfer.dropEffect = 'move';
+            const targetBlock = e.target.closest('.matrixblock');
+            if (targetBlock && targetBlock !== draggedElement) {
+                const rect = targetBlock.getBoundingClientRect();
+                const midpoint = rect.top + rect.height / 2;
+                if (e.clientY < midpoint) {
+                    targetBlock.parentNode.insertBefore(draggedElement, targetBlock);
+                } else {
+                    targetBlock.parentNode.insertBefore(draggedElement, targetBlock.nextSibling);
+                }
+            }
+        }
+    });
+
+    document.addEventListener('drop', function(e) {
+        if (draggedElement) {
+            e.preventDefault();
+            e.stopPropagation();
+            // Reorder fields in database
+            reorderFields();
+        }
+    });
+
+    function reorderFields() {
+        const container = document.querySelector('.matrix-block-container');
+        if (!container) return;
+
+        const fields = [];
+        container.querySelectorAll('.matrixblock').forEach((block, index) => {
+            fields.push({
+                id: block.dataset.fieldId,
+                sortOrder: index + 1,
+            });
+        });
+
+        const data = new FormData();
+        if (csrfToken) {
+            data.append('CRAFT_CSRF_TOKEN', csrfToken);
+        }
+        data.append('fields', JSON.stringify(fields));
+
+        fetch('/admin/simple-form/fields/reorder', {
+            method: 'POST',
+            body: data,
+        })
+        .then(response => response.json())
+        .then(result => {
+            if (!result.success) {
+                console.error('Error reordering fields:', result.error);
+                alert('Error reordering fields');
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+        });
+    }
+
+    function getFieldTypeConfig() {
+        const type = fieldTypeSelect.value;
+        const config = {};
+
+        switch(type) {
+            case 'text':
+                const minLen = document.getElementById('field-minLength').value;
+                const maxLen = document.getElementById('field-maxLength').value;
+                if (minLen) config.minLength = parseInt(minLen);
+                if (maxLen) config.maxLength = parseInt(maxLen);
+                break;
+
+            case 'textarea':
+                const taMinLen = document.getElementById('field-textareaMinLength').value;
+                const taMaxLen = document.getElementById('field-textareaMaxLength').value;
+                if (taMinLen) config.minLength = parseInt(taMinLen);
+                if (taMaxLen) config.maxLength = parseInt(taMaxLen);
+                break;
+
+            case 'select':
+            case 'checkbox':
+            case 'radio':
+                const containerId = type === 'select' ? 'field-select-options' :
+                                   type === 'checkbox' ? 'field-checkbox-options' : 'field-radio-options';
+                const container = document.getElementById(containerId);
+                const options = [];
+                container.querySelectorAll('.option-row').forEach(row => {
+                    const label = row.querySelector('.option-label').value.trim();
+                    const value = row.querySelector('.option-value').value.trim();
+                    if (label && value) {
+                        options.push({ label, value });
+                    }
+                });
+                if (options.length > 0) {
+                    config.options = options;
+                }
+                break;
+
+            case 'date':
+                const dateFormat = document.getElementById('field-dateFormat').value;
+                const minDate = document.getElementById('field-minDate').value;
+                const maxDate = document.getElementById('field-maxDate').value;
+                if (dateFormat) config.format = dateFormat;
+                if (minDate) config.minDate = minDate;
+                if (maxDate) config.maxDate = maxDate;
+                break;
+
+            case 'number':
+                const numMin = document.getElementById('field-numberMin').value;
+                const numMax = document.getElementById('field-numberMax').value;
+                if (numMin) config.min = parseFloat(numMin);
+                if (numMax) config.max = parseFloat(numMax);
+                break;
+        }
+
+        return config;
+    }
+
+    function saveField() {
+        clearErrors();
+
+        const fieldId = fieldIdInput.value;
+        const type = fieldTypeSelect.value;
+        const label = fieldLabelInput.value.trim();
+        const handle = fieldHandleInput.value.trim();
+        const required = fieldRequiredCheckbox.checked;
+        const helpText = fieldHelpTextInput.value.trim();
+
+        // Basic validation
+        if (!label) {
+            document.getElementById('field-label-error').textContent = 'Label is required';
+            document.getElementById('field-label-error').style.display = 'block';
+            return;
+        }
+
+        if (!handle) {
+            document.getElementById('field-handle-error').textContent = 'Handle is required';
+            document.getElementById('field-handle-error').style.display = 'block';
+            return;
+        }
+
+        // Type-specific validation
+        if (['select', 'checkbox', 'radio'].includes(type)) {
+            const containerId = type === 'select' ? 'field-select-options' :
+                               type === 'checkbox' ? 'field-checkbox-options' : 'field-radio-options';
+            const container = document.getElementById(containerId);
+            const hasOptions = container.querySelectorAll('.option-row').length > 0 &&
+                             Array.from(container.querySelectorAll('.option-row')).some(row =>
+                                 row.querySelector('.option-label').value.trim() &&
+                                 row.querySelector('.option-value').value.trim()
+                             );
+            if (!hasOptions) {
+                alert(type + ' field must have at least one option');
+                return;
+            }
+        }
+
+        const config = JSON.stringify(getFieldTypeConfig());
+        const url = fieldId ? '/admin/simple-form/fields/edit' : '/admin/simple-form/fields/add';
+        const data = new FormData();
+
+        if (csrfToken) {
+            data.append('CRAFT_CSRF_TOKEN', csrfToken);
+        }
+
+        if (fieldId) {
+            data.append('fieldId', fieldId);
+        } else {
+            data.append('formId', formId);
+        }
+
+        data.append('type', type);
+        data.append('label', label);
+        data.append('handle', handle);
+        data.append('required', required ? '1' : '0');
+        data.append('helpText', helpText);
+        data.append('config', config);
+
+        // Send request
+        fetch(url, {
+            method: 'POST',
+            body: data,
+        })
+        .then(response => response.json())
+        .then(result => {
+            if (result.success) {
+                closeModal();
+                location.reload();
+            } else if (result.errors) {
+                Object.keys(result.errors).forEach(field => {
+                    const errorEl = document.getElementById('field-' + field + '-error');
+                    if (errorEl) {
+                        errorEl.textContent = result.errors[field][0];
+                        errorEl.style.display = 'block';
+                    }
+                });
+            } else {
+                alert('Error: ' + (result.error || 'Unknown error'));
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('Error saving field: ' + error.message);
+        });
+    }
+
+    // Edit field handlers
+    document.querySelectorAll('.edit-field-btn').forEach(btn => {
+        btn.addEventListener('click', function(e) {
+            e.preventDefault();
+            const fieldId = this.dataset.fieldId;
+            openModal(fieldId);
+        });
+    });
+
+    // Delete field handlers
+    document.querySelectorAll('.delete-field-btn').forEach(btn => {
+        btn.addEventListener('click', function(e) {
+            e.preventDefault();
+            const fieldId = this.dataset.fieldId;
+            if (confirm('Are you sure you want to delete this field?')) {
+                deleteField(fieldId);
+            }
+        });
+    });
+
+    function deleteField(fieldId) {
+        const data = new FormData();
+        if (csrfToken) {
+            data.append('CRAFT_CSRF_TOKEN', csrfToken);
+        }
+        data.append('fieldId', fieldId);
+
+        fetch('/admin/simple-form/fields/delete', {
+            method: 'POST',
+            body: data,
+        })
+        .then(response => response.json())
+        .then(result => {
+            if (result.success) {
+                location.reload();
+            } else {
+                alert('Error: ' + (result.error || 'Unknown error'));
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('Error deleting field: ' + error.message);
+        });
+    }
+});
+</script>
+
+<style>
+#fields-list {
+    margin: 15px 0;
+}
+
+.matrix-block-container {
+    margin: 0;
+}
+
+.matrixblock {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 15px;
+    margin-bottom: 5px;
+    border: 1px solid #ddd;
+    border-radius: 3px;
+    background: #fafafa;
+    transition: all 0.2s ease;
+}
+
+.matrixblock[draggable="true"] {
+    cursor: grab;
+}
+
+.matrixblock[draggable="true"]:active {
+    cursor: grabbing;
+}
+
+.matrixblock[draggable="true"]:hover {
+    background: #f0f0f0;
+    border-color: #999;
+}
+
+.blocktype-name {
+    display: block;
+}
+
+.blocktype-name .info {
+    font-size: 0.9em;
+    color: #999;
+    font-style: normal;
+    margin-left: 5px;
+}
+
+.matrixblock .actions {
+    display: flex;
+    gap: 10px;
+}
+
+.matrixblock .actions a {
+    font-size: 0.9em;
+    text-decoration: none;
+    color: #0066cc;
+}
+
+.matrixblock .actions a:hover {
+    text-decoration: underline;
+}
+
+.zilch {
+    color: #999;
+    text-align: center;
+    padding: 20px;
+    font-style: italic;
+}
+
+.modal-overlay {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.5);
+    z-index: 999;
+}
+
+.modal-overlay.show {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.modal {
+    background: white;
+    border-radius: 3px;
+    padding: 24px;
+    max-width: 500px;
+    width: 90%;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+}
+
+.modal-header {
+    margin-bottom: 20px;
+}
+
+.modal-header h2 {
+    margin: 0;
+    font-size: 24px;
+}
+
+.modal-body {
+    margin-bottom: 20px;
+}
+
+.modal-body .form-group {
+    margin-bottom: 15px;
+}
+
+.modal-body .form-group label {
+    display: block;
+    margin-bottom: 5px;
+    font-weight: 500;
+    font-size: 13px;
+}
+
+.modal-body .form-group input[type="text"],
+.modal-body .form-group input[type="email"],
+.modal-body .form-group textarea,
+.modal-body .form-group select {
+    width: 100%;
+    padding: 8px;
+    border: 1px solid #ddd;
+    border-radius: 3px;
+    font-size: 13px;
+    font-family: inherit;
+}
+
+.modal-body .form-group textarea {
+    resize: vertical;
+    min-height: 80px;
+}
+
+.modal-body .form-group.checkbox {
+    display: flex;
+    align-items: center;
+}
+
+.modal-body .form-group.checkbox input[type="checkbox"] {
+    width: auto;
+    margin-right: 8px;
+}
+
+.modal-body .form-group.checkbox label {
+    margin-bottom: 0;
+}
+
+.modal-body .error {
+    color: #cf2c2c;
+    font-size: 12px;
+    margin-top: 5px;
+}
+
+.modal-footer {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+}
+
+.modal-footer button {
+    padding: 8px 16px;
+    border: none;
+    border-radius: 3px;
+    cursor: pointer;
+    font-size: 13px;
+}
+
+.modal-footer .btn-primary {
+    background: #0066cc;
+    color: white;
+}
+
+.modal-footer .btn-primary:hover {
+    background: #0052a3;
+}
+
+.modal-footer .btn-secondary {
+    background: #f0f0f0;
+    color: #333;
+}
+
+.modal-footer .btn-secondary:hover {
+    background: #e0e0e0;
+}
+</style>
+
+<!-- Add/Edit Field Modal -->
+<div id="field-modal-overlay" class="modal-overlay">
+    <div class="modal" id="field-modal">
+        <div class="modal-header">
+            <h2 id="field-modal-title">Add Field</h2>
+        </div>
+        <div class="modal-body" id="field-modal-body">
+            <input type="hidden" id="field-id">
+            <div class="form-group">
+                <label for="field-type">{{ 'Field Type'|t('simple-form') }}</label>
+                <select id="field-type" name="type">
+                    <option value="text">{{ 'Text'|t }}</option>
+                    <option value="email">{{ 'Email'|t }}</option>
+                    <option value="textarea">{{ 'Textarea'|t }}</option>
+                    <option value="select">{{ 'Select / Dropdown'|t }}</option>
+                    <option value="checkbox">{{ 'Checkbox'|t }}</option>
+                    <option value="radio">{{ 'Radio Buttons'|t }}</option>
+                    <option value="date">{{ 'Date'|t }}</option>
+                    <option value="number">{{ 'Number'|t }}</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="field-label">{{ 'Label'|t('simple-form') }} <span style="color: #cf2c2c;">*</span></label>
+                <input type="text" id="field-label" name="label" placeholder="e.g. Full Name">
+                <div class="error" id="field-label-error" style="display: none;"></div>
+            </div>
+            <div class="form-group">
+                <label for="field-handle">{{ 'Handle'|t('simple-form') }} <span style="color: #cf2c2c;">*</span></label>
+                <input type="text" id="field-handle" name="handle" placeholder="e.g. fullName">
+                <div class="error" id="field-handle-error" style="display: none;"></div>
+            </div>
+            <div class="form-group checkbox">
+                <input type="checkbox" id="field-required" name="required">
+                <label for="field-required">{{ 'Required field'|t('simple-form') }}</label>
+            </div>
+            <div class="form-group">
+                <label for="field-helptext">{{ 'Help Text'|t('simple-form') }}</label>
+                <textarea id="field-helptext" name="helpText" placeholder="Optional help text for the user"></textarea>
+            </div>
+
+            <!-- Text Field Config -->
+            <div id="config-text" class="field-type-config" style="display: none;">
+                <hr style="margin: 15px 0;">
+                <div class="form-group">
+                    <label for="field-minLength">{{ 'Minimum Length'|t('simple-form') }}</label>
+                    <input type="number" id="field-minLength" min="0" placeholder="Optional">
+                </div>
+                <div class="form-group">
+                    <label for="field-maxLength">{{ 'Maximum Length'|t('simple-form') }}</label>
+                    <input type="number" id="field-maxLength" min="0" placeholder="Optional">
+                </div>
+            </div>
+
+            <!-- Email Field Config -->
+            <div id="config-email" class="field-type-config" style="display: none;">
+                <hr style="margin: 15px 0;">
+                <p style="font-size: 12px; color: #666;">{{ 'Email format validation will be applied automatically.'|t('simple-form') }}</p>
+            </div>
+
+            <!-- Textarea Field Config -->
+            <div id="config-textarea" class="field-type-config" style="display: none;">
+                <hr style="margin: 15px 0;">
+                <div class="form-group">
+                    <label for="field-textareaMinLength">{{ 'Minimum Length'|t('simple-form') }}</label>
+                    <input type="number" id="field-textareaMinLength" min="0" placeholder="Optional">
+                </div>
+                <div class="form-group">
+                    <label for="field-textareaMaxLength">{{ 'Maximum Length'|t('simple-form') }}</label>
+                    <input type="number" id="field-textareaMaxLength" min="0" placeholder="Optional">
+                </div>
+            </div>
+
+            <!-- Select Field Config -->
+            <div id="config-select" class="field-type-config" style="display: none;">
+                <hr style="margin: 15px 0;">
+                <label>{{ 'Options'|t('simple-form') }} <span style="color: #cf2c2c;">*</span></label>
+                <div id="field-select-options" style="margin-bottom: 10px;">
+                    <div class="option-row" style="display: flex; gap: 8px; margin-bottom: 8px;">
+                        <input type="text" class="option-label" placeholder="Label" style="flex: 1; padding: 6px; border: 1px solid #ddd; border-radius: 3px;">
+                        <input type="text" class="option-value" placeholder="Value" style="flex: 1; padding: 6px; border: 1px solid #ddd; border-radius: 3px;">
+                        <button type="button" class="remove-option" style="padding: 6px 12px; background: #f0f0f0; border: none; border-radius: 3px; cursor: pointer;">Remove</button>
+                    </div>
+                </div>
+                <button type="button" id="add-select-option" style="padding: 6px 12px; background: #0066cc; color: white; border: none; border-radius: 3px; cursor: pointer;">Add Option</button>
+            </div>
+
+            <!-- Checkbox Field Config -->
+            <div id="config-checkbox" class="field-type-config" style="display: none;">
+                <hr style="margin: 15px 0;">
+                <label>{{ 'Options'|t('simple-form') }} <span style="color: #cf2c2c;">*</span></label>
+                <div id="field-checkbox-options" style="margin-bottom: 10px;">
+                    <div class="option-row" style="display: flex; gap: 8px; margin-bottom: 8px;">
+                        <input type="text" class="option-label" placeholder="Label" style="flex: 1; padding: 6px; border: 1px solid #ddd; border-radius: 3px;">
+                        <input type="text" class="option-value" placeholder="Value" style="flex: 1; padding: 6px; border: 1px solid #ddd; border-radius: 3px;">
+                        <button type="button" class="remove-option" style="padding: 6px 12px; background: #f0f0f0; border: none; border-radius: 3px; cursor: pointer;">Remove</button>
+                    </div>
+                </div>
+                <button type="button" id="add-checkbox-option" style="padding: 6px 12px; background: #0066cc; color: white; border: none; border-radius: 3px; cursor: pointer;">Add Option</button>
+            </div>
+
+            <!-- Radio Field Config -->
+            <div id="config-radio" class="field-type-config" style="display: none;">
+                <hr style="margin: 15px 0;">
+                <label>{{ 'Options'|t('simple-form') }} <span style="color: #cf2c2c;">*</span></label>
+                <div id="field-radio-options" style="margin-bottom: 10px;">
+                    <div class="option-row" style="display: flex; gap: 8px; margin-bottom: 8px;">
+                        <input type="text" class="option-label" placeholder="Label" style="flex: 1; padding: 6px; border: 1px solid #ddd; border-radius: 3px;">
+                        <input type="text" class="option-value" placeholder="Value" style="flex: 1; padding: 6px; border: 1px solid #ddd; border-radius: 3px;">
+                        <button type="button" class="remove-option" style="padding: 6px 12px; background: #f0f0f0; border: none; border-radius: 3px; cursor: pointer;">Remove</button>
+                    </div>
+                </div>
+                <button type="button" id="add-radio-option" style="padding: 6px 12px; background: #0066cc; color: white; border: none; border-radius: 3px; cursor: pointer;">Add Option</button>
+            </div>
+
+            <!-- Date Field Config -->
+            <div id="config-date" class="field-type-config" style="display: none;">
+                <hr style="margin: 15px 0;">
+                <div class="form-group">
+                    <label for="field-dateFormat">{{ 'Date Format'|t('simple-form') }}</label>
+                    <select id="field-dateFormat" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 3px;">
+                        <option value="Y-m-d">YYYY-MM-DD</option>
+                        <option value="d.m.Y">DD.MM.YYYY</option>
+                        <option value="m/d/Y">MM/DD/YYYY</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="field-minDate">{{ 'Minimum Date'|t('simple-form') }}</label>
+                    <input type="date" id="field-minDate" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 3px;">
+                </div>
+                <div class="form-group">
+                    <label for="field-maxDate">{{ 'Maximum Date'|t('simple-form') }}</label>
+                    <input type="date" id="field-maxDate" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 3px;">
+                </div>
+            </div>
+
+            <!-- Number Field Config -->
+            <div id="config-number" class="field-type-config" style="display: none;">
+                <hr style="margin: 15px 0;">
+                <div class="form-group">
+                    <label for="field-numberMin">{{ 'Minimum Value'|t('simple-form') }}</label>
+                    <input type="number" id="field-numberMin" placeholder="Optional">
+                </div>
+                <div class="form-group">
+                    <label for="field-numberMax">{{ 'Maximum Value'|t('simple-form') }}</label>
+                    <input type="number" id="field-numberMax" placeholder="Optional">
+                </div>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" id="field-modal-cancel">{{ 'Cancel'|t }}</button>
+            <button type="button" class="btn btn-primary" id="field-modal-save">{{ 'Save Field'|t('simple-form') }}</button>
+        </div>
+    </div>
+</div>
+
+{% endif %}
 {% endblock %}

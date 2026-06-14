@@ -4,8 +4,10 @@ namespace fabianhaef\simpleform;
 
 use Craft;
 use craft\base\Plugin as BasePlugin;
+use craft\events\RegisterCpNavItemsEvent;
 use craft\events\RegisterUrlRulesEvent;
 use craft\web\UrlManager;
+use craft\web\twig\variables\Cp;
 use fabianhaef\simpleform\services\EmailService;
 use fabianhaef\simpleform\services\FieldTypeRegistry;
 use fabianhaef\simpleform\services\SubmissionService;
@@ -52,6 +54,11 @@ class Plugin extends BasePlugin
             [$this, 'registerCpUrlRules']
         );
 
+        Craft::$app->getView()->on(
+            Cp::EVENT_REGISTER_CP_NAV_ITEMS,
+            [$this, 'registerCpNavItems']
+        );
+
         Craft::$app->getUrlManager()->addRules([
             'simple-form/submit' => 'simple-form/submit/index',
         ]);
@@ -67,6 +74,29 @@ class Plugin extends BasePlugin
         return Craft::t('simple-form', 'Simple Form');
     }
 
+    public function registerCpNavItems(RegisterCpNavItemsEvent $event): void
+    {
+        $event->navItems[] = [
+            'url' => 'simple-form',
+            'label' => $this->getName(),
+            'icon' => '@fabianhaef/simpleform/icon.svg',
+            'subnav' => [
+                'forms' => [
+                    'label' => 'Forms',
+                    'url' => 'simple-form/forms',
+                ],
+                'submissions' => [
+                    'label' => 'Submissions',
+                    'url' => 'simple-form/submissions',
+                ],
+                'settings' => [
+                    'label' => 'Settings',
+                    'url' => 'simple-form/settings',
+                ],
+            ],
+        ];
+    }
+
     public function registerCpUrlRules(RegisterUrlRulesEvent $event): void
     {
         $event->rules['simple-form'] = 'simple-form/forms/index';
@@ -78,6 +108,14 @@ class Plugin extends BasePlugin
         $event->rules['simple-form/submissions'] = 'simple-form/submissions/index';
         $event->rules['simple-form/submissions/<submissionId:\d+>'] = 'simple-form/submissions/view';
         $event->rules['simple-form/submissions/toggle-status'] = 'simple-form/submissions/toggle-status';
+        $event->rules['simple-form/settings'] = 'simple-form/settings/index';
+        $event->rules['simple-form/settings/save'] = 'simple-form/settings/save';
+
+        // Fields AJAX endpoints
+        $event->rules['simple-form/fields/add'] = 'simple-form/fields/add';
+        $event->rules['simple-form/fields/edit'] = 'simple-form/fields/edit';
+        $event->rules['simple-form/fields/delete'] = 'simple-form/fields/delete';
+        $event->rules['simple-form/fields/reorder'] = 'simple-form/fields/reorder';
     }
 
 }

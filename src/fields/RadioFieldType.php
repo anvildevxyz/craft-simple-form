@@ -30,11 +30,23 @@ class RadioFieldType extends FieldType
 
     protected function getOptions(): array
     {
-        $optionsConfig = $this->config['options'] ?? '[]';
-        if (is_string($optionsConfig)) {
-            return json_decode($optionsConfig, true) ?? [];
+        $options = $this->config['options'] ?? [];
+        if (is_string($options)) {
+            $options = json_decode($options, true) ?? [];
         }
-        return (array) $optionsConfig;
+
+        // Convert array of {label, value} objects to keyed array
+        $result = [];
+        if (is_array($options)) {
+            foreach ($options as $opt) {
+                if (is_array($opt) && isset($opt['value'], $opt['label'])) {
+                    $result[$opt['value']] = $opt['label'];
+                } elseif (is_object($opt) && isset($opt->value, $opt->label)) {
+                    $result[$opt->value] = $opt->label;
+                }
+            }
+        }
+        return $result;
     }
 
     public function renderInput(string $name, $value = null): string

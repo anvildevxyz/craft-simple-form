@@ -24,6 +24,11 @@ class Form extends Element
         return 'Form';
     }
 
+    public static function tableName(): string
+    {
+        return 'simpleform_forms';
+    }
+
     public static function hasContent(): bool
     {
         return true;
@@ -69,7 +74,7 @@ class Form extends Element
         return ['title', 'handle', 'emailTo', 'dateCreated'];
     }
 
-    protected static function defineSources(string $context = null): array
+    protected static function defineSources(?string $context = null): array
     {
         return [
             [
@@ -77,5 +82,63 @@ class Form extends Element
                 'label' => 'All Forms',
             ],
         ];
+    }
+
+    protected function defineRules(): array
+    {
+        $rules = parent::defineRules();
+
+        $rules[] = [['name', 'handle'], 'required'];
+        $rules[] = [['name', 'handle'], 'string', 'max' => 255];
+        $rules[] = [['title', 'description'], 'string'];
+        $rules[] = [['emailTo', 'emailSubject', 'emailReplyTo'], 'string', 'max' => 255];
+
+        return $rules;
+    }
+
+    public function afterSave(bool $isNew): void
+    {
+        if (!$this->propagating) {
+            $db = \Craft::$app->getDb();
+
+            if ($isNew) {
+                $db->createCommand()->insert('simpleform_forms', [
+                    'id' => $this->id,
+                    'siteId' => $this->siteId,
+                    'name' => $this->name,
+                    'handle' => $this->handle,
+                    'title' => $this->title,
+                    'description' => $this->description,
+                    'emailTo' => $this->emailTo,
+                    'emailSubject' => $this->emailSubject,
+                    'emailReplyTo' => $this->emailReplyTo,
+                ])->execute();
+            } else {
+                $db->createCommand()->update('simpleform_forms', [
+                    'name' => $this->name,
+                    'handle' => $this->handle,
+                    'title' => $this->title,
+                    'description' => $this->description,
+                    'emailTo' => $this->emailTo,
+                    'emailSubject' => $this->emailSubject,
+                    'emailReplyTo' => $this->emailReplyTo,
+                ], ['id' => $this->id])->execute();
+            }
+        }
+
+        parent::afterSave($isNew);
+    }
+
+    public function beforeDelete(): bool
+    {
+        if (!parent::beforeDelete()) {
+            return false;
+        }
+
+        \Craft::$app->getDb()->createCommand()
+            ->delete('simpleform_forms', ['id' => $this->id])
+            ->execute();
+
+        return true;
     }
 }

@@ -1,0 +1,217 @@
+{% extends "_layouts/cp.twig" %}
+{% import "_includes/forms.twig" as forms %}
+
+{% set title = 'Settings'|t('simple-form') %}
+{% set selectedSubnavItem = 'settings' %}
+
+{% block content %}
+<form method="POST" action="{{ actionUrl('simple-form/settings/save') }}" class="simple-form-settings">
+    {{ csrfInput() }}
+    {{ redirectInput('simple-form/settings') }}
+
+    <div class="settings-section">
+        <h2>{{ 'Email Settings'|t('simple-form') }}</h2>
+        <p class="info">{{ 'Configure default email settings for form submissions.'|t('simple-form') }}</p>
+
+        {{ forms.textField({
+            label: 'Default Email Sender'|t('simple-form'),
+            name: 'defaultEmailSender',
+            value: settings.defaultEmailSender,
+            type: 'email',
+            required: true,
+            instructions: 'Email address that forms will send from if not overridden.'|t('simple-form'),
+            errors: [],
+        }) }}
+
+        {{ forms.textField({
+            label: 'Default Email Sender Name'|t('simple-form'),
+            name: 'defaultEmailSenderName',
+            value: settings.defaultEmailSenderName,
+            instructions: 'Display name for the sender email.'|t('simple-form'),
+            errors: [],
+        }) }}
+
+        {{ forms.textField({
+            label: 'Default Submit Message'|t('simple-form'),
+            name: 'submitMessage',
+            value: settings.submitMessage ?? 'Thank you! Your submission has been received.',
+            instructions: 'Message shown to users after successful form submission.'|t('simple-form'),
+            errors: [],
+        }) }}
+
+        {{ forms.textField({
+            label: 'Default Error Message'|t('simple-form'),
+            name: 'errorMessage',
+            value: settings.errorMessage ?? 'There was an error submitting your form. Please try again.',
+            instructions: 'Message shown to users if form submission fails.'|t('simple-form'),
+            errors: [],
+        }) }}
+    </div>
+
+    <hr class="settings-divider">
+
+    <div class="settings-section">
+        <h2>{{ 'Spam Protection'|t('simple-form') }}</h2>
+        <p class="info">{{ 'Configure spam prevention and CAPTCHA settings.'|t('simple-form') }}</p>
+
+        {{ forms.checkboxField({
+            label: 'Enable Honeypot Field'|t('simple-form'),
+            name: 'enableHoneypot',
+            value: 1,
+            checked: settings.enableHoneypot ?? true,
+            instructions: 'Adds a hidden field to catch spam bots automatically.'|t('simple-form'),
+        }) }}
+
+        <hr style="margin: 20px 0;">
+
+        {{ forms.checkboxField({
+            label: 'Enable CAPTCHA'|t('simple-form'),
+            name: 'enableCaptcha',
+            value: 1,
+            checked: settings.enableCaptcha ?? false,
+            instructions: 'Add CAPTCHA verification to forms for additional spam protection.'|t('simple-form'),
+        }) }}
+
+        <div id="captcha-settings" style="display: {% if settings.enableCaptcha %}block{% else %}none{% endif %}; margin-top: 20px;">
+            {{ forms.selectField({
+                label: 'CAPTCHA Type'|t('simple-form'),
+                name: 'captchaType',
+                options: {
+                    'recaptcha-v3': 'reCAPTCHA v3 (Invisible)'|t('simple-form'),
+                    'recaptcha-v2': 'reCAPTCHA v2 (Checkbox)'|t('simple-form'),
+                },
+                value: settings.captchaType ?? 'recaptcha-v3',
+                instructions: 'Choose the CAPTCHA type. v3 is invisible to users, v2 shows a checkbox.'|t('simple-form'),
+            }) }}
+
+            <div id="recaptcha-v3-settings" class="captcha-type-settings">
+                {{ forms.textField({
+                    label: 'reCAPTCHA v3 Site Key'|t('simple-form'),
+                    name: 'recaptchaV3SiteKey',
+                    value: settings.recaptchaV3SiteKey,
+                    instructions: 'Your reCAPTCHA v3 site key from Google.'|t('simple-form'),
+                }) }}
+
+                {{ forms.passwordField({
+                    label: 'reCAPTCHA v3 Secret Key'|t('simple-form'),
+                    name: 'recaptchaV3SecretKey',
+                    value: settings.recaptchaV3SecretKey,
+                    instructions: 'Your reCAPTCHA v3 secret key from Google (displayed as dots for security).'|t('simple-form'),
+                }) }}
+            </div>
+
+            <div id="recaptcha-v2-settings" class="captcha-type-settings" style="display: none;">
+                {{ forms.textField({
+                    label: 'reCAPTCHA v2 Site Key'|t('simple-form'),
+                    name: 'recaptchaV2SiteKey',
+                    value: settings.recaptchaV2SiteKey,
+                    instructions: 'Your reCAPTCHA v2 site key from Google.'|t('simple-form'),
+                }) }}
+
+                {{ forms.passwordField({
+                    label: 'reCAPTCHA v2 Secret Key'|t('simple-form'),
+                    name: 'recaptchaV2SecretKey',
+                    value: settings.recaptchaV2SecretKey,
+                    instructions: 'Your reCAPTCHA v2 secret key from Google (displayed as dots for security).'|t('simple-form'),
+                }) }}
+            </div>
+        </div>
+    </div>
+
+    <hr class="settings-divider">
+
+    <div class="settings-section">
+        <h2>{{ 'Storage'|t('simple-form') }}</h2>
+        <p class="info">{{ 'Configure where form submissions are stored.'|t('simple-form') }}</p>
+
+        {{ forms.selectField({
+            label: 'Storage Location'|t('simple-form'),
+            name: 'storageLocation',
+            options: {
+                'database': 'Database (Default)'|t('simple-form'),
+            },
+            value: settings.storageLocation ?? 'database',
+            instructions: 'Currently only database storage is supported.'|t('simple-form'),
+        }) }}
+    </div>
+
+    <hr class="settings-divider">
+
+    <div class="form-actions">
+        <button type="submit" class="btn btn-primary">{{ 'Save Settings'|t('simple-form') }}</button>
+    </div>
+</form>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const enableCaptchaCheckbox = document.querySelector('input[name="enableCaptcha"]');
+    const captchaSettings = document.getElementById('captcha-settings');
+    const captchaTypeSelect = document.querySelector('select[name="captchaType"]');
+
+    if (enableCaptchaCheckbox) {
+        enableCaptchaCheckbox.addEventListener('change', function() {
+            captchaSettings.style.display = this.checked ? 'block' : 'none';
+        });
+    }
+
+    if (captchaTypeSelect) {
+        captchaTypeSelect.addEventListener('change', function() {
+            document.querySelectorAll('.captcha-type-settings').forEach(el => {
+                el.style.display = 'none';
+            });
+            const typeId = 'recaptcha-' + this.value.replace('-', '-') + '-settings';
+            const typeEl = document.getElementById(typeId);
+            if (typeEl) {
+                typeEl.style.display = 'block';
+            }
+        });
+    }
+});
+</script>
+
+<style>
+.simple-form-settings {
+    max-width: 800px;
+}
+
+.settings-section {
+    margin-bottom: 30px;
+}
+
+.settings-section h2 {
+    font-size: 18px;
+    font-weight: 600;
+    margin-bottom: 10px;
+}
+
+.settings-section .info {
+    color: #666;
+    font-size: 13px;
+    margin-bottom: 20px;
+}
+
+.settings-divider {
+    margin: 30px 0;
+    border: none;
+    border-top: 1px solid #ddd;
+}
+
+.form-actions {
+    margin-top: 30px;
+    padding-top: 20px;
+    border-top: 1px solid #ddd;
+}
+
+.form-actions button {
+    padding: 8px 24px;
+    font-size: 14px;
+}
+
+#captcha-settings {
+    background: #f9f9f9;
+    padding: 15px;
+    border-radius: 3px;
+    border-left: 3px solid #0066cc;
+}
+</style>
+{% endblock %}

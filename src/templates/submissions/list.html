@@ -1,0 +1,362 @@
+{% extends "_layouts/cp.twig" %}
+
+{% set title = 'Submissions'|t('simple-form') %}
+{% set selectedSubnavItem = 'submissions' %}
+
+{% block content %}
+<div class="submissions-header">
+    <h1>{{ 'Form Submissions'|t('simple-form') }}</h1>
+
+    <div class="submission-stats">
+        <div class="stat-card">
+            <span class="stat-value">{{ stats.total }}</span>
+            <span class="stat-label">{{ 'Total'|t('simple-form') }}</span>
+        </div>
+        <div class="stat-card unread">
+            <span class="stat-value">{{ stats.new }}</span>
+            <span class="stat-label">{{ 'New'|t('simple-form') }}</span>
+        </div>
+        <div class="stat-card">
+            <span class="stat-value">{{ stats.read }}</span>
+            <span class="stat-label">{{ 'Read'|t('simple-form') }}</span>
+        </div>
+        <div class="stat-card">
+            <span class="stat-value">{{ stats.archived }}</span>
+            <span class="stat-label">{{ 'Archived'|t('simple-form') }}</span>
+        </div>
+    </div>
+</div>
+
+<div class="submissions-filters">
+    <form method="GET" class="filter-form">
+        <div class="filter-row">
+            <div class="filter-group">
+                <label>{{ 'Form'|t('simple-form') }}</label>
+                <select name="formId" class="filter-select">
+                    <option value="">{{ 'All Forms'|t('simple-form') }}</option>
+                    {% for form in forms %}
+                        <option value="{{ form.id }}" {% if formId == form.id %}selected{% endif %}>
+                            {{ form.title ?? form.name }}
+                        </option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div class="filter-group">
+                <label>{{ 'Status'|t('simple-form') }}</label>
+                <select name="status" class="filter-select">
+                    <option value="all" {% if status == 'all' %}selected{% endif %}>{{ 'All'|t }}</option>
+                    <option value="new" {% if status == 'new' %}selected{% endif %}>{{ 'New'|t }}</option>
+                    <option value="read" {% if status == 'read' %}selected{% endif %}>{{ 'Read'|t }}</option>
+                    <option value="archived" {% if status == 'archived' %}selected{% endif %}>{{ 'Archived'|t }}</option>
+                </select>
+            </div>
+
+            <div class="filter-group">
+                <label>{{ 'From Date'|t('simple-form') }}</label>
+                <input type="date" name="dateFrom" class="filter-input" value="{{ dateFrom }}">
+            </div>
+
+            <div class="filter-group">
+                <label>{{ 'To Date'|t('simple-form') }}</label>
+                <input type="date" name="dateTo" class="filter-input" value="{{ dateTo }}">
+            </div>
+
+            <div class="filter-group search-group">
+                <label>{{ 'Search'|t }}</label>
+                <input type="text" name="search" class="filter-input" placeholder="{{ 'Search submissions...'|t('simple-form') }}" value="{{ search }}">
+            </div>
+
+            <div class="filter-group">
+                <button type="submit" class="btn btn-primary">{{ 'Filter'|t }}</button>
+                {% if formId or status != 'new' or search or dateFrom or dateTo %}
+                    <a href="{{ url('simple-form/submissions') }}" class="btn btn-secondary">{{ 'Clear'|t }}</a>
+                {% endif %}
+            </div>
+        </div>
+    </form>
+</div>
+
+<div class="submissions-table-container">
+    {% if submissions|length %}
+        <table class="data fullwidth">
+            <thead>
+                <tr>
+                    <th style="width: 50px;"><input type="checkbox" class="select-all-checkbox"></th>
+                    <th>{{ 'Form'|t('simple-form') }}</th>
+                    <th>{{ 'Submitted'|t('simple-form') }}</th>
+                    <th>{{ 'Status'|t('simple-form') }}</th>
+                    <th style="width: 80px;">{{ 'Actions'|t }}</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for submission in submissions %}
+                    <tr class="submission-row" data-submission-id="{{ submission.id }}" data-status="{{ submission.readStatus }}">
+                        <td class="checkbox-cell">
+                            <input type="checkbox" class="submission-checkbox" value="{{ submission.id }}">
+                        </td>
+                        <td>
+                            <strong>{{ submission.getForm().title ?? submission.getForm().name }}</strong>
+                        </td>
+                        <td>
+                            <span class="date-cell">{{ submission.dateCreated|date('M d, Y g:i A') }}</span>
+                        </td>
+                        <td>
+                            <span class="status-badge status-{{ submission.readStatus }}">
+                                {% if submission.readStatus == 'new' %}
+                                    <span class="unread-badge">●</span> {{ 'New'|t }}
+                                {% elseif submission.readStatus == 'read' %}
+                                    {{ 'Read'|t }}
+                                {% else %}
+                                    {{ 'Archived'|t }}
+                                {% endif %}
+                            </span>
+                        </td>
+                        <td class="thin">
+                            <a href="{{ url('simple-form/submissions/' ~ submission.id) }}" class="btn btn-sm" title="{{ 'View'|t }}">
+                                <span>{{ 'View'|t }}</span>
+                            </a>
+                        </td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+
+        {% if total > perPage %}
+            <div class="pagination-wrapper">
+                <div class="pagination">
+                    {% if page > 1 %}
+                        <a href="{{ buildUrl('simple-form/submissions', {formId, status, search, dateFrom, dateTo, page: page - 1}) }}" class="prev">← {{ 'Previous'|t }}</a>
+                    {% endif %}
+
+                    <span class="page-info">
+                        {{ 'Page'|t }} {{ page }} {{ 'of'|t }} {{ (total / perPage)|ceil }}
+                    </span>
+
+                    {% if page < (total / perPage)|ceil %}
+                        <a href="{{ buildUrl('simple-form/submissions', {formId, status, search, dateFrom, dateTo, page: page + 1}) }}" class="next">{{ 'Next'|t }} →</a>
+                    {% endif %}
+                </div>
+            </div>
+        {% endif %}
+    {% else %}
+        <div class="empty-state">
+            <p>{{ 'No submissions found.'|t('simple-form') }}</p>
+            {% if search or dateFrom or dateTo or status != 'new' %}
+                <p class="light">{{ 'Try adjusting your filters.'|t('simple-form') }}</p>
+            {% endif %}
+        </div>
+    {% endif %}
+</div>
+
+<style>
+.submissions-header {
+    margin-bottom: 30px;
+}
+
+.submissions-header h1 {
+    margin-bottom: 20px;
+}
+
+.submission-stats {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 15px;
+    margin-bottom: 30px;
+}
+
+.stat-card {
+    background: white;
+    border: 1px solid #ddd;
+    border-radius: 3px;
+    padding: 15px;
+    text-align: center;
+}
+
+.stat-card.unread {
+    border-left: 3px solid #ff6b6b;
+    background: #fff5f5;
+}
+
+.stat-value {
+    display: block;
+    font-size: 28px;
+    font-weight: 600;
+    color: #333;
+    margin-bottom: 5px;
+}
+
+.stat-label {
+    font-size: 12px;
+    color: #666;
+    text-transform: uppercase;
+}
+
+.submissions-filters {
+    background: #f9f9f9;
+    border: 1px solid #ddd;
+    border-radius: 3px;
+    padding: 20px;
+    margin-bottom: 20px;
+}
+
+.filter-form {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+
+.filter-row {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 15px;
+    align-items: flex-end;
+}
+
+.filter-group {
+    display: flex;
+    flex-direction: column;
+}
+
+.filter-group label {
+    font-size: 12px;
+    font-weight: 600;
+    margin-bottom: 5px;
+    color: #333;
+}
+
+.filter-select,
+.filter-input {
+    padding: 8px;
+    border: 1px solid #ccc;
+    border-radius: 3px;
+    font-size: 13px;
+}
+
+.filter-input[type="date"] {
+    padding: 8px;
+}
+
+.search-group {
+    grid-column: auto;
+}
+
+.submissions-table-container {
+    background: white;
+    border: 1px solid #ddd;
+    border-radius: 3px;
+    overflow: hidden;
+}
+
+.data thead {
+    background: #f9f9f9;
+    border-bottom: 1px solid #ddd;
+}
+
+.data th {
+    padding: 12px;
+    text-align: left;
+    font-weight: 600;
+    font-size: 12px;
+    color: #666;
+}
+
+.data tbody tr {
+    border-bottom: 1px solid #eee;
+    transition: background-color 0.2s ease;
+}
+
+.data tbody tr:hover {
+    background: #f9f9f9;
+}
+
+.data td {
+    padding: 12px;
+    font-size: 13px;
+}
+
+.checkbox-cell {
+    width: 50px;
+    text-align: center;
+}
+
+.date-cell {
+    color: #666;
+    font-size: 12px;
+}
+
+.status-badge {
+    display: inline-block;
+    padding: 4px 8px;
+    border-radius: 3px;
+    font-size: 12px;
+    font-weight: 600;
+}
+
+.status-new {
+    background: #fff3cd;
+    color: #856404;
+}
+
+.status-new .unread-badge {
+    color: #ff6b6b;
+    margin-right: 4px;
+}
+
+.status-read {
+    background: #e8f4f8;
+    color: #0c5460;
+}
+
+.status-archived {
+    background: #e8e8e8;
+    color: #666;
+}
+
+.pagination-wrapper {
+    padding: 20px;
+    border-top: 1px solid #eee;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 20px;
+}
+
+.pagination {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+}
+
+.pagination a,
+.page-info {
+    font-size: 12px;
+}
+
+.pagination .prev,
+.pagination .next {
+    color: #0066cc;
+    text-decoration: none;
+}
+
+.pagination .prev:hover,
+.pagination .next:hover {
+    text-decoration: underline;
+}
+
+.empty-state {
+    padding: 40px 20px;
+    text-align: center;
+    color: #666;
+}
+
+.empty-state p {
+    margin: 10px 0;
+}
+
+.empty-state p.light {
+    font-size: 12px;
+    color: #999;
+}
+</style>
+{% endblock %}

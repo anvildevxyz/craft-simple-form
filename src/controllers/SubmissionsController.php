@@ -14,8 +14,10 @@ class SubmissionsController extends Controller
     {
         $request = Craft::$app->getRequest();
         $formId = $request->getQueryParam('formId');
-        $status = $request->getQueryParam('status');
+        $status = $request->getQueryParam('status', 'new');
         $search = $request->getQueryParam('search');
+        $dateFrom = $request->getQueryParam('dateFrom');
+        $dateTo = $request->getQueryParam('dateTo');
         $siteId = Craft::$app->getSites()->getCurrentSite()->id;
 
         $query = Submission::find()
@@ -26,7 +28,7 @@ class SubmissionsController extends Controller
             $query->formId((int)$formId);
         }
 
-        if ($status) {
+        if ($status && $status !== 'all') {
             $query->status($status);
         }
 
@@ -34,12 +36,20 @@ class SubmissionsController extends Controller
             $query->search($search);
         }
 
+        if ($dateFrom) {
+            $query->andWhere(['>=', 'elements.dateCreated', $dateFrom . ' 00:00:00']);
+        }
+
+        if ($dateTo) {
+            $query->andWhere(['<=', 'elements.dateCreated', $dateTo . ' 23:59:59']);
+        }
+
         // Store total count before pagination
         $total = $query->count();
 
         // Pagination
         $page = (int) ($request->getQueryParam('page') ?? 1);
-        $perPage = 50;
+        $perPage = $request->getQueryParam('perPage', 50);
         $query->offset(($page - 1) * $perPage)
             ->limit($perPage);
 
@@ -51,6 +61,9 @@ class SubmissionsController extends Controller
             ->orderBy(['title' => SORT_ASC])
             ->all();
 
+        // Get submission statistics
+        $stats = $this->getSubmissionStats($siteId, $formId);
+
         return $this->renderTemplate('simple-form/submissions/index', [
             'submissions' => $submissions,
             'total' => $total,
@@ -59,13 +72,38 @@ class SubmissionsController extends Controller
             'formId' => $formId,
             'status' => $status,
             'search' => $search,
+            'dateFrom' => $dateFrom,
+            'dateTo' => $dateTo,
             'forms' => $allForms,
+            'stats' => $stats,
         ]);
+    }
+
+    private function getSubmissionStats(int $siteId, ?int $formId = null): array
+    {
+        $db = Craft::$app->getDb();
+        $baseQuery = 'SELECT COUNT(*) FROM {{%simpleform_submissions}} WHERE siteId = :siteId';
+        $params = [':siteId' => $siteId];
+
+        if ($formId) {
+            $baseQuery .= ' AND formId = :formId';
+            $params[':formId'] = $formId;
+        }
+
+        return [
+            'total' => (int) $db->createCommand($baseQuery, $params)->queryScalar(),
+            'new' => (int) $db->createCommand($baseQuery . ' AND readStatus = :status', array_merge($params, [':status' => 'new']))->queryScalar(),
+            'read' => (int) $db->createCommand($baseQuery . ' AND readStatus = :status', array_merge($params, [':status' => 'read']))->queryScalar(),
+            'archived' => (int) $db->createCommand($baseQuery . ' AND readStatus = :status', array_merge($params, [':status' => 'archived']))->queryScalar(),
+        ];
     }
 
     public function actionView(int $submissionId): Response
     {
+        $siteId = Craft::$app->getSites()->getCurrentSite()->id;
+
         $submission = Submission::find()
+            ->siteId($siteId)
             ->id($submissionId)
             ->one();
 
@@ -89,7 +127,12 @@ class SubmissionsController extends Controller
         $this->requireAjax();
 
         $submissionId = Craft::$app->getRequest()->getRequiredBodyParam('submissionId');
-        $submission = Submission::find()->id($submissionId)->one();
+        $siteId = Craft::$app->getSites()->getCurrentSite()->id;
+
+        $submission = Submission::find()
+            ->siteId($siteId)
+            ->id($submissionId)
+            ->one();
 
         if (!$submission) {
             return $this->asJson(['success' => false, 'error' => 'Submission not found']);

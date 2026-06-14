@@ -19,6 +19,11 @@ class Submission extends Element
         return 'Submission';
     }
 
+    public static function tableName(): string
+    {
+        return 'simpleform_submissions';
+    }
+
     public static function hasContent(): bool
     {
         return false;
