@@ -5,6 +5,21 @@
 {% set selectedSubnavItem = 'forms' %}
 {% set fullPageForm = true %}
 
+{# Native CP header site selector (same mechanism as _layouts/elementindex):
+   prepend a site crumb whose disclosure menu links to ?site=<handle> on this path. #}
+{% if craft.app.getIsMultiSite() and form.id and supportedSites|length > 1 %}
+    {% set crumbs = (crumbs ?? [])|unshift({
+        id: 'site-crumb',
+        icon: 'world',
+        iconAltText: 'Site'|t('app'),
+        label: currentSite.name|t('site'),
+        menu: {
+            items: siteMenuItems(supportedSites, currentSite),
+            label: 'Select site'|t('app'),
+        },
+    }) %}
+{% endif %}
+
 {% block content %}
 <input type="hidden" name="action" value="simple-form/forms/save">
 {% if form.id %}
@@ -16,19 +31,6 @@
 
 {{ redirectInput('simple-form/forms') }}
 {{ csrfInput() }}
-
-{% if craft.app.isMultiSite and form.id and supportedSites|length > 1 %}
-    <div class="simple-form-site-selector" style="margin-bottom: 24px;">
-        <div class="btngroup">
-            {% for s in supportedSites %}
-                <a class="btn{{ s.id == currentSite.id ? ' active' }}"
-                   href="{{ url('simple-form/forms/edit/' ~ form.id, { site: s.handle }) }}">
-                    {{ s.name|t('site') }}
-                </a>
-            {% endfor %}
-        </div>
-    </div>
-{% endif %}
 
 {% if craft.app.isMultiSite %}
 <h2>{{ 'Multi-Site'|t('simple-form') }}</h2>

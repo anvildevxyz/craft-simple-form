@@ -147,16 +147,21 @@ class FormsController extends Controller
     }
 
     /**
-     * The sites this form is (or would be) saved to, for the site switcher.
+     * The sites this form is (or would be) saved to AND the user may edit, for
+     * the native CP header site selector.
      *
      * @return \craft\models\Site[]
      */
     private function getSupportedSitesForForm(Form $form): array
     {
-        $siteIds = $form->getSupportedSites();
+        $editableSiteIds = Craft::$app->getSites()->getEditableSiteIds();
         $sites = [];
-        foreach ($siteIds as $id) {
-            $site = Craft::$app->getSites()->getSiteById(is_array($id) ? $id['siteId'] : $id);
+        foreach ($form->getSupportedSites() as $id) {
+            $siteId = is_array($id) ? $id['siteId'] : $id;
+            if (!in_array($siteId, $editableSiteIds, true)) {
+                continue;
+            }
+            $site = Craft::$app->getSites()->getSiteById($siteId);
             if ($site) {
                 $sites[] = $site;
             }
