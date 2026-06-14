@@ -11,7 +11,12 @@ class FormsController extends Controller
 {
     public function actionIndex(): Response
     {
-        $forms = Form::find()->all();
+        $siteId = Craft::$app->getSites()->getCurrentSite()->id;
+        $forms = Form::find()
+            ->siteId($siteId)
+            ->orderBy(['title' => SORT_ASC])
+            ->all();
+
         return $this->renderTemplate('simple-form/forms/index', [
             'forms' => $forms,
         ]);

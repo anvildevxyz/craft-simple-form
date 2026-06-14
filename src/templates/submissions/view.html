@@ -1,5 +1,6 @@
-{% extends "_layouts/cp" %}
-{% set title = 'Submission #' ~ submission.id %}
+{% extends '_layouts/cp.twig' %}
+
+{% set title = 'Submission #'|t('simple-form') ~ submission.id %}
 {% set selectedSubnavItem = 'submissions' %}
 
 {% block content %}

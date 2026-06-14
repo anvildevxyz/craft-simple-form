@@ -1,0 +1,27 @@
+{
+  "timestamp": "2026-06-14T11:36:15Z",
+  "plugin": "simple-form",
+  "test_summary": {
+    "total": 45,
+    "passed": 45,
+    "failed": 0,
+    "skipped": 0,
+    "pass_rate": "100%"
+  },
+  "test_coverage": {
+    "form_builder": 9,
+    "rendering": 1,
+    "submission_validation": 6,
+    "submission_management": 8,
+    "email_notifications": 4,
+    "multi_site": 4,
+    "cp_integration": 3,
+    "php_api": 3,
+    "event_hooks": 2,
+    "security": 2,
+    "database": 1,
+    "permissions": 1
+  },
+  "report_file": "./tests/_reports/smoke-test-report-20260614_133609.txt",
+  "instructions": "Review report_file for detailed results. View this JSON for summary metrics."
+}

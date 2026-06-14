@@ -1,0 +1,81 @@
+{% extends '_layouts/cp.twig' %}
+{% import '_includes/forms.twig' as forms %}
+
+{% set title = form.id ? 'Edit Form'|t('simple-form') : 'Create Form'|t('simple-form') %}
+{% set selectedSubnavItem = 'forms' %}
+{% set fullPageForm = true %}
+
+{% block content %}
+<input type="hidden" name="action" value="simple-form/forms/save">
+{% if form.id %}
+    <input type="hidden" name="formId" value="{{ form.id }}">
+{% endif %}
+
+{{ forms.textField({
+    label: 'Name'|t('simple-form'),
+    id: 'name',
+    name: 'name',
+    value: form.name,
+    required: true,
+    errors: form.getErrors('name'),
+    first: true,
+}) }}
+
+{{ forms.textField({
+    label: 'Handle'|t('simple-form'),
+    id: 'handle',
+    name: 'handle',
+    value: form.handle,
+    required: true,
+    errors: form.getErrors('handle'),
+}) }}
+
+{{ forms.textField({
+    label: 'Title'|t('simple-form'),
+    id: 'title',
+    name: 'title',
+    value: form.title,
+    errors: form.getErrors('title'),
+}) }}
+
+{{ forms.textareaField({
+    label: 'Description'|t('simple-form'),
+    id: 'description',
+    name: 'description',
+    value: form.description,
+    errors: form.getErrors('description'),
+}) }}
+
+<hr>
+
+<h2>{{ 'Email Settings'|t('simple-form') }}</h2>
+
+{{ forms.textField({
+    label: 'Email To'|t('simple-form'),
+    id: 'emailTo',
+    name: 'emailTo',
+    type: 'email',
+    value: form.emailTo,
+    errors: form.getErrors('emailTo'),
+    instructions: 'Email address where submissions will be sent'|t('simple-form'),
+}) }}
+
+{{ forms.textField({
+    label: 'Email Subject'|t('simple-form'),
+    id: 'emailSubject',
+    name: 'emailSubject',
+    value: form.emailSubject,
+    errors: form.getErrors('emailSubject'),
+    instructions: 'Subject line for notification emails'|t('simple-form'),
+}) }}
+
+{{ forms.textField({
+    label: 'Email Reply-To'|t('simple-form'),
+    id: 'emailReplyTo',
+    name: 'emailReplyTo',
+    type: 'email',
+    value: form.emailReplyTo,
+    errors: form.getErrors('emailReplyTo'),
+    instructions: 'Reply-to email address (optional)'|t('simple-form'),
+}) }}
+{% endblock %}

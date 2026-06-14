@@ -1,7 +1,7 @@
 <?php
 
 namespace fabianhaef\simpleform\tests\smoke;
-
+use FunctionalTester;
 use craft\elements\User;
 use Codeception\Util\HttpCode;
 

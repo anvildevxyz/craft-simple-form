@@ -4,6 +4,7 @@ namespace fabianhaef\simpleform\controllers;
 
 use Craft;
 use craft\web\Controller;
+use fabianhaef\simpleform\elements\Form;
 use fabianhaef\simpleform\elements\Submission;
 use yii\web\Response;
 
@@ -11,37 +12,44 @@ class SubmissionsController extends Controller
 {
     public function actionIndex(): Response
     {
-        $formId = Craft::$app->getRequest()->getQueryParam('formId');
-        $status = Craft::$app->getRequest()->getQueryParam('status');
-        $search = Craft::$app->getRequest()->getQueryParam('search');
+        $request = Craft::$app->getRequest();
+        $formId = $request->getQueryParam('formId');
+        $status = $request->getQueryParam('status');
+        $search = $request->getQueryParam('search');
+        $siteId = Craft::$app->getSites()->getCurrentSite()->id;
 
-        $query = Submission::find();
+        $query = Submission::find()
+            ->siteId($siteId)
+            ->orderBy(['dateCreated' => SORT_DESC]);
 
         if ($formId) {
-            $query->formId($formId);
+            $query->formId((int)$formId);
         }
 
         if ($status) {
-            $query->readStatus($status);
+            $query->status($status);
         }
 
         if ($search) {
             $query->search($search);
         }
 
+        // Store total count before pagination
+        $total = $query->count();
+
         // Pagination
-        $page = (int) (Craft::$app->getRequest()->getQueryParam('page') ?? 1);
+        $page = (int) ($request->getQueryParam('page') ?? 1);
         $perPage = 50;
         $query->offset(($page - 1) * $perPage)
             ->limit($perPage);
 
         $submissions = $query->all();
-        $total = $query->count();
 
         // Get all forms for filter dropdown
-        $allForms = Craft::$app->getDb()->createCommand(
-            'SELECT id, title, name FROM {{%simpleform_forms}} ORDER BY title ASC'
-        )->queryAll();
+        $allForms = Form::find()
+            ->siteId($siteId)
+            ->orderBy(['title' => SORT_ASC])
+            ->all();
 
         return $this->renderTemplate('simple-form/submissions/index', [
             'submissions' => $submissions,

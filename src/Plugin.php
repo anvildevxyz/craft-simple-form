@@ -6,8 +6,6 @@ use Craft;
 use craft\base\Plugin as BasePlugin;
 use craft\events\RegisterUrlRulesEvent;
 use craft\web\UrlManager;
-use fabianhaef\simpleform\elements\Form;
-use fabianhaef\simpleform\elements\Submission;
 use fabianhaef\simpleform\services\EmailService;
 use fabianhaef\simpleform\services\FieldTypeRegistry;
 use fabianhaef\simpleform\services\SubmissionService;
@@ -43,8 +41,7 @@ class Plugin extends BasePlugin
             'forceTranslation' => true,
         ];
 
-        Craft::$app->getElements()->registerElementType(Form::class);
-        Craft::$app->getElements()->registerElementType(Submission::class);
+        // Element types are auto-registered in Craft 5
 
         if (!Craft::$app->getRequest()->getIsConsoleRequest()) {
             Craft::$app->getView()->registerTwigExtension(new TwigExtension());

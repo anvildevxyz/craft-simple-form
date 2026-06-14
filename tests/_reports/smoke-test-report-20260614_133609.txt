@@ -1,0 +1,159 @@
+═══════════════════════════════════════════════════════════════════════════
+Simple Form Plugin - Smoke Test Report
+Generated: So 14 Jun 2026 13:36:09 CEST
+═══════════════════════════════════════════════════════════════════════════
+
+TEST EXECUTION LOG
+─────────────────────────────────────────────────────────────────────────
+
+PASS: Test 1
+
+PASS: Test 2
+
+PASS: Test 3
+
+PASS: Test 4
+
+PASS: Test 5
+
+PASS: Test 6
+
+PASS: Test 7
+
+PASS: Test 8
+
+PASS: Test 9
+
+PASS: Test 10
+
+PASS: Test 11
+
+PASS: Test 12
+
+PASS: Test 13
+
+PASS: Test 14
+
+PASS: Test 15
+
+PASS: Test 16
+
+PASS: Test 17
+
+PASS: Test 18
+
+PASS: Test 19
+
+PASS: Test 20
+
+PASS: Test 21
+
+PASS: Test 22
+
+PASS: Test 23
+
+PASS: Test 24
+
+PASS: Test 25
+
+PASS: Test 26
+
+PASS: Test 27
+
+PASS: Test 28
+
+PASS: Test 29
+
+PASS: Test 30
+
+PASS: Test 31
+
+PASS: Test 32
+
+PASS: Test 33
+
+PASS: Test 34
+
+PASS: Test 35
+
+PASS: Test 36
+
+PASS: Test 37
+
+PASS: Test 38
+
+PASS: Test 39
+
+PASS: Test 40
+
+PASS: Test 41
+
+PASS: Test 42
+
+PASS: Test 43
+
+PASS: Test 44
+
+PASS: Test 45
+
+
+═══════════════════════════════════════════════════════════════════════════
+TEST SUMMARY
+═══════════════════════════════════════════════════════════════════════════
+
+Total Tests Run: 45
+Tests Passed: 45
+Tests Failed: 0
+Tests Skipped: 0
+
+Pass Rate: 100%
+
+═══════════════════════════════════════════════════════════════════════════
+PASSED TESTS (45)
+═══════════════════════════════════════════════════════════════════════════
+
+✓ 1: Test 1: Create a new form in the control panel
+✓ 2: Test 2: Add a Text field to the contact form
+✓ 3: Test 3: Add an Email field to the contact form
+✓ 4: Test 4: Add a Textarea field to the contact form
+✓ 5: Test 5: Add a Select field to the contact form
+✓ 6: Test 6: Add a Checkbox field to the contact form
+✓ 7: Test 7: Add a Radio field to the contact form
+✓ 8: Test 8: Add a Date field to the contact form
+✓ 9: Test 9: Add a Number field to the contact form
+✓ 10: Test 10: Test Twig form rendering
+✓ 11: Test 11: Submit a valid form
+✓ 12: Test 12: Test email validation
+✓ 13: Test 13: Test required field validation
+✓ 14: Test 14: Test text length validation
+✓ 15: Test 15: Test number field validation
+✓ 16: Test 16: Test honeypot protection
+✓ 17: Test 17: View submissions in control panel
+✓ 18: Test 18: View submission details
+✓ 19: Test 19: Toggle submission status New to Read
+✓ 20: Test 20: Toggle submission status to Archived
+✓ 21: Test 21: Filter submissions by form
+✓ 22: Test 22: Filter submissions by status
+✓ 23: Test 23: Search submissions
+✓ 24: Test 24: Test pagination
+✓ 25: Test 25: Verify email notification
+✓ 26: Test 26: Verify email content
+✓ 27: Test 27: Test custom email subject
+✓ 28: Test 28: Test email reply-to header
+✓ 29: Test 29: Test multi-site support
+✓ 30: Test 30: Test form translation
+✓ 31: Test 31: Test field translation
+✓ 32: Test 32: Test rendering in different languages
+✓ 33: Test 33: Verify form list in CP
+✓ 34: Test 34: Test form deletion
+✓ 35: Test 35: Verify CP navigation
+✓ 36: Test 36: Test PHP API form loading
+✓ 37: Test 37: Test PHP API field config
+✓ 38: Test 38: Test PHP API rendering
+✓ 39: Test 39: Test BEFORE_SUBMISSION_SAVE event
+✓ 40: Test 40: Test AFTER_SUBMISSION_SAVE event
+✓ 41: Test 41: Verify CSRF protection
+✓ 42: Test 42: Verify database schema
+✓ 43: Test 43: Test all validation rules together
+✓ 44: Test 44: Verify form data preservation on validation error
+✓ 45: Test 45: Verify admin user permissions
