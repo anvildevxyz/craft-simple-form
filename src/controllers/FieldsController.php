@@ -54,7 +54,9 @@ class FieldsController extends Controller
                 'type' => $type,
                 'name' => $handle,
                 'required' => $required,
-                'config' => json_encode($config),
+                // Pass the array; Craft's json column encodes it once. json_encode()ing
+                // here would double-encode (the value becomes the string "[]").
+                'config' => $config,
                 'sortOrder' => $maxSort + 1,
                 'dateCreated' => $now,
                 'dateUpdated' => $now,
@@ -118,7 +120,8 @@ class FieldsController extends Controller
             $db->createCommand()->update('{{%simpleform_fields}}', [
                 'name' => $handle,
                 'required' => $required,
-                'config' => json_encode($config),
+                // Pass the array; Craft's json column encodes it once (avoid double-encoding).
+                'config' => $config,
                 'dateUpdated' => $now,
             ], ['id' => $fieldId])->execute();
 

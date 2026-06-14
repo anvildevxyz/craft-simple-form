@@ -153,25 +153,38 @@ class Form extends Element
             }
         }
 
-        // (b) PER-SITE row in simpleform_forms_sites — written on EVERY save (incl. propagating),
-        // so each supported site gets its own translatable content row. title lives in elements_sites.
-        $db->createCommand()->upsert('{{%simpleform_forms_sites}}', [
-            'formId' => $this->id,
-            'siteId' => $this->siteId,
+        // (b) PER-SITE row in simpleform_forms_sites — translatable content (title lives in
+        // elements_sites). The content is per-site, so we must NOT let propagation clobber a
+        // sibling site's existing translation:
+        //   - canonical save (the edited site): upsert this site's values.
+        //   - propagating save (Craft copying to sibling sites): only SEED a row if one is
+        //     missing; preserve any existing translation.
+        $siteRow = [
             'description' => $this->description,
             'emailTo' => $this->emailTo,
             'emailSubject' => $this->emailSubject,
             'emailReplyTo' => $this->emailReplyTo,
-            'dateCreated' => $now,
-            'dateUpdated' => $now,
-            'uid' => StringHelper::UUID(),
-        ], [
-            'description' => $this->description,
-            'emailTo' => $this->emailTo,
-            'emailSubject' => $this->emailSubject,
-            'emailReplyTo' => $this->emailReplyTo,
-            'dateUpdated' => $now,
-        ])->execute();
+        ];
+
+        $rowExists = (new \craft\db\Query())
+            ->from('{{%simpleform_forms_sites}}')
+            ->where(['formId' => $this->id, 'siteId' => $this->siteId])
+            ->exists();
+
+        if (!$rowExists) {
+            $db->createCommand()->insert('{{%simpleform_forms_sites}}', $siteRow + [
+                'formId' => $this->id,
+                'siteId' => $this->siteId,
+                'dateCreated' => $now,
+                'dateUpdated' => $now,
+                'uid' => StringHelper::UUID(),
+            ])->execute();
+        } elseif (!$this->propagating) {
+            // Only the directly-edited site updates an existing row.
+            $db->createCommand()->update('{{%simpleform_forms_sites}}', $siteRow + [
+                'dateUpdated' => $now,
+            ], ['formId' => $this->id, 'siteId' => $this->siteId])->execute();
+        }
 
         parent::afterSave($isNew);
     }

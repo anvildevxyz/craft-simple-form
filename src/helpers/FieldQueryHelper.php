@@ -45,6 +45,10 @@ class FieldQueryHelper
 
         foreach ($rows as &$row) {
             $config = $row['config'] ? json_decode($row['config'], true) : [];
+            // Guard against malformed/legacy values that don't decode to an array.
+            if (!is_array($config)) {
+                $config = [];
+            }
             $row['required'] = (bool)$row['required'];
             // Field types read "required" from their config, so expose it there too.
             $config['required'] = $row['required'];
