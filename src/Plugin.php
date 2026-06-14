@@ -6,11 +6,15 @@ use Craft;
 use craft\base\Plugin as BasePlugin;
 use craft\events\RegisterCpNavItemsEvent;
 use craft\events\RegisterUrlRulesEvent;
+use craft\events\RegisterUserPermissionsEvent;
+use craft\services\UserPermissions;
 use craft\web\UrlManager;
 use craft\web\twig\variables\Cp;
+use fabianhaef\simpleform\helpers\SimpleFormPermissions;
 use fabianhaef\simpleform\services\EmailService;
 use fabianhaef\simpleform\services\FieldTypeRegistry;
 use fabianhaef\simpleform\services\SubmissionService;
+use yii\base\Event;
 
 class Plugin extends BasePlugin
 {
@@ -20,6 +24,7 @@ class Plugin extends BasePlugin
     public string $schemaVersion = '1.0.0';
     public bool $hasCpSection = true;
     public bool $hasCpSettings = false;
+    public bool $hasCpPermissions = true;
 
     public static function getInstance(): Plugin
     {
@@ -54,9 +59,12 @@ class Plugin extends BasePlugin
             [$this, 'registerCpUrlRules']
         );
 
-        Craft::$app->getView()->on(
-            Cp::EVENT_REGISTER_CP_NAV_ITEMS,
-            [$this, 'registerCpNavItems']
+        Event::on(
+            UserPermissions::class,
+            UserPermissions::EVENT_REGISTER_PERMISSIONS,
+            function(RegisterUserPermissionsEvent $e) {
+                $e->permissions[] = SimpleFormPermissions::definitions();
+            }
         );
 
         Craft::$app->getUrlManager()->addRules([
@@ -74,27 +82,29 @@ class Plugin extends BasePlugin
         return Craft::t('simple-form', 'Simple Form');
     }
 
-    public function registerCpNavItems(RegisterCpNavItemsEvent $event): void
+    public function getCpNavItem(): ?array
     {
-        $event->navItems[] = [
-            'url' => 'simple-form',
-            'label' => $this->getName(),
-            'icon' => '@fabianhaef/simpleform/icon.svg',
-            'subnav' => [
-                'forms' => [
-                    'label' => 'Forms',
-                    'url' => 'simple-form/forms',
-                ],
-                'submissions' => [
-                    'label' => 'Submissions',
-                    'url' => 'simple-form/submissions',
-                ],
-                'settings' => [
-                    'label' => 'Settings',
-                    'url' => 'simple-form/settings',
-                ],
-            ],
-        ];
+        $item = parent::getCpNavItem();
+        $user = Craft::$app->getUser()->getIdentity();
+        $isAdmin = $user?->admin;
+        $subnav = [];
+
+        if ($isAdmin || $user?->can(SimpleFormPermissions::MANAGE_FORMS)) {
+            $subnav['forms'] = ['label' => 'Forms', 'url' => 'simple-form/forms'];
+        }
+        if ($isAdmin || $user?->can(SimpleFormPermissions::VIEW_SUBMISSIONS)) {
+            $subnav['submissions'] = ['label' => 'Submissions', 'url' => 'simple-form/submissions'];
+        }
+        if ($isAdmin || $user?->can(SimpleFormPermissions::MANAGE_SETTINGS)) {
+            $subnav['settings'] = ['label' => 'Settings', 'url' => 'simple-form/settings'];
+        }
+
+        if (empty($subnav)) {
+            return null;
+        }
+
+        $item['subnav'] = $subnav;
+        return $item;
     }
 
     public function registerCpUrlRules(RegisterUrlRulesEvent $event): void

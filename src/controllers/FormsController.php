@@ -5,10 +5,14 @@ namespace fabianhaef\simpleform\controllers;
 use Craft;
 use craft\web\Controller;
 use fabianhaef\simpleform\elements\Form;
+use fabianhaef\simpleform\helpers\SimpleFormPermissions;
 use yii\web\Response;
 
 class FormsController extends Controller
 {
+    use SimpleFormControllerTrait;
+
+    protected const PERMISSION = SimpleFormPermissions::MANAGE_FORMS;
     public function actionIndex(): Response
     {
         $siteId = Craft::$app->getSites()->getCurrentSite()->id;

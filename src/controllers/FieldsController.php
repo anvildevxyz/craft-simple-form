@@ -4,12 +4,16 @@ namespace fabianhaef\simpleform\controllers;
 
 use Craft;
 use craft\web\Controller;
+use fabianhaef\simpleform\helpers\SimpleFormPermissions;
 use yii\web\BadRequestHttpException;
 use yii\web\NotFoundHttpException;
 use yii\web\Response;
 
 class FieldsController extends Controller
 {
+    use SimpleFormControllerTrait;
+
+    protected const PERMISSION = SimpleFormPermissions::MANAGE_FORMS;
     public $enableCsrfValidation = true;
 
     public function actionAdd(): Response

@@ -6,10 +6,30 @@ use Craft;
 use craft\web\Controller;
 use fabianhaef\simpleform\elements\Form;
 use fabianhaef\simpleform\elements\Submission;
+use fabianhaef\simpleform\helpers\SimpleFormPermissions;
+use yii\base\Action;
 use yii\web\Response;
 
 class SubmissionsController extends Controller
 {
+    use SimpleFormControllerTrait;
+
+    protected const PERMISSION = SimpleFormPermissions::VIEW_SUBMISSIONS;
+
+    public function beforeAction($action): bool
+    {
+        // Check base VIEW_SUBMISSIONS permission for all actions
+        if (!parent::beforeAction($action)) {
+            return false;
+        }
+
+        // Additionally require MANAGE_SUBMISSIONS for toggleStatus
+        if ($action->id === 'toggle-status') {
+            $this->requirePermission(SimpleFormPermissions::MANAGE_SUBMISSIONS);
+        }
+
+        return true;
+    }
     public function actionIndex(): Response
     {
         $request = Craft::$app->getRequest();

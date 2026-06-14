@@ -4,10 +4,14 @@ namespace fabianhaef\simpleform\controllers;
 
 use Craft;
 use craft\web\Controller;
+use fabianhaef\simpleform\helpers\SimpleFormPermissions;
 use yii\web\Response;
 
 class SettingsController extends Controller
 {
+    use SimpleFormControllerTrait;
+
+    protected const PERMISSION = SimpleFormPermissions::MANAGE_SETTINGS;
     public function actionIndex(): Response
     {
         $settings = Craft::$app->getProjectConfig()->get('plugins.simple-form') ?? [];
