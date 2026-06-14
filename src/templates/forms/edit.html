@@ -30,6 +30,28 @@
     </div>
 {% endif %}
 
+{% if craft.app.isMultiSite %}
+<h2>{{ 'Multi-Site'|t('simple-form') }}</h2>
+
+{{ forms.selectField({
+    label: 'Save to'|t('simple-form'),
+    instructions: 'Which sites this form should be saved to. Title, description, email settings and field labels can be translated per site.'|t('simple-form'),
+    id: 'propagationMethod',
+    name: 'propagationMethod',
+    value: form.propagationMethod.value ?? 'none',
+    options: [
+        { label: 'Only the site it is created in'|t('simple-form'), value: 'none' },
+        { label: 'All sites'|t('simple-form'), value: 'all' },
+        { label: 'Sites in the same site group'|t('simple-form'), value: 'siteGroup' },
+        { label: 'Sites with the same language'|t('simple-form'), value: 'language' },
+    ],
+    errors: form.getErrors('propagationMethod'),
+    first: true,
+}) }}
+
+<hr>
+{% endif %}
+
 {{ forms.textField({
     label: 'Name'|t('simple-form'),
     id: 'name',
@@ -102,27 +124,6 @@
     instructions: 'Reply-to email address (optional)'|t('simple-form'),
     translatable: true,
 }) }}
-
-{% if craft.app.isMultiSite %}
-<hr>
-
-<h2>{{ 'Multi-Site'|t('simple-form') }}</h2>
-
-{{ forms.selectField({
-    label: 'Save to'|t('simple-form'),
-    instructions: 'Which sites this form should be saved to. Title, description, email settings and field labels can be translated per site.'|t('simple-form'),
-    id: 'propagationMethod',
-    name: 'propagationMethod',
-    value: form.propagationMethod.value ?? 'none',
-    options: [
-        { label: 'Only the site it is created in'|t('simple-form'), value: 'none' },
-        { label: 'All sites'|t('simple-form'), value: 'all' },
-        { label: 'Sites in the same site group'|t('simple-form'), value: 'siteGroup' },
-        { label: 'Sites with the same language'|t('simple-form'), value: 'language' },
-    ],
-    errors: form.getErrors('propagationMethod'),
-}) }}
-{% endif %}
 
 {% if form.id %}
 <hr>
