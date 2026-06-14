@@ -8,6 +8,7 @@ use craft\events\RegisterUrlRulesEvent;
 use craft\web\UrlManager;
 use fabianhaef\simpleform\elements\Form;
 use fabianhaef\simpleform\elements\Submission;
+use fabianhaef\simpleform\services\FieldTypeRegistry;
 
 class Plugin extends BasePlugin
 {
@@ -15,9 +16,18 @@ class Plugin extends BasePlugin
     public bool $hasCpSection = true;
     public bool $hasCpSettings = false;
 
+    public static function getInstance(): Plugin
+    {
+        return parent::getInstance();
+    }
+
     public function init(): void
     {
         parent::init();
+
+        $this->setComponents([
+            'fieldTypeRegistry' => FieldTypeRegistry::class,
+        ]);
 
         Craft::$app->getI18n()->translations['simple-form'] ??= [
             'class' => 'yii\i18n\PhpMessageSource',
@@ -33,6 +43,11 @@ class Plugin extends BasePlugin
             UrlManager::EVENT_REGISTER_CP_URL_RULES,
             [$this, 'registerCpUrlRules']
         );
+    }
+
+    public function getFieldTypeRegistry(): FieldTypeRegistry
+    {
+        return $this->get('fieldTypeRegistry');
     }
 
     public function getName(): string
