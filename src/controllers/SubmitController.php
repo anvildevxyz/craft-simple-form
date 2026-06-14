@@ -7,6 +7,7 @@ use craft\web\Controller;
 use fabianhaef\simpleform\elements\Form;
 use fabianhaef\simpleform\elements\Submission;
 use fabianhaef\simpleform\Plugin;
+use fabianhaef\simpleform\services\EmailService;
 use yii\web\Response;
 
 class SubmitController extends Controller
@@ -92,7 +93,8 @@ class SubmitController extends Controller
 
         // Send email if configured
         if ($form->emailTo) {
-            $this->sendEmail($form, $submission, $data);
+            $emailService = new EmailService();
+            $emailService->sendSubmissionEmail($form, $submission, $data);
         }
 
         return $this->asJson([
@@ -117,48 +119,4 @@ class SubmitController extends Controller
         return $fields;
     }
 
-    private function sendEmail(Form $form, Submission $submission, array $data): void
-    {
-        try {
-            $emailBody = $this->buildEmailBody($data);
-            $mail = Craft::$app->getMailer()
-                ->compose()
-                ->setTo($form->emailTo)
-                ->setFrom(Craft::$app->getSystemSettings()->getEmailFromName() . ' <' . Craft::$app->getSystemSettings()->getEmailFromEmail() . '>')
-                ->setSubject($form->emailSubject ?: 'New Form Submission')
-                ->setHtmlBody($emailBody);
-
-            if ($form->emailReplyTo) {
-                $mail->setReplyTo($form->emailReplyTo);
-            }
-
-            $mail->send();
-        } catch (\Exception $e) {
-            Craft::warning('Failed to send form submission email: ' . $e->getMessage(), 'simple-form');
-        }
-    }
-
-    private function buildEmailBody(array $data): string
-    {
-        $html = '<h2>New Form Submission</h2>';
-        $html .= '<p>Submitted at: ' . date('Y-m-d H:i:s') . '</p>';
-        $html .= '<hr>';
-
-        foreach ($data as $fieldKey => $fieldData) {
-            $label = $fieldData['label'] ?? $fieldKey;
-            $value = $fieldData['value'];
-
-            if (is_array($value)) {
-                $value = implode(', ', $value);
-            }
-
-            $html .= sprintf(
-                '<p><strong>%s:</strong> %s</p>',
-                htmlspecialchars($label),
-                htmlspecialchars((string) $value)
-            );
-        }
-
-        return $html;
-    }
 }

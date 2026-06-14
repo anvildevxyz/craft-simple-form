@@ -8,6 +8,7 @@ use craft\events\RegisterUrlRulesEvent;
 use craft\web\UrlManager;
 use fabianhaef\simpleform\elements\Form;
 use fabianhaef\simpleform\elements\Submission;
+use fabianhaef\simpleform\services\EmailService;
 use fabianhaef\simpleform\services\FieldTypeRegistry;
 
 class Plugin extends BasePlugin
@@ -27,6 +28,7 @@ class Plugin extends BasePlugin
 
         $this->setComponents([
             'fieldTypeRegistry' => FieldTypeRegistry::class,
+            'emailService' => EmailService::class,
         ]);
 
         Craft::$app->getI18n()->translations['simple-form'] ??= [
