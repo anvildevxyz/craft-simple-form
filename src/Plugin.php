@@ -43,6 +43,10 @@ class Plugin extends BasePlugin
             UrlManager::EVENT_REGISTER_CP_URL_RULES,
             [$this, 'registerCpUrlRules']
         );
+
+        Craft::$app->getUrlManager()->addRules([
+            'simple-form/submit' => 'simple-form/submit/index',
+        ]);
     }
 
     public function getFieldTypeRegistry(): FieldTypeRegistry
@@ -66,4 +70,5 @@ class Plugin extends BasePlugin
         $event->rules['simple-form/submissions'] = 'simple-form/submissions/index';
         $event->rules['simple-form/submissions/<submissionId:\d+>'] = 'simple-form/submissions/view';
     }
+
 }
