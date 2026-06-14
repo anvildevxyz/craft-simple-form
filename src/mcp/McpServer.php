@@ -7,9 +7,11 @@ use fabianhaef\simpleform\mcp\resources\FormSchemaResource;
 use fabianhaef\simpleform\mcp\resources\ResourceProviderInterface;
 use fabianhaef\simpleform\mcp\resources\SubmissionsDatasetResource;
 use fabianhaef\simpleform\mcp\tools\AddFieldTool;
+use fabianhaef\simpleform\mcp\tools\CategorizeSubmissionsTool;
 use fabianhaef\simpleform\mcp\tools\CreateFormTool;
 use fabianhaef\simpleform\mcp\tools\DeleteFieldTool;
 use fabianhaef\simpleform\mcp\tools\DeleteFormTool;
+use fabianhaef\simpleform\mcp\tools\DetectSpamPatternsTool;
 use fabianhaef\simpleform\mcp\tools\ExportSubmissionsTool;
 use fabianhaef\simpleform\mcp\tools\GetFormTool;
 use fabianhaef\simpleform\mcp\tools\GetSubmissionTool;
@@ -17,6 +19,7 @@ use fabianhaef\simpleform\mcp\tools\ListFormsTool;
 use fabianhaef\simpleform\mcp\tools\QuerySubmissionsTool;
 use fabianhaef\simpleform\mcp\tools\ReorderFieldsTool;
 use fabianhaef\simpleform\mcp\tools\SubmissionStatsTool;
+use fabianhaef\simpleform\mcp\tools\SummarizeSubmissionsTool;
 use fabianhaef\simpleform\mcp\tools\ToolInterface;
 use fabianhaef\simpleform\mcp\tools\UpdateFieldTool;
 use fabianhaef\simpleform\mcp\tools\UpdateFormTool;
@@ -71,6 +74,10 @@ class McpServer
             new GetSubmissionTool(),
             new ExportSubmissionsTool(),
             new SubmissionStatsTool(),
+            // AI-insight (#67) — scope: submissions:read.
+            new SummarizeSubmissionsTool(),
+            new CategorizeSubmissionsTool(),
+            new DetectSpamPatternsTool(),
         ];
     }
 
