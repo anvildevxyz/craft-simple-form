@@ -2,6 +2,7 @@
 
 namespace fabianhaef\simpleform\elements;
 
+use Craft;
 use craft\base\Element;
 use craft\helpers\Db;
 use fabianhaef\simpleform\elements\db\SubmissionQuery;
@@ -45,10 +46,15 @@ class Submission extends Element
 
     public function getForm(): ?Form
     {
-        if ($this->formId === null) {
+        if ($this->formId === null || $this->formId <= 0) {
             return null;
         }
-        return Form::find()->id($this->formId)->one();
+        try {
+            return Form::find()->id($this->formId)->one();
+        } catch (\Throwable $e) {
+            Craft::warning(sprintf('Error loading form %d: %s', $this->formId, $e->getMessage()), 'simple-form');
+            return null;
+        }
     }
 
     protected static function defineTableAttributes(): array

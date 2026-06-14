@@ -57,25 +57,37 @@ class FieldModel extends Model
 
     public function validate($value): array
     {
-        $fieldTypeRegistry = Plugin::getInstance()->getFieldTypeRegistry();
-        $fieldType = $fieldTypeRegistry->getFieldType($this->type, $this->config);
+        try {
+            $fieldTypeRegistry = Plugin::getInstance()->getFieldTypeRegistry();
+            $fieldType = $fieldTypeRegistry->getFieldType($this->type, $this->config);
 
-        if (!$fieldType) {
-            return ['Unknown field type: ' . $this->type];
+            if (!$fieldType) {
+                Craft::warning(sprintf('Unknown field type: %s', $this->type), 'simple-form');
+                return ['Unknown field type: ' . $this->type];
+            }
+
+            return $fieldType->validate($value);
+        } catch (\Throwable $e) {
+            Craft::warning(sprintf('Field validation error: %s', $e->getMessage()), 'simple-form');
+            return ['Validation error occurred'];
         }
-
-        return $fieldType->validate($value);
     }
 
-    public function renderInput(string $name, $value = null): string
+    public function renderInput(string $name, mixed $value = null): string
     {
-        $fieldTypeRegistry = Plugin::getInstance()->getFieldTypeRegistry();
-        $fieldType = $fieldTypeRegistry->getFieldType($this->type, $this->config);
+        try {
+            $fieldTypeRegistry = Plugin::getInstance()->getFieldTypeRegistry();
+            $fieldType = $fieldTypeRegistry->getFieldType($this->type, $this->config);
 
-        if (!$fieldType) {
-            return '<!-- Unknown field type: ' . htmlspecialchars($this->type) . ' -->';
+            if (!$fieldType) {
+                \Craft::warning(sprintf('Unknown field type for rendering: %s', $this->type), 'simple-form');
+                return '<!-- Unknown field type: ' . htmlspecialchars($this->type) . ' -->';
+            }
+
+            return $fieldType->renderInput($name, $value);
+        } catch (\Throwable $e) {
+            \Craft::warning(sprintf('Error rendering field: %s', $e->getMessage()), 'simple-form');
+            return '<!-- Error rendering field -->';
         }
-
-        return $fieldType->renderInput($name, $value);
     }
 }

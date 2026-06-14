@@ -20,10 +20,15 @@ class SubmitController extends Controller
         $this->requirePostRequest();
         $request = Craft::$app->getRequest();
 
-        $formHandle = $request->getBodyParam('formHandle');
-        $honeypot = $request->getBodyParam('__honeypot');
+        $formHandle = (string) $request->getBodyParam('formHandle', '');
+        if (empty($formHandle)) {
+            return $this->asJson([
+                'success' => false,
+                'errors' => ['form' => ['Form handle is required']],
+            ]);
+        }
 
-        // Check honeypot
+        $honeypot = (string) $request->getBodyParam('__honeypot', '');
         if (!empty($honeypot)) {
             // Silently fail honeypot attempts
             return $this->redirect($request->getReferrer() ?? '/');
@@ -36,7 +41,10 @@ class SubmitController extends Controller
             ->one();
 
         if (!$form) {
-            throw new \yii\web\BadRequestHttpException('Form not found');
+            return $this->asJson([
+                'success' => false,
+                'errors' => ['form' => ['Form not found']],
+            ]);
         }
 
         // Get field registry

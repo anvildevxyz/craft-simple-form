@@ -21,12 +21,17 @@ class TwigExtension extends AbstractExtension
 
     public function renderForm(string $handle, array $options = []): string
     {
+        if (empty($handle)) {
+            return '<!-- Form handle is required -->';
+        }
+
         $form = Form::find()
             ->handle($handle)
             ->siteId(Craft::$app->getSites()->getCurrentSite()->id)
             ->one();
 
         if (!$form) {
+            Craft::warning(sprintf('Form "%s" not found for Twig rendering', $handle), 'simple-form');
             return sprintf('<!-- Form "%s" not found -->', htmlspecialchars($handle));
         }
 

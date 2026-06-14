@@ -101,14 +101,15 @@ class EmailService extends Component
         return $html;
     }
 
-    private function formatFieldValue($value): string
+    private function formatFieldValue(mixed $value): string
     {
         if ($value === null || $value === '') {
             return '<em style="color: #999;">—</em>';
         }
 
         if (is_array($value)) {
-            return htmlspecialchars(implode(', ', $value));
+            $stringValues = array_map('strval', $value);
+            return htmlspecialchars(implode(', ', $stringValues));
         }
 
         return htmlspecialchars((string) $value);
