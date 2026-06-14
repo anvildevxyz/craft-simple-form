@@ -19,6 +19,13 @@ class Plugin extends BasePlugin
     {
         parent::init();
 
+        Craft::$app->getI18n()->translations['simple-form'] ??= [
+            'class' => 'yii\i18n\PhpMessageSource',
+            'sourceLanguage' => 'en-US',
+            'basePath' => '@fabianhaef/simpleform/translations',
+            'forceTranslation' => true,
+        ];
+
         Craft::$app->getElements()->registerElementType(Form::class);
         Craft::$app->getElements()->registerElementType(Submission::class);
 

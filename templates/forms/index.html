@@ -1,0 +1,62 @@
+{% extends "_layouts/cp" %}
+{% set title = 'Forms' %}
+{% set selectedSubnavItem = 'forms' %}
+
+{% block content %}
+<div class="buttons">
+    <a class="btn submit add icon" href="{{ cpUrl('simple-form/forms/new') }}">
+        {{ 'New Form'|t('simple-form') }}
+    </a>
+</div>
+
+{% if forms %}
+    <table class="data fullwidth collapsible">
+        <thead>
+            <tr>
+                <th>{{ 'Name'|t('simple-form') }}</th>
+                <th>{{ 'Handle'|t('simple-form') }}</th>
+                <th>{{ 'Email To'|t('simple-form') }}</th>
+                <th>{{ 'Date Created'|t('simple-form') }}</th>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for form in forms %}
+                <tr>
+                    <td>
+                        <a href="{{ cpUrl('simple-form/forms/edit/' ~ form.id) }}">
+                            {{ form.title ?: form.name }}
+                        </a>
+                    </td>
+                    <td>{{ form.handle }}</td>
+                    <td>{{ form.emailTo }}</td>
+                    <td>{{ form.dateCreated|date('short') }}</td>
+                    <td class="thin">
+                        <a class="delete icon"
+                           title="{{ 'Delete'|t('simple-form') }}"
+                           onclick="return confirm('{{ 'Delete this form?'|t('simple-form')|e('js') }}')"
+                           href="javascript:;"
+                           data-action="simple-form/forms/delete"
+                           data-method="post"
+                           data-param="formId"
+                           data-value="{{ form.id }}">
+                        </a>
+                    </td>
+                </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+{% else %}
+    <p>{{ 'No forms yet.'|t('simple-form') }}</p>
+{% endif %}
+
+<style>
+    .delete {
+        cursor: pointer;
+        opacity: 0.7;
+    }
+    .delete:hover {
+        opacity: 1;
+    }
+</style>
+{% endblock %}
