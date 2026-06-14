@@ -1,0 +1,152 @@
+{% extends "_layouts/cp" %}
+{% set title = 'Submissions' %}
+{% set selectedSubnavItem = 'submissions' %}
+
+{% block content %}
+<div class="buttons">
+    <input type="text" class="text" id="search-input" placeholder="Search submissions..." value="{{ search ?? '' }}">
+    <select id="form-filter">
+        <option value="">All Forms</option>
+        {% for form in forms %}
+            <option value="{{ form.id }}"{% if formId == form.id %} selected{% endif %}>
+                {{ form.title ?? form.name }}
+            </option>
+        {% endfor %}
+    </select>
+    <select id="status-filter">
+        <option value="">All Statuses</option>
+        <option value="new"{% if status == 'new' %} selected{% endif %}>New</option>
+        <option value="read"{% if status == 'read' %} selected{% endif %}>Read</option>
+        <option value="archived"{% if status == 'archived' %} selected{% endif %}>Archived</option>
+    </select>
+</div>
+
+{% if submissions %}
+    <table class="data fullwidth">
+        <thead>
+            <tr>
+                <th>{{ 'Date'|t('simple-form') }}</th>
+                <th>{{ 'Form'|t('simple-form') }}</th>
+                <th>{{ 'Status'|t('simple-form') }}</th>
+                <th>{{ 'User'|t('simple-form') }}</th>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for submission in submissions %}
+                <tr>
+                    <td>
+                        <a href="{{ cpUrl('simple-form/submissions/' ~ submission.id) }}">
+                            {{ submission.dateCreated|date('short') }}
+                        </a>
+                    </td>
+                    <td>{{ submission.getForm().title ?? submission.getForm().name }}</td>
+                    <td>
+                        <span class="status {{ submission.readStatus }}">
+                            {{ submission.readStatus|upper }}
+                        </span>
+                    </td>
+                    <td>
+                        {% if submission.userId %}
+                            {% set user = craft.users.id(submission.userId).one() %}
+                            {{ user.fullName ?? user.username }}
+                        {% else %}
+                            —
+                        {% endif %}
+                    </td>
+                    <td class="thin">
+                        <a href="{{ cpUrl('simple-form/submissions/' ~ submission.id) }}">View</a>
+                    </td>
+                </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    {# Pagination #}
+    {% set totalPages = (total / perPage)|round(0, 'ceil') %}
+    {% if totalPages > 1 %}
+        <nav class="pagination">
+            {% if page > 1 %}
+                <a href="{{ cpUrl('simple-form/submissions', {page: page - 1}) }}">« Previous</a>
+            {% endif %}
+
+            {% for p in 1..totalPages %}
+                {% if p == page %}
+                    <span class="current">{{ p }}</span>
+                {% else %}
+                    <a href="{{ cpUrl('simple-form/submissions', {page: p}) }}">{{ p }}</a>
+                {% endif %}
+            {% endfor %}
+
+            {% if page < totalPages %}
+                <a href="{{ cpUrl('simple-form/submissions', {page: page + 1}) }}">Next »</a>
+            {% endif %}
+        </nav>
+    {% endif %}
+{% else %}
+    <p>{{ 'No submissions yet.'|t('simple-form') }}</p>
+{% endif %}
+
+<style>
+    .buttons {
+        margin-bottom: 20px;
+        display: flex;
+        gap: 10px;
+    }
+
+    .buttons input,
+    .buttons select {
+        padding: 8px 12px;
+        border: 1px solid #ccc;
+        border-radius: 4px;
+    }
+
+    .status {
+        display: inline-block;
+        padding: 4px 8px;
+        border-radius: 3px;
+        font-size: 12px;
+        font-weight: bold;
+    }
+
+    .status.new {
+        background-color: #4099ff;
+        color: white;
+    }
+
+    .status.read {
+        background-color: #90a4ae;
+        color: white;
+    }
+
+    .status.archived {
+        background-color: #ccc;
+        color: #333;
+    }
+
+    .pagination {
+        margin-top: 20px;
+        text-align: center;
+    }
+
+    .pagination a,
+    .pagination span {
+        margin: 0 5px;
+        padding: 5px 10px;
+        border: 1px solid #ddd;
+        border-radius: 3px;
+        text-decoration: none;
+        display: inline-block;
+    }
+
+    .pagination a:hover {
+        background-color: #f5f5f5;
+    }
+
+    .pagination span.current {
+        background-color: #0066cc;
+        color: white;
+        border-color: #0066cc;
+    }
+</style>
+{% endblock %}

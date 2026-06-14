@@ -1,0 +1,153 @@
+{% extends "_layouts/cp" %}
+{% set title = 'Submission #' ~ submission.id %}
+{% set selectedSubnavItem = 'submissions' %}
+
+{% block content %}
+<div class="buttons">
+    <a href="{{ cpUrl('simple-form/submissions') }}" class="btn">← Back</a>
+    <button id="toggle-status-btn" class="btn secondary">
+        Mark as {{ submission.readStatus == 'new' ? 'Read' : (submission.readStatus == 'read' ? 'Archived' : 'New') }}
+    </button>
+</div>
+
+<div class="submission-detail">
+    <div class="detail-header">
+        <div class="detail-info">
+            <p>
+                <strong>Form:</strong>
+                <a href="{{ cpUrl('simple-form/submissions', {formId: form.id}) }}">
+                    {{ form.title ?? form.name }}
+                </a>
+            </p>
+            <p>
+                <strong>Status:</strong>
+                <span class="status {{ submission.readStatus }}">
+                    {{ submission.readStatus|upper }}
+                </span>
+            </p>
+            <p>
+                <strong>Date:</strong>
+                {{ submission.dateCreated|date('Y-m-d H:i:s') }}
+            </p>
+            {% if submission.userId %}
+                {% set user = craft.users.id(submission.userId).one() %}
+                <p>
+                    <strong>User:</strong>
+                    {% if user %}
+                        {{ user.fullName ?? user.username }}
+                    {% else %}
+                        Unknown User
+                    {% endif %}
+                </p>
+            {% endif %}
+        </div>
+    </div>
+
+    <hr>
+
+    <h3>{{ 'Submission Data'|t('simple-form') }}</h3>
+
+    <table class="data fullwidth">
+        <thead>
+            <tr>
+                <th>{{ 'Field'|t('simple-form') }}</th>
+                <th>{{ 'Value'|t('simple-form') }}</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for fieldKey, fieldData in data %}
+                <tr>
+                    <td>{{ fieldData.label ?? fieldKey }}</td>
+                    <td>
+                        {% if fieldData.value is iterable and fieldData.value is not string %}
+                            {{ fieldData.value|join(', ') }}
+                        {% else %}
+                            {{ fieldData.value ?? '—' }}
+                        {% endif %}
+                    </td>
+                </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+<style>
+    .buttons {
+        margin-bottom: 20px;
+    }
+
+    .buttons a,
+    .buttons button {
+        margin-right: 10px;
+    }
+
+    .submission-detail {
+        background: #fff;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+        padding: 20px;
+    }
+
+    .detail-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+    }
+
+    .detail-info p {
+        margin: 10px 0;
+    }
+
+    .detail-info strong {
+        display: inline-block;
+        width: 100px;
+    }
+
+    .status {
+        display: inline-block;
+        padding: 4px 8px;
+        border-radius: 3px;
+        font-size: 12px;
+        font-weight: bold;
+    }
+
+    .status.new {
+        background-color: #4099ff;
+        color: white;
+    }
+
+    .status.read {
+        background-color: #90a4ae;
+        color: white;
+    }
+
+    .status.archived {
+        background-color: #ccc;
+        color: #333;
+    }
+</style>
+
+<script>
+document.getElementById('toggle-status-btn').addEventListener('click', function() {
+    const submissionId = {{ submission.id }};
+    const xhr = new XMLHttpRequest();
+    xhr.open('POST', '{{ cpUrl("simple-form/submissions/toggle-status") }}', true);
+    xhr.setRequestHeader('X-Requested-With', 'XMLHttpRequest');
+    xhr.setRequestHeader('X-CSRF-Token', Craft.csrfTokenValue);
+    xhr.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded');
+
+    xhr.onload = function() {
+        if (xhr.status === 200) {
+            const response = JSON.parse(xhr.responseText);
+            if (response.success) {
+                location.reload();
+            } else {
+                alert('Error: ' + response.error);
+            }
+        }
+    };
+
+    xhr.send('submissionId=' + submissionId);
+});
+</script>
+{% endblock %}

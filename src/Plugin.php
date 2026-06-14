@@ -69,6 +69,7 @@ class Plugin extends BasePlugin
         $event->rules['simple-form/forms/delete/<formId:\d+>'] = 'simple-form/forms/delete';
         $event->rules['simple-form/submissions'] = 'simple-form/submissions/index';
         $event->rules['simple-form/submissions/<submissionId:\d+>'] = 'simple-form/submissions/view';
+        $event->rules['simple-form/submissions/toggle-status'] = 'simple-form/submissions/toggle-status';
     }
 
 }
