@@ -24,4 +24,16 @@ define('CRAFT_TRANSLATIONS_PATH', __DIR__ . DIRECTORY_SEPARATOR . '_craft' . DIR
 define('CRAFT_VENDOR_PATH', dirname(__DIR__) . DIRECTORY_SEPARATOR . 'vendor');
 define('CRAFT_ROOT_PATH', dirname(__DIR__));
 
+// The storage tree is runtime-only and gitignored, so it is absent on a fresh
+// checkout (CI, clean clone). Craft resolves CRAFT_STORAGE_PATH with realpath(),
+// which returns false for a missing directory — the storage base then collapses
+// to '' and @runtime becomes "/runtime" (mkdir permission denied). Create the
+// tree up front so the suite is portable.
+foreach (['', '/runtime', '/logs'] as $subPath) {
+    $dir = CRAFT_STORAGE_PATH . $subPath;
+    if (!is_dir($dir)) {
+        mkdir($dir, 0775, true);
+    }
+}
+
 TestSetup::configureCraft();

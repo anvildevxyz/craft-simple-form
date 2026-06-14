@@ -889,7 +889,7 @@ document.addEventListener('DOMContentLoaded', function() {
             <input type="hidden" id="field-id">
             <div class="form-group">
                 <label for="field-type">{{ 'Field Type'|t('simple-form') }}</label>
-                <select id="field-type" name="type">
+                <select id="field-type">
                     <option value="text">{{ 'Text'|t }}</option>
                     <option value="email">{{ 'Email'|t }}</option>
                     <option value="textarea">{{ 'Textarea'|t }}</option>
@@ -902,21 +902,21 @@ document.addEventListener('DOMContentLoaded', function() {
             </div>
             <div class="form-group">
                 <label for="field-label">{{ 'Label'|t('simple-form') }} <span style="color: #cf2c2c;">*</span></label>
-                <input type="text" id="field-label" name="label" placeholder="e.g. Full Name">
+                <input type="text" id="field-label" placeholder="e.g. Full Name">
                 <div class="error" id="field-label-error" style="display: none;"></div>
             </div>
             <div class="form-group">
                 <label for="field-handle">{{ 'Handle'|t('simple-form') }} <span style="color: #cf2c2c;">*</span></label>
-                <input type="text" id="field-handle" name="handle" placeholder="e.g. fullName">
+                <input type="text" id="field-handle" placeholder="e.g. fullName">
                 <div class="error" id="field-handle-error" style="display: none;"></div>
             </div>
             <div class="form-group checkbox">
-                <input type="checkbox" id="field-required" name="required">
+                <input type="checkbox" id="field-required">
                 <label for="field-required">{{ 'Required field'|t('simple-form') }}</label>
             </div>
             <div class="form-group">
                 <label for="field-helptext">{{ 'Help Text'|t('simple-form') }}</label>
-                <textarea id="field-helptext" name="helpText" placeholder="Optional help text for the user"></textarea>
+                <textarea id="field-helptext" placeholder="Optional help text for the user"></textarea>
             </div>
 
             <!-- Text Field Config -->
