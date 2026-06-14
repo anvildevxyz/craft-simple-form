@@ -5,11 +5,7 @@ namespace fabianhaef\simpleform\controllers;
 use Craft;
 use craft\web\Controller;
 use fabianhaef\simpleform\elements\Form;
-use fabianhaef\simpleform\elements\Submission;
-use fabianhaef\simpleform\events\SubmissionEvent;
-use fabianhaef\simpleform\helpers\FieldQueryHelper;
 use fabianhaef\simpleform\Plugin;
-use fabianhaef\simpleform\services\EmailService;
 use yii\web\Response;
 
 class SubmitController extends Controller
@@ -32,26 +28,6 @@ class SubmitController extends Controller
 
         $settings = Plugin::getInstance()->getSettings();
 
-        if ($settings->enableHoneypot) {
-            $honeypot = (string) $request->getBodyParam('__honeypot', '');
-            if ($honeypot !== '') {
-                // Silently accept honeypot hits: report success so bots get no
-                // signal, but never persist the submission.
-                return $this->asJson([
-                    'success' => true,
-                    'message' => $settings->submitMessage,
-                ]);
-            }
-        }
-
-        if (!Plugin::getInstance()->getCaptchaService()->verify()) {
-            return $this->asJson([
-                'success' => false,
-                'errors' => ['captcha' => [Craft::t('simple-form', 'Captcha verification failed. Please try again.')]],
-            ]);
-        }
-
-        // Get form
         $form = Form::find()
             ->handle($formHandle)
             ->siteId(Craft::$app->getSites()->getCurrentSite()->id)
@@ -64,72 +40,30 @@ class SubmitController extends Controller
             ]);
         }
 
-        // Get field registry
-        $fieldTypeRegistry = Plugin::getInstance()->getFieldTypeRegistry();
-
-        // Parse and validate field data
-        $data = [];
-        $errors = [];
-
-        // Get all fields for this form
-        $fields = $this->getFormFields($form->id);
-
-        foreach ($fields as $field) {
-            $fieldType = $fieldTypeRegistry->getFieldType($field['type'], $field['config'] ?? []);
-            if (!$fieldType) {
-                continue;
-            }
-
-            $value = $request->getBodyParam('field_' . $field['id']);
-            $fieldErrors = $fieldType->validate($value);
-
-            if (!empty($fieldErrors)) {
-                $errors['field_' . $field['id']] = $fieldErrors;
-            }
-
-            $data['field_' . $field['id']] = [
-                'label' => $field['label'],
-                'type' => $field['type'],
-                'value' => $value,
-            ];
-        }
-
-        // If there are validation errors, return them as JSON
-        if (!empty($errors)) {
-            return $this->asJson([
-                'success' => false,
-                'errors' => $errors,
-            ]);
-        }
-
-        // Create submission
-        $submission = new Submission();
-        $submission->formId = $form->id;
-        $submission->siteId = Craft::$app->getSites()->getCurrentSite()->id;
-        $submission->data = $data;
+        // Route through the shared, transport-agnostic submit path so validation,
+        // spam protection, the before/after events, and email all run identically
+        // to the GraphQL mutation.
         $userId = Craft::$app->getUser()->getId();
-        $submission->userId = $userId !== null ? (int) $userId : null;
-        $submission->readStatus = 'new';
+        $result = Plugin::getInstance()->getSubmissionService()->submit($form, $this->fieldValues($request), [
+            'honeypot' => (string) $request->getBodyParam('__honeypot', ''),
+            'captchaToken' => null,
+            'userId' => $userId !== null ? (int) $userId : null,
+        ]);
 
-        // Fire BEFORE_SUBMISSION_SAVE event
-        $event = new SubmissionEvent($submission, $form, $data, true);
-        Plugin::getInstance()->trigger(Plugin::EVENT_BEFORE_SUBMISSION_SAVE, $event);
-
-        if (!Craft::$app->getElements()->saveElement($submission)) {
+        // A silently-dropped honeypot hit returns no submission and no errors:
+        // report success so bots get no signal, but never persist the row.
+        if ($result['submission'] === null && $result['errors'] === null) {
             return $this->asJson([
-                'success' => false,
-                'errors' => ['general' => [$settings->errorMessage]],
+                'success' => true,
+                'message' => $settings->submitMessage,
             ]);
         }
 
-        // Fire AFTER_SUBMISSION_SAVE event
-        $event = new SubmissionEvent($submission, $form, $data, true);
-        Plugin::getInstance()->trigger(Plugin::EVENT_AFTER_SUBMISSION_SAVE, $event);
-
-        // Send email if configured
-        if ($form->emailTo) {
-            $emailService = new EmailService();
-            $emailService->sendSubmissionEmail($form, $submission, $data);
+        if (!empty($result['errors'])) {
+            return $this->asJson([
+                'success' => false,
+                'errors' => $result['errors'],
+            ]);
         }
 
         return $this->asJson([
@@ -139,11 +73,19 @@ class SubmitController extends Controller
     }
 
     /**
-     * @return array<int, array<string, mixed>>
+     * Collect the posted field values keyed by `field_<id>` from the request.
+     *
+     * @return array<string, mixed>
      */
-    private function getFormFields(int $formId): array
+    private function fieldValues(\craft\web\Request $request): array
     {
-        // Use the current site so the captured label matches the visitor's language.
-        return FieldQueryHelper::fieldsForForm($formId);
+        $values = [];
+        $body = $request->getBodyParams();
+        foreach ($body as $key => $value) {
+            if (is_string($key) && str_starts_with($key, 'field_')) {
+                $values[$key] = $value;
+            }
+        }
+        return $values;
     }
 }

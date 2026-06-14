@@ -25,4 +25,6 @@ return [
     'Couldn’t save settings.' => 'Couldn’t save settings.',
     'Captcha verification failed. Please try again.' => 'Captcha verification failed. Please try again.',
     'reCAPTCHA v3 Minimum Score' => 'reCAPTCHA v3 Minimum Score',
+    'View form schemas' => 'View form schemas',
+    'Submit forms' => 'Submit forms',
 ];

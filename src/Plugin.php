@@ -5,10 +5,23 @@ namespace fabianhaef\simpleform;
 use Craft;
 use craft\base\Model;
 use craft\base\Plugin as BasePlugin;
+use craft\events\RegisterGqlMutationsEvent;
+use craft\events\RegisterGqlQueriesEvent;
+use craft\events\RegisterGqlSchemaComponentsEvent;
+use craft\events\RegisterGqlTypesEvent;
 use craft\events\RegisterUrlRulesEvent;
 use craft\events\RegisterUserPermissionsEvent;
+use craft\services\Gql;
 use craft\services\UserPermissions;
 use craft\web\UrlManager;
+use fabianhaef\simpleform\gql\mutations\FormMutations;
+use fabianhaef\simpleform\gql\queries\FormQueries;
+use fabianhaef\simpleform\gql\types\FieldOptionType;
+use fabianhaef\simpleform\gql\types\FieldValidationType;
+use fabianhaef\simpleform\gql\types\FormFieldType;
+use fabianhaef\simpleform\gql\types\FormType;
+use fabianhaef\simpleform\gql\types\SubmissionErrorType;
+use fabianhaef\simpleform\gql\types\SubmitFormPayloadType;
 use fabianhaef\simpleform\helpers\SimpleFormPermissions;
 use fabianhaef\simpleform\models\Settings;
 use fabianhaef\simpleform\services\CaptchaService;
@@ -77,6 +90,66 @@ class Plugin extends BasePlugin
         Craft::$app->getUrlManager()->addRules([
             'simple-form/submit' => 'simple-form/submit/index',
         ]);
+
+        $this->registerGraphQl();
+    }
+
+    /**
+     * Register the plugin's GraphQL types, the form-schema queries, the
+     * submitForm mutation, and the schema components (scopes) that gate them.
+     */
+    private function registerGraphQl(): void
+    {
+        Event::on(
+            Gql::class,
+            Gql::EVENT_REGISTER_GQL_TYPES,
+            static function(RegisterGqlTypesEvent $event): void {
+                array_push(
+                    $event->types,
+                    FieldOptionType::class,
+                    FieldValidationType::class,
+                    FormFieldType::class,
+                    FormType::class,
+                    SubmissionErrorType::class,
+                    SubmitFormPayloadType::class,
+                );
+            }
+        );
+
+        Event::on(
+            Gql::class,
+            Gql::EVENT_REGISTER_GQL_QUERIES,
+            static function(RegisterGqlQueriesEvent $event): void {
+                $event->queries = array_merge($event->queries, FormQueries::getQueries());
+            }
+        );
+
+        Event::on(
+            Gql::class,
+            Gql::EVENT_REGISTER_GQL_MUTATIONS,
+            static function(RegisterGqlMutationsEvent $event): void {
+                $event->mutations = array_merge($event->mutations, FormMutations::getMutations());
+            }
+        );
+
+        Event::on(
+            Gql::class,
+            Gql::EVENT_REGISTER_GQL_SCHEMA_COMPONENTS,
+            static function(RegisterGqlSchemaComponentsEvent $event): void {
+                $label = Craft::t('simple-form', 'Simple Form');
+
+                // Read the form schema (metadata + fields). Submission data is
+                // never exposed, so there is intentionally no read scope for it.
+                $event->queries[$label] = [
+                    'simpleForms:read' => ['label' => Craft::t('simple-form', 'View form schemas')],
+                ];
+
+                // Create a submission via the submitForm mutation.
+                $event->mutations[$label] = [
+                    'simpleFormSubmissions:create' => ['label' => Craft::t('simple-form', 'Submit forms')],
+                ];
+            }
+        );
     }
 
     protected function createSettingsModel(): ?Model
@@ -88,6 +161,20 @@ class Plugin extends BasePlugin
     {
         /** @var CaptchaService $service */
         $service = $this->get('captchaService');
+        return $service;
+    }
+
+    public function getEmailService(): EmailService
+    {
+        /** @var EmailService $service */
+        $service = $this->get('emailService');
+        return $service;
+    }
+
+    public function getSubmissionService(): SubmissionService
+    {
+        /** @var SubmissionService $service */
+        $service = $this->get('submissionService');
         return $service;
     }
 

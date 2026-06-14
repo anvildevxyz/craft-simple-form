@@ -86,13 +86,24 @@ class SettingsTest extends TestCase
         $this->assertStringNotContainsString('getSystemSettings', $code);
     }
 
-    public function testSubmitControllerGatesHoneypotAndVerifiesCaptcha(): void
+    public function testSubmitControllerRoutesThroughSubmissionService(): void
     {
+        // Honeypot + captcha enforcement now lives in the shared, transport-
+        // agnostic SubmissionService::submit() so the Twig and GraphQL paths run
+        // it identically; the controller just adapts the request and reports the
+        // outcome.
         $code = $this->source('controllers/SubmitController.php');
 
-        $this->assertStringContainsString('enableHoneypot', $code);
-        $this->assertStringContainsString('getCaptchaService()->verify()', $code);
+        $this->assertStringContainsString('getSubmissionService()->submit(', $code);
         $this->assertStringContainsString('submitMessage', $code);
+    }
+
+    public function testSubmissionServiceGatesHoneypotAndVerifiesCaptcha(): void
+    {
+        $code = $this->source('services/SubmissionService.php');
+
+        $this->assertStringContainsString('enableHoneypot', $code);
+        $this->assertStringContainsString('getCaptchaService()->verify(', $code);
     }
 
     public function testTwigExtensionGatesHoneypotAndRendersCaptcha(): void
