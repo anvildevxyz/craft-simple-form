@@ -57,12 +57,47 @@ class Submission extends Element
         if ($this->formId === null || $this->formId <= 0) {
             return null;
         }
+
+        // Serve the eager-loaded form when the query was run with `.with(['form'])`,
+        // avoiding a per-submission query.
+        if ($this->hasEagerLoadedElements('form')) {
+            $eager = $this->getEagerLoadedElements('form')?->first();
+            return $eager instanceof Form ? $eager : null;
+        }
+
         try {
             return Form::find()->id($this->formId)->one();
         } catch (\Throwable $e) {
             Craft::warning(sprintf('Error loading form %d: %s', $this->formId, $e->getMessage()), 'simple-form');
             return null;
         }
+    }
+
+    /**
+     * Map the submission→form relationship so `Submission::find()->with(['form'])`
+     * batch-loads parent forms in a bounded number of queries (Craft's standard
+     * eager-loading mechanism).
+     *
+     * @param self[] $sourceElements
+     * @return array<string,mixed>|null|false
+     */
+    public static function eagerLoadingMap(array $sourceElements, string $handle): array|null|false
+    {
+        if ($handle === 'form') {
+            $map = [];
+            foreach ($sourceElements as $submission) {
+                if ($submission->formId !== null && $submission->formId > 0) {
+                    $map[] = ['source' => $submission->id, 'target' => $submission->formId];
+                }
+            }
+
+            return [
+                'elementType' => Form::class,
+                'map' => $map,
+            ];
+        }
+
+        return parent::eagerLoadingMap($sourceElements, $handle);
     }
 
     /**

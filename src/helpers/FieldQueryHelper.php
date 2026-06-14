@@ -19,6 +19,30 @@ class FieldQueryHelper
      */
     public static function fieldsForForm(int $formId, ?int $siteId = null): array
     {
+        return self::fieldsForForms([$formId], $siteId)[$formId] ?? [];
+    }
+
+    /**
+     * Batch-load fields for many forms in a single query (the same join used by
+     * {@see self::fieldsForForm()}), grouped by formId. This is the N+1-free path
+     * for listing multiple forms: one query for all their fields instead of one
+     * query per form.
+     *
+     * @param int[] $formIds
+     * @return array<int,array<int,array<string,mixed>>> formId => rows (see
+     *   fieldsForForm() for the per-row shape). Forms with no fields are present
+     *   with an empty array.
+     */
+    public static function fieldsForForms(array $formIds, ?int $siteId = null): array
+    {
+        $formIds = array_values(array_unique(array_map('intval', $formIds)));
+
+        // Pre-seed every requested form so callers can rely on the key existing.
+        $result = array_fill_keys($formIds, []);
+        if (empty($formIds)) {
+            return $result;
+        }
+
         $siteId = $siteId ?? Craft::$app->getSites()->getCurrentSite()->id;
 
         $rows = (new Query())
@@ -39,11 +63,11 @@ class FieldQueryHelper
                 '[[fs.fieldId]] = [[f.id]] AND [[fs.siteId]] = :siteId',
                 [':siteId' => $siteId]
             )
-            ->where(['f.formId' => $formId])
-            ->orderBy(['f.sortOrder' => SORT_ASC])
+            ->where(['f.formId' => $formIds])
+            ->orderBy(['f.formId' => SORT_ASC, 'f.sortOrder' => SORT_ASC])
             ->all();
 
-        foreach ($rows as &$row) {
+        foreach ($rows as $row) {
             $config = $row['config'] ? json_decode($row['config'], true) : [];
             // Guard against malformed/legacy values that don't decode to an array.
             if (!is_array($config)) {
@@ -55,8 +79,10 @@ class FieldQueryHelper
             $row['config'] = $config;
             // Fall back to the field handle when this site has no translated label yet.
             $row['label'] = $row['label'] ?? $row['name'];
+
+            $result[(int)$row['formId']][] = $row;
         }
 
-        return $rows;
+        return $result;
     }
 }

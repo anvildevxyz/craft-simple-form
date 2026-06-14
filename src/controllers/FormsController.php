@@ -29,6 +29,10 @@ class FormsController extends Controller
             ->orderBy(['elements_sites.title' => SORT_ASC])
             ->all();
 
+        // Batch-load every listed form's fields in a bounded number of queries so
+        // any per-form field access in the listing stays N+1-free.
+        Form::eagerLoadFields($forms);
+
         return $this->renderTemplate('simple-form/forms/index', [
             'forms' => $forms,
             'currentSite' => $site,
