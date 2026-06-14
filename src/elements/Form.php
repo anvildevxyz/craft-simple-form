@@ -3,7 +3,11 @@
 namespace fabianhaef\simpleform\elements;
 
 use craft\base\Element;
+use craft\db\Query;
+use craft\db\Table;
 use craft\elements\db\ElementQuery;
+use fabianhaef\simpleform\elements\db\FormQuery;
+use yii\db\Expression;
 
 class Form extends Element
 {
@@ -30,6 +34,16 @@ class Form extends Element
         return true;
     }
 
+    public static function isLocalized(): bool
+    {
+        return true;
+    }
+
+    public static function find(): FormQuery
+    {
+        return new FormQuery(static::class);
+    }
+
     public function __toString(): string
     {
         return $this->title ?? $this->name ?? '';
@@ -37,7 +51,7 @@ class Form extends Element
 
     protected static function defineSearchableAttributes(): array
     {
-        return ['name', 'handle', 'title'];
+        return ['name', 'handle', 'title', 'description'];
     }
 
     protected static function defineTableAttributes(): array
@@ -46,11 +60,22 @@ class Form extends Element
             'title' => ['label' => 'Title'],
             'handle' => ['label' => 'Handle'],
             'emailTo' => ['label' => 'Email To'],
+            'dateCreated' => ['label' => 'Date Created'],
         ];
     }
 
     protected static function defineDefaultTableAttributes(string $source): array
     {
-        return ['title', 'handle', 'emailTo'];
+        return ['title', 'handle', 'emailTo', 'dateCreated'];
+    }
+
+    protected static function defineSources(string $context = null): array
+    {
+        return [
+            [
+                'key' => '*',
+                'label' => 'All Forms',
+            ],
+        ];
     }
 }
