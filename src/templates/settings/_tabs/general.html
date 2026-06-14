@@ -1,0 +1,30 @@
+{% import "_includes/forms.twig" as forms %}
+
+<h2>{{ 'General'|t('simple-form') }}</h2>
+
+{{ forms.textField({
+    label: 'Default Submit Message'|t('simple-form'),
+    name: 'submitMessage',
+    value: settings.submitMessage ?? 'Thank you! Your submission has been received.',
+    instructions: 'Message shown to users after successful form submission.'|t('simple-form'),
+    errors: settings.getErrors('submitMessage') ?? [],
+}) }}
+
+{{ forms.textField({
+    label: 'Default Error Message'|t('simple-form'),
+    name: 'errorMessage',
+    value: settings.errorMessage ?? 'There was an error submitting your form. Please try again.',
+    instructions: 'Message shown to users if form submission fails.'|t('simple-form'),
+    errors: settings.getErrors('errorMessage') ?? [],
+}) }}
+
+{{ forms.selectField({
+    label: 'Storage Location'|t('simple-form'),
+    name: 'storageLocation',
+    options: {
+        'database': 'Database (Default)'|t('simple-form'),
+    },
+    value: settings.storageLocation ?? 'database',
+    instructions: 'Currently only database storage is supported.'|t('simple-form'),
+    errors: settings.getErrors('storageLocation') ?? [],
+}) }}

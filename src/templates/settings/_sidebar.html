@@ -1,0 +1,17 @@
+{% set settingsSubnavItems = {
+    'general': { label: 'General'|t('simple-form'), url: url('simple-form/settings/general') },
+    'email': { label: 'Email'|t('simple-form'), url: url('simple-form/settings/email') },
+    'spam': { label: 'Spam Protection'|t('simple-form'), url: url('simple-form/settings/spam') },
+} %}
+
+<nav id="settings-nav">
+    <ul>
+        {% for key, item in settingsSubnavItems %}
+            <li>
+                <a href="{{ item.url }}" class="{% if key == selectedSettingsSubnavItem %}sel{% endif %}">
+                    {{ item.label }}
+                </a>
+            </li>
+        {% endfor %}
+    </ul>
+</nav>

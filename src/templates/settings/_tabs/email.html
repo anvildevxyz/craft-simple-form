@@ -1,0 +1,22 @@
+{% import "_includes/forms.twig" as forms %}
+
+<h2>{{ 'Email'|t('simple-form') }}</h2>
+<p class="light">{{ 'Configure default email settings for form submissions.'|t('simple-form') }}</p>
+
+{{ forms.autosuggestField({
+    label: 'Default Email Sender'|t('simple-form'),
+    name: 'defaultEmailSender',
+    value: settings.defaultEmailSender ?? '',
+    required: true,
+    suggestEnvVars: true,
+    instructions: 'Email address that forms will send from if not overridden. Supports environment variables (e.g. $FORM_FROM_EMAIL).'|t('simple-form'),
+    errors: settings.getErrors('defaultEmailSender') ?? [],
+}) }}
+
+{{ forms.textField({
+    label: 'Default Email Sender Name'|t('simple-form'),
+    name: 'defaultEmailSenderName',
+    value: settings.defaultEmailSenderName ?? '',
+    instructions: 'Display name for the sender email.'|t('simple-form'),
+    errors: settings.getErrors('defaultEmailSenderName') ?? [],
+}) }}

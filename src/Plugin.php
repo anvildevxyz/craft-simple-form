@@ -137,6 +137,7 @@ class Plugin extends BasePlugin
         $event->rules['simple-form/submissions/toggle-status'] = 'simple-form/submissions/toggle-status';
         $event->rules['simple-form/settings'] = 'simple-form/settings/index';
         $event->rules['simple-form/settings/save'] = 'simple-form/settings/save';
+        $event->rules['simple-form/settings/<tab:\w+>'] = 'simple-form/settings/section';
 
         // Fields AJAX endpoints
         $event->rules['simple-form/fields/add'] = 'simple-form/fields/add';
