@@ -3,16 +3,20 @@
 namespace fabianhaef\simpleform\controllers;
 
 use Yii;
-use yii\base\Action;
 
 trait SimpleFormControllerTrait
 {
-    protected const PERMISSION = '';
-
     public function beforeAction($action): bool
     {
-        if (static::PERMISSION && !Yii::$app->getUser()->getIdentity()?->admin) {
-            $this->requirePermission(static::PERMISSION);
+        // Get permission from child class. Each controller must define: protected const PERMISSION = '...';
+        try {
+            $permission = static::PERMISSION;
+        } catch (\Error $e) {
+            $permission = '';
+        }
+
+        if ($permission && !Yii::$app->getUser()->getIdentity()?->admin) {
+            $this->requirePermission($permission);
         }
 
         return parent::beforeAction($action);
