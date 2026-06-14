@@ -3,6 +3,9 @@
 namespace fabianhaef\simpleform\mcp;
 
 use Craft;
+use fabianhaef\simpleform\mcp\resources\FormSchemaResource;
+use fabianhaef\simpleform\mcp\resources\ResourceProviderInterface;
+use fabianhaef\simpleform\mcp\resources\SubmissionsDatasetResource;
 use fabianhaef\simpleform\mcp\tools\AddFieldTool;
 use fabianhaef\simpleform\mcp\tools\CreateFormTool;
 use fabianhaef\simpleform\mcp\tools\DeleteFieldTool;
@@ -72,6 +75,22 @@ class McpServer
     }
 
     /**
+     * The resource providers this server exposes (#66). Each owns one URI scheme
+     * and declares the single scope a token must hold to list AND read it.
+     *
+     * @return list<ResourceProviderInterface>
+     */
+    private function resourceProviders(): array
+    {
+        return [
+            // form://{handle} — form schema. Scope: forms:manage.
+            new FormSchemaResource(),
+            // submissions://{handle} — submission dataset. Scope: submissions:read.
+            new SubmissionsDatasetResource(),
+        ];
+    }
+
+    /**
      * Handle a single decoded JSON-RPC message and return the decoded response
      * (or null for a notification, which gets no response per JSON-RPC).
      *
@@ -111,6 +130,12 @@ class McpServer
             case 'tools/call':
                 return $this->handleToolCall($id, $params, $token);
 
+            case 'resources/list':
+                return $this->result($id, ['resources' => $this->resourceDescriptors($token)]);
+
+            case 'resources/read':
+                return $this->handleResourceRead($id, $params, $token);
+
             default:
                 if ($isNotification) {
                     return null;
@@ -127,17 +152,20 @@ class McpServer
         return [
             'protocolVersion' => self::PROTOCOL_VERSION,
             'capabilities' => [
-                // We expose tools only. listChanged:false — the tool set is
-                // static within a session.
+                // Tools are static within a session.
                 'tools' => ['listChanged' => false],
+                // Resources (#66): no server-initiated change notifications and
+                // no per-resource subscriptions in this transport.
+                'resources' => ['subscribe' => false, 'listChanged' => false],
             ],
             'serverInfo' => [
                 'name' => 'simple-form-mcp',
                 'title' => 'Simple Form MCP Server',
                 'version' => (string)(\fabianhaef\simpleform\Plugin::getInstance()->version ?? '1.0.0'),
             ],
-            'instructions' => 'Simple Form MCP server. Tools are gated by token scope; '
-                . 'only forms metadata is exposed in this version (no submission data).',
+            'instructions' => 'Simple Form MCP server. Tools and resources are gated by token '
+                . 'scope (deny-by-default). Resources: form://{handle} (schema, forms:manage) and '
+                . 'submissions://{handle} (dataset, submissions:read).',
         ];
     }
 
@@ -244,6 +272,90 @@ class McpServer
             'structuredContent' => $structured,
             'isError' => $isError,
         ]);
+    }
+
+    /**
+     * Resource descriptors for resources/list. Unlike tools/list, this IS
+     * scope-aware: only resources whose required scope the token holds are
+     * listed. For resources, hiding an out-of-scope URI is part of the privacy
+     * boundary (a submissions:// URI must not even be discoverable without
+     * submissions:read) — and the read path still enforces independently.
+     *
+     * @return list<array<string, mixed>>
+     */
+    private function resourceDescriptors(McpToken $token): array
+    {
+        $descriptors = [];
+        foreach ($this->resourceProviders() as $provider) {
+            if (!$token->hasScope($provider->requiredScope())) {
+                continue;
+            }
+            foreach ($provider->list() as $descriptor) {
+                $descriptors[] = $descriptor;
+            }
+        }
+
+        return $descriptors;
+    }
+
+    /**
+     * @param array<string, mixed> $params
+     * @return array<string, mixed>
+     */
+    private function handleResourceRead(mixed $id, array $params, McpToken $token): array
+    {
+        $uri = $params['uri'] ?? null;
+        if (!is_string($uri) || $uri === '') {
+            return $this->error($id, self::ERR_INVALID_PARAMS, 'Missing resource uri.');
+        }
+
+        $provider = null;
+        foreach ($this->resourceProviders() as $candidate) {
+            if ($candidate->handles($uri)) {
+                $provider = $candidate;
+                break;
+            }
+        }
+
+        if ($provider === null) {
+            return $this->error($id, self::ERR_METHOD_NOT_FOUND, "Unknown resource: $uri");
+        }
+
+        // SCOPE ENFORCEMENT — deny-by-default, INDEPENDENT of list visibility. A
+        // token may only read a resource whose required scope it explicitly holds.
+        if (!$token->hasScope($provider->requiredScope())) {
+            Craft::info(
+                sprintf(
+                    'MCP resource scope denied: token "%s" (%s) lacks scope "%s" for resource "%s"',
+                    $token->label,
+                    $token->id,
+                    $provider->requiredScope(),
+                    $uri,
+                ),
+                'simple-form',
+            );
+            return $this->error($id, self::ERR_FORBIDDEN, 'Forbidden: token is not authorized for this resource.');
+        }
+
+        Craft::info(
+            sprintf('MCP resource read: token "%s" (%s) read "%s"', $token->label, $token->id, $uri),
+            'simple-form',
+        );
+
+        try {
+            $result = $provider->read($uri);
+        } catch (\Throwable $e) {
+            Craft::error('MCP resource read "' . $uri . '" failed: ' . $e->getMessage(), 'simple-form');
+            return $this->error($id, self::ERR_INVALID_PARAMS, 'Resource read failed.');
+        }
+
+        if (array_key_exists('isError', $result)) {
+            // A resolvable-scheme but missing resource is a JSON-RPC error per the
+            // MCP resources spec (e.g. resource not found).
+            return $this->error($id, self::ERR_INVALID_PARAMS, $result['error']);
+        }
+
+        return $this->result($id, ['contents' => $result['contents']]);
     }
 
     /**
