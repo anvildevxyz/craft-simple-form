@@ -59,6 +59,26 @@ class Settings extends Model
      */
     public float $recaptchaV3MinScore = 0.5;
 
+    /**
+     * Whether the MCP (Model Context Protocol) server endpoint is enabled.
+     *
+     * OFF BY DEFAULT (security): the endpoint at `simple-form/mcp` returns 404
+     * and processes nothing until an operator explicitly opts in. This is a
+     * remotely-reachable, token-authenticated API surface, so it must never be
+     * live without a deliberate decision.
+     */
+    public bool $enableMcp = false;
+
+    /**
+     * Configured MCP access tokens, stored as hash-only arrays (see
+     * {@see \fabianhaef\simpleform\mcp\McpToken}). The plaintext secret is NEVER
+     * stored here — only its keyed hash. Shape per entry:
+     * {id, label, hash, scopes[], dateCreated, lastUsed}.
+     *
+     * @var array<int, array{id?:string,label?:string,hash?:string,scopes?:list<string>,dateCreated?:?string,lastUsed?:?string}>
+     */
+    public array $mcpTokens = [];
+
     public function behaviors(): array
     {
         return [
@@ -89,7 +109,8 @@ class Settings extends Model
                 'email',
                 'when' => fn(): bool => !$this->isEnvReference($this->defaultEmailSender),
             ],
-            [['enableHoneypot', 'enableCaptcha', 'cacheFormStructure', 'inlineFormAssets'], 'boolean'],
+            [['enableHoneypot', 'enableCaptcha', 'cacheFormStructure', 'inlineFormAssets', 'enableMcp'], 'boolean'],
+            [['mcpTokens'], 'safe'],
             [['captchaType'], 'in', 'range' => [self::CAPTCHA_V3, self::CAPTCHA_V2]],
             [['storageLocation'], 'in', 'range' => ['database']],
             [['recaptchaV3MinScore'], 'number', 'min' => 0, 'max' => 1],

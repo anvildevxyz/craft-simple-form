@@ -3,18 +3,26 @@
 
 {% set title = 'Settings'|t('simple-form') %}
 {% set selectedSubnavItem = 'settings' %}
-{% set fullPageForm = true %}
 {% set selectedSettingsSubnavItem = selectedSettingsSubnavItem ?? 'general' %}
+
+{# The MCP tab owns several independent forms (enable toggle, create token,
+   revoke), so it cannot live inside a single full-page form. Every other tab
+   posts through the shared settings/save form. #}
+{% set fullPageForm = selectedSettingsSubnavItem != 'mcp' %}
 
 {% block sidebar %}
     {% include 'simple-form/settings/_sidebar' %}
 {% endblock %}
 
 {% block content %}
-    <input type="hidden" name="action" value="simple-form/settings/save">
-    <input type="hidden" name="tab" value="{{ selectedSettingsSubnavItem }}">
-    {{ redirectInput('simple-form/settings/' ~ selectedSettingsSubnavItem) }}
-    {{ csrfInput() }}
+    {% if selectedSettingsSubnavItem == 'mcp' %}
+        {% include 'simple-form/settings/_tabs/mcp' %}
+    {% else %}
+        <input type="hidden" name="action" value="simple-form/settings/save">
+        <input type="hidden" name="tab" value="{{ selectedSettingsSubnavItem }}">
+        {{ redirectInput('simple-form/settings/' ~ selectedSettingsSubnavItem) }}
+        {{ csrfInput() }}
 
-    {% include 'simple-form/settings/_tabs/' ~ selectedSettingsSubnavItem %}
+        {% include 'simple-form/settings/_tabs/' ~ selectedSettingsSubnavItem %}
+    {% endif %}
 {% endblock %}

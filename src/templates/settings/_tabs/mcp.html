@@ -1,0 +1,136 @@
+{% import "_includes/forms.twig" as forms %}
+{% from _self import scopeLabel %}
+
+{% macro scopeLabel(scope) %}
+    {%- apply spaceless -%}
+        {% set labels = {
+            'forms:manage': 'Manage forms (read form definitions)'|t('simple-form'),
+            'submissions:read': 'Read submissions (reserved — no tool yet)'|t('simple-form'),
+            'submissions:export': 'Export submissions (reserved — no tool yet)'|t('simple-form'),
+        } %}
+        {{ labels[scope] ?? scope }}
+    {%- endapply -%}
+{% endmacro %}
+
+<h2>{{ 'MCP Server'|t('simple-form') }}</h2>
+<p class="light">
+    {{ 'Expose Simple Form to MCP (Model Context Protocol) clients over a token-authenticated HTTP endpoint. Disabled by default.'|t('simple-form') }}
+</p>
+
+{# 1. Enable toggle — its own minimal form posting to settings/save. #}
+<form method="post" accept-charset="UTF-8">
+    {{ csrfInput() }}
+    <input type="hidden" name="action" value="simple-form/settings/save">
+    <input type="hidden" name="tab" value="mcp">
+    {{ redirectInput('simple-form/settings/mcp') }}
+
+    {{ forms.lightswitchField({
+        label: 'Enable MCP Server'|t('simple-form'),
+        name: 'enableMcp',
+        on: settings.enableMcp ?? false,
+        instructions: 'When off, the endpoint at simple-form/mcp returns 404 and processes nothing.'|t('simple-form'),
+    }) }}
+
+    <div class="buttons">
+        <button type="submit" class="btn submit">{{ 'Save'|t('simple-form') }}</button>
+    </div>
+</form>
+
+{% if settings.enableMcp ?? false %}
+    <p class="light">
+        {{ 'Endpoint:'|t('simple-form') }}
+        <code>{{ siteUrl('simple-form/mcp') }}</code>
+    </p>
+{% endif %}
+
+<hr>
+
+{# One-time secret display, immediately after creation. #}
+{% if mcpNewSecret is defined and mcpNewSecret %}
+    <div class="pane" style="border-left: 3px solid var(--success-color, #27ae60);">
+        <h3>{{ 'New token secret'|t('simple-form') }}</h3>
+        <p class="error">
+            {{ 'Copy this now. It is stored only as a hash and will never be shown again.'|t('simple-form') }}
+        </p>
+        {{ forms.copyTextField({
+            label: 'Bearer token'|t('simple-form'),
+            value: mcpNewSecret,
+            readonly: true,
+        }) }}
+    </div>
+    <hr>
+{% endif %}
+
+{# 2. Existing tokens + per-row revoke. #}
+<h3>{{ 'Tokens'|t('simple-form') }}</h3>
+
+{% if mcpTokens is empty %}
+    <p class="light">{{ 'No tokens yet.'|t('simple-form') }}</p>
+{% else %}
+    <table class="data fullwidth">
+        <thead>
+            <tr>
+                <th>{{ 'Label'|t('simple-form') }}</th>
+                <th>{{ 'Scopes'|t('simple-form') }}</th>
+                <th>{{ 'Created'|t('simple-form') }}</th>
+                <th>{{ 'Last used'|t('simple-form') }}</th>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for token in mcpTokens %}
+                <tr>
+                    <td>{{ token.label }}</td>
+                    <td>
+                        {% for scope in token.scopes %}
+                            <span class="token">{{ scopeLabel(scope) }}</span>{% if not loop.last %} {% endif %}
+                        {% endfor %}
+                    </td>
+                    <td>{{ token.dateCreated ? token.dateCreated|datetime('short') : '—' }}</td>
+                    <td>{{ token.lastUsed ? token.lastUsed|datetime('short') : 'never'|t('simple-form') }}</td>
+                    <td class="thin">
+                        <form method="post" accept-charset="UTF-8" onsubmit="return confirm('{{ 'Revoke this token?'|t('simple-form') }}');">
+                            {{ csrfInput() }}
+                            <input type="hidden" name="action" value="simple-form/settings/revoke-mcp-token">
+                            <input type="hidden" name="id" value="{{ token.id }}">
+                            {{ redirectInput('simple-form/settings/mcp') }}
+                            <button type="submit" class="btn small">{{ 'Revoke'|t('simple-form') }}</button>
+                        </form>
+                    </td>
+                </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+{% endif %}
+
+<hr>
+
+{# 3. Create token. #}
+<h3>{{ 'Create a token'|t('simple-form') }}</h3>
+<form method="post" accept-charset="UTF-8">
+    {{ csrfInput() }}
+    <input type="hidden" name="action" value="simple-form/settings/create-mcp-token">
+    {{ redirectInput('simple-form/settings/mcp') }}
+
+    {{ forms.textField({
+        label: 'Label'|t('simple-form'),
+        name: 'label',
+        instructions: 'A name to recognise this token in logs (e.g. "Claude Desktop"). The secret is never logged.'|t('simple-form'),
+    }) }}
+
+    {% set scopeOptions = [] %}
+    {% for scope in mcpScopes %}
+        {% set scopeOptions = scopeOptions|merge([{ label: scopeLabel(scope), value: scope }]) %}
+    {% endfor %}
+
+    {{ forms.checkboxGroupField({
+        label: 'Scopes'|t('simple-form'),
+        name: 'scopes',
+        options: scopeOptions,
+        instructions: 'Grant only what this client needs. Deny-by-default: a tool runs only when the token holds its scope.'|t('simple-form'),
+    }) }}
+
+    <div class="buttons">
+        <button type="submit" class="btn submit">{{ 'Create token'|t('simple-form') }}</button>
+    </div>
+</form>

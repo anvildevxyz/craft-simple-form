@@ -23,6 +23,7 @@ use fabianhaef\simpleform\gql\types\FormType;
 use fabianhaef\simpleform\gql\types\SubmissionErrorType;
 use fabianhaef\simpleform\gql\types\SubmitFormPayloadType;
 use fabianhaef\simpleform\helpers\SimpleFormPermissions;
+use fabianhaef\simpleform\mcp\TokenManager;
 use fabianhaef\simpleform\models\Settings;
 use fabianhaef\simpleform\services\CaptchaService;
 use fabianhaef\simpleform\services\EmailService;
@@ -59,6 +60,7 @@ class Plugin extends BasePlugin
             'submissionService' => SubmissionService::class,
             'captchaService' => CaptchaService::class,
             'formStructure' => FormStructureService::class,
+            'mcpTokenManager' => TokenManager::class,
         ]);
 
         Craft::$app->getI18n()->translations['simple-form'] ??= [
@@ -89,6 +91,10 @@ class Plugin extends BasePlugin
 
         Craft::$app->getUrlManager()->addRules([
             'simple-form/submit' => 'simple-form/submit/index',
+            // MCP transport endpoint (token-authenticated machine API). Mapped
+            // unconditionally; the controller itself enforces the off-by-default
+            // toggle and bearer auth, so a disabled server still 404s cleanly.
+            'simple-form/mcp' => 'simple-form/mcp/index',
         ]);
 
         $this->registerGraphQl();
@@ -192,6 +198,13 @@ class Plugin extends BasePlugin
         return $service;
     }
 
+    public function getMcpTokenManager(): TokenManager
+    {
+        /** @var TokenManager $manager */
+        $manager = $this->get('mcpTokenManager');
+        return $manager;
+    }
+
     public function getName(): string
     {
         return Craft::t('simple-form', 'Simple Form');
@@ -238,6 +251,8 @@ class Plugin extends BasePlugin
         $event->rules['simple-form/submissions/toggle-status'] = 'simple-form/submissions/toggle-status';
         $event->rules['simple-form/settings'] = 'simple-form/settings/index';
         $event->rules['simple-form/settings/save'] = 'simple-form/settings/save';
+        $event->rules['simple-form/settings/mcp/create-token'] = 'simple-form/settings/create-mcp-token';
+        $event->rules['simple-form/settings/mcp/revoke-token'] = 'simple-form/settings/revoke-mcp-token';
         $event->rules['simple-form/settings/<tab:\w+>'] = 'simple-form/settings/section';
 
         // Fields AJAX endpoints

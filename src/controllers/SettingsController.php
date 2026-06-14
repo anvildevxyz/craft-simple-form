@@ -5,6 +5,7 @@ namespace fabianhaef\simpleform\controllers;
 use Craft;
 use craft\web\Controller;
 use fabianhaef\simpleform\helpers\SimpleFormPermissions;
+use fabianhaef\simpleform\mcp\Scopes;
 use fabianhaef\simpleform\Plugin;
 use yii\web\Response;
 
@@ -28,9 +29,12 @@ class SettingsController extends Controller
             'recaptchaV2SiteKey',
             'recaptchaV2SecretKey',
         ],
+        // The MCP tab persists only the enable toggle through the generic save;
+        // tokens are created/revoked via dedicated actions (one-time secret).
+        'mcp' => ['enableMcp'],
     ];
 
-    private const BOOL_FIELDS = ['enableHoneypot', 'enableCaptcha'];
+    private const BOOL_FIELDS = ['enableHoneypot', 'enableCaptcha', 'enableMcp'];
     private const FLOAT_FIELDS = ['recaptchaV3MinScore'];
 
     public function actionIndex(): Response
@@ -87,12 +91,74 @@ class SettingsController extends Controller
         return $this->redirect('simple-form/settings/' . $tab);
     }
 
+    /**
+     * Create a new MCP token. The plaintext secret is generated, the hash
+     * persisted, and the secret flashed back to the operator exactly once via a
+     * session notice — it is never stored or shown again.
+     */
+    public function actionCreateMcpToken(): Response
+    {
+        $this->requirePostRequest();
+        /** @var \craft\web\Request $request */
+        $request = Craft::$app->getRequest();
+
+        $label = trim((string) $request->getBodyParam('label', ''));
+        /** @var list<string> $scopes */
+        $scopes = array_values(array_filter(
+            (array) $request->getBodyParam('scopes', []),
+            static fn($s): bool => is_string($s),
+        ));
+
+        if ($scopes === []) {
+            Craft::$app->getSession()->setError(Craft::t('simple-form', 'Select at least one scope for the token.'));
+            return $this->redirect('simple-form/settings/mcp');
+        }
+
+        $result = Plugin::getInstance()->getMcpTokenManager()->createToken($label, $scopes);
+
+        // One-time display of the plaintext secret. Stored in the flash so the
+        // redirected page can render it once, then it is gone.
+        Craft::$app->getSession()->setNotice(Craft::t('simple-form', 'Token created. Copy it now — it will not be shown again.'));
+        Craft::$app->getSession()->setFlash('mcpNewSecret', $result['secret']);
+
+        return $this->redirect('simple-form/settings/mcp');
+    }
+
+    /**
+     * Revoke (delete) an MCP token by id.
+     */
+    public function actionRevokeMcpToken(): Response
+    {
+        $this->requirePostRequest();
+        /** @var \craft\web\Request $request */
+        $request = Craft::$app->getRequest();
+        $id = (string) $request->getBodyParam('id', '');
+
+        if ($id !== '' && Plugin::getInstance()->getMcpTokenManager()->revokeToken($id)) {
+            Craft::$app->getSession()->setNotice(Craft::t('simple-form', 'Token revoked.'));
+        } else {
+            Craft::$app->getSession()->setError(Craft::t('simple-form', 'Token not found.'));
+        }
+
+        return $this->redirect('simple-form/settings/mcp');
+    }
+
     private function renderTab(string $tab): Response
     {
-        return $this->renderTemplate('simple-form/settings/index', [
+        $vars = [
             'settings' => Plugin::getInstance()->getSettings(),
             'selectedSettingsSubnavItem' => $tab,
-        ]);
+        ];
+
+        if ($tab === 'mcp') {
+            $vars['mcpTokens'] = Plugin::getInstance()->getMcpTokenManager()->allTokens();
+            $vars['mcpScopes'] = Scopes::all();
+            // Plaintext secret is only ever surfaced once, immediately after
+            // creation, via the flash set in actionCreateMcpToken().
+            $vars['mcpNewSecret'] = Craft::$app->getSession()->getFlash('mcpNewSecret');
+        }
+
+        return $this->renderTemplate('simple-form/settings/index', $vars);
     }
 
     private function normalizeTab(string|int|float|bool|null $raw): string
