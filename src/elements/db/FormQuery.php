@@ -88,8 +88,13 @@ class FormQuery extends ElementQuery
             return $siteId;
         }
 
-        if (is_array($siteId) && count($siteId) === 1 && is_numeric($siteId[0])) {
-            return (int)$siteId[0];
+        // A single-target query may arrive as a non-zero-indexed array (e.g. during a
+        // propagating save Craft passes the resolved site ids), so don't assume key 0.
+        if (is_array($siteId) && count($siteId) === 1) {
+            $only = array_values($siteId)[0];
+            if (is_numeric($only)) {
+                return (int)$only;
+            }
         }
 
         return Craft::$app->getSites()->getCurrentSite()->id;

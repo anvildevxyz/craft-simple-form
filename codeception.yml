@@ -1,0 +1,31 @@
+actor: Tester
+paths:
+  tests: tests
+  output: tests/_output
+  data: tests/_data
+  support: tests/_support
+  envs: tests/_envs
+bootstrap: _craft_bootstrap.php
+settings:
+  params:
+    - tests/.env
+modules:
+  config:
+    \craft\test\Craft:
+      configFile: 'tests/_craft/config/test.php'
+      entryUrl: 'https://craft-plugin-dev.ddev.site/index.php'
+      projectConfig: {}
+      # simple-form ships its schema as a content migration (m240614_000001_init),
+      # not as an Install.php migration, so plugin install alone does NOT create the
+      # tables. Apply it explicitly here so the test DB has the plugin schema.
+      migrations:
+        - class: fabianhaef\simpleform\migrations\m240614_000001_init
+          params: {}
+      plugins:
+        - handle: simple-form
+          class: fabianhaef\simpleform\Plugin
+      cleanup: true
+      transaction: true
+      dbSetup:
+        clean: true
+        setupCraft: true

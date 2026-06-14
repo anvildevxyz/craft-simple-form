@@ -4,6 +4,9 @@ namespace fabianhaef\simpleform\elements;
 
 use Craft;
 use craft\base\Element;
+use craft\db\Query;
+use craft\helpers\Db;
+use craft\helpers\StringHelper;
 use fabianhaef\simpleform\elements\db\SubmissionQuery;
 
 class Submission extends Element
@@ -60,6 +63,47 @@ class Submission extends Element
             Craft::warning(sprintf('Error loading form %d: %s', $this->formId, $e->getMessage()), 'simple-form');
             return null;
         }
+    }
+
+    /**
+     * Persist the submission's custom columns. A Craft element only writes its
+     * `elements`/`elements_sites` rows automatically; the plugin-owned row in
+     * `simpleform_submissions` (formId, siteId, data, userId, readStatus) must be
+     * written here, mirroring the pattern used by the Form element. Without this,
+     * saveElement() creates an element row but no submission row, so the
+     * SubmissionQuery (which INNER-joins simpleform_submissions) returns nothing.
+     */
+    public function afterSave(bool $isNew): void
+    {
+        $db = Craft::$app->getDb();
+        $now = Db::prepareDateForDb(new \DateTime());
+
+        $row = [
+            'formId' => $this->formId,
+            'siteId' => $this->siteId,
+            // Craft's json() column type encodes the array exactly once; pass the array.
+            'data' => $this->data,
+            'userId' => $this->userId,
+            'readStatus' => $this->readStatus,
+            'dateUpdated' => $now,
+        ];
+
+        $exists = (new Query())
+            ->from('{{%simpleform_submissions}}')
+            ->where(['id' => $this->id])
+            ->exists();
+
+        if (!$exists) {
+            $db->createCommand()->insert('{{%simpleform_submissions}}', $row + [
+                'id' => $this->id,
+                'dateCreated' => $now,
+                'uid' => StringHelper::UUID(),
+            ])->execute();
+        } else {
+            $db->createCommand()->update('{{%simpleform_submissions}}', $row, ['id' => $this->id])->execute();
+        }
+
+        parent::afterSave($isNew);
     }
 
     /**

@@ -9,3 +9,8 @@ package-lock.json
 .vscode/
 .idea/
 .phpunit.cache/
+
+# Codeception integration-suite runtime artifacts (config files ARE committed)
+tests/_output/
+tests/_craft/storage/
+tests/_support/_generated/

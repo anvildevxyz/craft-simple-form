@@ -1,0 +1,105 @@
+<?php
+
+namespace fabianhaef\simpleform\tests\integration;
+
+use Craft;
+use craft\helpers\StringHelper;
+use craft\test\TestCase;
+use fabianhaef\simpleform\elements\Form;
+
+/**
+ * Shared seeding helpers for the simple-form integration suite.
+ *
+ * Every test boots a real Craft inside the Craft module's per-test DB
+ * transaction (configured in the root codeception.yml), so anything saved here
+ * is rolled back after each test. Tests that touch Craft guard with
+ * requireCraft() so the file still parses/skips cleanly if the framework is
+ * unavailable.
+ */
+abstract class SimpleFormTestCase extends TestCase
+{
+    protected function requireCraft(): void
+    {
+        if (!class_exists(\Craft::class) || Craft::$app === null) {
+            $this->markTestSkipped('Craft application is not available.');
+        }
+    }
+
+    /**
+     * Create and persist a Form element for the given (or current) site.
+     */
+    protected function createForm(
+        string $name,
+        string $handle,
+        ?string $title = null,
+        ?int $siteId = null,
+        ?string $emailTo = null,
+        ?string $emailSubject = null,
+    ): Form {
+        $form = new Form();
+        $form->name = $name;
+        $form->handle = $handle;
+        $form->title = $title ?? $name;
+        $form->emailTo = $emailTo;
+        $form->emailSubject = $emailSubject;
+        if ($siteId !== null) {
+            $form->siteId = $siteId;
+        }
+
+        $saved = Craft::$app->getElements()->saveElement($form);
+        $this->assertTrue($saved, 'Form should save: ' . implode(', ', $form->getFirstErrors()));
+
+        return $form;
+    }
+
+    /**
+     * Insert a field for a form (structural row + per-site label/helpText rows),
+     * mirroring how FieldsController persists a field. Returns the new field id.
+     *
+     * @param array<string,mixed> $config
+     * @param array<int>|null     $siteIds sites to seed label/helpText for; defaults to all sites
+     */
+    protected function createField(
+        int $formId,
+        string $type,
+        string $name,
+        string $label,
+        bool $required = false,
+        array $config = [],
+        ?array $siteIds = null,
+        string $helpText = '',
+    ): int {
+        $db = Craft::$app->getDb();
+        $now = date('Y-m-d H:i:s');
+
+        $db->createCommand()->insert('{{%simpleform_fields}}', [
+            'formId' => $formId,
+            'type' => $type,
+            'name' => $name,
+            'required' => $required,
+            'config' => $config,
+            'sortOrder' => 1,
+            'dateCreated' => $now,
+            'dateUpdated' => $now,
+            'uid' => StringHelper::UUID(),
+        ])->execute();
+
+        $fieldId = (int) $db->getLastInsertID();
+
+        $siteIds ??= array_map(static fn($s) => $s->id, Craft::$app->getSites()->getAllSites());
+
+        foreach ($siteIds as $siteId) {
+            $db->createCommand()->insert('{{%simpleform_fields_sites}}', [
+                'fieldId' => $fieldId,
+                'siteId' => $siteId,
+                'label' => $label,
+                'helpText' => $helpText ?: null,
+                'dateCreated' => $now,
+                'dateUpdated' => $now,
+                'uid' => StringHelper::UUID(),
+            ])->execute();
+        }
+
+        return $fieldId;
+    }
+}
