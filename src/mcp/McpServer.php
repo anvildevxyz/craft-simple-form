@@ -7,9 +7,13 @@ use fabianhaef\simpleform\mcp\tools\AddFieldTool;
 use fabianhaef\simpleform\mcp\tools\CreateFormTool;
 use fabianhaef\simpleform\mcp\tools\DeleteFieldTool;
 use fabianhaef\simpleform\mcp\tools\DeleteFormTool;
+use fabianhaef\simpleform\mcp\tools\ExportSubmissionsTool;
 use fabianhaef\simpleform\mcp\tools\GetFormTool;
+use fabianhaef\simpleform\mcp\tools\GetSubmissionTool;
 use fabianhaef\simpleform\mcp\tools\ListFormsTool;
+use fabianhaef\simpleform\mcp\tools\QuerySubmissionsTool;
 use fabianhaef\simpleform\mcp\tools\ReorderFieldsTool;
+use fabianhaef\simpleform\mcp\tools\SubmissionStatsTool;
 use fabianhaef\simpleform\mcp\tools\ToolInterface;
 use fabianhaef\simpleform\mcp\tools\UpdateFieldTool;
 use fabianhaef\simpleform\mcp\tools\UpdateFormTool;
@@ -59,6 +63,11 @@ class McpServer
             new UpdateFieldTool(),
             new ReorderFieldsTool(),
             new DeleteFieldTool(),
+            // Submissions (#64) — scopes: submissions:read / submissions:export.
+            new QuerySubmissionsTool(),
+            new GetSubmissionTool(),
+            new ExportSubmissionsTool(),
+            new SubmissionStatsTool(),
         ];
     }
 
