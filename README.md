@@ -58,7 +58,12 @@ $fields = $form->getFields();
 
 ## Documentation
 
-See the [issues](https://github.com/fabianhaef/craft-simple-form/issues) for development roadmap and feature details.
+Developer documentation lives in **[`docs/`](docs/README.md)** — testing,
+smoke tests, and permissions reference. Start with
+[Running tests](docs/testing/RUNNING_TESTS.md).
+
+See the [issues](https://github.com/fabianhaef/craft-simple-form/issues) for the
+development roadmap and feature details.
 
 ## License
 

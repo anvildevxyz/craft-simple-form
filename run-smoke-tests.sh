@@ -55,10 +55,10 @@ log_test() {
 
 # Extract test scenarios from SMOKE_TESTS.md
 extract_tests() {
-    local tests_file="SMOKE_TESTS.md"
+    local tests_file="docs/smoke-tests/SMOKE_TESTS.md"
 
     if [ ! -f "$tests_file" ]; then
-        log_error "SMOKE_TESTS.md not found. Please run from plugin root directory."
+        log_error "docs/smoke-tests/SMOKE_TESTS.md not found. Please run from plugin root directory."
         exit 1
     fi
 
@@ -190,7 +190,7 @@ EOF
     log_success "Craft site is accessible"
     echo ""
 
-    log_info "Loading smoke test scenarios from SMOKE_TESTS.md..."
+    log_info "Loading smoke test scenarios from docs/smoke-tests/SMOKE_TESTS.md..."
 
     # Array of all 45 test scenarios
     declare -a TESTS=(

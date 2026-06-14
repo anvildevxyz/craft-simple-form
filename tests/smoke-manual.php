@@ -21,7 +21,7 @@ $checks = [
     '✓ CP templates present' => file_exists('templates/forms/index.html') && file_exists('templates/forms/edit.html'),
     '✓ Submission templates present' => file_exists('templates/submissions/index.html') && file_exists('templates/submissions/view.html'),
     '✓ Event classes defined' => file_exists('src/events/SubmissionEvent.php'),
-    '✓ Testing guide present' => file_exists('TESTING.md'),
+    '✓ Testing guide present' => file_exists('docs/testing/TESTING.md'),
 ];
 
 $passed = 0;
@@ -36,7 +36,7 @@ echo "════════════════════════�
 
 if ($passed === count($checks)) {
     echo "✅ Plugin code structure complete and ready for testing\n";
-    echo "\nNext: Deploy to Craft instance and run smoke tests via TESTING.md\n";
+    echo "\nNext: Deploy to Craft instance and run smoke tests via docs/testing/TESTING.md\n";
 } else {
     echo "❌ Some components missing\n";
 }
