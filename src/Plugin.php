@@ -39,6 +39,10 @@ class Plugin extends BasePlugin
         Craft::$app->getElements()->registerElementType(Form::class);
         Craft::$app->getElements()->registerElementType(Submission::class);
 
+        if (!Craft::$app->getRequest()->getIsConsoleRequest()) {
+            Craft::$app->getView()->registerTwigExtension(new TwigExtension());
+        }
+
         Craft::$app->getUrlManager()->on(
             UrlManager::EVENT_REGISTER_CP_URL_RULES,
             [$this, 'registerCpUrlRules']
