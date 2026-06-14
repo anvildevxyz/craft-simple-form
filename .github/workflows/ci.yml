@@ -1,0 +1,106 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  quality:
+    name: Quality gate (PHP ${{ matrix.php }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        php: ['8.2', '8.3', '8.4']
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ matrix.php }}
+          extensions: mbstring, pdo, pdo_mysql, intl, gd, bcmath
+          tools: composer:v2
+          coverage: none
+
+      - name: Cache Composer
+        uses: actions/cache@v4
+        with:
+          path: ~/.composer/cache
+          key: ${{ runner.os }}-php${{ matrix.php }}-composer-${{ hashFiles('composer.json') }}
+          restore-keys: ${{ runner.os }}-php${{ matrix.php }}-composer-
+
+      - name: Install dependencies
+        run: composer install --prefer-dist --no-progress
+
+      - name: ECS
+        run: vendor/bin/ecs check
+
+      - name: PHPStan
+        run: vendor/bin/phpstan analyse --memory-limit=1G
+
+      - name: PHPUnit (unit)
+        run: vendor/bin/phpunit
+
+  integration:
+    name: Integration suite
+    runs-on: ubuntu-latest
+    needs: quality
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: root
+          MYSQL_DATABASE: craft_test
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -proot"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          extensions: mbstring, pdo, pdo_mysql, intl, gd, bcmath
+          tools: composer:v2
+          coverage: none
+
+      - name: Cache Composer
+        uses: actions/cache@v4
+        with:
+          path: ~/.composer/cache
+          key: ${{ runner.os }}-php8.2-composer-${{ hashFiles('composer.json') }}
+          restore-keys: ${{ runner.os }}-php8.2-composer-
+
+      - name: Install dependencies
+        run: composer install --prefer-dist --no-progress
+
+      - name: Write test env
+        run: |
+          cat > tests/.env <<'EOF'
+          CRAFT_DB_DSN="mysql:host=127.0.0.1;port=3306;dbname=craft_test"
+          CRAFT_DB_USER="root"
+          CRAFT_DB_PASSWORD="root"
+          CRAFT_DB_TABLE_PREFIX=""
+          SECURITY_KEY="ci-security-key-for-simple-form-integration"
+          EOF
+
+      - name: Wait for MySQL
+        run: |
+          for i in $(seq 1 30); do
+            if mysqladmin ping -h127.0.0.1 -uroot -proot --silent; then echo "mysql up"; break; fi
+            sleep 2
+          done
+
+      - name: Integration tests
+        env:
+          CRAFT_DB_DSN: "mysql:host=127.0.0.1;port=3306;dbname=craft_test"
+          CRAFT_DB_USER: root
+          CRAFT_DB_PASSWORD: root
+          CRAFT_DB_TABLE_PREFIX: ""
+          SECURITY_KEY: "ci-security-key-for-simple-form-integration"
+        run: composer test:integration
