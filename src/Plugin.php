@@ -10,6 +10,7 @@ use fabianhaef\simpleform\elements\Form;
 use fabianhaef\simpleform\elements\Submission;
 use fabianhaef\simpleform\services\EmailService;
 use fabianhaef\simpleform\services\FieldTypeRegistry;
+use fabianhaef\simpleform\services\SubmissionService;
 
 class Plugin extends BasePlugin
 {
@@ -29,6 +30,7 @@ class Plugin extends BasePlugin
         $this->setComponents([
             'fieldTypeRegistry' => FieldTypeRegistry::class,
             'emailService' => EmailService::class,
+            'submissionService' => SubmissionService::class,
         ]);
 
         Craft::$app->getI18n()->translations['simple-form'] ??= [
