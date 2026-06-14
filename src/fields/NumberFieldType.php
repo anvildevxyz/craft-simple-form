@@ -14,7 +14,10 @@ class NumberFieldType extends FieldType
         return 'Number';
     }
 
-    public function validate($value): array
+    /**
+     * @return string[]
+     */
+    public function validate(mixed $value): array
     {
         $errors = parent::validate($value);
 
@@ -39,7 +42,7 @@ class NumberFieldType extends FieldType
         return $errors;
     }
 
-    public function renderInput(string $name, $value = null): string
+    public function renderInput(string $name, mixed $value = null): string
     {
         return sprintf(
             '<input type="number" %s class="fullwidth">',

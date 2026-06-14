@@ -12,7 +12,16 @@ class MultiSiteSchemaTest extends TestCase
 {
     private function migration(): string
     {
-        return file_get_contents(__DIR__ . '/../../src/migrations/m240614_000001_init.php');
+        $code = file_get_contents(__DIR__ . '/../../src/migrations/m240614_000001_init.php');
+        $this->assertNotFalse($code);
+        return $code;
+    }
+
+    private function offsetOf(string $haystack, string $needle): int
+    {
+        $pos = strpos($haystack, $needle);
+        $this->assertNotFalse($pos, "Expected to find: $needle");
+        return $pos;
     }
 
     public function testCreatesPerSiteContentTables(): void
@@ -26,11 +35,9 @@ class MultiSiteSchemaTest extends TestCase
     {
         $code = $this->migration();
         // The shared forms table block must not declare a siteId column.
-        $formsBlock = substr(
-            $code,
-            strpos($code, "createTable('{{%simpleform_forms}}'"),
-            strpos($code, "createTable('{{%simpleform_forms_sites}}'") - strpos($code, "createTable('{{%simpleform_forms}}'")
-        );
+        $formsStart = $this->offsetOf($code, "createTable('{{%simpleform_forms}}'");
+        $sitesStart = $this->offsetOf($code, "createTable('{{%simpleform_forms_sites}}'");
+        $formsBlock = substr($code, $formsStart, $sitesStart - $formsStart);
         $this->assertStringNotContainsString("'siteId'", $formsBlock);
         $this->assertStringNotContainsString("'title'", $formsBlock);
     }
@@ -47,7 +54,7 @@ class MultiSiteSchemaTest extends TestCase
     public function testPerSiteFormTableHoldsTranslatableColumns(): void
     {
         $code = $this->migration();
-        $sitesBlock = substr($code, strpos($code, "createTable('{{%simpleform_forms_sites}}'"));
+        $sitesBlock = substr($code, $this->offsetOf($code, "createTable('{{%simpleform_forms_sites}}'"));
         foreach (['description', 'emailTo', 'emailSubject', 'emailReplyTo', 'formId', 'siteId'] as $col) {
             $this->assertStringContainsString("'$col'", $sitesBlock, "forms_sites should hold $col");
         }
@@ -56,11 +63,9 @@ class MultiSiteSchemaTest extends TestCase
     public function testFieldsTableHasRequiredColumnAndNoLabel(): void
     {
         $code = $this->migration();
-        $fieldsBlock = substr(
-            $code,
-            strpos($code, "createTable('{{%simpleform_fields}}'"),
-            strpos($code, "createTable('{{%simpleform_fields_sites}}'") - strpos($code, "createTable('{{%simpleform_fields}}'")
-        );
+        $fieldsStart = $this->offsetOf($code, "createTable('{{%simpleform_fields}}'");
+        $fieldsSitesStart = $this->offsetOf($code, "createTable('{{%simpleform_fields_sites}}'");
+        $fieldsBlock = substr($code, $fieldsStart, $fieldsSitesStart - $fieldsStart);
         $this->assertStringContainsString("'required'", $fieldsBlock);
         $this->assertStringNotContainsString("'label'", $fieldsBlock);
         $this->assertStringNotContainsString("'helpText'", $fieldsBlock);
@@ -69,7 +74,7 @@ class MultiSiteSchemaTest extends TestCase
     public function testPerSiteFieldTableHoldsLabelAndHelpText(): void
     {
         $code = $this->migration();
-        $sitesBlock = substr($code, strpos($code, "createTable('{{%simpleform_fields_sites}}'"));
+        $sitesBlock = substr($code, $this->offsetOf($code, "createTable('{{%simpleform_fields_sites}}'"));
         $this->assertStringContainsString("'label'", $sitesBlock);
         $this->assertStringContainsString("'helpText'", $sitesBlock);
         $this->assertStringContainsString("'fieldId'", $sitesBlock);

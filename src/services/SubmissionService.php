@@ -17,11 +17,12 @@ class SubmissionService extends Component
      *
      * @param FormModel|Form|string $form Form instance, element, or handle
      * @param Request|null $request Request object (uses Craft request if null)
-     * @return array ['submission' => Submission|null, 'errors' => array|null]
+     * @return array{submission: Submission|null, errors: array<string, mixed>|null}
      */
     public function createFromRequest($form, ?Request $request = null): array
     {
         if ($request === null) {
+            /** @var Request $request */
             $request = Craft::$app->getRequest();
         }
 
@@ -61,7 +62,7 @@ class SubmissionService extends Component
             $fieldName = 'field_' . $fieldId;
             $value = $request->getBodyParam($fieldName);
 
-            $fieldErrors = $field->validate($value);
+            $fieldErrors = $field->validateValue($value);
             if (!empty($fieldErrors)) {
                 $errors[$fieldName] = $fieldErrors;
             }
@@ -86,8 +87,9 @@ class SubmissionService extends Component
         $submission = new Submission();
         $submission->formId = $form->getId();
         $submission->siteId = Craft::$app->getSites()->getCurrentSite()->id;
-        $submission->data = json_encode($data);
-        $submission->userId = Craft::$app->getUser()->getId();
+        $submission->data = $data;
+        $userId = Craft::$app->getUser()->getId();
+        $submission->userId = $userId !== null ? (int) $userId : null;
         $submission->readStatus = 'new';
 
         if (!Craft::$app->getElements()->saveElement($submission)) {

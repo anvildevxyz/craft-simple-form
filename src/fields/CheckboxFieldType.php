@@ -14,7 +14,10 @@ class CheckboxFieldType extends FieldType
         return 'Checkbox';
     }
 
-    public function validate($value): array
+    /**
+     * @return string[]
+     */
+    public function validate(mixed $value): array
     {
         $errors = parent::validate($value);
 
@@ -32,6 +35,9 @@ class CheckboxFieldType extends FieldType
         return $errors;
     }
 
+    /**
+     * @return array<string, string>
+     */
     protected function getOptions(): array
     {
         $options = $this->config['options'] ?? [];
@@ -53,7 +59,7 @@ class CheckboxFieldType extends FieldType
         return $result;
     }
 
-    public function renderInput(string $name, $value = null): string
+    public function renderInput(string $name, mixed $value = null): string
     {
         $options = $this->getOptions();
         $values = is_array($value) ? $value : ($value ? [$value] : []);

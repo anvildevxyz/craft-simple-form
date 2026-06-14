@@ -2,7 +2,6 @@
 
 namespace fabianhaef\simpleform\models;
 
-use Craft;
 use fabianhaef\simpleform\elements\Form;
 use fabianhaef\simpleform\helpers\FieldQueryHelper;
 use yii\base\Model;
@@ -10,6 +9,7 @@ use yii\base\Model;
 class FormModel extends Model
 {
     private Form $form;
+    /** @var array<int, FieldModel> */
     private array $fields = [];
 
     public function __construct(Form $form)
@@ -71,6 +71,9 @@ class FormModel extends Model
         return $this->form->emailSubject;
     }
 
+    /**
+     * @return array<string, mixed>
+     */
     public function getConfig(): array
     {
         return [
@@ -84,6 +87,9 @@ class FormModel extends Model
         ];
     }
 
+    /**
+     * @return array<int, FieldModel>
+     */
     public function getFields(): array
     {
         return $this->fields;

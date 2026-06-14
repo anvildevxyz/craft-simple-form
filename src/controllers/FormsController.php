@@ -20,7 +20,9 @@ class FormsController extends Controller
 
     public function actionIndex(): Response
     {
-        $site = SiteHelper::getSiteForRequest(Craft::$app->getRequest());
+        /** @var \craft\web\Request $request */
+        $request = Craft::$app->getRequest();
+        $site = SiteHelper::getSiteForRequest($request);
 
         $forms = Form::find()
             ->siteId($site->id)
@@ -35,6 +37,7 @@ class FormsController extends Controller
 
     public function actionEdit(?int $formId = null): Response
     {
+        /** @var \craft\web\Request $request */
         $request = Craft::$app->getRequest();
         $site = SiteHelper::getSiteForRequest($request);
 
@@ -75,6 +78,7 @@ class FormsController extends Controller
     public function actionSave(): Response
     {
         $this->requirePostRequest();
+        /** @var \craft\web\Request $request */
         $request = Craft::$app->getRequest();
         $site = SiteHelper::getSiteFromPost($request);
         $formId = $request->getBodyParam('formId');
@@ -117,6 +121,7 @@ class FormsController extends Controller
     public function actionDelete(): Response
     {
         $this->requirePostRequest();
+        /** @var \craft\web\Request $request */
         $request = Craft::$app->getRequest();
         $formId = $request->getRequiredBodyParam('formId');
 

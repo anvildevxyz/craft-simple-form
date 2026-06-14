@@ -46,6 +46,7 @@ class SettingsController extends Controller
     public function actionSave(): Response
     {
         $this->requirePostRequest();
+        /** @var \craft\web\Request $request */
         $request = Craft::$app->getRequest();
         $plugin = Plugin::getInstance();
         $settings = $plugin->getSettings();

@@ -41,6 +41,8 @@ class SimpleFormControllerTraitTest extends TestCase
         });
 
         $this->assertCount(1, $publicMethods);
-        $this->assertEquals('beforeAction', reset($publicMethods)->name);
+        $firstMethod = reset($publicMethods);
+        $this->assertNotFalse($firstMethod);
+        $this->assertEquals('beforeAction', $firstMethod->name);
     }
 }

@@ -14,18 +14,21 @@ class TextareaFieldType extends FieldType
         return 'Textarea';
     }
 
-    public function validate($value): array
+    /**
+     * @return string[]
+     */
+    public function validate(mixed $value): array
     {
         $errors = parent::validate($value);
 
         if ($value !== null && $value !== '') {
             if ($minLength = $this->config['minLength'] ?? null) {
-                if (strlen($value) < $minLength) {
+                if (strlen((string) $value) < $minLength) {
                     $errors[] = "Must be at least $minLength characters.";
                 }
             }
             if ($maxLength = $this->config['maxLength'] ?? null) {
-                if (strlen($value) > $maxLength) {
+                if (strlen((string) $value) > $maxLength) {
                     $errors[] = "Must be no more than $maxLength characters.";
                 }
             }
@@ -34,16 +37,16 @@ class TextareaFieldType extends FieldType
         return $errors;
     }
 
-    public function renderInput(string $name, $value = null): string
+    public function renderInput(string $name, mixed $value = null): string
     {
         $attrs = sprintf('name="%s"', htmlspecialchars($name));
         if ($this->config['required'] ?? false) {
             $attrs .= ' required';
         }
         if ($placeholder = $this->config['placeholder'] ?? null) {
-            $attrs .= sprintf(' placeholder="%s"', htmlspecialchars($placeholder));
+            $attrs .= sprintf(' placeholder="%s"', htmlspecialchars((string) $placeholder));
         }
-        $value = $value ? htmlspecialchars($value) : '';
+        $value = $value ? htmlspecialchars((string) $value) : '';
         return sprintf(
             '<textarea %s class="fullwidth" rows="6">%s</textarea>',
             $attrs,

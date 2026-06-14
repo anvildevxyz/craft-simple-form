@@ -24,7 +24,9 @@ class SettingsTest extends TestCase
 
     private function source(string $relativePath): string
     {
-        return file_get_contents(__DIR__ . '/../../src/' . $relativePath);
+        $code = file_get_contents(__DIR__ . '/../../src/' . $relativePath);
+        $this->assertNotFalse($code);
+        return $code;
     }
 
     public function testDefaults(): void

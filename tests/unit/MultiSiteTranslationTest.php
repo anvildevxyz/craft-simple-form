@@ -10,13 +10,17 @@ class MultiSiteTranslationTest extends TestCase
     private function getFormClassCode(): string
     {
         $file = __DIR__ . '/../../src/elements/Form.php';
-        return file_get_contents($file);
+        $code = file_get_contents($file);
+        $this->assertNotFalse($code);
+        return $code;
     }
 
     private function getSubmissionClassCode(): string
     {
         $file = __DIR__ . '/../../src/elements/Submission.php';
-        return file_get_contents($file);
+        $code = file_get_contents($file);
+        $this->assertNotFalse($code);
+        return $code;
     }
 
     public function testFormElementDefinesIsLocalized(): void

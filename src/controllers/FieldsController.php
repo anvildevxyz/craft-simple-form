@@ -22,6 +22,7 @@ class FieldsController extends Controller
     public function actionAdd(): Response
     {
         $this->requirePostRequest();
+        /** @var \craft\web\Request $request */
         $request = Craft::$app->getRequest();
         $site = SiteHelper::getSiteFromPost($request);
 
@@ -92,6 +93,7 @@ class FieldsController extends Controller
     public function actionEdit(): Response
     {
         $this->requirePostRequest();
+        /** @var \craft\web\Request $request */
         $request = Craft::$app->getRequest();
         $site = SiteHelper::getSiteFromPost($request);
 
@@ -150,6 +152,7 @@ class FieldsController extends Controller
     public function actionDelete(): Response
     {
         $this->requirePostRequest();
+        /** @var \craft\web\Request $request */
         $request = Craft::$app->getRequest();
         $fieldId = $request->getRequiredBodyParam('fieldId');
 
@@ -172,6 +175,7 @@ class FieldsController extends Controller
     public function actionReorder(): Response
     {
         $this->requirePostRequest();
+        /** @var \craft\web\Request $request */
         $request = Craft::$app->getRequest();
 
         $fields = $request->getRequiredBodyParam('fields');
@@ -202,6 +206,7 @@ class FieldsController extends Controller
     /**
      * Shared input validation for add/edit. Returns an errors array (empty if valid).
      *
+     * @param array<string, mixed> $config
      * @return array<string,string[]>
      */
     private function validateFieldInput(string $type, ?string $label, ?string $handle, array $config, int $formId, ?int $excludeFieldId): array
@@ -234,7 +239,7 @@ class FieldsController extends Controller
         }
 
         if (in_array($type, ['select', 'checkbox', 'radio'], true)) {
-            if (empty($config['options']) || !is_array($config['options']) || count($config['options']) === 0) {
+            if (empty($config['options']) || !is_array($config['options'])) {
                 $errors['config'][] = $type . ' fields must have at least one option';
             }
         }

@@ -53,6 +53,9 @@ class Settings extends Model
         ];
     }
 
+    /**
+     * @return array<int, mixed>
+     */
     protected function defineRules(): array
     {
         return [
@@ -131,7 +134,11 @@ class Settings extends Model
             return null;
         }
 
-        return App::parseEnv($value) ?: null;
+        $parsed = App::parseEnv($value);
+
+        // parseEnv can return a bool for boolean env references; only string
+        // values are meaningful here.
+        return is_string($parsed) && $parsed !== '' ? $parsed : null;
     }
 
     private function isEnvReference(?string $value): bool

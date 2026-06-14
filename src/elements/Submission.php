@@ -4,12 +4,12 @@ namespace fabianhaef\simpleform\elements;
 
 use Craft;
 use craft\base\Element;
-use craft\helpers\Db;
 use fabianhaef\simpleform\elements\db\SubmissionQuery;
 
 class Submission extends Element
 {
     public ?int $formId = null;
+    /** @var array<string, mixed>|null */
     public ?array $data = null;
     public ?int $userId = null;
     public string $readStatus = 'new';
@@ -62,6 +62,9 @@ class Submission extends Element
         }
     }
 
+    /**
+     * @return array<string, array<string, mixed>>
+     */
     protected static function defineTableAttributes(): array
     {
         return [
@@ -77,7 +80,10 @@ class Submission extends Element
         return ['form', 'dateCreated', 'readStatus'];
     }
 
-    protected static function defineSources(string $context = null): array
+    /**
+     * @return array<int, array<string, mixed>>
+     */
+    protected static function defineSources(?string $context = null): array
     {
         $sources = [
             [

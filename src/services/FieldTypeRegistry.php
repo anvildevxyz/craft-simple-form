@@ -15,6 +15,7 @@ use yii\base\Component;
 
 class FieldTypeRegistry extends Component
 {
+    /** @var array<string, class-string<FieldType>> */
     private array $fieldTypes = [];
 
     public function init(): void
@@ -31,6 +32,9 @@ class FieldTypeRegistry extends Component
         $this->registerFieldType(NumberFieldType::class);
     }
 
+    /**
+     * @param class-string<FieldType> $class
+     */
     public function registerFieldType(string $class): void
     {
         if (!class_exists($class)) {
@@ -41,6 +45,9 @@ class FieldTypeRegistry extends Component
         $this->fieldTypes[$type] = $class;
     }
 
+    /**
+     * @param array<string, mixed> $config
+     */
     public function getFieldType(string $type, array $config = []): ?FieldType
     {
         if (!isset($this->fieldTypes[$type])) {
@@ -51,6 +58,9 @@ class FieldTypeRegistry extends Component
         return new $class($config);
     }
 
+    /**
+     * @return array<string, array{type: string, label: string}>
+     */
     public function getAllFieldTypes(): array
     {
         $types = [];

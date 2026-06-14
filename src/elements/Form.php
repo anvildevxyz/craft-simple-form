@@ -64,6 +64,9 @@ class Form extends Element
         return ['name', 'handle', 'title', 'description'];
     }
 
+    /**
+     * @return array<string, array<string, mixed>>
+     */
     protected static function defineTableAttributes(): array
     {
         return [
@@ -79,6 +82,9 @@ class Form extends Element
         return ['title', 'handle', 'emailTo', 'dateCreated'];
     }
 
+    /**
+     * @return array<int, array<string, mixed>>
+     */
     protected static function defineSources(?string $context = null): array
     {
         return [
@@ -89,6 +95,9 @@ class Form extends Element
         ];
     }
 
+    /**
+     * @return array<int, mixed>
+     */
     protected function defineRules(): array
     {
         $rules = parent::defineRules();

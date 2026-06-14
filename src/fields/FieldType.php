@@ -4,8 +4,12 @@ namespace fabianhaef\simpleform\fields;
 
 abstract class FieldType
 {
+    /** @var array<string, mixed> */
     protected array $config = [];
 
+    /**
+     * @param array<string, mixed> $config
+     */
     public function __construct(array $config = [])
     {
         $this->config = $config;
@@ -15,12 +19,18 @@ abstract class FieldType
 
     abstract public static function getLabel(): string;
 
+    /**
+     * @return array<string, mixed>
+     */
     public function getConfig(): array
     {
         return $this->config;
     }
 
-    public function validate($value): array
+    /**
+     * @return string[]
+     */
+    public function validate(mixed $value): array
     {
         $errors = [];
 
@@ -33,13 +43,13 @@ abstract class FieldType
         return $errors;
     }
 
-    abstract public function renderInput(string $name, $value = null): string;
+    abstract public function renderInput(string $name, mixed $value = null): string;
 
-    protected function getInputAttributes(string $name, $value = null): string
+    protected function getInputAttributes(string $name, mixed $value = null): string
     {
         $attrs = sprintf('name="%s"', htmlspecialchars($name));
         if ($value !== null) {
-            $attrs .= sprintf(' value="%s"', htmlspecialchars($value));
+            $attrs .= sprintf(' value="%s"', htmlspecialchars((string) $value));
         }
         if ($this->config['required'] ?? false) {
             $attrs .= ' required';

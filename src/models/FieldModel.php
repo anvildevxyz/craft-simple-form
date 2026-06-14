@@ -2,6 +2,7 @@
 
 namespace fabianhaef\simpleform\models;
 
+use Craft;
 use fabianhaef\simpleform\Plugin;
 use yii\base\Model;
 
@@ -12,8 +13,12 @@ class FieldModel extends Model
     private string $name;
     private ?string $label;
     private string $helpText;
+    /** @var array<string, mixed> */
     private array $config;
 
+    /**
+     * @param array<string, mixed> $config
+     */
     public function __construct(int $id, string $type, string $name, ?string $label = null, string $helpText = '', array $config = [])
     {
         parent::__construct();
@@ -50,12 +55,18 @@ class FieldModel extends Model
         return $this->helpText;
     }
 
+    /**
+     * @return array<string, mixed>
+     */
     public function getConfig(): array
     {
         return $this->config;
     }
 
-    public function validate($value): array
+    /**
+     * @return string[]
+     */
+    public function validateValue(mixed $value): array
     {
         try {
             $fieldTypeRegistry = Plugin::getInstance()->getFieldTypeRegistry();

@@ -5,12 +5,10 @@ namespace fabianhaef\simpleform;
 use Craft;
 use craft\base\Model;
 use craft\base\Plugin as BasePlugin;
-use craft\events\RegisterCpNavItemsEvent;
 use craft\events\RegisterUrlRulesEvent;
 use craft\events\RegisterUserPermissionsEvent;
 use craft\services\UserPermissions;
 use craft\web\UrlManager;
-use craft\web\twig\variables\Cp;
 use fabianhaef\simpleform\helpers\SimpleFormPermissions;
 use fabianhaef\simpleform\models\Settings;
 use fabianhaef\simpleform\services\CaptchaService;
@@ -86,12 +84,16 @@ class Plugin extends BasePlugin
 
     public function getCaptchaService(): CaptchaService
     {
-        return $this->get('captchaService');
+        /** @var CaptchaService $service */
+        $service = $this->get('captchaService');
+        return $service;
     }
 
     public function getFieldTypeRegistry(): FieldTypeRegistry
     {
-        return $this->get('fieldTypeRegistry');
+        /** @var FieldTypeRegistry $registry */
+        $registry = $this->get('fieldTypeRegistry');
+        return $registry;
     }
 
     public function getName(): string
@@ -99,6 +101,9 @@ class Plugin extends BasePlugin
         return Craft::t('simple-form', 'Simple Form');
     }
 
+    /**
+     * @return array<string, mixed>|null
+     */
     public function getCpNavItem(): ?array
     {
         $item = parent::getCpNavItem();
@@ -145,5 +150,4 @@ class Plugin extends BasePlugin
         $event->rules['simple-form/fields/delete'] = 'simple-form/fields/delete';
         $event->rules['simple-form/fields/reorder'] = 'simple-form/fields/reorder';
     }
-
 }

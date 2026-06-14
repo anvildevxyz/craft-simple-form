@@ -22,6 +22,9 @@ class TwigExtension extends AbstractExtension
         ];
     }
 
+    /**
+     * @param array<string, mixed> $options
+     */
     public function renderForm(string $handle, array $options = []): string
     {
         if (empty($handle)) {
@@ -205,7 +208,7 @@ class TwigExtension extends AbstractExtension
         if (!$siteKey) {
             return '';
         }
-        $siteKey = htmlspecialchars($siteKey, ENT_QUOTES);
+        $siteKey = htmlspecialchars((string) $siteKey, ENT_QUOTES);
 
         if ($settings->captchaType === Settings::CAPTCHA_V2) {
             // The v2 widget injects its own `g-recaptcha-response` field on submit.

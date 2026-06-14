@@ -9,6 +9,9 @@ class SimpleFormPermissions
     public const MANAGE_SUBMISSIONS = 'simple-form:manageSubmissions';
     public const MANAGE_SETTINGS = 'simple-form:manageSettings';
 
+    /**
+     * @return array<string, mixed>
+     */
     public static function definitions(): array
     {
         return [

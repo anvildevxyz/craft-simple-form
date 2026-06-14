@@ -14,18 +14,21 @@ class TextFieldType extends FieldType
         return 'Text';
     }
 
-    public function validate($value): array
+    /**
+     * @return string[]
+     */
+    public function validate(mixed $value): array
     {
         $errors = parent::validate($value);
 
         if ($value !== null && $value !== '') {
             if ($minLength = $this->config['minLength'] ?? null) {
-                if (strlen($value) < $minLength) {
+                if (strlen((string) $value) < $minLength) {
                     $errors[] = "Must be at least $minLength characters.";
                 }
             }
             if ($maxLength = $this->config['maxLength'] ?? null) {
-                if (strlen($value) > $maxLength) {
+                if (strlen((string) $value) > $maxLength) {
                     $errors[] = "Must be no more than $maxLength characters.";
                 }
             }
@@ -34,7 +37,7 @@ class TextFieldType extends FieldType
         return $errors;
     }
 
-    public function renderInput(string $name, $value = null): string
+    public function renderInput(string $name, mixed $value = null): string
     {
         return sprintf(
             '<input type="text" %s class="text fullwidth">',

@@ -12,6 +12,9 @@ use yii\base\Component;
 
 class EmailService extends Component
 {
+    /**
+     * @param array<string, mixed> $data
+     */
     public function sendSubmissionEmail(Form $form, Submission $submission, array $data): bool
     {
         if (!$form->emailTo) {
@@ -31,8 +34,10 @@ class EmailService extends Component
             // Set from address: prefer the plugin's configured sender, falling
             // back to Craft's system email settings.
             $mailSettings = App::mailSettings();
-            $fromEmail = $this->getSettings()->getSenderEmail() ?? App::parseEnv($mailSettings->fromEmail);
-            $fromName = $this->getSettings()->getSenderName() ?? App::parseEnv($mailSettings->fromName);
+            $parsedFromEmail = App::parseEnv($mailSettings->fromEmail);
+            $parsedFromName = App::parseEnv($mailSettings->fromName);
+            $fromEmail = $this->getSettings()->getSenderEmail() ?? (is_string($parsedFromEmail) ? $parsedFromEmail : null);
+            $fromName = $this->getSettings()->getSenderName() ?? (is_string($parsedFromName) ? $parsedFromName : null);
             if ($fromEmail) {
                 $mail->setFrom($fromName ? [$fromEmail => $fromName] : $fromEmail);
             }
@@ -65,6 +70,9 @@ class EmailService extends Component
         ]);
     }
 
+    /**
+     * @param array<string, mixed> $data
+     */
     private function renderBody(Form $form, Submission $submission, array $data): string
     {
         $html = '<html><body>';

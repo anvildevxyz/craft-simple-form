@@ -14,12 +14,15 @@ class DateFieldType extends FieldType
         return 'Date';
     }
 
-    public function validate($value): array
+    /**
+     * @return string[]
+     */
+    public function validate(mixed $value): array
     {
         $errors = parent::validate($value);
 
         if ($value !== null && $value !== '') {
-            $timestamp = strtotime($value);
+            $timestamp = strtotime((string) $value);
             if (!$timestamp) {
                 $errors[] = 'Please enter a valid date.';
             }
@@ -28,7 +31,7 @@ class DateFieldType extends FieldType
         return $errors;
     }
 
-    public function renderInput(string $name, $value = null): string
+    public function renderInput(string $name, mixed $value = null): string
     {
         return sprintf(
             '<input type="date" %s class="fullwidth">',

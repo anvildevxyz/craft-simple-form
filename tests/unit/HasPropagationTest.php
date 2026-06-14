@@ -11,6 +11,13 @@ use PHPUnit\Framework\TestCase;
  */
 class HasPropagationTest extends TestCase
 {
+    private function readSource(string $relativePath): string
+    {
+        $code = file_get_contents(__DIR__ . '/' . $relativePath);
+        $this->assertNotFalse($code);
+        return $code;
+    }
+
     public function testTraitExists(): void
     {
         $this->assertTrue(trait_exists(\fabianhaef\simpleform\traits\HasPropagation::class));
@@ -18,7 +25,7 @@ class HasPropagationTest extends TestCase
 
     public function testTraitCoversAllPropagationMethods(): void
     {
-        $code = file_get_contents(__DIR__ . '/../../src/traits/HasPropagation.php');
+        $code = $this->readSource('../../src/traits/HasPropagation.php');
         foreach (['All', 'SiteGroup', 'Language'] as $case) {
             $this->assertStringContainsString("PropagationMethod::$case", $code);
         }
@@ -29,13 +36,13 @@ class HasPropagationTest extends TestCase
 
     public function testFormUsesTrait(): void
     {
-        $code = file_get_contents(__DIR__ . '/../../src/elements/Form.php');
+        $code = $this->readSource('../../src/elements/Form.php');
         $this->assertStringContainsString('use HasPropagation;', $code);
     }
 
     public function testFormAfterSaveGuardsSharedWriteButNotPerSiteWrite(): void
     {
-        $code = file_get_contents(__DIR__ . '/../../src/elements/Form.php');
+        $code = $this->readSource('../../src/elements/Form.php');
         // Shared write guarded by !propagating
         $this->assertStringContainsString('if (!$this->propagating)', $code);
         // Per-site upsert into the _sites table

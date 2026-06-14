@@ -4,19 +4,28 @@ namespace fabianhaef\simpleform\elements\db;
 
 use craft\elements\db\ElementQuery;
 use craft\helpers\Db;
+use fabianhaef\simpleform\elements\Form;
+use fabianhaef\simpleform\elements\Submission;
 
+/**
+ * @extends ElementQuery<int, Submission>
+ *
+ * @method Submission[] all($db = null)
+ * @method Submission|null one($db = null)
+ * @method Submission|null nth(int $n, $db = null)
+ */
 class SubmissionQuery extends ElementQuery
 {
     public ?int $formId = null;
     public ?string $readStatus = null;
 
-    public function form($value = null): static
+    public function form(Form|string|null $value = null): static
     {
-        if ($value instanceof \fabianhaef\simpleform\elements\Form) {
+        if ($value instanceof Form) {
             $this->formId = $value->id;
-        } else {
+        } elseif ($value !== null) {
             // Try to get form by handle
-            $form = \fabianhaef\simpleform\elements\Form::find()
+            $form = Form::find()
                 ->handle($value)
                 ->one();
             if ($form) {
@@ -26,13 +35,13 @@ class SubmissionQuery extends ElementQuery
         return $this;
     }
 
-    public function formId($value = null): static
+    public function formId(?int $value = null): static
     {
         $this->formId = $value;
         return $this;
     }
 
-    public function readStatus($value = null): static
+    public function readStatus(?string $value = null): static
     {
         $this->readStatus = $value;
         return $this;
@@ -40,7 +49,7 @@ class SubmissionQuery extends ElementQuery
 
     public function status($value = null): static
     {
-        return $this->readStatus($value);
+        return $this->readStatus(is_array($value) ? ($value[0] ?? null) : $value);
     }
 
     protected function beforePrepare(): bool

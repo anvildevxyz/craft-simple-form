@@ -14,7 +14,10 @@ class SelectFieldType extends FieldType
         return 'Select';
     }
 
-    public function validate($value): array
+    /**
+     * @return string[]
+     */
+    public function validate(mixed $value): array
     {
         $errors = parent::validate($value);
 
@@ -28,6 +31,9 @@ class SelectFieldType extends FieldType
         return $errors;
     }
 
+    /**
+     * @return array<string, string>
+     */
     protected function getOptions(): array
     {
         $options = $this->config['options'] ?? [];
@@ -49,7 +55,7 @@ class SelectFieldType extends FieldType
         return $result;
     }
 
-    public function renderInput(string $name, $value = null): string
+    public function renderInput(string $name, mixed $value = null): string
     {
         $attrs = sprintf('name="%s"', htmlspecialchars($name));
         if ($this->config['required'] ?? false) {

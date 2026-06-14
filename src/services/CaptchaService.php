@@ -40,19 +40,24 @@ class CaptchaService extends Component
         }
 
         if ($token === null) {
-            $token = (string) Craft::$app->getRequest()->getBodyParam(self::TOKEN_PARAM, '');
+            /** @var \craft\web\Request $request */
+            $request = Craft::$app->getRequest();
+            $token = (string) $request->getBodyParam(self::TOKEN_PARAM, '');
         }
 
         if ($token === '') {
             return false;
         }
 
+        /** @var \craft\web\Request $request */
+        $request = Craft::$app->getRequest();
+
         try {
             $response = Craft::createGuzzleClient()->post(self::VERIFY_URL, [
                 'form_params' => [
                     'secret' => $secret,
                     'response' => $token,
-                    'remoteip' => Craft::$app->getRequest()->getUserIP(),
+                    'remoteip' => $request->getUserIP(),
                 ],
             ]);
             $result = json_decode((string) $response->getBody(), true);

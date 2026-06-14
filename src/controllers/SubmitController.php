@@ -14,11 +14,12 @@ use yii\web\Response;
 
 class SubmitController extends Controller
 {
-    public bool $enableCsrfValidation = true;
+    public $enableCsrfValidation = true;
 
     public function actionIndex(): Response
     {
         $this->requirePostRequest();
+        /** @var \craft\web\Request $request */
         $request = Craft::$app->getRequest();
 
         $formHandle = (string) $request->getBodyParam('formHandle', '');
@@ -105,8 +106,9 @@ class SubmitController extends Controller
         $submission = new Submission();
         $submission->formId = $form->id;
         $submission->siteId = Craft::$app->getSites()->getCurrentSite()->id;
-        $submission->data = json_encode($data);
-        $submission->userId = Craft::$app->getUser()->getId();
+        $submission->data = $data;
+        $userId = Craft::$app->getUser()->getId();
+        $submission->userId = $userId !== null ? (int) $userId : null;
         $submission->readStatus = 'new';
 
         // Fire BEFORE_SUBMISSION_SAVE event
@@ -136,10 +138,12 @@ class SubmitController extends Controller
         ]);
     }
 
+    /**
+     * @return array<int, array<string, mixed>>
+     */
     private function getFormFields(int $formId): array
     {
         // Use the current site so the captured label matches the visitor's language.
         return FieldQueryHelper::fieldsForForm($formId);
     }
-
 }

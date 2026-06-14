@@ -18,6 +18,9 @@ trait HasPropagation
 {
     public PropagationMethod $propagationMethod = PropagationMethod::None;
 
+    /**
+     * @return array<int, int|array<string, mixed>>
+     */
     public function getSupportedSites(): array
     {
         $sites = Craft::$app->getSites();

@@ -5,7 +5,15 @@ namespace fabianhaef\simpleform\elements\db;
 use Craft;
 use craft\elements\db\ElementQuery;
 use craft\helpers\Db;
+use fabianhaef\simpleform\elements\Form;
 
+/**
+ * @extends ElementQuery<int, Form>
+ *
+ * @method Form[] all($db = null)
+ * @method Form|null one($db = null)
+ * @method Form|null nth(int $n, $db = null)
+ */
 class FormQuery extends ElementQuery
 {
     public ?string $handle = null;

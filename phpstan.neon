@@ -1,0 +1,30 @@
+includes:
+    - vendor/craftcms/phpstan/phpstan.neon
+
+parameters:
+    level: 7
+    paths:
+        - src
+        - tests/unit
+    excludePaths:
+        - vendor
+        # Codeception-backed integration suite + its support/bootstrap: the actor
+        # pattern, _generated helpers, and craft\test framework magic aren't
+        # statically analysable. The unit suite (tests/unit) stays analysed.
+        - tests/integration
+        - tests/smoke
+        - tests/_support
+        - tests/_bootstrap.php
+    bootstrapFiles:
+        - vendor/autoload.php
+        - vendor/craftcms/cms/bootstrap/console.php
+    ignoreErrors:
+        - '#Plugin::\$plugin#'
+        # Craft convention: migrations call `addColumn($table, $name, $this->string())`
+        # where `$this->string()` returns a ColumnSchemaBuilder. Yii's runtime
+        # accepts both string and ColumnSchemaBuilder (via __toString), but the
+        # phpstub is stricter. Suppress the consistent false positive.
+        -
+            message: '#Parameter \#3 \$type of method yii\\db\\Migration::addColumn\(\) expects string, yii\\db\\ColumnSchemaBuilder given#'
+            path: src/migrations/
+    reportUnmatchedIgnoredErrors: false

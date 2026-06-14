@@ -7,7 +7,6 @@ use craft\web\Controller;
 use fabianhaef\simpleform\elements\Form;
 use fabianhaef\simpleform\elements\Submission;
 use fabianhaef\simpleform\helpers\SimpleFormPermissions;
-use yii\base\Action;
 use yii\web\Response;
 
 class SubmissionsController extends Controller
@@ -32,6 +31,7 @@ class SubmissionsController extends Controller
     }
     public function actionIndex(): Response
     {
+        /** @var \craft\web\Request $request */
         $request = Craft::$app->getRequest();
         $formId = $request->getQueryParam('formId');
         $status = $request->getQueryParam('status', 'new');
@@ -82,7 +82,7 @@ class SubmissionsController extends Controller
             ->all();
 
         // Get submission statistics
-        $stats = $this->getSubmissionStats($siteId, $formId);
+        $stats = $this->getSubmissionStats($siteId, $formId !== null ? (int) $formId : null);
 
         return $this->renderTemplate('simple-form/submissions/index', [
             'submissions' => $submissions,
@@ -99,6 +99,9 @@ class SubmissionsController extends Controller
         ]);
     }
 
+    /**
+     * @return array<string, int>
+     */
     private function getSubmissionStats(int $siteId, ?int $formId = null): array
     {
         $db = Craft::$app->getDb();
@@ -132,7 +135,8 @@ class SubmissionsController extends Controller
         }
 
         $form = $submission->getForm();
-        $data = json_decode($submission->data, true) ?? [];
+        // $submission->data is stored as a decoded array (json column).
+        $data = is_array($submission->data) ? $submission->data : [];
 
         return $this->renderTemplate('simple-form/submissions/view', [
             'submission' => $submission,
@@ -144,9 +148,11 @@ class SubmissionsController extends Controller
     public function actionToggleStatus(): Response
     {
         $this->requirePostRequest();
-        $this->requireAjax();
+        $this->requireAcceptsJson();
 
-        $submissionId = Craft::$app->getRequest()->getRequiredBodyParam('submissionId');
+        /** @var \craft\web\Request $request */
+        $request = Craft::$app->getRequest();
+        $submissionId = $request->getRequiredBodyParam('submissionId');
         $siteId = Craft::$app->getSites()->getCurrentSite()->id;
 
         $submission = Submission::find()
