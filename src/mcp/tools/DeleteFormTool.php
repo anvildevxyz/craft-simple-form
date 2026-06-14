@@ -1,0 +1,89 @@
+<?php
+
+namespace fabianhaef\simpleform\mcp\tools;
+
+use Craft;
+use fabianhaef\simpleform\elements\Form;
+use fabianhaef\simpleform\mcp\Scopes;
+
+/**
+ * MCP tool: delete a form (element-wide, all sites).
+ *
+ * Destructive, so it REFUSES unless the caller passes an explicit
+ * `confirm: true`. Routes through the CP's element deletion path
+ * ({@see \Craft::$app}->getElements()->deleteElement()), so Form::afterDelete
+ * cache invalidation and the FK cascade of fields/per-site rows all apply.
+ */
+class DeleteFormTool implements ToolInterface
+{
+    public function name(): string
+    {
+        return 'delete_form';
+    }
+
+    public function description(): string
+    {
+        return 'Delete a Simple Form form and all of its fields (across every site). '
+            . 'DESTRUCTIVE: requires "confirm": true; the call is refused without it.';
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    public function inputSchema(): array
+    {
+        return [
+            'type' => 'object',
+            'properties' => [
+                'id' => ['type' => 'integer', 'description' => 'The form id. Provide id OR handle.'],
+                'handle' => ['type' => 'string', 'description' => 'The form handle. Provide id OR handle.'],
+                'confirm' => [
+                    'type' => 'boolean',
+                    'description' => 'Must be true to actually delete. The call is refused without it.',
+                ],
+            ],
+            'required' => ['confirm'],
+            'additionalProperties' => false,
+        ];
+    }
+
+    public function requiredScope(): string
+    {
+        return Scopes::FORMS_MANAGE;
+    }
+
+    /**
+     * @param array<string, mixed> $arguments
+     * @return array<string, mixed>
+     */
+    public function call(array $arguments): array
+    {
+        if (($arguments['confirm'] ?? false) !== true) {
+            return [
+                'isError' => true,
+                'error' => 'Refused: deleting a form is destructive. Pass "confirm": true to proceed.',
+            ];
+        }
+
+        $query = Form::find()->siteId('*')->status(null)->unique();
+        if (isset($arguments['id'])) {
+            $query->id((int)$arguments['id']);
+        } elseif (isset($arguments['handle']) && is_string($arguments['handle'])) {
+            $query->handle($arguments['handle']);
+        } else {
+            return ['isError' => true, 'error' => 'Provide either "id" or "handle".'];
+        }
+
+        $form = $query->one();
+        if (!$form instanceof Form) {
+            return ['isError' => true, 'error' => 'Form not found.'];
+        }
+
+        $formId = (int)$form->id;
+        if (!Craft::$app->getElements()->deleteElement($form)) {
+            return ['isError' => true, 'errors' => $form->getErrors()];
+        }
+
+        return ['deleted' => true, 'id' => $formId];
+    }
+}

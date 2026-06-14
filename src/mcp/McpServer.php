@@ -3,8 +3,16 @@
 namespace fabianhaef\simpleform\mcp;
 
 use Craft;
+use fabianhaef\simpleform\mcp\tools\AddFieldTool;
+use fabianhaef\simpleform\mcp\tools\CreateFormTool;
+use fabianhaef\simpleform\mcp\tools\DeleteFieldTool;
+use fabianhaef\simpleform\mcp\tools\DeleteFormTool;
+use fabianhaef\simpleform\mcp\tools\GetFormTool;
 use fabianhaef\simpleform\mcp\tools\ListFormsTool;
+use fabianhaef\simpleform\mcp\tools\ReorderFieldsTool;
 use fabianhaef\simpleform\mcp\tools\ToolInterface;
+use fabianhaef\simpleform\mcp\tools\UpdateFieldTool;
+use fabianhaef\simpleform\mcp\tools\UpdateFormTool;
 
 /**
  * The transport-agnostic MCP server: capability handshake, tool listing, and
@@ -41,7 +49,16 @@ class McpServer
     private function tools(): array
     {
         return [
+            // Form management (#65) — scope: forms:manage.
             new ListFormsTool(),
+            new GetFormTool(),
+            new CreateFormTool(),
+            new UpdateFormTool(),
+            new DeleteFormTool(),
+            new AddFieldTool(),
+            new UpdateFieldTool(),
+            new ReorderFieldsTool(),
+            new DeleteFieldTool(),
         ];
     }
 
@@ -200,6 +217,14 @@ class McpServer
             ]);
         }
 
+        // A tool can flag a DOMAIN error (e.g. validation failure, not-found,
+        // missing confirmation) by returning an "isError" key in its structured
+        // result. Per MCP this is reported in-band (isError:true) with the
+        // structured detail preserved — NOT as a JSON-RPC protocol error and
+        // never a 500 — so the caller sees the actual validation errors and can
+        // correct its input. Anything else is a successful call.
+        $isError = ($structured['isError'] ?? false) === true;
+
         // Per MCP: structured content SHOULD also be serialised into a text
         // content block for backwards compatibility.
         return $this->result($id, [
@@ -208,7 +233,7 @@ class McpServer
                 'text' => (string)json_encode($structured, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES),
             ]],
             'structuredContent' => $structured,
-            'isError' => false,
+            'isError' => $isError,
         ]);
     }
 
