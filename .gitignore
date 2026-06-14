@@ -14,3 +14,6 @@ package-lock.json
 tests/_output/
 tests/_craft/storage/
 tests/_support/_generated/
+
+# Published asset-bundle copies (regenerated from src/web/assets at runtime)
+cpresources/

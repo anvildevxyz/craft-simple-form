@@ -1,0 +1,54 @@
+.simple-form {
+    max-width: 500px;
+    margin: 20px 0;
+}
+.simple-form-group {
+    margin-bottom: 20px;
+}
+.simple-form-group label {
+    display: block;
+    margin-bottom: 5px;
+    font-weight: bold;
+}
+.simple-form-group .required {
+    color: red;
+}
+.simple-form-group .help-text {
+    display: block;
+    margin-top: 5px;
+    font-size: 0.9em;
+    color: #666;
+}
+.simple-form-group input[type="text"],
+.simple-form-group input[type="email"],
+.simple-form-group input[type="date"],
+.simple-form-group input[type="number"],
+.simple-form-group textarea,
+.simple-form-group select {
+    width: 100%;
+    padding: 10px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    font-family: inherit;
+    font-size: 1em;
+}
+.simple-form-group textarea {
+    resize: vertical;
+}
+.simple-form-submit-btn {
+    background-color: #0066cc;
+    color: white;
+    padding: 10px 20px;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 1em;
+}
+.simple-form-submit-btn:hover {
+    background-color: #0052a3;
+}
+.simple-form .form-error {
+    color: red;
+    font-size: 0.9em;
+    margin-top: 5px;
+}

@@ -5,8 +5,8 @@ namespace fabianhaef\simpleform;
 use Craft;
 use craft\helpers\App;
 use fabianhaef\simpleform\elements\Form;
-use fabianhaef\simpleform\helpers\FieldQueryHelper;
 use fabianhaef\simpleform\models\Settings;
+use fabianhaef\simpleform\web\assets\form\FormAsset;
 use Twig\Extension\AbstractExtension;
 use Twig\TwigFunction;
 
@@ -43,8 +43,11 @@ class TwigExtension extends AbstractExtension
 
         $fieldTypeRegistry = Plugin::getInstance()->getFieldTypeRegistry();
 
-        // Get form fields with the current site's translatable label/helpText.
-        $fields = FieldQueryHelper::fieldsForForm((int)$form->id);
+        // Resolved field set (decoded config + per-site label/helpText), served
+        // from the structure cache when enabled. The CSRF input and captcha
+        // markup below are injected per-request and are NOT part of this cache.
+        $siteId = Craft::$app->getSites()->getCurrentSite()->id;
+        $fields = Plugin::getInstance()->getFormStructure()->getFieldSet((int)$form->id, $siteId);
 
         $html = '<form class="simple-form" method="POST" action="' . Craft::$app->getUrlManager()->createUrl('simple-form/submit') . '">';
         $html .= Craft::$app->getView()->renderString('{{ csrfInput() }}');
@@ -94,99 +97,41 @@ class TwigExtension extends AbstractExtension
 
         $html .= '</form>';
 
-        // Add CSS
-        $html .= '<style>
-            .simple-form {
-                max-width: 500px;
-                margin: 20px 0;
-            }
-            .simple-form-group {
-                margin-bottom: 20px;
-            }
-            .simple-form-group label {
-                display: block;
-                margin-bottom: 5px;
-                font-weight: bold;
-            }
-            .simple-form-group .required {
-                color: red;
-            }
-            .simple-form-group .help-text {
-                display: block;
-                margin-top: 5px;
-                font-size: 0.9em;
-                color: #666;
-            }
-            .simple-form-group input[type="text"],
-            .simple-form-group input[type="email"],
-            .simple-form-group input[type="date"],
-            .simple-form-group input[type="number"],
-            .simple-form-group textarea,
-            .simple-form-group select {
-                width: 100%;
-                padding: 10px;
-                border: 1px solid #ccc;
-                border-radius: 4px;
-                font-family: inherit;
-                font-size: 1em;
-            }
-            .simple-form-group textarea {
-                resize: vertical;
-            }
-            .simple-form-submit-btn {
-                background-color: #0066cc;
-                color: white;
-                padding: 10px 20px;
-                border: none;
-                border-radius: 4px;
-                cursor: pointer;
-                font-size: 1em;
-            }
-            .simple-form-submit-btn:hover {
-                background-color: #0052a3;
-            }
-        </style>';
-
-        // Add JS for form submission and validation
-        $html .= '<script>
-            document.querySelectorAll(".simple-form").forEach(form => {
-                form.addEventListener("submit", function(e) {
-                    e.preventDefault();
-                    const formData = new FormData(form);
-                    fetch(form.action, {
-                        method: "POST",
-                        body: formData,
-                        headers: {
-                            "X-Requested-With": "XMLHttpRequest"
-                        }
-                    })
-                    .then(response => response.json())
-                    .then(data => {
-                        if (data.success) {
-                            alert(data.message || "Form submitted successfully!");
-                            form.reset();
-                        } else if (data.errors) {
-                            Object.keys(data.errors).forEach(fieldKey => {
-                                const errorMessages = data.errors[fieldKey];
-                                const fieldElement = form.querySelector("[name=\"" + fieldKey + "\"]");
-                                if (fieldElement) {
-                                    const errorDiv = document.createElement("div");
-                                    errorDiv.className = "form-error";
-                                    errorDiv.style.color = "red";
-                                    errorDiv.style.fontSize = "0.9em";
-                                    errorDiv.style.marginTop = "5px";
-                                    errorDiv.innerHTML = errorMessages.join("<br>");
-                                    fieldElement.parentNode.appendChild(errorDiv);
-                                }
-                            });
-                        }
-                    })
-                    .catch(error => console.error("Form submission error:", error));
-                });
-            });
-        </script>';
+        // Form CSS/JS: registered as a cache-bustable asset bundle by default
+        // (no asset weight on form-less pages), with an inline escape hatch.
+        $html .= $this->renderAssets($settings);
 
         return $html;
+    }
+
+    /**
+     * Output the form's CSS/JS.
+     *
+     * By default this registers the {@see FormAsset} bundle (versioned,
+     * browser-cacheable, only loaded on pages that render a form) and returns an
+     * empty string. When the `inlineFormAssets` setting is on — or when no
+     * active web View is available to register against — it falls back to
+     * emitting the same CSS/JS inline so output stays self-contained.
+     */
+    private function renderAssets(Settings $settings): string
+    {
+        $view = Craft::$app->getView();
+
+        if (!$settings->inlineFormAssets) {
+            try {
+                $view->registerAssetBundle(FormAsset::class);
+                return '';
+            } catch (\Throwable $e) {
+                // Fall through to inline output (e.g. console/test contexts where
+                // the asset manager can't publish).
+                Craft::warning('Falling back to inline form assets: ' . $e->getMessage(), 'simple-form');
+            }
+        }
+
+        $css = @file_get_contents(FormAsset::distPath('css/simple-form.css')) ?: '';
+        $js = @file_get_contents(FormAsset::distPath('js/simple-form.js')) ?: '';
+
+        return '<style>' . $css . '</style>' . '<script>' . $js . '</script>';
     }
 
     /**
