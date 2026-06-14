@@ -6,6 +6,7 @@ use Craft;
 use craft\web\Controller;
 use fabianhaef\simpleform\elements\Form;
 use fabianhaef\simpleform\elements\Submission;
+use fabianhaef\simpleform\events\SubmissionEvent;
 use fabianhaef\simpleform\Plugin;
 use fabianhaef\simpleform\services\EmailService;
 use yii\web\Response;
@@ -84,12 +85,20 @@ class SubmitController extends Controller
         $submission->userId = Craft::$app->getUser()->getId();
         $submission->readStatus = 'new';
 
+        // Fire BEFORE_SUBMISSION_SAVE event
+        $event = new SubmissionEvent($submission, $form, $data, true);
+        Plugin::getInstance()->trigger(Plugin::EVENT_BEFORE_SUBMISSION_SAVE, $event);
+
         if (!Craft::$app->getElements()->saveElement($submission)) {
             return $this->asJson([
                 'success' => false,
                 'errors' => ['general' => ['Failed to save submission']],
             ]);
         }
+
+        // Fire AFTER_SUBMISSION_SAVE event
+        $event = new SubmissionEvent($submission, $form, $data, true);
+        Plugin::getInstance()->trigger(Plugin::EVENT_AFTER_SUBMISSION_SAVE, $event);
 
         // Send email if configured
         if ($form->emailTo) {
