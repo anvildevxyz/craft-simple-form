@@ -1,0 +1,66 @@
+<?php
+
+/**
+ * German translations for Simple Form.
+ *
+ * Machine-translated, English source string as key. Pending native review.
+ */
+
+return [
+    'Simple Form' => 'Simple Form',
+    'Forms' => 'Formulare',
+    'Submissions' => 'Einsendungen',
+    'New Form' => 'Neues Formular',
+    'Edit Form' => 'Formular bearbeiten',
+    'Create Form' => 'Formular erstellen',
+    'Delete this form?' => 'Dieses Formular löschen?',
+    'No forms yet.' => 'Noch keine Formulare.',
+    'Form' => 'Formular',
+    'Name' => 'Name',
+    'Handle' => 'Handle',
+    'Title' => 'Titel',
+    'Description' => 'Beschreibung',
+    'Email To' => 'E-Mail an',
+    'Email Subject' => 'E-Mail-Betreff',
+    'Email Reply-To' => 'E-Mail-Antwortadresse',
+    'Date Created' => 'Erstellungsdatum',
+    'Save' => 'Speichern',
+    'Delete' => 'Löschen',
+    'Settings' => 'Einstellungen',
+    'Settings saved.' => 'Einstellungen gespeichert.',
+    'Couldn’t save settings.' => 'Einstellungen konnten nicht gespeichert werden.',
+    'Captcha verification failed. Please try again.' => 'Captcha-Überprüfung fehlgeschlagen. Bitte versuchen Sie es erneut.',
+    'reCAPTCHA v3 Minimum Score' => 'reCAPTCHA v3 Mindestpunktzahl',
+    'View form schemas' => 'Formularschemata anzeigen',
+    'Submit forms' => 'Formulare absenden',
+
+    // MCP server settings
+    'MCP Server' => 'MCP-Server',
+    'Expose Simple Form to MCP (Model Context Protocol) clients over a token-authenticated HTTP endpoint. Disabled by default.' => 'Simple Form für MCP-Clients (Model Context Protocol) über einen token-authentifizierten HTTP-Endpunkt verfügbar machen. Standardmäßig deaktiviert.',
+    'Enable MCP Server' => 'MCP-Server aktivieren',
+    'When off, the endpoint at simple-form/mcp returns 404 and processes nothing.' => 'Wenn deaktiviert, gibt der Endpunkt unter simple-form/mcp 404 zurück und verarbeitet nichts.',
+    'Endpoint:' => 'Endpunkt:',
+    'New token secret' => 'Neues Token-Geheimnis',
+    'Copy this now. It is stored only as a hash and will never be shown again.' => 'Kopieren Sie es jetzt. Es wird nur als Hash gespeichert und nie wieder angezeigt.',
+    'Bearer token' => 'Bearer-Token',
+    'Tokens' => 'Tokens',
+    'No tokens yet.' => 'Noch keine Tokens.',
+    'Label' => 'Bezeichnung',
+    'Scopes' => 'Berechtigungen',
+    'Created' => 'Erstellt',
+    'Last used' => 'Zuletzt verwendet',
+    'never' => 'nie',
+    'Revoke' => 'Widerrufen',
+    'Revoke this token?' => 'Dieses Token widerrufen?',
+    'Create a token' => 'Token erstellen',
+    'A name to recognise this token in logs (e.g. "Claude Desktop"). The secret is never logged.' => 'Ein Name, um dieses Token in Protokollen zu erkennen (z. B. „Claude Desktop“). Das Geheimnis wird nie protokolliert.',
+    'Grant only what this client needs. Deny-by-default: a tool runs only when the token holds its scope.' => 'Gewähren Sie nur, was dieser Client benötigt. Standardmäßig verweigert: Ein Tool läuft nur, wenn das Token die entsprechende Berechtigung besitzt.',
+    'Create token' => 'Token erstellen',
+    'Manage forms (read form definitions)' => 'Formulare verwalten (Formulardefinitionen lesen)',
+    'Read submissions (reserved — no tool yet)' => 'Einsendungen lesen (reserviert – noch kein Tool)',
+    'Export submissions (reserved — no tool yet)' => 'Einsendungen exportieren (reserviert – noch kein Tool)',
+    'Select at least one scope for the token.' => 'Wählen Sie mindestens eine Berechtigung für das Token.',
+    'Token created. Copy it now — it will not be shown again.' => 'Token erstellt. Kopieren Sie es jetzt – es wird nicht erneut angezeigt.',
+    'Token revoked.' => 'Token widerrufen.',
+    'Token not found.' => 'Token nicht gefunden.',
+];

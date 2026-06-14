@@ -1,0 +1,66 @@
+<?php
+
+/**
+ * Spanish translations for Simple Form.
+ *
+ * Machine-translated, English source string as key. Pending native review.
+ */
+
+return [
+    'Simple Form' => 'Simple Form',
+    'Forms' => 'Formularios',
+    'Submissions' => 'Envíos',
+    'New Form' => 'Nuevo formulario',
+    'Edit Form' => 'Editar formulario',
+    'Create Form' => 'Crear formulario',
+    'Delete this form?' => '¿Eliminar este formulario?',
+    'No forms yet.' => 'Aún no hay formularios.',
+    'Form' => 'Formulario',
+    'Name' => 'Nombre',
+    'Handle' => 'Identificador',
+    'Title' => 'Título',
+    'Description' => 'Descripción',
+    'Email To' => 'Enviar correo a',
+    'Email Subject' => 'Asunto del correo',
+    'Email Reply-To' => 'Responder a',
+    'Date Created' => 'Fecha de creación',
+    'Save' => 'Guardar',
+    'Delete' => 'Eliminar',
+    'Settings' => 'Ajustes',
+    'Settings saved.' => 'Ajustes guardados.',
+    'Couldn’t save settings.' => 'No se pudieron guardar los ajustes.',
+    'Captcha verification failed. Please try again.' => 'La verificación del captcha falló. Inténtalo de nuevo.',
+    'reCAPTCHA v3 Minimum Score' => 'Puntuación mínima de reCAPTCHA v3',
+    'View form schemas' => 'Ver esquemas de formulario',
+    'Submit forms' => 'Enviar formularios',
+
+    // MCP server settings
+    'MCP Server' => 'Servidor MCP',
+    'Expose Simple Form to MCP (Model Context Protocol) clients over a token-authenticated HTTP endpoint. Disabled by default.' => 'Exponer Simple Form a clientes MCP (Model Context Protocol) a través de un punto de conexión HTTP autenticado por token. Desactivado de forma predeterminada.',
+    'Enable MCP Server' => 'Activar el servidor MCP',
+    'When off, the endpoint at simple-form/mcp returns 404 and processes nothing.' => 'Cuando está desactivado, el punto de conexión simple-form/mcp devuelve 404 y no procesa nada.',
+    'Endpoint:' => 'Punto de conexión:',
+    'New token secret' => 'Nuevo secreto de token',
+    'Copy this now. It is stored only as a hash and will never be shown again.' => 'Cópialo ahora. Solo se almacena como hash y no se volverá a mostrar.',
+    'Bearer token' => 'Token Bearer',
+    'Tokens' => 'Tokens',
+    'No tokens yet.' => 'Aún no hay tokens.',
+    'Label' => 'Etiqueta',
+    'Scopes' => 'Permisos',
+    'Created' => 'Creado',
+    'Last used' => 'Último uso',
+    'never' => 'nunca',
+    'Revoke' => 'Revocar',
+    'Revoke this token?' => '¿Revocar este token?',
+    'Create a token' => 'Crear un token',
+    'A name to recognise this token in logs (e.g. "Claude Desktop"). The secret is never logged.' => 'Un nombre para reconocer este token en los registros (p. ej. «Claude Desktop»). El secreto nunca se registra.',
+    'Grant only what this client needs. Deny-by-default: a tool runs only when the token holds its scope.' => 'Concede solo lo que este cliente necesita. Denegado por defecto: una herramienta se ejecuta solo cuando el token tiene su permiso.',
+    'Create token' => 'Crear token',
+    'Manage forms (read form definitions)' => 'Gestionar formularios (leer definiciones de formulario)',
+    'Read submissions (reserved — no tool yet)' => 'Leer envíos (reservado: aún sin herramienta)',
+    'Export submissions (reserved — no tool yet)' => 'Exportar envíos (reservado: aún sin herramienta)',
+    'Select at least one scope for the token.' => 'Selecciona al menos un permiso para el token.',
+    'Token created. Copy it now — it will not be shown again.' => 'Token creado. Cópialo ahora: no se volverá a mostrar.',
+    'Token revoked.' => 'Token revocado.',
+    'Token not found.' => 'Token no encontrado.',
+];

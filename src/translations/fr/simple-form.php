@@ -1,0 +1,66 @@
+<?php
+
+/**
+ * French translations for Simple Form.
+ *
+ * Machine-translated, English source string as key. Pending native review.
+ */
+
+return [
+    'Simple Form' => 'Simple Form',
+    'Forms' => 'Formulaires',
+    'Submissions' => 'Soumissions',
+    'New Form' => 'Nouveau formulaire',
+    'Edit Form' => 'Modifier le formulaire',
+    'Create Form' => 'Créer un formulaire',
+    'Delete this form?' => 'Supprimer ce formulaire ?',
+    'No forms yet.' => 'Aucun formulaire pour l’instant.',
+    'Form' => 'Formulaire',
+    'Name' => 'Nom',
+    'Handle' => 'Identifiant',
+    'Title' => 'Titre',
+    'Description' => 'Description',
+    'Email To' => 'E-mail à',
+    'Email Subject' => 'Objet de l’e-mail',
+    'Email Reply-To' => 'Adresse de réponse',
+    'Date Created' => 'Date de création',
+    'Save' => 'Enregistrer',
+    'Delete' => 'Supprimer',
+    'Settings' => 'Paramètres',
+    'Settings saved.' => 'Paramètres enregistrés.',
+    'Couldn’t save settings.' => 'Impossible d’enregistrer les paramètres.',
+    'Captcha verification failed. Please try again.' => 'Échec de la vérification du captcha. Veuillez réessayer.',
+    'reCAPTCHA v3 Minimum Score' => 'Score minimum reCAPTCHA v3',
+    'View form schemas' => 'Voir les schémas de formulaire',
+    'Submit forms' => 'Soumettre des formulaires',
+
+    // MCP server settings
+    'MCP Server' => 'Serveur MCP',
+    'Expose Simple Form to MCP (Model Context Protocol) clients over a token-authenticated HTTP endpoint. Disabled by default.' => 'Exposer Simple Form aux clients MCP (Model Context Protocol) via un point de terminaison HTTP authentifié par jeton. Désactivé par défaut.',
+    'Enable MCP Server' => 'Activer le serveur MCP',
+    'When off, the endpoint at simple-form/mcp returns 404 and processes nothing.' => 'Lorsqu’il est désactivé, le point de terminaison simple-form/mcp renvoie 404 et ne traite rien.',
+    'Endpoint:' => 'Point de terminaison :',
+    'New token secret' => 'Nouveau secret de jeton',
+    'Copy this now. It is stored only as a hash and will never be shown again.' => 'Copiez-le maintenant. Il n’est stocké que sous forme de hachage et ne sera plus jamais affiché.',
+    'Bearer token' => 'Jeton Bearer',
+    'Tokens' => 'Jetons',
+    'No tokens yet.' => 'Aucun jeton pour l’instant.',
+    'Label' => 'Libellé',
+    'Scopes' => 'Portées',
+    'Created' => 'Créé',
+    'Last used' => 'Dernière utilisation',
+    'never' => 'jamais',
+    'Revoke' => 'Révoquer',
+    'Revoke this token?' => 'Révoquer ce jeton ?',
+    'Create a token' => 'Créer un jeton',
+    'A name to recognise this token in logs (e.g. "Claude Desktop"). The secret is never logged.' => 'Un nom pour reconnaître ce jeton dans les journaux (par ex. « Claude Desktop »). Le secret n’est jamais journalisé.',
+    'Grant only what this client needs. Deny-by-default: a tool runs only when the token holds its scope.' => 'N’accordez que ce dont ce client a besoin. Refus par défaut : un outil ne s’exécute que si le jeton détient sa portée.',
+    'Create token' => 'Créer le jeton',
+    'Manage forms (read form definitions)' => 'Gérer les formulaires (lire les définitions de formulaire)',
+    'Read submissions (reserved — no tool yet)' => 'Lire les soumissions (réservé — aucun outil pour l’instant)',
+    'Export submissions (reserved — no tool yet)' => 'Exporter les soumissions (réservé — aucun outil pour l’instant)',
+    'Select at least one scope for the token.' => 'Sélectionnez au moins une portée pour le jeton.',
+    'Token created. Copy it now — it will not be shown again.' => 'Jeton créé. Copiez-le maintenant — il ne sera plus affiché.',
+    'Token revoked.' => 'Jeton révoqué.',
+    'Token not found.' => 'Jeton introuvable.',
+];

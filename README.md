@@ -58,6 +58,15 @@ $fields = $form->getFields();
 // Render fields however you like...
 ```
 
+## Translations
+
+The control-panel UI ships with English plus machine-translated **German, French,
+Spanish, and Italian** catalogs (`src/translations/`). These use the English
+source string as the key, so any untranslated string degrades gracefully to
+English. The non-English catalogs are machine-translated and **pending native
+review** — corrections welcome. A unit test enforces key parity across all
+catalogs so they can't silently drift.
+
 ## Documentation
 
 Developer documentation lives in **[`docs/`](docs/README.md)** — testing,
