@@ -40,7 +40,7 @@ class Plugin extends BasePlugin
     public const EVENT_BEFORE_SUBMISSION_SAVE = 'beforeSubmissionSave';
     public const EVENT_AFTER_SUBMISSION_SAVE = 'afterSubmissionSave';
 
-    public string $schemaVersion = '2.3.0';
+    public string $schemaVersion = '2.4.0';
     public bool $hasCpSection = true;
     public bool $hasCpSettings = false;
     public bool $hasCpPermissions = true;

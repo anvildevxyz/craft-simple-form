@@ -2,6 +2,8 @@
 
 namespace fabianhaef\simpleform\fields;
 
+use Craft;
+
 class CheckboxFieldType extends FieldType
 {
     public static function getType(): string
@@ -26,7 +28,7 @@ class CheckboxFieldType extends FieldType
             $values = is_array($value) ? $value : [$value];
             foreach ($values as $v) {
                 if (!in_array($v, array_keys($options))) {
-                    $errors[] = 'Please select valid options.';
+                    $errors[] = Craft::t('simple-form', 'Please select valid options.');
                     break;
                 }
             }

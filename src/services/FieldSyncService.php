@@ -95,6 +95,9 @@ class FieldSyncService extends Component
                 $label = trim((string)$item['label']);
                 $required = !empty($item['required']);
                 $helpText = trim((string)($item['helpText'] ?? '')) ?: null;
+                // Optional per-site validation message override (null falls back to
+                // the field type's localized default at submit time).
+                $errorMessage = trim((string)($item['errorMessage'] ?? '')) ?: null;
                 $config = is_array($item['config'] ?? null) ? $item['config'] : [];
                 // Strip per-option `siteLabel` out of the shared config into a
                 // value => label map persisted on the current site only. Because
@@ -121,6 +124,7 @@ class FieldSyncService extends Component
                         'label' => $label,
                         'helpText' => $helpText,
                         'optionLabels' => $optionLabels ?: null,
+                        'errorMessage' => $errorMessage,
                         'dateCreated' => $now,
                         'dateUpdated' => $now,
                         'uid' => StringHelper::UUID(),
@@ -128,6 +132,7 @@ class FieldSyncService extends Component
                         'label' => $label,
                         'helpText' => $helpText,
                         'optionLabels' => $optionLabels ?: null,
+                        'errorMessage' => $errorMessage,
                         'dateUpdated' => $now,
                     ])->execute();
 
@@ -156,6 +161,9 @@ class FieldSyncService extends Component
                             // Option labels were authored on the editing site; other
                             // sites fall back to the source labels until translated.
                             'optionLabels' => $siteId === $currentSiteId ? ($optionLabels ?: null) : null,
+                            // The override applies to the editing site; other sites
+                            // fall back to the localized default until customized.
+                            'errorMessage' => $siteId === $currentSiteId ? $errorMessage : null,
                             'dateCreated' => $now,
                             'dateUpdated' => $now,
                             'uid' => StringHelper::UUID(),

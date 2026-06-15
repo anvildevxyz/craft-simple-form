@@ -2,6 +2,8 @@
 
 namespace fabianhaef\simpleform\fields;
 
+use Craft;
+
 class DateFieldType extends FieldType
 {
     public static function getType(): string
@@ -24,7 +26,7 @@ class DateFieldType extends FieldType
         if ($this->hasValue($value)) {
             $timestamp = strtotime((string) $value);
             if (!$timestamp) {
-                $errors[] = 'Please enter a valid date.';
+                $errors[] = Craft::t('simple-form', 'Please enter a valid date.');
             }
         }
 

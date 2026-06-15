@@ -2,6 +2,8 @@
 
 namespace fabianhaef\simpleform\fields;
 
+use Craft;
+
 class EmailFieldType extends FieldType
 {
     public static function getType(): string
@@ -23,7 +25,7 @@ class EmailFieldType extends FieldType
 
         if ($this->hasValue($value)) {
             if (!filter_var($value, FILTER_VALIDATE_EMAIL)) {
-                $errors[] = 'Please enter a valid email address.';
+                $errors[] = Craft::t('simple-form', 'Please enter a valid email address.');
             }
         }
 

@@ -2,6 +2,8 @@
 
 namespace fabianhaef\simpleform\fields;
 
+use Craft;
+
 class NumberFieldType extends FieldType
 {
     public static function getType(): string
@@ -23,17 +25,17 @@ class NumberFieldType extends FieldType
 
         if ($this->hasValue($value)) {
             if (!is_numeric($value)) {
-                $errors[] = 'Please enter a valid number.';
+                $errors[] = Craft::t('simple-form', 'Please enter a valid number.');
             } else {
                 $numValue = (float) $value;
                 if ($min = $this->config['min'] ?? null) {
                     if ($numValue < $min) {
-                        $errors[] = "Must be at least $min.";
+                        $errors[] = Craft::t('simple-form', 'Must be at least {min}.', ['min' => $min]);
                     }
                 }
                 if ($max = $this->config['max'] ?? null) {
                     if ($numValue > $max) {
-                        $errors[] = "Must be no more than $max.";
+                        $errors[] = Craft::t('simple-form', 'Must be no more than {max}.', ['max' => $max]);
                     }
                 }
             }

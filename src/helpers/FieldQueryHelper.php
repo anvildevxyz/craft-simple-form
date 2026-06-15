@@ -57,6 +57,7 @@ class FieldQueryHelper
                 'fs.label',
                 'fs.helpText',
                 'fs.optionLabels',
+                'fs.errorMessage',
             ])
             ->from(['f' => '{{%simpleform_fields}}'])
             ->leftJoin(

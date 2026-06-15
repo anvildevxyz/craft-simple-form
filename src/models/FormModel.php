@@ -30,7 +30,8 @@ class FormModel extends Model
                 $rawField['type'],
                 $rawField['name'],
                 $rawField['label'],
-                $rawField['config'] // already decoded array
+                $rawField['config'], // already decoded array
+                $rawField['errorMessage'] ?? null // per-site validation message override
             );
         }
     }

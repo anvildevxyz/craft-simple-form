@@ -68,6 +68,7 @@ abstract class SimpleFormTestCase extends TestCase
         array $config = [],
         ?array $siteIds = null,
         string $helpText = '',
+        ?string $errorMessage = null,
     ): int {
         $db = Craft::$app->getDb();
         $now = date('Y-m-d H:i:s');
@@ -94,6 +95,7 @@ abstract class SimpleFormTestCase extends TestCase
                 'siteId' => $siteId,
                 'label' => $label,
                 'helpText' => $helpText ?: null,
+                'errorMessage' => $errorMessage,
                 'dateCreated' => $now,
                 'dateUpdated' => $now,
                 'uid' => StringHelper::UUID(),

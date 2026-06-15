@@ -217,6 +217,7 @@
             label: f.label || '',
             required: !!f.required,
             helpText: f.helpText || '',
+            errorMessage: f.errorMessage || '',
             config: (f.config && typeof f.config === 'object') ? f.config : {}
         };
     }
@@ -248,7 +249,7 @@
         hidden.value = JSON.stringify(fields.map(function(f) {
             return {
                 id: f.id, type: f.type, handle: f.handle, label: f.label,
-                required: f.required, helpText: f.helpText, config: f.config
+                required: f.required, helpText: f.helpText, errorMessage: f.errorMessage, config: f.config
             };
         }));
     }
@@ -385,6 +386,19 @@
         ta.addEventListener('input', function() { f.helpText = ta.value; serialize(); });
         helpRow._input.appendChild(ta);
         inspector.appendChild(helpRow);
+
+        // Custom validation message (per-site override). Blank falls back to the
+        // field type's localized default message at submit time.
+        var errRow = row('Error Message');
+        var errInput = textInput(f.errorMessage, function(v) { f.errorMessage = v; serialize(); });
+        errInput.placeholder = 'Leave blank to use the default';
+        errRow._input.appendChild(errInput);
+        var errHint = document.createElement('div'); errHint.className = 'instructions';
+        var errHintP = document.createElement('p');
+        errHintP.textContent = 'Shown for this site when the field fails validation. Leave blank to use the default (translated) message.';
+        errHint.appendChild(errHintP);
+        errRow._input.appendChild(errHint);
+        inspector.appendChild(errRow);
 
         renderTypeConfig(f);
     }

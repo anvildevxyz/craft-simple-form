@@ -210,6 +210,7 @@ class FormsController extends Controller
             'label' => (string)($f['label'] ?? $f['name']),
             'required' => (bool)$f['required'],
             'helpText' => (string)($f['helpText'] ?? ''),
+            'errorMessage' => (string)($f['errorMessage'] ?? ''),
             'config' => self::configWithSiteLabels(
                 is_array($f['config'] ?? null) ? $f['config'] : [],
                 is_array($f['optionLabels'] ?? null) ? $f['optionLabels'] : []

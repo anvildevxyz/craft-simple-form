@@ -2,6 +2,8 @@
 
 namespace fabianhaef\simpleform\fields;
 
+use Craft;
+
 abstract class FieldType
 {
     /** @var array<string, mixed> */
@@ -36,7 +38,7 @@ abstract class FieldType
 
         if ($this->config['required'] ?? false) {
             if (empty($value)) {
-                $errors[] = 'This field is required.';
+                $errors[] = Craft::t('simple-form', 'This field is required.');
             }
         }
 
@@ -58,12 +60,12 @@ abstract class FieldType
         $errors = [];
         if ($minLength = $this->config['minLength'] ?? null) {
             if (strlen($value) < $minLength) {
-                $errors[] = "Must be at least $minLength characters.";
+                $errors[] = Craft::t('simple-form', 'Must be at least {min} characters.', ['min' => $minLength]);
             }
         }
         if ($maxLength = $this->config['maxLength'] ?? null) {
             if (strlen($value) > $maxLength) {
-                $errors[] = "Must be no more than $maxLength characters.";
+                $errors[] = Craft::t('simple-form', 'Must be no more than {max} characters.', ['max' => $maxLength]);
             }
         }
         return $errors;
@@ -104,7 +106,7 @@ abstract class FieldType
     protected function validateOptionMembership(mixed $value): array
     {
         if (!in_array($value, array_keys($this->getOptions()))) {
-            return ['Please select a valid option.'];
+            return [Craft::t('simple-form', 'Please select a valid option.')];
         }
         return [];
     }

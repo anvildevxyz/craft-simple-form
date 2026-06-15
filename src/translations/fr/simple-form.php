@@ -63,4 +63,16 @@ return [
     'Token created. Copy it now — it will not be shown again.' => 'Jeton créé. Copiez-le maintenant — il ne sera plus affiché.',
     'Token revoked.' => 'Jeton révoqué.',
     'Token not found.' => 'Jeton introuvable.',
+
+    // Field validation / error messages (front-end submissions)
+    'This field is required.' => 'Ce champ est obligatoire.',
+    'Must be at least {min} characters.' => 'Doit comporter au moins {min} caractères.',
+    'Must be no more than {max} characters.' => 'Ne doit pas dépasser {max} caractères.',
+    'Please select a valid option.' => 'Veuillez sélectionner une option valide.',
+    'Please select valid options.' => 'Veuillez sélectionner des options valides.',
+    'Please enter a valid email address.' => 'Veuillez saisir une adresse e-mail valide.',
+    'Please enter a valid number.' => 'Veuillez saisir un nombre valide.',
+    'Must be at least {min}.' => 'Doit être au moins {min}.',
+    'Must be no more than {max}.' => 'Ne doit pas dépasser {max}.',
+    'Please enter a valid date.' => 'Veuillez saisir une date valide.',
 ];

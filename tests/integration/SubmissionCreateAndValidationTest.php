@@ -90,6 +90,63 @@ class SubmissionCreateAndValidationTest extends SimpleFormTestCase
         $this->assertSame($before, $after, 'No submission row should be stored when validation fails');
     }
 
+    public function testPerSiteOverrideReplacesDefaultValidationMessage(): void
+    {
+        $this->requireCraft();
+
+        $form = $this->createForm('Override', 'overrideErrForm', 'Override');
+        // Seed a per-site custom error message for the required field.
+        $fieldId = $this->createField(
+            $form->id,
+            'text',
+            'fullName',
+            'Full Name',
+            true,
+            [],
+            null,
+            '',
+            'Please tell us your name.',
+        );
+
+        $request = Craft::$app->getRequest();
+        $request->setBodyParams([
+            'formHandle' => 'overrideErrForm',
+            'field_' . $fieldId => '',
+        ]);
+
+        $result = $this->submissionService()->createFromRequest($form, $request);
+
+        $this->assertNotNull($result['errors']);
+        // The editor's wording replaces the field type's default message.
+        $this->assertSame(['Please tell us your name.'], $result['errors']['field_' . $fieldId]);
+    }
+
+    public function testDefaultRequiredMessageIsLocalizedToActiveLanguage(): void
+    {
+        $this->requireCraft();
+
+        $form = $this->createForm('Localized', 'localizedErrForm', 'Localized');
+        // No per-site override -> the field type's default must localize.
+        $fieldId = $this->createField($form->id, 'text', 'fullName', 'Full Name', true);
+
+        $request = Craft::$app->getRequest();
+        $request->setBodyParams([
+            'formHandle' => 'localizedErrForm',
+            'field_' . $fieldId => '',
+        ]);
+
+        $original = Craft::$app->language;
+        Craft::$app->language = 'de';
+        try {
+            $result = $this->submissionService()->createFromRequest($form, $request);
+        } finally {
+            Craft::$app->language = $original;
+        }
+
+        $this->assertNotNull($result['errors']);
+        $this->assertSame(['Dieses Feld ist erforderlich.'], $result['errors']['field_' . $fieldId]);
+    }
+
     public function testUpdateStatusRoundTrips(): void
     {
         $this->requireCraft();

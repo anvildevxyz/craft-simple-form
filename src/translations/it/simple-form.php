@@ -63,4 +63,16 @@ return [
     'Token created. Copy it now — it will not be shown again.' => 'Token creato. Copialo ora — non verrà più mostrato.',
     'Token revoked.' => 'Token revocato.',
     'Token not found.' => 'Token non trovato.',
+
+    // Field validation / error messages (front-end submissions)
+    'This field is required.' => 'Questo campo è obbligatorio.',
+    'Must be at least {min} characters.' => 'Deve contenere almeno {min} caratteri.',
+    'Must be no more than {max} characters.' => 'Non deve superare i {max} caratteri.',
+    'Please select a valid option.' => 'Seleziona un\'opzione valida.',
+    'Please select valid options.' => 'Seleziona opzioni valide.',
+    'Please enter a valid email address.' => 'Inserisci un indirizzo email valido.',
+    'Please enter a valid number.' => 'Inserisci un numero valido.',
+    'Must be at least {min}.' => 'Deve essere almeno {min}.',
+    'Must be no more than {max}.' => 'Non deve superare {max}.',
+    'Please enter a valid date.' => 'Inserisci una data valida.',
 ];
