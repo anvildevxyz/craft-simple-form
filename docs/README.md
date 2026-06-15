@@ -3,6 +3,12 @@
 The single entry point for Simple Form's developer documentation. (User-facing
 overview and installation live in the [project README](../README.md).)
 
+## Features
+
+- **[Conditional logic](conditional-logic.md)** — show/hide fields and make them
+  conditionally required based on other fields' values, with live client-side
+  evaluation and authoritative server-side enforcement.
+
 ## Testing
 
 - **[Running tests](testing/RUNNING_TESTS.md)** — the canonical, up-to-date guide
