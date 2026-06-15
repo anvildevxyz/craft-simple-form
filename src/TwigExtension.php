@@ -77,7 +77,17 @@ class TwigExtension extends AbstractExtension
             $helpText = $field['helpText'] ?? '';
             $fieldName = 'field_' . $field['id'];
 
-            $html .= '<div class="simple-form-group">';
+            // Tag every group with its field handle so the front-end evaluator
+            // can build a handle => value map; carry the conditional rules (when
+            // enabled) on the group so it can show/hide and toggle required live.
+            $groupAttrs = ' data-sf-handle="' . htmlspecialchars((string) $field['name'], ENT_QUOTES) . '"';
+            $conditional = $fieldConfig['conditional'] ?? null;
+            if (is_array($conditional) && !empty($conditional['enabled'])) {
+                $groupAttrs .= ' data-sf-conditional="'
+                    . htmlspecialchars((string) json_encode($conditional), ENT_QUOTES) . '"';
+            }
+
+            $html .= '<div class="simple-form-group"' . $groupAttrs . '>';
             if ($label) {
                 $required = !empty($fieldConfig['required']) ? ' <span class="required">*</span>' : '';
                 $html .= '<label for="' . htmlspecialchars($fieldName) . '">' . htmlspecialchars($label) . $required . '</label>';
