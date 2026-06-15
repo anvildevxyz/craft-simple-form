@@ -15,7 +15,7 @@ class Submission extends Element
     /** @var array<string, mixed>|null */
     public ?array $data = null;
     public ?int $userId = null;
-    public string $readStatus = 'new';
+    public string $readStatus = SubmissionStatus::NEW;
 
     public static function displayName(): string
     {
@@ -154,6 +154,9 @@ class Submission extends Element
         ];
     }
 
+    /**
+     * @return list<string>
+     */
     protected static function defineDefaultTableAttributes(string $source): array
     {
         return ['form', 'dateCreated', 'readStatus'];

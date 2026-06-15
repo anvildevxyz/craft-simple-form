@@ -79,6 +79,9 @@ class Settings extends Model
      */
     public array $mcpTokens = [];
 
+    /**
+     * @return array<string, array{class: class-string, attributes: list<string>}>
+     */
     public function behaviors(): array
     {
         return [
@@ -96,7 +99,7 @@ class Settings extends Model
     }
 
     /**
-     * @return array<int, mixed>
+     * @return array<int, array<array-key, mixed>|\yii\validators\Validator>
      */
     protected function defineRules(): array
     {

@@ -43,6 +43,72 @@ abstract class FieldType
         return $errors;
     }
 
+    protected function hasValue(mixed $value): bool
+    {
+        return $value !== null && $value !== '';
+    }
+
+    /**
+     * Minimum/maximum length check shared by the text-based field types.
+     *
+     * @return string[]
+     */
+    protected function validateLength(string $value): array
+    {
+        $errors = [];
+        if ($minLength = $this->config['minLength'] ?? null) {
+            if (strlen($value) < $minLength) {
+                $errors[] = "Must be at least $minLength characters.";
+            }
+        }
+        if ($maxLength = $this->config['maxLength'] ?? null) {
+            if (strlen($value) > $maxLength) {
+                $errors[] = "Must be no more than $maxLength characters.";
+            }
+        }
+        return $errors;
+    }
+
+    /**
+     * Decode the stored options config (a JSON string or an array of
+     * {value, label}) into a value => label map. Shared by the choice
+     * field types (select, radio, checkbox).
+     *
+     * @return array<string, string>
+     */
+    protected function getOptions(): array
+    {
+        $options = $this->config['options'] ?? [];
+        if (is_string($options)) {
+            $options = json_decode($options, true) ?? [];
+        }
+
+        $result = [];
+        if (is_array($options)) {
+            foreach ($options as $opt) {
+                if (is_array($opt) && isset($opt['value'], $opt['label'])) {
+                    $result[$opt['value']] = $opt['label'];
+                } elseif (is_object($opt) && isset($opt->value, $opt->label)) {
+                    $result[$opt->value] = $opt->label;
+                }
+            }
+        }
+        return $result;
+    }
+
+    /**
+     * Single-value option-membership check shared by select and radio.
+     *
+     * @return string[]
+     */
+    protected function validateOptionMembership(mixed $value): array
+    {
+        if (!in_array($value, array_keys($this->getOptions()))) {
+            return ['Please select a valid option.'];
+        }
+        return [];
+    }
+
     abstract public function renderInput(string $name, mixed $value = null): string;
 
     protected function getInputAttributes(string $name, mixed $value = null): string

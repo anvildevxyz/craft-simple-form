@@ -21,7 +21,7 @@ class CheckboxFieldType extends FieldType
     {
         $errors = parent::validate($value);
 
-        if ($value !== null && $value !== '') {
+        if ($this->hasValue($value)) {
             $options = $this->getOptions();
             $values = is_array($value) ? $value : [$value];
             foreach ($values as $v) {
@@ -33,30 +33,6 @@ class CheckboxFieldType extends FieldType
         }
 
         return $errors;
-    }
-
-    /**
-     * @return array<string, string>
-     */
-    protected function getOptions(): array
-    {
-        $options = $this->config['options'] ?? [];
-        if (is_string($options)) {
-            $options = json_decode($options, true) ?? [];
-        }
-
-        // Convert array of {label, value} objects to keyed array
-        $result = [];
-        if (is_array($options)) {
-            foreach ($options as $opt) {
-                if (is_array($opt) && isset($opt['value'], $opt['label'])) {
-                    $result[$opt['value']] = $opt['label'];
-                } elseif (is_object($opt) && isset($opt->value, $opt->label)) {
-                    $result[$opt->value] = $opt->label;
-                }
-            }
-        }
-        return $result;
     }
 
     public function renderInput(string $name, mixed $value = null): string

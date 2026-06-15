@@ -30,7 +30,6 @@ class FormModel extends Model
                 $rawField['type'],
                 $rawField['name'],
                 $rawField['label'],
-                $rawField['helpText'] ?? '',
                 $rawField['config'] // already decoded array
             );
         }
@@ -41,62 +40,11 @@ class FormModel extends Model
         return $this->form->id;
     }
 
-    public function getTitle(): ?string
-    {
-        return $this->form->title;
-    }
-
-    public function getDescription(): ?string
-    {
-        return $this->form->description;
-    }
-
-    public function getName(): ?string
-    {
-        return $this->form->name;
-    }
-
-    public function getHandle(): ?string
-    {
-        return $this->form->handle;
-    }
-
-    public function getEmailTo(): ?string
-    {
-        return $this->form->emailTo;
-    }
-
-    public function getEmailSubject(): ?string
-    {
-        return $this->form->emailSubject;
-    }
-
-    /**
-     * @return array<string, mixed>
-     */
-    public function getConfig(): array
-    {
-        return [
-            'id' => $this->form->id,
-            'name' => $this->form->name,
-            'handle' => $this->form->handle,
-            'title' => $this->form->title,
-            'description' => $this->form->description,
-            'emailTo' => $this->form->emailTo,
-            'emailSubject' => $this->form->emailSubject,
-        ];
-    }
-
     /**
      * @return array<int, FieldModel>
      */
     public function getFields(): array
     {
         return $this->fields;
-    }
-
-    public function getField(int $id): ?FieldModel
-    {
-        return $this->fields[$id] ?? null;
     }
 }

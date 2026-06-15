@@ -55,12 +55,10 @@ class TwigExtension extends AbstractExtension
 
         $settings = Plugin::getInstance()->getSettings();
 
-        // Add honeypot field when enabled
         if ($settings->enableHoneypot) {
             $html .= '<input type="hidden" name="__honeypot" value="" style="display:none;">';
         }
 
-        // Render form fields
         foreach ($fields as $field) {
             $fieldConfig = $field['config']; // already decoded, with "required" merged in
             $fieldType = $fieldTypeRegistry->getFieldType($field['type'], $fieldConfig);
@@ -88,10 +86,8 @@ class TwigExtension extends AbstractExtension
             $html .= '</div>';
         }
 
-        // Captcha widget when enabled
         $html .= $this->renderCaptcha($settings);
 
-        // Submit button
         $submitText = $options['submitText'] ?? 'Submit';
         $html .= '<button type="submit" class="simple-form-submit-btn">' . htmlspecialchars($submitText) . '</button>';
 

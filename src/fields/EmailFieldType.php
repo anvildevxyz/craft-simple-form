@@ -21,7 +21,7 @@ class EmailFieldType extends FieldType
     {
         $errors = parent::validate($value);
 
-        if ($value !== null && $value !== '') {
+        if ($this->hasValue($value)) {
             if (!filter_var($value, FILTER_VALIDATE_EMAIL)) {
                 $errors[] = 'Please enter a valid email address.';
             }

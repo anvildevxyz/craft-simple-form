@@ -21,17 +21,8 @@ class TextareaFieldType extends FieldType
     {
         $errors = parent::validate($value);
 
-        if ($value !== null && $value !== '') {
-            if ($minLength = $this->config['minLength'] ?? null) {
-                if (strlen((string) $value) < $minLength) {
-                    $errors[] = "Must be at least $minLength characters.";
-                }
-            }
-            if ($maxLength = $this->config['maxLength'] ?? null) {
-                if (strlen((string) $value) > $maxLength) {
-                    $errors[] = "Must be no more than $maxLength characters.";
-                }
-            }
+        if ($this->hasValue($value)) {
+            $errors = array_merge($errors, $this->validateLength((string) $value));
         }
 
         return $errors;

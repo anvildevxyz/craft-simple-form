@@ -21,7 +21,7 @@ class NumberFieldType extends FieldType
     {
         $errors = parent::validate($value);
 
-        if ($value !== null && $value !== '') {
+        if ($this->hasValue($value)) {
             if (!is_numeric($value)) {
                 $errors[] = 'Please enter a valid number.';
             } else {

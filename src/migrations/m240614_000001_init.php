@@ -20,7 +20,7 @@ class m240614_000001_init extends Migration
         ]);
 
         $this->addPrimaryKey(null, '{{%simpleform_forms}}', ['id']);
-        // Handle is shared across sites now, so it is globally unique.
+        // Handle is shared across all sites, so the index is globally unique (not per-site).
         $this->createIndex(null, '{{%simpleform_forms}}', ['handle'], true);
         // The plugin row IS the element; deleting the element cascades here.
         $this->addForeignKey(null, '{{%simpleform_forms}}', ['id'], '{{%elements}}', ['id'], 'CASCADE', 'CASCADE');
@@ -76,7 +76,7 @@ class m240614_000001_init extends Migration
         $this->addForeignKey(null, '{{%simpleform_fields_sites}}', ['fieldId'], '{{%simpleform_fields}}', ['id'], 'CASCADE', 'CASCADE');
         $this->addForeignKey(null, '{{%simpleform_fields_sites}}', ['siteId'], '{{%sites}}', ['id'], 'CASCADE', 'CASCADE');
 
-        // Submissions table — unchanged; formId still resolves to simpleform_forms.id (the element id)
+        // formId references simpleform_forms.id, which is the Form element id.
         $this->createTable('{{%simpleform_submissions}}', [
             'id' => $this->primaryKey(),
             'formId' => $this->integer()->notNull(),

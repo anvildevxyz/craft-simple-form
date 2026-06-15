@@ -21,7 +21,7 @@ class DateFieldType extends FieldType
     {
         $errors = parent::validate($value);
 
-        if ($value !== null && $value !== '') {
+        if ($this->hasValue($value)) {
             $timestamp = strtotime((string) $value);
             if (!$timestamp) {
                 $errors[] = 'Please enter a valid date.';

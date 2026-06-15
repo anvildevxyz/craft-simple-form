@@ -6,6 +6,7 @@ use Craft;
 use craft\web\Controller;
 use fabianhaef\simpleform\elements\Form;
 use fabianhaef\simpleform\elements\Submission;
+use fabianhaef\simpleform\elements\SubmissionStatus;
 use fabianhaef\simpleform\helpers\SimpleFormPermissions;
 use yii\web\Response;
 
@@ -34,7 +35,7 @@ class SubmissionsController extends Controller
         /** @var \craft\web\Request $request */
         $request = Craft::$app->getRequest();
         $formId = $request->getQueryParam('formId');
-        $status = $request->getQueryParam('status', 'new');
+        $status = $request->getQueryParam('status', SubmissionStatus::NEW);
         $search = $request->getQueryParam('search');
         $dateFrom = $request->getQueryParam('dateFrom');
         $dateTo = $request->getQueryParam('dateTo');
@@ -115,9 +116,9 @@ class SubmissionsController extends Controller
 
         return [
             'total' => (int) $db->createCommand($baseQuery, $params)->queryScalar(),
-            'new' => (int) $db->createCommand($baseQuery . ' AND readStatus = :status', array_merge($params, [':status' => 'new']))->queryScalar(),
-            'read' => (int) $db->createCommand($baseQuery . ' AND readStatus = :status', array_merge($params, [':status' => 'read']))->queryScalar(),
-            'archived' => (int) $db->createCommand($baseQuery . ' AND readStatus = :status', array_merge($params, [':status' => 'archived']))->queryScalar(),
+            'new' => (int) $db->createCommand($baseQuery . ' AND readStatus = :status', array_merge($params, [':status' => SubmissionStatus::NEW]))->queryScalar(),
+            'read' => (int) $db->createCommand($baseQuery . ' AND readStatus = :status', array_merge($params, [':status' => SubmissionStatus::READ]))->queryScalar(),
+            'archived' => (int) $db->createCommand($baseQuery . ' AND readStatus = :status', array_merge($params, [':status' => SubmissionStatus::ARCHIVED]))->queryScalar(),
         ];
     }
 
@@ -164,7 +165,7 @@ class SubmissionsController extends Controller
             return $this->asJson(['success' => false, 'error' => 'Submission not found']);
         }
 
-        $statuses = ['new', 'read', 'archived'];
+        $statuses = SubmissionStatus::all();
         $currentIndex = array_search($submission->readStatus, $statuses);
         $nextIndex = ($currentIndex + 1) % count($statuses);
         $submission->readStatus = $statuses[$nextIndex];

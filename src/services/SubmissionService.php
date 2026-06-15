@@ -6,6 +6,7 @@ use Craft;
 use craft\web\Request;
 use fabianhaef\simpleform\elements\Form;
 use fabianhaef\simpleform\elements\Submission;
+use fabianhaef\simpleform\elements\SubmissionStatus;
 use fabianhaef\simpleform\events\SubmissionEvent;
 use fabianhaef\simpleform\models\FormModel;
 use fabianhaef\simpleform\Plugin;
@@ -133,7 +134,7 @@ class SubmissionService extends Component
         $submission->siteId = (int) $siteId;
         $submission->data = $data;
         $submission->userId = isset($context['userId']) ? (int) $context['userId'] : null;
-        $submission->readStatus = 'new';
+        $submission->readStatus = SubmissionStatus::NEW;
 
         // (5) Fire the before-save event (same as the Twig path).
         $beforeEvent = new SubmissionEvent($submission, $form, $data, true);
@@ -162,8 +163,7 @@ class SubmissionService extends Component
 
     public function updateStatus(int $submissionId, string $status): bool
     {
-        $validStatuses = ['new', 'read', 'archived'];
-        if (!in_array($status, $validStatuses)) {
+        if (!SubmissionStatus::isValid($status)) {
             return false;
         }
 
