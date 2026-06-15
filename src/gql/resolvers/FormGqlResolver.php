@@ -64,7 +64,57 @@ final class FormGqlResolver
             'placeholder' => self::stringOrNull($config['placeholder'] ?? null),
             'options' => self::mapOptions($config['options'] ?? null),
             'validation' => self::mapValidation($config, $required),
+            'conditional' => self::mapConditional($config['conditional'] ?? null),
         ];
+    }
+
+    /**
+     * Map the stored conditional block to the GraphQL shape, or null when the
+     * field has no enabled conditional logic.
+     *
+     * @param mixed $conditional
+     * @return array<string, mixed>|null
+     */
+    private static function mapConditional(mixed $conditional): ?array
+    {
+        if (!is_array($conditional) || empty($conditional['enabled'])) {
+            return null;
+        }
+
+        $required = is_array($conditional['required'] ?? null) ? $conditional['required'] : null;
+        $hasRequired = $required !== null && !empty($required['enabled']);
+
+        return [
+            'action' => ($conditional['action'] ?? 'show') === 'hide' ? 'hide' : 'show',
+            'match' => ($conditional['match'] ?? 'all') === 'any' ? 'any' : 'all',
+            'rules' => self::mapRules($conditional['rules'] ?? null),
+            'requiredMatch' => $hasRequired ? (($required['match'] ?? 'all') === 'any' ? 'any' : 'all') : null,
+            'requiredRules' => $hasRequired ? self::mapRules($required['rules'] ?? null) : [],
+        ];
+    }
+
+    /**
+     * @param mixed $rules
+     * @return list<array{field: string, operator: string, value: string|null}>
+     */
+    private static function mapRules(mixed $rules): array
+    {
+        if (!is_array($rules)) {
+            return [];
+        }
+
+        $result = [];
+        foreach ($rules as $rule) {
+            if (is_array($rule) && isset($rule['field'])) {
+                $result[] = [
+                    'field' => (string) $rule['field'],
+                    'operator' => (string) ($rule['operator'] ?? 'eq'),
+                    'value' => isset($rule['value']) ? (string) $rule['value'] : null,
+                ];
+            }
+        }
+
+        return $result;
     }
 
     /**

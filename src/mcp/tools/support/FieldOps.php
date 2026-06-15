@@ -7,6 +7,7 @@ use craft\db\Query;
 use craft\helpers\StringHelper;
 use fabianhaef\simpleform\elements\Form;
 use fabianhaef\simpleform\Plugin;
+use fabianhaef\simpleform\services\FieldSyncService;
 use fabianhaef\simpleform\services\FieldTypeRegistry;
 
 /**
@@ -97,7 +98,75 @@ final class FieldOps
             }
         }
 
+        // Validate conditional logic against the form's full field set (with this
+        // field's candidate state merged in), using the same self-reference /
+        // cycle rules as the CP batch save.
+        if (is_string($handle) && $handle !== '' && isset($config['conditional'])) {
+            $items = self::formFieldItems($formId, $excludeFieldId);
+            $items[] = ['handle' => $handle, 'label' => $label ?? $handle, 'config' => $config];
+            foreach (FieldSyncService::conditionalSetErrors($items) as $condError) {
+                $errors['config'][] = $condError;
+            }
+        }
+
         return $errors;
+    }
+
+    /**
+     * Load the form's existing fields as conditional-validation items
+     * ({handle, config}), optionally excluding one field id (the one being edited).
+     *
+     * @return array<int, array{handle: string, label: string, config: array<string, mixed>}>
+     */
+    private static function formFieldItems(int $formId, ?int $excludeFieldId): array
+    {
+        $query = (new Query())
+            ->select(['id', 'name', 'config'])
+            ->from('{{%simpleform_fields}}')
+            ->where(['formId' => $formId]);
+        if ($excludeFieldId !== null) {
+            $query->andWhere(['not', ['id' => $excludeFieldId]]);
+        }
+
+        $items = [];
+        foreach ($query->all() as $row) {
+            $config = $row['config'] ?? null;
+            if (is_string($config)) {
+                $decoded = json_decode($config, true);
+                $config = is_array($decoded) ? $decoded : [];
+            }
+            $items[] = [
+                'handle' => (string)$row['name'],
+                'label' => (string)$row['name'],
+                'config' => is_array($config) ? $config : [],
+            ];
+        }
+
+        return $items;
+    }
+
+    /**
+     * Prune conditional rules in a field's config that point at a removed field
+     * or at the field itself, keeping persisted MCP-authored rules consistent
+     * with the CP path. Returns the cleaned config.
+     *
+     * @param array<string, mixed> $config
+     * @return array<string, mixed>
+     */
+    private static function sanitizeConditional(array $config, int $formId, string $handle, ?int $excludeFieldId): array
+    {
+        if (!isset($config['conditional'])) {
+            return $config;
+        }
+
+        $validHandles = [$handle => true];
+        foreach (self::formFieldItems($formId, $excludeFieldId) as $item) {
+            if ($item['handle'] !== '') {
+                $validHandles[$item['handle']] = true;
+            }
+        }
+
+        return FieldSyncService::sanitizeConditional($config, $validHandles, $handle);
     }
 
     /**
@@ -111,6 +180,8 @@ final class FieldOps
     {
         $db = Craft::$app->getDb();
         $now = date('Y-m-d H:i:s');
+
+        $config = self::sanitizeConditional($config, $formId, $handle, null);
 
         $maxSort = (new Query())
             ->select(['sortOrder'])
@@ -160,6 +231,8 @@ final class FieldOps
     {
         $db = Craft::$app->getDb();
         $now = date('Y-m-d H:i:s');
+
+        $config = self::sanitizeConditional($config, $formId, $handle, $fieldId);
 
         $db->createCommand()->update('{{%simpleform_fields}}', [
             'name' => $handle,

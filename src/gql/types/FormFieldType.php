@@ -68,6 +68,12 @@ class FormFieldType extends SimpleFormObjectType
                 'type' => Type::nonNull(FieldValidationType::getType()),
                 'description' => 'The validation rules the server enforces on submit.',
             ],
+            'conditional' => [
+                'type' => FieldConditionalType::getType(),
+                'description' => 'Conditional show/hide and conditional-required logic '
+                    . 'for this field, or null when the field is always visible and '
+                    . 'statically required/optional.',
+            ],
         ];
     }
 }

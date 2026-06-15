@@ -65,20 +65,23 @@ class FieldSyncService extends Component
             }
         }
 
-        return array_merge($errors, $this->conditionalErrors($items));
+        return array_merge($errors, self::conditionalSetErrors($items));
     }
 
     /**
-     * Validate conditional rules across the set: a field may not reference
-     * itself, and the dependency graph must be acyclic. References to handles
-     * not in the set are not errors — they are pruned on save (a target field
-     * removed in the same edit). Self-reference and cycles are hard errors
+     * Validate conditional rules across a full field set: a field may not
+     * reference itself, and the dependency graph must be acyclic. References to
+     * handles not in the set are not errors — they are pruned on save (a target
+     * field removed in the same edit). Self-reference and cycles are hard errors
      * because they have no sensible runtime meaning.
+     *
+     * Public + static so the MCP single-field write path can validate against
+     * the form's full set with the same rules as the CP batch save.
      *
      * @param array<int,array<string,mixed>> $items
      * @return string[]
      */
-    private function conditionalErrors(array $items): array
+    public static function conditionalSetErrors(array $items): array
     {
         $errors = [];
         $present = [];
@@ -108,7 +111,7 @@ class FieldSyncService extends Component
             ));
         }
 
-        if ($this->hasCycle($graph)) {
+        if (self::hasCycle($graph)) {
             $errors[] = Craft::t('simple-form', 'Conditional rules form a circular dependency between fields. Remove one of the conditions.');
         }
 
@@ -120,11 +123,11 @@ class FieldSyncService extends Component
      *
      * @param array<string, string[]> $graph
      */
-    private function hasCycle(array $graph): bool
+    private static function hasCycle(array $graph): bool
     {
         $state = []; // 0/unset = unvisited, 1 = on stack, 2 = done
         foreach (array_keys($graph) as $node) {
-            if ($this->dfsHasCycle((string)$node, $graph, $state)) {
+            if (self::dfsHasCycle((string)$node, $graph, $state)) {
                 return true;
             }
         }
@@ -135,7 +138,7 @@ class FieldSyncService extends Component
      * @param array<string, string[]> $graph
      * @param array<string, int> $state
      */
-    private function dfsHasCycle(string $node, array $graph, array &$state): bool
+    private static function dfsHasCycle(string $node, array $graph, array &$state): bool
     {
         $current = $state[$node] ?? 0;
         if ($current === 1) {
@@ -147,7 +150,7 @@ class FieldSyncService extends Component
 
         $state[$node] = 1;
         foreach ($graph[$node] ?? [] as $next) {
-            if ($this->dfsHasCycle($next, $graph, $state)) {
+            if (self::dfsHasCycle($next, $graph, $state)) {
                 return true;
             }
         }

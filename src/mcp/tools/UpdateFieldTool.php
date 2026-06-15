@@ -43,7 +43,10 @@ class UpdateFieldTool implements ToolInterface
                 'helpText' => ['type' => 'string', 'description' => 'New help text (per-site).'],
                 'config' => [
                     'type' => 'object',
-                    'description' => 'New field type config. select/checkbox/radio require an "options" array.',
+                    'description' => 'New field type config. select/checkbox/radio require an "options" array. '
+                        . 'Optional "conditional" object adds show/hide + conditional-required logic '
+                        . '(same shape as add_field: {enabled, action, match, rules:[{field,operator,value}], required:{...}}). '
+                        . 'Rules reference other fields by handle; self-reference and cycles are rejected, dangling refs pruned.',
                     'additionalProperties' => true,
                 ],
                 'siteId' => ['type' => 'integer', 'description' => 'Site whose label/help text to update. Defaults to the primary site.'],

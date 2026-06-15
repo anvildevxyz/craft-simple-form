@@ -43,7 +43,10 @@ class AddFieldTool implements ToolInterface
                 'helpText' => ['type' => 'string', 'description' => 'Help text shown under the field (per-site).'],
                 'config' => [
                     'type' => 'object',
-                    'description' => 'Field type config. select/checkbox/radio require an "options" array of {value,label}.',
+                    'description' => 'Field type config. select/checkbox/radio require an "options" array of {value,label}. '
+                        . 'Optional "conditional" object adds show/hide + conditional-required logic: '
+                        . '{enabled:true, action:"show"|"hide", match:"all"|"any", rules:[{field:<handle>, operator:"eq"|"neq"|"empty"|"notEmpty"|"contains"|"gt"|"lt", value:<string>}], '
+                        . 'required:{enabled:true, match:"all"|"any", rules:[...]}}. Rules reference other fields by handle; self-reference and cycles are rejected, dangling refs pruned.',
                     'additionalProperties' => true,
                 ],
             ],

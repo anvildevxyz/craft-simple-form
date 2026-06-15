@@ -16,6 +16,8 @@ use craft\services\UserPermissions;
 use craft\web\UrlManager;
 use fabianhaef\simpleform\gql\mutations\FormMutations;
 use fabianhaef\simpleform\gql\queries\FormQueries;
+use fabianhaef\simpleform\gql\types\ConditionalRuleType;
+use fabianhaef\simpleform\gql\types\FieldConditionalType;
 use fabianhaef\simpleform\gql\types\FieldOptionType;
 use fabianhaef\simpleform\gql\types\FieldValidationType;
 use fabianhaef\simpleform\gql\types\FormFieldType;
@@ -112,6 +114,8 @@ class Plugin extends BasePlugin
             static function(RegisterGqlTypesEvent $event): void {
                 array_push(
                     $event->types,
+                    ConditionalRuleType::class,
+                    FieldConditionalType::class,
                     FieldOptionType::class,
                     FieldValidationType::class,
                     FormFieldType::class,
