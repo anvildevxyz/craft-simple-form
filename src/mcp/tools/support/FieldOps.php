@@ -7,6 +7,7 @@ use craft\db\Query;
 use craft\helpers\StringHelper;
 use fabianhaef\simpleform\elements\Form;
 use fabianhaef\simpleform\Plugin;
+use fabianhaef\simpleform\services\FieldTypeRegistry;
 
 /**
  * Shared field add/edit/reorder/delete logic for the MCP form-management tools.
@@ -24,13 +25,6 @@ use fabianhaef\simpleform\Plugin;
 final class FieldOps
 {
     /**
-     * Field types that require at least one option in their config.
-     *
-     * @var list<string>
-     */
-    private const OPTION_TYPES = ['select', 'checkbox', 'radio'];
-
-    /**
      * The set of valid field type handles, sourced from the field-type registry
      * so the tool surface stays in sync with the registered types.
      *
@@ -38,7 +32,7 @@ final class FieldOps
      */
     public static function validTypes(): array
     {
-        return array_keys(Plugin::getInstance()->getFieldTypeRegistry()->getAllFieldTypes());
+        return Plugin::getInstance()->getFieldTypeRegistry()->typeHandles();
     }
 
     /**
@@ -97,7 +91,7 @@ final class FieldOps
             $errors['type'][] = 'Invalid field type';
         }
 
-        if (in_array($type, self::OPTION_TYPES, true)) {
+        if (in_array($type, FieldTypeRegistry::OPTION_TYPES, true)) {
             if (empty($config['options']) || !is_array($config['options'])) {
                 $errors['config'][] = $type . ' fields must have at least one option';
             }
@@ -256,10 +250,7 @@ final class FieldOps
             return [(int)Craft::$app->getSites()->getPrimarySite()->id];
         }
 
-        $ids = [];
-        foreach ($form->getSupportedSites() as $entry) {
-            $ids[] = is_array($entry) ? (int)$entry['siteId'] : (int)$entry;
-        }
+        $ids = $form->supportedSiteIds();
 
         return $ids !== [] ? $ids : [(int)Craft::$app->getSites()->getPrimarySite()->id];
     }

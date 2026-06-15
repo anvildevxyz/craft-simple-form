@@ -15,6 +15,15 @@ use yii\base\Component;
 
 class FieldTypeRegistry extends Component
 {
+    /**
+     * Field types backed by a closed set of {value,label} options: they require a
+     * non-empty `options` config and are the groupable types for submission
+     * analytics.
+     *
+     * @var list<string>
+     */
+    public const OPTION_TYPES = ['select', 'checkbox', 'radio'];
+
     /** @var array<string, class-string<FieldType>> */
     private array $fieldTypes = [];
 
@@ -56,6 +65,16 @@ class FieldTypeRegistry extends Component
 
         $class = $this->fieldTypes[$type];
         return new $class($config);
+    }
+
+    /**
+     * The registered field-type handles — the canonical valid-type set.
+     *
+     * @return list<string>
+     */
+    public function typeHandles(): array
+    {
+        return array_keys($this->fieldTypes);
     }
 
     /**

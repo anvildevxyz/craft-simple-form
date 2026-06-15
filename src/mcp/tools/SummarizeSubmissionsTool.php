@@ -60,7 +60,7 @@ class SummarizeSubmissionsTool implements ToolInterface
 
     /**
      * @param array<string, mixed> $arguments
-     * @return array<string, mixed>
+     * @return array{count:int, totalMatched:int, fields:list<string>, wordCount:int, corpus:list<array{id:int, dateCreated:?string, fields:array<string, string>, text:string}>}|array{isError:true, error:string}
      */
     public function call(array $arguments): array
     {
@@ -117,31 +117,12 @@ class SummarizeSubmissionsTool implements ToolInterface
             return array_values(array_filter(array_map('strval', $arguments['fields']), static fn($h) => $h !== ''));
         }
 
-        $form = $this->resolveForm($arguments, $submissions);
+        $form = InsightCorpus::resolveForm($arguments, $submissions);
         if ($form instanceof Form) {
             return InsightCorpus::freeTextHandles(InsightCorpus::fieldTypes($form));
         }
 
         // No resolvable schema: empty list signals "treat every string as text".
         return [];
-    }
-
-    /**
-     * @param array<string, mixed> $arguments
-     * @param list<\fabianhaef\simpleform\elements\Submission> $submissions
-     */
-    private function resolveForm(array $arguments, array $submissions): ?Form
-    {
-        if (isset($arguments['formId'])) {
-            $f = Form::find()->siteId('*')->status(null)->id((int)$arguments['formId'])->one();
-            return $f instanceof Form ? $f : null;
-        }
-        if (isset($arguments['form']) && is_string($arguments['form']) && $arguments['form'] !== '') {
-            $f = Form::find()->siteId('*')->status(null)->handle($arguments['form'])->one();
-            return $f instanceof Form ? $f : null;
-        }
-        // Fall back to the form of the first submission when the set is uniform.
-        $first = $submissions[0] ?? null;
-        return $first?->getForm();
     }
 }

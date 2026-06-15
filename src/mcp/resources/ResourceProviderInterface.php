@@ -19,9 +19,6 @@ namespace fabianhaef\simpleform\mcp\resources;
  */
 interface ResourceProviderInterface
 {
-    /** The URI scheme this provider owns, without the {@code ://} (e.g. "form"). */
-    public function scheme(): string;
-
     /**
      * The single scope a token must hold to list OR read any of this provider's
      * resources. Enforced by the dispatcher.

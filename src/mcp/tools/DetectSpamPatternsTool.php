@@ -4,7 +4,6 @@ namespace fabianhaef\simpleform\mcp\tools;
 
 use fabianhaef\simpleform\elements\db\SubmissionQuery;
 use fabianhaef\simpleform\elements\Form;
-use fabianhaef\simpleform\elements\Submission;
 use fabianhaef\simpleform\mcp\Scopes;
 use fabianhaef\simpleform\mcp\tools\support\InsightCorpus;
 use fabianhaef\simpleform\mcp\tools\support\SubmissionQueryBuilder;
@@ -80,7 +79,7 @@ class DetectSpamPatternsTool implements ToolInterface
 
     /**
      * @param array<string, mixed> $arguments
-     * @return array<string, mixed>
+     * @return array{scanned:int, flaggedCount:int, linkThreshold:int, signals:list<string>, flagged:list<array{id:int, dateCreated:?string, signals:list<string>, linkCount:int, text:string}>}|array{isError:true, error:string}
      */
     public function call(array $arguments): array
     {
@@ -98,7 +97,7 @@ class DetectSpamPatternsTool implements ToolInterface
 
         $linkThreshold = max(1, (int)($arguments['linkThreshold'] ?? self::DEFAULT_LINK_THRESHOLD));
 
-        $form = $this->resolveForm($arguments, $submissions);
+        $form = InsightCorpus::resolveForm($arguments, $submissions);
         $textHandles = $form instanceof Form
             ? InsightCorpus::freeTextHandles(InsightCorpus::fieldTypes($form))
             : [];
@@ -177,23 +176,5 @@ class DetectSpamPatternsTool implements ToolInterface
         $upper = (string)preg_replace('/[^\p{Lu}]/u', '', $text);
         // >80% of letters upper-case → shouting.
         return mb_strlen($upper) / mb_strlen($letters) > 0.8;
-    }
-
-    /**
-     * @param array<string, mixed> $arguments
-     * @param list<Submission> $submissions
-     */
-    private function resolveForm(array $arguments, array $submissions): ?Form
-    {
-        if (isset($arguments['formId'])) {
-            $f = Form::find()->siteId('*')->status(null)->id((int)$arguments['formId'])->one();
-            return $f instanceof Form ? $f : null;
-        }
-        if (isset($arguments['form']) && is_string($arguments['form']) && $arguments['form'] !== '') {
-            $f = Form::find()->siteId('*')->status(null)->handle($arguments['form'])->one();
-            return $f instanceof Form ? $f : null;
-        }
-        $first = $submissions[0] ?? null;
-        return $first?->getForm();
     }
 }

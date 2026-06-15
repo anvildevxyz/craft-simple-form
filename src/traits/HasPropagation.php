@@ -35,4 +35,20 @@ trait HasPropagation
             default => [$this->siteId ?? Craft::$app->getSites()->getPrimarySite()->id],
         };
     }
+
+    /**
+     * Site IDs this element propagates to, normalized from getSupportedSites()
+     * (whose entries may be ints or `{siteId}` rows). Callers apply their own
+     * fallback when the result is empty.
+     *
+     * @return list<int>
+     */
+    public function supportedSiteIds(): array
+    {
+        $ids = [];
+        foreach ($this->getSupportedSites() as $entry) {
+            $ids[] = is_array($entry) ? (int)$entry['siteId'] : (int)$entry;
+        }
+        return $ids;
+    }
 }

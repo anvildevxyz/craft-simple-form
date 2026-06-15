@@ -17,9 +17,6 @@ use yii\base\Component;
  */
 class FieldSyncService extends Component
 {
-    public const VALID_TYPES = ['text', 'email', 'textarea', 'select', 'checkbox', 'radio', 'date', 'number'];
-    private const OPTION_TYPES = ['select', 'checkbox', 'radio'];
-
     /**
      * Validate the posted field set without touching the database. Uniqueness is
      * checked within the set itself, since the set fully replaces the form's fields.
@@ -55,11 +52,11 @@ class FieldSyncService extends Component
                 $seenHandles[$key] = true;
             }
 
-            if (!in_array($type, self::VALID_TYPES, true)) {
+            if (!in_array($type, Plugin::getInstance()->getFieldTypeRegistry()->typeHandles(), true)) {
                 $errors[] = Craft::t('simple-form', 'Field {name}: invalid type.', ['name' => $name]);
             }
 
-            if (in_array($type, self::OPTION_TYPES, true)) {
+            if (in_array($type, FieldTypeRegistry::OPTION_TYPES, true)) {
                 $options = $item['config']['options'] ?? null;
                 if (empty($options) || !is_array($options)) {
                     $errors[] = Craft::t('simple-form', 'Field {name}: needs at least one option.', ['name' => $name]);
@@ -183,10 +180,6 @@ class FieldSyncService extends Component
      */
     private function supportedSiteIds(Form $form, int $currentSiteId): array
     {
-        $ids = [];
-        foreach ($form->getSupportedSites() as $entry) {
-            $ids[] = is_array($entry) ? (int)$entry['siteId'] : (int)$entry;
-        }
-        return $ids ?: [$currentSiteId];
+        return $form->supportedSiteIds() ?: [$currentSiteId];
     }
 }

@@ -24,11 +24,10 @@ class FieldBuilderTest extends TestCase
         $this->assertTrue($ref->hasMethod('validate'));
         $this->assertTrue($ref->hasMethod('sync'));
 
-        $types = $ref->getConstant('VALID_TYPES');
-        $this->assertIsArray($types);
-        foreach (['text', 'email', 'textarea', 'select', 'checkbox', 'radio', 'date', 'number'] as $t) {
-            $this->assertContains($t, $types);
-        }
+        // Valid field types are sourced from the registry, not a hardcoded list.
+        $code = $this->source('services/FieldSyncService.php');
+        $this->assertStringContainsString('getFieldTypeRegistry()->typeHandles()', $code);
+        $this->assertStringNotContainsString("'text', 'email', 'textarea'", $code);
     }
 
     public function testSyncIsTransactionalAndInvalidatesCache(): void

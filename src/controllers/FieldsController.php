@@ -10,6 +10,7 @@ use fabianhaef\simpleform\elements\Form;
 use fabianhaef\simpleform\helpers\SimpleFormPermissions;
 use fabianhaef\simpleform\helpers\SiteHelper;
 use fabianhaef\simpleform\Plugin;
+use fabianhaef\simpleform\services\FieldTypeRegistry;
 use yii\web\NotFoundHttpException;
 use yii\web\Response;
 
@@ -253,12 +254,11 @@ class FieldsController extends Controller
             }
         }
 
-        $validTypes = ['text', 'email', 'textarea', 'select', 'checkbox', 'radio', 'date', 'number'];
-        if (!in_array($type, $validTypes, true)) {
+        if (!in_array($type, Plugin::getInstance()->getFieldTypeRegistry()->typeHandles(), true)) {
             $errors['type'][] = 'Invalid field type';
         }
 
-        if (in_array($type, ['select', 'checkbox', 'radio'], true)) {
+        if (in_array($type, FieldTypeRegistry::OPTION_TYPES, true)) {
             if (empty($config['options']) || !is_array($config['options'])) {
                 $errors['config'][] = $type . ' fields must have at least one option';
             }
@@ -280,10 +280,6 @@ class FieldsController extends Controller
             return [$currentSiteId];
         }
 
-        $ids = [];
-        foreach ($form->getSupportedSites() as $entry) {
-            $ids[] = is_array($entry) ? (int)$entry['siteId'] : (int)$entry;
-        }
-        return $ids ?: [$currentSiteId];
+        return $form->supportedSiteIds() ?: [$currentSiteId];
     }
 }

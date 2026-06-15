@@ -19,9 +19,6 @@ final class InsightCorpus
     /** Field types whose stored values are open-ended free text. */
     public const FREE_TEXT_TYPES = ['text', 'textarea', 'email'];
 
-    /** Field types whose stored values are a closed set of options (groupable). */
-    public const OPTION_TYPES = ['select', 'radio', 'checkbox'];
-
     /**
      * Map of field handle => type for a form, from its resolved field set
      * (reuses the same field resolution the tools/resources use).
@@ -42,9 +39,9 @@ final class InsightCorpus
     }
 
     /**
-     * The free-text field handles for a form. When the form schema can't be
-     * resolved (no form filter), returns null so callers fall back to treating
-     * every string value as text.
+     * The free-text field handles for a form. An empty result (unresolved schema
+     * or no free-text fields) makes {@see textValues()} treat every string value
+     * as text.
      *
      * @param array<string, string> $fieldTypes
      * @return list<string>
@@ -86,5 +83,27 @@ final class InsightCorpus
         }
 
         return $out;
+    }
+
+    /**
+     * Resolve the form a request is about: an explicit `formId`/`form` (handle)
+     * argument wins; otherwise fall back to the first submission's form (the set
+     * is uniform when filtered by form).
+     *
+     * @param array<string, mixed> $arguments
+     * @param list<Submission> $submissions
+     */
+    public static function resolveForm(array $arguments, array $submissions): ?Form
+    {
+        if (isset($arguments['formId'])) {
+            $f = Form::find()->siteId('*')->status(null)->id((int)$arguments['formId'])->one();
+            return $f instanceof Form ? $f : null;
+        }
+        if (isset($arguments['form']) && is_string($arguments['form']) && $arguments['form'] !== '') {
+            $f = Form::find()->siteId('*')->status(null)->handle($arguments['form'])->one();
+            return $f instanceof Form ? $f : null;
+        }
+        $first = $submissions[0] ?? null;
+        return $first?->getForm();
     }
 }

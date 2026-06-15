@@ -14,6 +14,15 @@ class Form extends Element
 {
     use HasPropagation;
 
+    /**
+     * Propagation methods Simple Form supports — Craft's PropagationMethod set
+     * minus `custom`, which needs per-element site selection this plugin does not
+     * implement ({@see HasPropagation::getSupportedSites()} treats it as single-site).
+     *
+     * @var list<string>
+     */
+    public const SUPPORTED_PROPAGATION_METHODS = ['none', 'siteGroup', 'language', 'all'];
+
     // Shared across sites
     public ?string $name = null;
     public ?string $handle = null;

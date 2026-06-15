@@ -49,7 +49,7 @@ class UpdateFormTool implements ToolInterface
                 'siteId' => ['type' => 'integer', 'description' => 'Site whose per-site content to update. Defaults to the form\'s resolved site.'],
                 'propagationMethod' => [
                     'type' => 'string',
-                    'enum' => ['none', 'siteGroup', 'language', 'all'],
+                    'enum' => Form::SUPPORTED_PROPAGATION_METHODS,
                     'description' => 'New propagation method.',
                 ],
             ],

@@ -3,7 +3,6 @@
 namespace fabianhaef\simpleform\mcp\resources;
 
 use fabianhaef\simpleform\elements\Form;
-use fabianhaef\simpleform\elements\Submission;
 use fabianhaef\simpleform\mcp\Scopes;
 use fabianhaef\simpleform\mcp\tools\support\SubmissionQueryBuilder;
 
@@ -24,11 +23,6 @@ final class SubmissionsDatasetResource implements ResourceProviderInterface
 
     /** Cap a single resource read so a huge form can't return an unbounded blob. */
     private const MAX_ROWS = 500;
-
-    public function scheme(): string
-    {
-        return self::SCHEME;
-    }
 
     public function requiredScope(): string
     {

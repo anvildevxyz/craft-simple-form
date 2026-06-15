@@ -19,11 +19,6 @@ final class FormSchemaResource implements ResourceProviderInterface
     private const SCHEME = 'form';
     private const MIME = 'application/json';
 
-    public function scheme(): string
-    {
-        return self::SCHEME;
-    }
-
     public function requiredScope(): string
     {
         return Scopes::FORMS_MANAGE;

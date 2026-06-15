@@ -50,7 +50,7 @@ class CreateFormTool implements ToolInterface
                 'siteId' => ['type' => 'integer', 'description' => 'Site to save the canonical content on. Defaults to the primary site.'],
                 'propagationMethod' => [
                     'type' => 'string',
-                    'enum' => ['none', 'siteGroup', 'language', 'all'],
+                    'enum' => Form::SUPPORTED_PROPAGATION_METHODS,
                     'description' => 'How the form propagates across sites. Defaults to "none".',
                 ],
             ],

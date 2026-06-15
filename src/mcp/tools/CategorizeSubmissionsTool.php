@@ -8,6 +8,7 @@ use fabianhaef\simpleform\elements\Submission;
 use fabianhaef\simpleform\mcp\Scopes;
 use fabianhaef\simpleform\mcp\tools\support\InsightCorpus;
 use fabianhaef\simpleform\mcp\tools\support\SubmissionQueryBuilder;
+use fabianhaef\simpleform\services\FieldTypeRegistry;
 
 /**
  * AI-insight tool: support grouping/clustering of open-ended responses.
@@ -59,7 +60,7 @@ class CategorizeSubmissionsTool implements ToolInterface
 
     /**
      * @param array<string, mixed> $arguments
-     * @return array<string, mixed>
+     * @return array{count:int, groupBy:?string, textFields:list<string>, groups:list<array{value:string, count:int, submissionIds:list<int>}>, corpus:list<array{id:int, dateCreated:?string, fields:array<string, string>}>}|array{isError:true, error:string}
      */
     public function call(array $arguments): array
     {
@@ -75,7 +76,7 @@ class CategorizeSubmissionsTool implements ToolInterface
         $submissions = SubmissionQueryBuilder::applyFieldMatch($query->all(), $fieldMatch);
         $submissions = array_slice($submissions, 0, self::MAX_ROWS);
 
-        $form = $this->resolveForm($arguments, $submissions);
+        $form = InsightCorpus::resolveForm($arguments, $submissions);
         $fieldTypes = $form instanceof Form ? InsightCorpus::fieldTypes($form) : [];
         $textHandles = InsightCorpus::freeTextHandles($fieldTypes);
 
@@ -158,29 +159,11 @@ class CategorizeSubmissionsTool implements ToolInterface
         }
         // Auto-detect: first closed-option field in the schema.
         foreach ($fieldTypes as $handle => $type) {
-            if (in_array($type, InsightCorpus::OPTION_TYPES, true)) {
+            if (in_array($type, FieldTypeRegistry::OPTION_TYPES, true)) {
                 return $handle;
             }
         }
 
         return null;
-    }
-
-    /**
-     * @param array<string, mixed> $arguments
-     * @param list<Submission> $submissions
-     */
-    private function resolveForm(array $arguments, array $submissions): ?Form
-    {
-        if (isset($arguments['formId'])) {
-            $f = Form::find()->siteId('*')->status(null)->id((int)$arguments['formId'])->one();
-            return $f instanceof Form ? $f : null;
-        }
-        if (isset($arguments['form']) && is_string($arguments['form']) && $arguments['form'] !== '') {
-            $f = Form::find()->siteId('*')->status(null)->handle($arguments['form'])->one();
-            return $f instanceof Form ? $f : null;
-        }
-        $first = $submissions[0] ?? null;
-        return $first?->getForm();
     }
 }
