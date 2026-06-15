@@ -5,6 +5,7 @@ namespace fabianhaef\simpleform;
 use Craft;
 use craft\helpers\App;
 use fabianhaef\simpleform\elements\Form;
+use fabianhaef\simpleform\helpers\FieldQueryHelper;
 use fabianhaef\simpleform\models\Settings;
 use fabianhaef\simpleform\web\assets\form\FormAsset;
 use Twig\Extension\AbstractExtension;
@@ -60,7 +61,12 @@ class TwigExtension extends AbstractExtension
         }
 
         foreach ($fields as $field) {
-            $fieldConfig = $field['config']; // already decoded, with "required" merged in
+            // already decoded, with "required" merged in; overlay this site's
+            // per-site option labels (value stays canonical, label localized).
+            $fieldConfig = FieldQueryHelper::applyOptionLabels(
+                $field['config'],
+                is_array($field['optionLabels'] ?? null) ? $field['optionLabels'] : []
+            );
             $fieldType = $fieldTypeRegistry->getFieldType($field['type'], $fieldConfig);
 
             if (!$fieldType) {

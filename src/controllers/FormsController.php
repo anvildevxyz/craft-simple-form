@@ -167,11 +167,17 @@ class FormsController extends Controller
      */
     private function renderEdit(Form $form, Site $site, string $builderDataJson): Response
     {
+        $supportedSites = $this->getSupportedSitesForForm($form);
+
         return $this->renderTemplate('simple-form/forms/edit', [
             'form' => $form,
             'currentSite' => $site,
-            'supportedSites' => $this->getSupportedSitesForForm($form),
+            'supportedSites' => $supportedSites,
             'builderData' => $builderDataJson,
+            // The source site authors canonical option labels; other sites only
+            // translate them. Single-site forms are always their own source.
+            'isSourceSite' => count($supportedSites) <= 1
+                || $site->id === Craft::$app->getSites()->getPrimarySite()->id,
         ]);
     }
 
@@ -203,10 +209,40 @@ class FormsController extends Controller
             'label' => (string)($f['label'] ?? $f['name']),
             'required' => (bool)$f['required'],
             'helpText' => (string)($f['helpText'] ?? ''),
-            'config' => is_array($f['config'] ?? null) ? $f['config'] : [],
+            'config' => self::configWithSiteLabels(
+                is_array($f['config'] ?? null) ? $f['config'] : [],
+                is_array($f['optionLabels'] ?? null) ? $f['optionLabels'] : []
+            ),
         ], $fields);
 
         return $this->encodeBuilderJson($items);
+    }
+
+    /**
+     * Annotate each choice option with this site's translated label (`siteLabel`),
+     * so the builder can show the per-site translation column alongside the
+     * source label. The siteLabel rides with its option, keeping translations
+     * aligned to the right value across add/remove/reorder.
+     *
+     * @param array<string,mixed> $config
+     * @param array<string,string> $optionLabels value => localized label
+     * @return array<string,mixed>
+     */
+    private static function configWithSiteLabels(array $config, array $optionLabels): array
+    {
+        if (!isset($config['options']) || !is_array($config['options'])) {
+            return $config;
+        }
+
+        foreach ($config['options'] as &$opt) {
+            if (!is_array($opt) || !isset($opt['value'])) {
+                continue;
+            }
+            $opt['siteLabel'] = (string)($optionLabels[(string)$opt['value']] ?? '');
+        }
+        unset($opt);
+
+        return $config;
     }
 
     /**

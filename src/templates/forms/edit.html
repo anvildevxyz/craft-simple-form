@@ -172,6 +172,10 @@
 (function() {
     'use strict';
 
+    // On non-source sites the option editor is translation-only: option values
+    // and the source labels are locked, and only the per-site label is editable.
+    var SF_SOURCE_SITE = {{ (isSourceSite ?? true) ? 'true' : 'false' }};
+
     var TYPE_LABELS = {
         text: 'Text', email: 'Email', textarea: 'Textarea', select: 'Select',
         checkbox: 'Checkbox', radio: 'Radio', date: 'Date', number: 'Number'
@@ -415,13 +419,21 @@
         if (!Array.isArray(c.options)) { c.options = []; }
         var wrap = document.createElement('div'); wrap.className = 'field sf-options';
         var heading = document.createElement('div'); heading.className = 'heading';
-        var lab = document.createElement('label'); lab.textContent = 'Options';
+        var lab = document.createElement('label'); lab.textContent = SF_SOURCE_SITE ? 'Options' : 'Option Labels (this site)';
         heading.appendChild(lab); wrap.appendChild(heading);
+
+        if (!SF_SOURCE_SITE) {
+            var hint = document.createElement('div'); hint.className = 'instructions';
+            var hp = document.createElement('p');
+            hp.textContent = 'Translate each option for this site. Leave blank to use the source label. Option values are managed on the primary site.';
+            hint.appendChild(hp); wrap.appendChild(hint);
+        }
 
         var list = document.createElement('div'); list.className = 'sf-options-list';
         wrap.appendChild(list);
 
-        function rowFor(opt, idx) {
+        // Source site: full structural editor (label, value, add/remove).
+        function sourceRow(opt, idx) {
             var r = document.createElement('div'); r.className = 'sf-option-row';
             var li = document.createElement('input'); li.type = 'text'; li.className = 'text'; li.placeholder = 'Label'; li.value = opt.label || '';
             var vi = document.createElement('input'); vi.type = 'text'; vi.className = 'text'; vi.placeholder = 'Value'; vi.value = opt.value || '';
@@ -433,17 +445,34 @@
             return r;
         }
 
+        // Non-source site: translation-only. Source label is shown read-only and
+        // the per-site label rides with its option (keeping it value-aligned).
+        function translateRow(opt) {
+            var r = document.createElement('div'); r.className = 'sf-option-row sf-option-row--translate';
+            var src = document.createElement('span'); src.className = 'sf-option-source'; src.textContent = opt.label || opt.value || '';
+            var ti = document.createElement('input'); ti.type = 'text'; ti.className = 'text fullwidth';
+            ti.placeholder = opt.label || opt.value || 'Label';
+            ti.value = opt.siteLabel || '';
+            ti.addEventListener('input', function() { opt.siteLabel = ti.value; serialize(); });
+            r.appendChild(src); r.appendChild(ti);
+            return r;
+        }
+
         function redraw() {
             list.innerHTML = '';
-            c.options.forEach(function(opt, idx) { list.appendChild(rowFor(opt, idx)); });
+            c.options.forEach(function(opt, idx) {
+                list.appendChild(SF_SOURCE_SITE ? sourceRow(opt, idx) : translateRow(opt));
+            });
         }
         redraw();
 
-        var add = document.createElement('button'); add.type = 'button'; add.className = 'btn sf-option-add'; add.textContent = 'Add Option';
-        add.addEventListener('click', function() {
-            c.options.push({ label: '', value: '' }); redraw(); serialize();
-        });
-        wrap.appendChild(add);
+        if (SF_SOURCE_SITE) {
+            var add = document.createElement('button'); add.type = 'button'; add.className = 'btn sf-option-add'; add.textContent = 'Add Option';
+            add.addEventListener('click', function() {
+                c.options.push({ label: '', value: '' }); redraw(); serialize();
+            });
+            wrap.appendChild(add);
+        }
         return wrap;
     }
 
