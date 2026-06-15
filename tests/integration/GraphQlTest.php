@@ -6,6 +6,7 @@ use Craft;
 use craft\models\GqlSchema;
 use craft\test\TestMailer;
 use fabianhaef\simpleform\elements\Submission;
+use fabianhaef\simpleform\Plugin;
 use yii\mail\MessageInterface;
 
 /**
@@ -142,6 +143,52 @@ class GraphQlTest extends SimpleFormTestCase
         $this->assertSame(
             [['label' => 'Red', 'value' => 'red'], ['label' => 'Blue', 'value' => 'blue']],
             $byId[$colorId]['options'],
+        );
+    }
+
+    public function testQueryLocalizesOptionLabelsPerSite(): void
+    {
+        $this->requireCraft();
+
+        $siteId = Craft::$app->getSites()->getPrimarySite()->id;
+        $form = $this->createForm('Localized Options', 'gqlLocalizedOptionsForm', 'Localized Options', $siteId);
+        $colorId = $this->createField($form->id, 'select', 'color', 'Colour', false, [
+            'options' => [
+                ['label' => 'Red', 'value' => 'red'],
+                ['label' => 'Blue', 'value' => 'blue'],
+            ],
+        ]);
+
+        // Translate one option for this site; the other must fall back to its source label.
+        // Pass the array; the json column encodes once (matching FieldSyncService).
+        Craft::$app->getDb()->createCommand()->update(
+            '{{%simpleform_fields_sites}}',
+            ['optionLabels' => ['red' => 'Rouge']],
+            ['fieldId' => $colorId, 'siteId' => $siteId],
+        )->execute();
+        Plugin::getInstance()->getFormStructure()->invalidate((int) $form->id);
+
+        $document = <<<'GQL'
+        query ($handle: String!, $siteId: Int) {
+            simpleForm(handle: $handle, siteId: $siteId) {
+                fields { name type options { label value } }
+            }
+        }
+        GQL;
+
+        $result = $this->execute($document, ['simpleForms:read'], [
+            'handle' => 'gqlLocalizedOptionsForm',
+            'siteId' => $siteId,
+        ]);
+
+        $this->assertArrayNotHasKey('errors', $result, json_encode($result['errors'] ?? null));
+
+        $options = $result['data']['simpleForm']['fields'][0]['options'];
+        // Localized label for the translated option, source-label fallback for the
+        // other, and canonical values unchanged across the board.
+        $this->assertSame(
+            [['label' => 'Rouge', 'value' => 'red'], ['label' => 'Blue', 'value' => 'blue']],
+            $options,
         );
     }
 

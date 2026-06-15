@@ -3,6 +3,7 @@
 namespace fabianhaef\simpleform\gql\resolvers;
 
 use fabianhaef\simpleform\elements\Form;
+use fabianhaef\simpleform\helpers\FieldQueryHelper;
 use fabianhaef\simpleform\Plugin;
 
 /**
@@ -43,6 +44,13 @@ final class FormGqlResolver
     private static function mapField(array $row): array
     {
         $config = is_array($row['config'] ?? null) ? $row['config'] : [];
+        // Overlay this site's option-label translations so the GraphQL schema
+        // matches the rendered form for the requested site (option values stay
+        // canonical; missing translations fall back to the source label).
+        $config = FieldQueryHelper::applyOptionLabels(
+            $config,
+            is_array($row['optionLabels'] ?? null) ? $row['optionLabels'] : []
+        );
         $required = (bool) ($row['required'] ?? ($config['required'] ?? false));
 
         return [
