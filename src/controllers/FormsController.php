@@ -104,6 +104,7 @@ class FormsController extends Controller
         $form->emailTo = $request->getBodyParam('emailTo');
         $form->emailSubject = $request->getBodyParam('emailSubject');
         $form->emailReplyTo = $request->getBodyParam('emailReplyTo');
+        $form->emailBody = $request->getBodyParam('emailBody');
         $form->propagationMethod = PropagationMethod::tryFrom(
             (string)$request->getBodyParam('propagationMethod', 'none')
         ) ?? PropagationMethod::None;

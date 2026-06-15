@@ -58,6 +58,7 @@ class FormQuery extends ElementQuery
             'simpleform_forms_sites.emailTo',
             'simpleform_forms_sites.emailSubject',
             'simpleform_forms_sites.emailReplyTo',
+            'simpleform_forms_sites.emailBody',
             // title is supplied from elements_sites.title via the element column map
         ]);
 

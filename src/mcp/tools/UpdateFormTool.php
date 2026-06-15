@@ -45,6 +45,7 @@ class UpdateFormTool implements ToolInterface
                 'description' => ['type' => 'string', 'description' => 'New per-site description.'],
                 'emailTo' => ['type' => 'string', 'description' => 'New notification recipient (per-site).'],
                 'emailSubject' => ['type' => 'string', 'description' => 'New notification subject (per-site).'],
+                'emailBody' => ['type' => 'string', 'description' => 'New notification body template, Twig with form/submission/data (per-site). Blank uses the default.'],
                 'emailReplyTo' => ['type' => 'string', 'description' => 'New notification reply-to (per-site).'],
                 'siteId' => ['type' => 'integer', 'description' => 'Site whose per-site content to update. Defaults to the form\'s resolved site.'],
                 'propagationMethod' => [
@@ -110,6 +111,9 @@ class UpdateFormTool implements ToolInterface
         }
         if (array_key_exists('emailSubject', $arguments)) {
             $form->emailSubject = (string)$arguments['emailSubject'];
+        }
+        if (array_key_exists('emailBody', $arguments)) {
+            $form->emailBody = (string)$arguments['emailBody'];
         }
         if (array_key_exists('emailReplyTo', $arguments)) {
             $form->emailReplyTo = (string)$arguments['emailReplyTo'];

@@ -33,6 +33,7 @@ class Form extends Element
     public ?string $emailTo = null;
     public ?string $emailSubject = null;
     public ?string $emailReplyTo = null;
+    public ?string $emailBody = null;
 
     public static function displayName(): string
     {
@@ -182,6 +183,7 @@ class Form extends Element
         $rules[] = [['name', 'handle'], 'string', 'max' => 255];
         $rules[] = [['title', 'description'], 'string'];
         $rules[] = [['emailTo', 'emailSubject', 'emailReplyTo'], 'string', 'max' => 255];
+        $rules[] = [['emailBody'], 'string'];
 
         // handle is shared across sites, so it must be globally unique
         $rules[] = [['handle'], 'validateHandleUnique'];
@@ -251,6 +253,7 @@ class Form extends Element
             'emailTo' => $this->emailTo,
             'emailSubject' => $this->emailSubject,
             'emailReplyTo' => $this->emailReplyTo,
+            'emailBody' => $this->emailBody,
         ];
 
         $rowExists = (new \craft\db\Query())

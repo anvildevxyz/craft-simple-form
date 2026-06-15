@@ -4,6 +4,7 @@ namespace fabianhaef\simpleform\services;
 
 use Craft;
 use craft\helpers\App;
+use craft\web\View;
 use fabianhaef\simpleform\elements\Form;
 use fabianhaef\simpleform\elements\Submission;
 use fabianhaef\simpleform\models\Settings;
@@ -71,9 +72,34 @@ class EmailService extends Component
     }
 
     /**
+     * Render the notification body: the form's per-site email body template when
+     * set (so it localises with the submission's site), otherwise the shared
+     * default template. Never returns blank — a render failure falls back to the
+     * default.
+     *
      * @param array<string, mixed> $data
      */
     private function renderBody(Form $form, Submission $submission, array $data): string
+    {
+        if ($form->emailBody !== null && trim($form->emailBody) !== '') {
+            try {
+                return Craft::$app->getView()->renderString($form->emailBody, [
+                    'form' => $form,
+                    'submission' => $submission,
+                    'data' => $data,
+                ], View::TEMPLATE_MODE_SITE);
+            } catch (\Throwable $e) {
+                Craft::warning('Failed to render per-site email body, using default: ' . $e->getMessage(), 'simple-form');
+            }
+        }
+
+        return $this->renderDefaultBody($form, $submission, $data);
+    }
+
+    /**
+     * @param array<string, mixed> $data
+     */
+    private function renderDefaultBody(Form $form, Submission $submission, array $data): string
     {
         $html = '<html><body>';
         $html .= '<h2>' . Craft::t('simple-form', 'New Form Submission') . '</h2>';

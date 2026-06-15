@@ -21,6 +21,10 @@ modules:
       migrations:
         - class: fabianhaef\simpleform\migrations\m240614_000001_init
           params: {}
+        - class: fabianhaef\simpleform\migrations\m260615_000001_field_option_labels
+          params: {}
+        - class: fabianhaef\simpleform\migrations\m260615_000002_form_email_body
+          params: {}
       plugins:
         - handle: simple-form
           class: fabianhaef\simpleform\Plugin

@@ -119,6 +119,17 @@
     translatable: true,
 }) }}
 
+{{ forms.textareaField({
+    label: 'Email Body'|t('simple-form'),
+    id: 'emailBody',
+    name: 'emailBody',
+    value: form.emailBody,
+    rows: 8,
+    errors: form.getErrors('emailBody'),
+    instructions: 'Notification body template for this site, rendered as Twig with access to form, submission and data. Leave blank to use the default template.'|t('simple-form'),
+    translatable: true,
+}) }}
+
 {{ forms.textField({
     label: 'Email Reply-To'|t('simple-form'),
     id: 'emailReplyTo',

@@ -26,6 +26,7 @@ final class FormPresenter
             'emailTo' => $form->emailTo,
             'emailSubject' => $form->emailSubject,
             'emailReplyTo' => $form->emailReplyTo,
+            'emailBody' => $form->emailBody,
             'propagationMethod' => $form->propagationMethod->value,
             'fields' => self::fields($form),
         ];

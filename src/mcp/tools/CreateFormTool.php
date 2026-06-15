@@ -46,6 +46,7 @@ class CreateFormTool implements ToolInterface
                 'description' => ['type' => 'string', 'description' => 'Per-site description.'],
                 'emailTo' => ['type' => 'string', 'description' => 'Notification recipient (per-site).'],
                 'emailSubject' => ['type' => 'string', 'description' => 'Notification subject (per-site).'],
+                'emailBody' => ['type' => 'string', 'description' => 'Notification body template, Twig with form/submission/data (per-site). Blank uses the default.'],
                 'emailReplyTo' => ['type' => 'string', 'description' => 'Notification reply-to (per-site).'],
                 'siteId' => ['type' => 'integer', 'description' => 'Site to save the canonical content on. Defaults to the primary site.'],
                 'propagationMethod' => [
@@ -77,6 +78,7 @@ class CreateFormTool implements ToolInterface
         $form->description = isset($arguments['description']) ? (string)$arguments['description'] : null;
         $form->emailTo = isset($arguments['emailTo']) ? (string)$arguments['emailTo'] : null;
         $form->emailSubject = isset($arguments['emailSubject']) ? (string)$arguments['emailSubject'] : null;
+        $form->emailBody = isset($arguments['emailBody']) ? (string)$arguments['emailBody'] : null;
         $form->emailReplyTo = isset($arguments['emailReplyTo']) ? (string)$arguments['emailReplyTo'] : null;
 
         if (isset($arguments['propagationMethod']) && is_string($arguments['propagationMethod'])) {

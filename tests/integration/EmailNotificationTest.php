@@ -62,6 +62,72 @@ class EmailNotificationTest extends SimpleFormTestCase
         $this->assertStringContainsString('Grace Hopper', $this->messageBody($message));
     }
 
+    public function testPerSiteEmailBodyTemplateIsRenderedAndReplacesDefault(): void
+    {
+        $this->requireCraft();
+
+        // A per-site body template — the editor authors this in the site's own
+        // language; it references the submission/form so we can prove it renders.
+        $form = $this->createForm('Localized', 'localizedForm', 'Localized', emailTo: 'owner@example.com');
+        // The editor authors a per-site body template (in the site's own language).
+        $form->emailBody = 'CUSTOM-BODY token={{ submission.id }} for {{ form.handle }}';
+        Craft::$app->getElements()->saveElement($form);
+        $fieldId = $this->createField($form->id, 'text', 'fullName', 'Full Name', true);
+
+        // emailBody must come back from the per-site row, like emailSubject does.
+        $reloaded = \fabianhaef\simpleform\elements\Form::find()->id($form->id)->one();
+        $this->assertSame(
+            'CUSTOM-BODY token={{ submission.id }} for {{ form.handle }}',
+            $reloaded->emailBody,
+            'emailBody should load per-site from the DB',
+        );
+
+        $sent = $this->captureSentMessages(function () use ($reloaded, $fieldId): void {
+            $submission = new \fabianhaef\simpleform\elements\Submission();
+            $submission->formId = $reloaded->id;
+            $submission->siteId = Craft::$app->getSites()->getCurrentSite()->id;
+            $submission->readStatus = 'new';
+            $data = ['field_' . $fieldId => ['label' => 'Full Name', 'type' => 'text', 'value' => 'Ada']];
+            $submission->data = $data;
+            Craft::$app->getElements()->saveElement($submission);
+
+            (new EmailService())->sendSubmissionEmail($reloaded, $submission, $data);
+        });
+
+        $this->assertCount(1, $sent);
+        $body = $this->messageBody($sent[0]);
+        // The per-site template is rendered as Twig (id + handle interpolated)...
+        $this->assertStringContainsString('CUSTOM-BODY token=', $body);
+        $this->assertStringContainsString('for localizedForm', $body);
+        // ...and replaces the default generated template entirely.
+        $this->assertStringNotContainsString('New Form Submission', $body);
+    }
+
+    public function testBlankEmailBodyFallsBackToDefaultTemplate(): void
+    {
+        $this->requireCraft();
+
+        $form = $this->createForm('Default', 'defaultBodyForm', 'Default', emailTo: 'owner@example.com');
+        $fieldId = $this->createField($form->id, 'text', 'fullName', 'Full Name', true);
+        $reloaded = \fabianhaef\simpleform\elements\Form::find()->id($form->id)->one();
+
+        $sent = $this->captureSentMessages(function () use ($reloaded, $fieldId): void {
+            $submission = new \fabianhaef\simpleform\elements\Submission();
+            $submission->formId = $reloaded->id;
+            $submission->siteId = Craft::$app->getSites()->getCurrentSite()->id;
+            $submission->readStatus = 'new';
+            $data = ['field_' . $fieldId => ['label' => 'Full Name', 'type' => 'text', 'value' => 'Ada']];
+            $submission->data = $data;
+            Craft::$app->getElements()->saveElement($submission);
+
+            (new EmailService())->sendSubmissionEmail($reloaded, $submission, $data);
+        });
+
+        $this->assertCount(1, $sent);
+        // No per-site body → the default template is used, never blank.
+        $this->assertStringContainsString('New Form Submission', $this->messageBody($sent[0]));
+    }
+
     public function testNoEmailWhenRecipientNotConfigured(): void
     {
         $this->requireCraft();
