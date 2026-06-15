@@ -120,6 +120,9 @@ class Form extends Element
         }
     }
 
+    /**
+     * @return list<string>
+     */
     protected static function defineSearchableAttributes(): array
     {
         return ['name', 'handle', 'title', 'description'];
@@ -138,6 +141,9 @@ class Form extends Element
         ];
     }
 
+    /**
+     * @return list<string>
+     */
     protected static function defineDefaultTableAttributes(string $source): array
     {
         return ['title', 'handle', 'emailTo', 'dateCreated'];
@@ -157,7 +163,7 @@ class Form extends Element
     }
 
     /**
-     * @return array<int, mixed>
+     * @return array<int, array<array-key, mixed>|\yii\validators\Validator>
      */
     protected function defineRules(): array
     {
@@ -198,29 +204,31 @@ class Form extends Element
         $db = Craft::$app->getDb();
         $now = Db::prepareDateForDb(new \DateTime());
 
-        // (a) SHARED row in simpleform_forms — keyed by element id, written once (canonical save only)
-        if (!$this->propagating) {
-            $shared = [
-                'handle' => $this->handle,
-                'name' => $this->name,
-                'propagationMethod' => $this->propagationMethod->value,
-                'dateUpdated' => $now,
-            ];
+        // (a) SHARED row in simpleform_forms — keyed by element id (not per-site).
+        // Seed it on ANY save, including a propagation pass, so an element can
+        // never be left without its shared row (which would orphan it: FormQuery
+        // inner-joins this table, so a missing row makes the form un-loadable).
+        // Only the canonical (directly-edited) save updates an existing row.
+        $shared = [
+            'handle' => $this->handle,
+            'name' => $this->name,
+            'propagationMethod' => $this->propagationMethod->value,
+            'dateUpdated' => $now,
+        ];
 
-            $exists = (new \craft\db\Query())
-                ->from('{{%simpleform_forms}}')
-                ->where(['id' => $this->id])
-                ->exists();
+        $exists = (new \craft\db\Query())
+            ->from('{{%simpleform_forms}}')
+            ->where(['id' => $this->id])
+            ->exists();
 
-            if (!$exists) {
-                $db->createCommand()->insert('{{%simpleform_forms}}', $shared + [
-                    'id' => $this->id,
-                    'dateCreated' => $now,
-                    'uid' => StringHelper::UUID(),
-                ])->execute();
-            } else {
-                $db->createCommand()->update('{{%simpleform_forms}}', $shared, ['id' => $this->id])->execute();
-            }
+        if (!$exists) {
+            $db->createCommand()->insert('{{%simpleform_forms}}', $shared + [
+                'id' => $this->id,
+                'dateCreated' => $now,
+                'uid' => StringHelper::UUID(),
+            ])->execute();
+        } elseif (!$this->propagating) {
+            $db->createCommand()->update('{{%simpleform_forms}}', $shared, ['id' => $this->id])->execute();
         }
 
         // (b) PER-SITE row in simpleform_forms_sites — translatable content (title lives in

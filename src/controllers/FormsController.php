@@ -4,11 +4,13 @@ namespace fabianhaef\simpleform\controllers;
 
 use Craft;
 use craft\enums\PropagationMethod;
+use craft\models\Site;
 use craft\web\Controller;
 use fabianhaef\simpleform\elements\Form;
 use fabianhaef\simpleform\helpers\FieldQueryHelper;
 use fabianhaef\simpleform\helpers\SimpleFormPermissions;
 use fabianhaef\simpleform\helpers\SiteHelper;
+use fabianhaef\simpleform\services\FieldSyncService;
 use yii\web\NotFoundHttpException;
 use yii\web\Response;
 
@@ -68,15 +70,10 @@ class FormsController extends Controller
             $form->siteId = $site->id;
         }
 
-        // Fetch fields with this site's translatable label/helpText.
+        // Fetch fields with this site's translatable label/helpText, in builder shape.
         $fields = $form->id ? $this->getFieldsForForm((int)$form->id, $site->id) : [];
 
-        return $this->renderTemplate('simple-form/forms/edit', [
-            'form' => $form,
-            'fields' => $fields,
-            'currentSite' => $site,
-            'supportedSites' => $this->getSupportedSitesForForm($form),
-        ]);
+        return $this->renderEdit($form, $site, $this->fieldsToBuilderJson($fields));
     }
 
     public function actionSave(): Response
@@ -111,11 +108,29 @@ class FormsController extends Controller
             (string)$request->getBodyParam('propagationMethod', 'none')
         ) ?? PropagationMethod::None;
 
+        // The field builder posts its whole set as JSON; sync it after the form saves.
+        $items = $this->parseFieldsData((string)$request->getBodyParam('fieldsData', ''));
+        $fieldSync = new FieldSyncService();
+
+        // Validate the field set before any DB writes so a bad field never half-saves.
+        $fieldErrors = $fieldSync->validate($items);
+        if ($fieldErrors) {
+            Craft::$app->getSession()->setError(reset($fieldErrors));
+            return $this->renderEdit($form, $site, $this->encodeBuilderJson($items));
+        }
+
         if (!Craft::$app->getElements()->saveElement($form)) {
             Craft::$app->getSession()->setError('Unable to save form');
             Craft::warning('Form save failed: ' . json_encode($form->getErrors()), 'simple-form');
-            Craft::$app->getUrlManager()->setRouteParams(['form' => $form]);
-            return $this->redirect($request->getReferrer() ?? 'simple-form/forms');
+            return $this->renderEdit($form, $site, $this->encodeBuilderJson($items));
+        }
+
+        try {
+            $fieldSync->sync($form, $items, $site->id);
+        } catch (\Throwable $e) {
+            Craft::warning('Field sync failed: ' . $e->getMessage(), 'simple-form');
+            Craft::$app->getSession()->setError('Form saved, but its fields could not be saved.');
+            return $this->redirect("simple-form/forms/edit/{$form->id}?site={$site->handle}");
         }
 
         Craft::$app->getSession()->setNotice('Form saved successfully');
@@ -143,6 +158,68 @@ class FormsController extends Controller
         }
 
         return $this->asJson(['success' => true]);
+    }
+
+    /**
+     * Render the form edit screen with the field-builder seeded from the given
+     * builder JSON (DB fields on load, or the posted set when re-rendering after
+     * a validation failure so in-progress field edits aren't lost).
+     */
+    private function renderEdit(Form $form, Site $site, string $builderDataJson): Response
+    {
+        return $this->renderTemplate('simple-form/forms/edit', [
+            'form' => $form,
+            'currentSite' => $site,
+            'supportedSites' => $this->getSupportedSitesForForm($form),
+            'builderData' => $builderDataJson,
+        ]);
+    }
+
+    /**
+     * Decode the field builder's posted JSON into an ordered array of field items.
+     *
+     * @return array<int,array<string,mixed>>
+     */
+    private function parseFieldsData(string $raw): array
+    {
+        if ($raw === '') {
+            return [];
+        }
+        $decoded = json_decode($raw, true);
+        return is_array($decoded) ? array_values($decoded) : [];
+    }
+
+    /**
+     * Map DB field rows to the builder's field shape and encode as JSON.
+     *
+     * @param array<int,array<string,mixed>> $fields
+     */
+    private function fieldsToBuilderJson(array $fields): string
+    {
+        $items = array_map(static fn(array $f): array => [
+            'id' => (int)$f['id'],
+            'type' => (string)$f['type'],
+            'handle' => (string)$f['name'],
+            'label' => (string)($f['label'] ?? $f['name']),
+            'required' => (bool)$f['required'],
+            'helpText' => (string)($f['helpText'] ?? ''),
+            'config' => is_array($f['config'] ?? null) ? $f['config'] : [],
+        ], $fields);
+
+        return $this->encodeBuilderJson($items);
+    }
+
+    /**
+     * JSON-encode builder items for safe inline embedding in a <script> block.
+     *
+     * @param array<int,mixed> $items
+     */
+    private function encodeBuilderJson(array $items): string
+    {
+        return json_encode(
+            array_values($items),
+            JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP
+        ) ?: '[]';
     }
 
     /**
