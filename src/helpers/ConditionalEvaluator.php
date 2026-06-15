@@ -12,7 +12,7 @@ namespace fabianhaef\simpleform\helpers;
  *       'action'   => 'show' | 'hide',     // visibility behaviour
  *       'match'    => 'all' | 'any',        // AND / OR across rules
  *       'rules'    => [
- *           ['fieldId' => 1, 'operator' => 'eq', 'value' => 'business'],
+ *           ['field' => 'accountType', 'operator' => 'eq', 'value' => 'business'],
  *           ...
  *       ],
  *       'required' => [                      // optional, independent block
@@ -22,12 +22,18 @@ namespace fabianhaef\simpleform\helpers;
  *       ],
  *   ]
  *
+ * Rules reference their target by field **handle** (`field`). Handles are
+ * unique within a form and known client-side for not-yet-saved fields too, so
+ * the editor, the server, and the front-end all share one key space with no id
+ * resolution. (The editor rewrites references when a handle is renamed; the
+ * server prunes references to handles that no longer exist.)
+ *
  * This class is the single source of truth for evaluation semantics. The
  * front-end JS evaluator mirrors the same operator table and show/hide/match
  * rules; both are covered by parallel tests so they cannot drift silently.
  *
  * It is deliberately free of any Craft/Yii dependency: it takes a field config
- * array and a flat `fieldId => value` map and returns booleans. The server
+ * array and a flat `handle => value` map and returns booleans. The server
  * (SubmissionService) builds that map from the submitted snapshot; the values
  * are the raw posted values (string, array for multi-value, or null).
  */
@@ -48,7 +54,7 @@ class ConditionalEvaluator
      * set, are always visible — so existing forms behave exactly as before.
      *
      * @param array<string, mixed> $config field config (may contain `conditional`)
-     * @param array<int, mixed> $values posted values keyed by bare field id
+     * @param array<string, mixed> $values posted values keyed by field handle
      */
     public static function isVisible(array $config, array $values): bool
     {
@@ -80,7 +86,7 @@ class ConditionalEvaluator
      * two together (and skips required entirely for hidden fields).
      *
      * @param array<string, mixed> $config
-     * @param array<int, mixed> $values
+     * @param array<string, mixed> $values
      */
     public static function isRequiredByCondition(array $config, array $values): bool
     {
@@ -103,39 +109,39 @@ class ConditionalEvaluator
     }
 
     /**
-     * Field ids referenced by a field's conditional rules (visibility + required).
-     * Used for save-time cycle/self-reference detection.
+     * Field handles referenced by a field's conditional rules (visibility +
+     * required). Used for save-time cycle/self-reference/dangling detection.
      *
      * @param array<string, mixed> $config
-     * @return int[]
+     * @return string[]
      */
-    public static function referencedFieldIds(array $config): array
+    public static function referencedFields(array $config): array
     {
         $conditional = $config['conditional'] ?? null;
         if (!is_array($conditional)) {
             return [];
         }
 
-        $ids = [];
+        $handles = [];
         foreach ([$conditional['rules'] ?? [], ($conditional['required']['rules'] ?? [])] as $ruleSet) {
             if (!is_array($ruleSet)) {
                 continue;
             }
             foreach ($ruleSet as $rule) {
-                if (is_array($rule) && isset($rule['fieldId'])) {
-                    $ids[] = (int) $rule['fieldId'];
+                if (is_array($rule) && isset($rule['field']) && $rule['field'] !== '') {
+                    $handles[] = (string) $rule['field'];
                 }
             }
         }
 
-        return array_values(array_unique($ids));
+        return array_values(array_unique($handles));
     }
 
     /**
      * Combine a rule set under AND (all) / OR (any).
      *
      * @param array<int, mixed> $rules
-     * @param array<int, mixed> $values
+     * @param array<string, mixed> $values
      */
     private static function rulesMatch(array $rules, string $match, array $values): bool
     {
@@ -158,14 +164,14 @@ class ConditionalEvaluator
 
     /**
      * @param array<string, mixed> $rule
-     * @param array<int, mixed> $values
+     * @param array<string, mixed> $values
      */
     private static function evaluateRule(array $rule, array $values): bool
     {
-        $fieldId = isset($rule['fieldId']) ? (int) $rule['fieldId'] : 0;
+        $handle = isset($rule['field']) ? (string) $rule['field'] : '';
         $operator = (string) ($rule['operator'] ?? 'eq');
         $expected = $rule['value'] ?? '';
-        $actual = $values[$fieldId] ?? null;
+        $actual = $values[$handle] ?? null;
 
         return self::compare($operator, $actual, $expected);
     }

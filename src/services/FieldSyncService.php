@@ -6,6 +6,7 @@ use Craft;
 use craft\db\Query;
 use craft\helpers\StringHelper;
 use fabianhaef\simpleform\elements\Form;
+use fabianhaef\simpleform\helpers\ConditionalEvaluator;
 use fabianhaef\simpleform\Plugin;
 use yii\base\Component;
 
@@ -64,7 +65,95 @@ class FieldSyncService extends Component
             }
         }
 
+        return array_merge($errors, $this->conditionalErrors($items));
+    }
+
+    /**
+     * Validate conditional rules across the set: a field may not reference
+     * itself, and the dependency graph must be acyclic. References to handles
+     * not in the set are not errors — they are pruned on save (a target field
+     * removed in the same edit). Self-reference and cycles are hard errors
+     * because they have no sensible runtime meaning.
+     *
+     * @param array<int,array<string,mixed>> $items
+     * @return string[]
+     */
+    private function conditionalErrors(array $items): array
+    {
+        $errors = [];
+        $present = [];
+        foreach ($items as $item) {
+            $handle = trim((string)($item['handle'] ?? ''));
+            if ($handle !== '') {
+                $present[$handle] = true;
+            }
+        }
+
+        $graph = [];
+        foreach ($items as $i => $item) {
+            $handle = trim((string)($item['handle'] ?? ''));
+            $label = trim((string)($item['label'] ?? ''));
+            $name = $label !== '' ? $label : ($handle !== '' ? $handle : '#' . ($i + 1));
+            $config = is_array($item['config'] ?? null) ? $item['config'] : [];
+            $refs = ConditionalEvaluator::referencedFields($config);
+
+            if ($handle !== '' && in_array($handle, $refs, true)) {
+                $errors[] = Craft::t('simple-form', 'Field {name}: a condition cannot reference the field itself.', ['name' => $name]);
+            }
+
+            // Edges only to handles present in the set (others are pruned on save).
+            $graph[$handle] = array_values(array_filter(
+                $refs,
+                static fn($ref) => $ref !== $handle && isset($present[$ref])
+            ));
+        }
+
+        if ($this->hasCycle($graph)) {
+            $errors[] = Craft::t('simple-form', 'Conditional rules form a circular dependency between fields. Remove one of the conditions.');
+        }
+
         return $errors;
+    }
+
+    /**
+     * Depth-first cycle detection over a handle => [referenced handles] graph.
+     *
+     * @param array<string, string[]> $graph
+     */
+    private function hasCycle(array $graph): bool
+    {
+        $state = []; // 0/unset = unvisited, 1 = on stack, 2 = done
+        foreach (array_keys($graph) as $node) {
+            if ($this->dfsHasCycle((string)$node, $graph, $state)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
+     * @param array<string, string[]> $graph
+     * @param array<string, int> $state
+     */
+    private function dfsHasCycle(string $node, array $graph, array &$state): bool
+    {
+        $current = $state[$node] ?? 0;
+        if ($current === 1) {
+            return true;
+        }
+        if ($current === 2) {
+            return false;
+        }
+
+        $state[$node] = 1;
+        foreach ($graph[$node] ?? [] as $next) {
+            if ($this->dfsHasCycle($next, $graph, $state)) {
+                return true;
+            }
+        }
+        $state[$node] = 2;
+
+        return false;
     }
 
     /**
@@ -79,6 +168,17 @@ class FieldSyncService extends Component
         $formId = (int)$form->id;
 
         $supportedSiteIds = $this->supportedSiteIds($form, $currentSiteId);
+
+        // Handles present in the saved set — conditional rules referencing a
+        // handle outside this set (e.g. a target field removed in the same
+        // edit) are pruned so no rule points at a field that no longer exists.
+        $validHandles = [];
+        foreach ($items as $item) {
+            $h = trim((string)($item['handle'] ?? ''));
+            if ($h !== '') {
+                $validHandles[$h] = true;
+            }
+        }
 
         $existingIds = array_map(
             'intval',
@@ -104,6 +204,9 @@ class FieldSyncService extends Component
                 // each translation rides with its option, add/remove/reorder keeps
                 // labels aligned to the right value and orphans simply drop out.
                 [$config, $optionLabels] = self::splitOptionLabels($config);
+                // Drop conditional rules that point at a removed field or at the
+                // field itself, so persisted rules only ever reference live peers.
+                $config = self::sanitizeConditional($config, $validHandles, trim((string)$item['handle']));
                 $rawId = $item['id'] ?? null;
                 $id = is_numeric($rawId) ? (int)$rawId : null;
 
@@ -224,6 +327,61 @@ class FieldSyncService extends Component
         unset($opt);
 
         return [$config, $optionLabels];
+    }
+
+    /**
+     * Remove conditional rules whose target handle is not in the saved set, or
+     * is the field's own handle. If a rule set ends up empty its block is
+     * dropped; if the whole `conditional` config ends up inert it is removed.
+     *
+     * Pure and side-effect free for unit testing.
+     *
+     * @param array<string,mixed> $config
+     * @param array<string,bool> $validHandles handle => true for handles in the set
+     * @return array<string,mixed>
+     */
+    public static function sanitizeConditional(array $config, array $validHandles, string $ownHandle): array
+    {
+        if (!isset($config['conditional']) || !is_array($config['conditional'])) {
+            return $config;
+        }
+
+        $conditional = $config['conditional'];
+        $keep = static function(array $rules) use ($validHandles, $ownHandle): array {
+            $out = [];
+            foreach ($rules as $rule) {
+                if (!is_array($rule)) {
+                    continue;
+                }
+                $target = (string)($rule['field'] ?? '');
+                if ($target !== '' && $target !== $ownHandle && isset($validHandles[$target])) {
+                    $out[] = $rule;
+                }
+            }
+            return $out;
+        };
+
+        if (isset($conditional['rules']) && is_array($conditional['rules'])) {
+            $conditional['rules'] = $keep($conditional['rules']);
+        }
+        if (isset($conditional['required']['rules']) && is_array($conditional['required']['rules'])) {
+            $conditional['required']['rules'] = $keep($conditional['required']['rules']);
+            if ($conditional['required']['rules'] === []) {
+                unset($conditional['required']);
+            }
+        }
+
+        // If neither block carries any usable rule, drop the conditional config
+        // entirely so an inert block never lingers in storage.
+        $hasVisibility = !empty($conditional['rules']);
+        $hasRequired = !empty($conditional['required']['rules']);
+        if (!$hasVisibility && !$hasRequired) {
+            unset($config['conditional']);
+        } else {
+            $config['conditional'] = $conditional;
+        }
+
+        return $config;
     }
 
     /**

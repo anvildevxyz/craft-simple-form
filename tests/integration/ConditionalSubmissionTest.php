@@ -38,7 +38,7 @@ class ConditionalSubmissionTest extends SimpleFormTestCase
                 'action' => 'show',
                 'match' => 'all',
                 'rules' => [
-                    ['fieldId' => $accountType, 'operator' => 'eq', 'value' => 'business'],
+                    ['field' => 'accountType', 'operator' => 'eq', 'value' => 'business'],
                 ],
             ],
         ]);
@@ -79,7 +79,7 @@ class ConditionalSubmissionTest extends SimpleFormTestCase
                 'action' => 'show',
                 'match' => 'all',
                 'rules' => [
-                    ['fieldId' => $accountType, 'operator' => 'eq', 'value' => 'business'],
+                    ['field' => 'accountType', 'operator' => 'eq', 'value' => 'business'],
                 ],
             ],
         ]);
@@ -122,7 +122,7 @@ class ConditionalSubmissionTest extends SimpleFormTestCase
                     'enabled' => true,
                     'match' => 'all',
                     'rules' => [
-                        ['fieldId' => $reason, 'operator' => 'eq', 'value' => 'other'],
+                        ['field' => 'reason', 'operator' => 'eq', 'value' => 'other'],
                     ],
                 ],
             ],

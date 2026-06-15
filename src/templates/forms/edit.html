@@ -245,11 +245,26 @@
         return {};
     }
 
+    // Drop an inert conditional block (disabled or with no usable rules) so the
+    // payload never carries empty scaffolding the server would discard anyway.
+    function cleanConfig(config) {
+        var c = config.conditional;
+        if (!c) { return config; }
+        var hasVis = c.enabled && Array.isArray(c.rules) && c.rules.some(function(r) { return r.field; });
+        var hasReq = c.enabled && c.required && c.required.enabled
+            && Array.isArray(c.required.rules) && c.required.rules.some(function(r) { return r.field; });
+        if (!hasVis && !hasReq) {
+            var copy = {}; Object.keys(config).forEach(function(k) { if (k !== 'conditional') { copy[k] = config[k]; } });
+            return copy;
+        }
+        return config;
+    }
+
     function serialize() {
         hidden.value = JSON.stringify(fields.map(function(f) {
             return {
                 id: f.id, type: f.type, handle: f.handle, label: f.label,
-                required: f.required, helpText: f.helpText, errorMessage: f.errorMessage, config: f.config
+                required: f.required, helpText: f.helpText, errorMessage: f.errorMessage, config: cleanConfig(f.config)
             };
         }));
     }
@@ -364,9 +379,15 @@
         }));
         inspector.appendChild(labelRow);
 
-        // Handle
+        // Handle. Renaming rewrites any conditional rules in other fields that
+        // referenced the old handle, so conditions survive a rename.
         var handleRow = row('Handle');
-        var handleInput = textInput(f.handle, function(v) { f.handle = v; serialize(); });
+        var handleInput = textInput(f.handle, function(v) {
+            var old = f.handle;
+            f.handle = v;
+            if (old && old !== v) { renameHandleRefs(old, v); }
+            serialize();
+        });
         handleRow._input.appendChild(handleInput);
         inspector.appendChild(handleRow);
 
@@ -401,6 +422,7 @@
         inspector.appendChild(errRow);
 
         renderTypeConfig(f);
+        inspector.appendChild(conditionsSection(f));
     }
 
     function renderTypeConfig(f) {
@@ -498,6 +520,185 @@
             });
             wrap.appendChild(add);
         }
+        return wrap;
+    }
+
+    // ---- conditional logic -----------------------------------------------
+
+    // Operators offered in the rule builder. `noValue` ops hide the value input.
+    var OPERATORS = [
+        { op: 'eq', label: 'is' },
+        { op: 'neq', label: 'is not' },
+        { op: 'empty', label: 'is empty', noValue: true },
+        { op: 'notEmpty', label: 'is not empty', noValue: true },
+        { op: 'contains', label: 'contains' },
+        { op: 'gt', label: 'greater than' },
+        { op: 'lt', label: 'less than' }
+    ];
+
+    // Fields the current field may reference: every other field with a handle.
+    function targetFields(self) {
+        return fields.filter(function(t) { return t.clientId !== self.clientId && t.handle; });
+    }
+
+    function fieldByHandle(handle) {
+        return fields.find(function(t) { return t.handle === handle; });
+    }
+
+    // Rewrite rule references when a field handle is renamed.
+    function renameHandleRefs(oldHandle, newHandle) {
+        fields.forEach(function(f) {
+            var c = f.config && f.config.conditional;
+            if (!c) { return; }
+            [c.rules, (c.required && c.required.rules)].forEach(function(rules) {
+                if (!Array.isArray(rules)) { return; }
+                rules.forEach(function(r) { if (r.field === oldHandle) { r.field = newHandle; } });
+            });
+        });
+    }
+
+    function selectEl(options, value, onchange) {
+        var sel = document.createElement('div'); sel.className = 'select';
+        var s = document.createElement('select');
+        options.forEach(function(o) {
+            var opt = document.createElement('option');
+            opt.value = o.value; opt.textContent = o.label;
+            if (o.value === value) { opt.selected = true; }
+            s.appendChild(opt);
+        });
+        s.addEventListener('change', function() { onchange(s.value); });
+        sel.appendChild(s);
+        return sel;
+    }
+
+    // One "[field] [operator] [value]" rule row.
+    function ruleRow(self, rule, onRemove, onChange) {
+        var rowEl = document.createElement('div'); rowEl.className = 'sf-cond-rule';
+
+        var targets = targetFields(self);
+        var fieldOpts = [{ value: '', label: '— field —' }].concat(targets.map(function(t) {
+            return { value: t.handle, label: t.label || t.handle };
+        }));
+        rowEl.appendChild(selectEl(fieldOpts, rule.field || '', function(v) { rule.field = v; onChange(true); }));
+
+        rowEl.appendChild(selectEl(OPERATORS.map(function(o) { return { value: o.op, label: o.label }; }),
+            rule.operator || 'eq', function(v) { rule.operator = v; onChange(true); }));
+
+        var opDef = OPERATORS.find(function(o) { return o.op === (rule.operator || 'eq'); });
+        if (!opDef || !opDef.noValue) {
+            var target = fieldByHandle(rule.field);
+            var valueCell;
+            if (target && OPTION_TYPES.indexOf(target.type) !== -1) {
+                // Value is one of the target's option values.
+                var opts = [{ value: '', label: '— value —' }].concat(((target.config && target.config.options) || []).map(function(o) {
+                    return { value: o.value, label: o.label || o.value };
+                }));
+                valueCell = selectEl(opts, rule.value != null ? rule.value : '', function(v) { rule.value = v; onChange(false); });
+            } else {
+                var inputType = (target && target.type === 'number') ? 'number' : (target && target.type === 'date' ? 'date' : 'text');
+                valueCell = textInput(rule.value != null ? rule.value : '', function(v) { rule.value = v; onChange(false); }, inputType);
+                valueCell.classList.add('sf-cond-value');
+            }
+            rowEl.appendChild(valueCell);
+        }
+
+        var del = document.createElement('button');
+        del.type = 'button'; del.className = 'btn sf-cond-del'; del.textContent = '×'; del.title = 'Remove rule';
+        del.addEventListener('click', onRemove);
+        rowEl.appendChild(del);
+        return rowEl;
+    }
+
+    // A rule list with a match (all/any) selector and an "Add rule" button.
+    // `block` is the object holding `match` + `rules` (the visibility config or
+    // the required sub-block). `rerender` redraws the whole conditions section.
+    function ruleList(self, block, rerender) {
+        var wrap = document.createElement('div'); wrap.className = 'sf-cond-rules';
+
+        var matchRow = document.createElement('div'); matchRow.className = 'sf-cond-match';
+        var pre = document.createElement('span'); pre.textContent = 'Match';
+        matchRow.appendChild(pre);
+        matchRow.appendChild(selectEl([{ value: 'all', label: 'all' }, { value: 'any', label: 'any' }],
+            block.match || 'all', function(v) { block.match = v; serialize(); }));
+        var post = document.createElement('span'); post.textContent = 'of:';
+        matchRow.appendChild(post);
+        wrap.appendChild(matchRow);
+
+        if (!Array.isArray(block.rules)) { block.rules = []; }
+        block.rules.forEach(function(rule, idx) {
+            wrap.appendChild(ruleRow(self, rule,
+                function() { block.rules.splice(idx, 1); serialize(); rerender(); },
+                // Changing the target field also changes the value widget, so
+                // redraw on field/operator change; a value-only change just saves.
+                function(needsRedraw) { serialize(); if (needsRedraw) { rerender(); } }
+            ));
+        });
+
+        var add = document.createElement('button');
+        add.type = 'button'; add.className = 'btn sf-cond-add'; add.textContent = 'Add rule';
+        add.addEventListener('click', function() {
+            block.rules.push({ field: '', operator: 'eq', value: '' });
+            serialize(); rerender();
+        });
+        wrap.appendChild(add);
+        return wrap;
+    }
+
+    function checkbox(id, labelText, checked, onchange) {
+        var rowEl = document.createElement('div'); rowEl.className = 'field';
+        var w = document.createElement('div'); w.className = 'checkbox-wrapper';
+        var cb = document.createElement('input'); cb.type = 'checkbox'; cb.className = 'checkbox'; cb.id = id; cb.checked = !!checked;
+        cb.addEventListener('change', function() { onchange(cb.checked); });
+        var l = document.createElement('label'); l.setAttribute('for', id); l.textContent = labelText;
+        w.appendChild(cb); w.appendChild(l); rowEl.appendChild(w);
+        return rowEl;
+    }
+
+    function conditionsSection(f) {
+        var c = f.config.conditional || (f.config.conditional = {});
+        var wrap = document.createElement('div'); wrap.className = 'sf-cond';
+
+        var hr = document.createElement('hr'); wrap.appendChild(hr);
+        var title = document.createElement('h3'); title.className = 'sf-panel-title'; title.textContent = 'Conditions';
+        wrap.appendChild(title);
+
+        var others = targetFields(f);
+        if (!others.length) {
+            var none = document.createElement('p'); none.className = 'light';
+            none.textContent = 'Add another field first to base conditions on it.';
+            wrap.appendChild(none);
+            return wrap;
+        }
+
+        function rerender() {
+            var fresh = conditionsSection(f);
+            wrap.parentNode.replaceChild(fresh, wrap);
+        }
+
+        wrap.appendChild(checkbox('sf-cond-enable-' + f.clientId, 'Enable conditional logic', c.enabled, function(on) {
+            c.enabled = on; serialize(); rerender();
+        }));
+
+        if (!c.enabled) { return wrap; }
+
+        // Visibility block.
+        var visLabel = document.createElement('div'); visLabel.className = 'sf-cond-line';
+        visLabel.appendChild(selectEl([{ value: 'show', label: 'Show' }, { value: 'hide', label: 'Hide' }],
+            c.action || 'show', function(v) { c.action = v; serialize(); }));
+        var visText = document.createElement('span'); visText.textContent = 'this field when';
+        visLabel.appendChild(visText);
+        wrap.appendChild(visLabel);
+        wrap.appendChild(ruleList(f, c, rerender));
+
+        // Conditional-required block.
+        var req = c.required || (c.required = { enabled: false, match: 'all', rules: [] });
+        wrap.appendChild(checkbox('sf-cond-req-' + f.clientId, 'Make this field required when…', req.enabled, function(on) {
+            req.enabled = on; serialize(); rerender();
+        }));
+        if (req.enabled) {
+            wrap.appendChild(ruleList(f, req, rerender));
+        }
+
         return wrap;
     }
 
@@ -673,6 +874,16 @@
 .sf-option-row .text { flex: 1; min-width: 0; }
 .sf-option-del { padding: 4px 10px; }
 .sf-option-add { margin-top: 4px; }
+
+.sf-cond { margin-top: 4px; }
+.sf-cond hr { margin: 14px 0 10px; }
+.sf-cond-line { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+.sf-cond-match { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; font-size: 13px; color: #5f6b7a; }
+.sf-cond-rules { border-left: 2px solid #dfe5ec; padding-left: 10px; margin-bottom: 12px; }
+.sf-cond-rule { display: flex; gap: 6px; margin-bottom: 6px; align-items: center; }
+.sf-cond-rule .select, .sf-cond-rule .sf-cond-value { flex: 1; min-width: 0; }
+.sf-cond-del { padding: 4px 9px; }
+.sf-cond-add { margin-top: 2px; }
 
 @media (max-width: 800px) {
     .sf-builder { flex-direction: column; }

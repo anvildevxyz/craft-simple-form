@@ -18,18 +18,18 @@ class ConditionalEvaluatorTest extends TestCase
     public function testNoConditionalBlockIsAlwaysVisible(): void
     {
         $this->assertTrue(ConditionalEvaluator::isVisible([], []));
-        $this->assertTrue(ConditionalEvaluator::isVisible(['required' => true], [1 => 'x']));
+        $this->assertTrue(ConditionalEvaluator::isVisible(['required' => true], ['f1' => 'x']));
     }
 
     public function testDisabledOrEmptyRulesAreVisible(): void
     {
         $this->assertTrue(ConditionalEvaluator::isVisible([
-            'conditional' => ['enabled' => false, 'action' => 'show', 'rules' => [['fieldId' => 1, 'operator' => 'eq', 'value' => 'x']]],
-        ], [1 => 'y']));
+            'conditional' => ['enabled' => false, 'action' => 'show', 'rules' => [['field' => 'f1', 'operator' => 'eq', 'value' => 'x']]],
+        ], ['f1' => 'y']));
 
         $this->assertTrue(ConditionalEvaluator::isVisible([
             'conditional' => ['enabled' => true, 'action' => 'show', 'rules' => []],
-        ], [1 => 'y']));
+        ], ['f1' => 'y']));
     }
 
     // --- show / hide actions ---------------------------------------------
@@ -38,23 +38,23 @@ class ConditionalEvaluatorTest extends TestCase
     {
         $config = ['conditional' => [
             'enabled' => true, 'action' => 'show', 'match' => 'all',
-            'rules' => [['fieldId' => 1, 'operator' => 'eq', 'value' => 'business']],
+            'rules' => [['field' => 'f1', 'operator' => 'eq', 'value' => 'business']],
         ]];
 
-        $this->assertTrue(ConditionalEvaluator::isVisible($config, [1 => 'business']));
-        $this->assertFalse(ConditionalEvaluator::isVisible($config, [1 => 'personal']));
-        $this->assertFalse(ConditionalEvaluator::isVisible($config, [1 => null]));
+        $this->assertTrue(ConditionalEvaluator::isVisible($config, ['f1' => 'business']));
+        $this->assertFalse(ConditionalEvaluator::isVisible($config, ['f1' => 'personal']));
+        $this->assertFalse(ConditionalEvaluator::isVisible($config, ['f1' => null]));
     }
 
     public function testHideWhenRuleMatches(): void
     {
         $config = ['conditional' => [
             'enabled' => true, 'action' => 'hide', 'match' => 'all',
-            'rules' => [['fieldId' => 1, 'operator' => 'eq', 'value' => 'business']],
+            'rules' => [['field' => 'f1', 'operator' => 'eq', 'value' => 'business']],
         ]];
 
-        $this->assertFalse(ConditionalEvaluator::isVisible($config, [1 => 'business']));
-        $this->assertTrue(ConditionalEvaluator::isVisible($config, [1 => 'personal']));
+        $this->assertFalse(ConditionalEvaluator::isVisible($config, ['f1' => 'business']));
+        $this->assertTrue(ConditionalEvaluator::isVisible($config, ['f1' => 'personal']));
     }
 
     // --- match all (AND) / any (OR) --------------------------------------
@@ -64,13 +64,13 @@ class ConditionalEvaluatorTest extends TestCase
         $config = ['conditional' => [
             'enabled' => true, 'action' => 'show', 'match' => 'all',
             'rules' => [
-                ['fieldId' => 1, 'operator' => 'eq', 'value' => 'a'],
-                ['fieldId' => 2, 'operator' => 'eq', 'value' => 'b'],
+                ['field' => 'f1', 'operator' => 'eq', 'value' => 'a'],
+                ['field' => 'f2', 'operator' => 'eq', 'value' => 'b'],
             ],
         ]];
 
-        $this->assertTrue(ConditionalEvaluator::isVisible($config, [1 => 'a', 2 => 'b']));
-        $this->assertFalse(ConditionalEvaluator::isVisible($config, [1 => 'a', 2 => 'x']));
+        $this->assertTrue(ConditionalEvaluator::isVisible($config, ['f1' => 'a', 'f2' => 'b']));
+        $this->assertFalse(ConditionalEvaluator::isVisible($config, ['f1' => 'a', 'f2' => 'x']));
     }
 
     public function testMatchAnyRequiresOneRule(): void
@@ -78,14 +78,14 @@ class ConditionalEvaluatorTest extends TestCase
         $config = ['conditional' => [
             'enabled' => true, 'action' => 'show', 'match' => 'any',
             'rules' => [
-                ['fieldId' => 1, 'operator' => 'eq', 'value' => 'a'],
-                ['fieldId' => 2, 'operator' => 'eq', 'value' => 'b'],
+                ['field' => 'f1', 'operator' => 'eq', 'value' => 'a'],
+                ['field' => 'f2', 'operator' => 'eq', 'value' => 'b'],
             ],
         ]];
 
-        $this->assertTrue(ConditionalEvaluator::isVisible($config, [1 => 'a', 2 => 'x']));
-        $this->assertTrue(ConditionalEvaluator::isVisible($config, [1 => 'x', 2 => 'b']));
-        $this->assertFalse(ConditionalEvaluator::isVisible($config, [1 => 'x', 2 => 'y']));
+        $this->assertTrue(ConditionalEvaluator::isVisible($config, ['f1' => 'a', 'f2' => 'x']));
+        $this->assertTrue(ConditionalEvaluator::isVisible($config, ['f1' => 'x', 'f2' => 'b']));
+        $this->assertFalse(ConditionalEvaluator::isVisible($config, ['f1' => 'x', 'f2' => 'y']));
     }
 
     // --- operator matrix --------------------------------------------------
@@ -136,10 +136,10 @@ class ConditionalEvaluatorTest extends TestCase
 
     public function testNoRequiredBlockMeansNoConditionalRequirement(): void
     {
-        $this->assertFalse(ConditionalEvaluator::isRequiredByCondition([], [1 => 'x']));
+        $this->assertFalse(ConditionalEvaluator::isRequiredByCondition([], ['f1' => 'x']));
         $this->assertFalse(ConditionalEvaluator::isRequiredByCondition([
-            'conditional' => ['enabled' => true, 'action' => 'show', 'rules' => [['fieldId' => 1, 'operator' => 'eq', 'value' => 'x']]],
-        ], [1 => 'x']));
+            'conditional' => ['enabled' => true, 'action' => 'show', 'rules' => [['field' => 'f1', 'operator' => 'eq', 'value' => 'x']]],
+        ], ['f1' => 'x']));
     }
 
     public function testConditionalRequiredTriggers(): void
@@ -148,12 +148,12 @@ class ConditionalEvaluatorTest extends TestCase
             'enabled' => true,
             'required' => [
                 'enabled' => true, 'match' => 'all',
-                'rules' => [['fieldId' => 3, 'operator' => 'eq', 'value' => 'other']],
+                'rules' => [['field' => 'f3', 'operator' => 'eq', 'value' => 'other']],
             ],
         ]];
 
-        $this->assertTrue(ConditionalEvaluator::isRequiredByCondition($config, [3 => 'other']));
-        $this->assertFalse(ConditionalEvaluator::isRequiredByCondition($config, [3 => 'reason-a']));
+        $this->assertTrue(ConditionalEvaluator::isRequiredByCondition($config, ['f3' => 'other']));
+        $this->assertFalse(ConditionalEvaluator::isRequiredByCondition($config, ['f3' => 'reason-a']));
     }
 
     public function testRequiredIsIndependentOfVisibilityBlock(): void
@@ -164,13 +164,13 @@ class ConditionalEvaluatorTest extends TestCase
             'enabled' => true,
             'required' => [
                 'enabled' => true, 'match' => 'any',
-                'rules' => [['fieldId' => 1, 'operator' => 'notEmpty', 'value' => '']],
+                'rules' => [['field' => 'f1', 'operator' => 'notEmpty', 'value' => '']],
             ],
         ]];
 
-        $this->assertTrue(ConditionalEvaluator::isVisible($config, [1 => 'anything']));
-        $this->assertTrue(ConditionalEvaluator::isRequiredByCondition($config, [1 => 'anything']));
-        $this->assertFalse(ConditionalEvaluator::isRequiredByCondition($config, [1 => '']));
+        $this->assertTrue(ConditionalEvaluator::isVisible($config, ['f1' => 'anything']));
+        $this->assertTrue(ConditionalEvaluator::isRequiredByCondition($config, ['f1' => 'anything']));
+        $this->assertFalse(ConditionalEvaluator::isRequiredByCondition($config, ['f1' => '']));
     }
 
     // --- referenced ids (for cycle/self-ref detection) -------------------
@@ -180,17 +180,17 @@ class ConditionalEvaluatorTest extends TestCase
         $config = ['conditional' => [
             'enabled' => true, 'action' => 'show',
             'rules' => [
-                ['fieldId' => 1, 'operator' => 'eq', 'value' => 'a'],
-                ['fieldId' => 2, 'operator' => 'eq', 'value' => 'b'],
+                ['field' => 'f1', 'operator' => 'eq', 'value' => 'a'],
+                ['field' => 'f2', 'operator' => 'eq', 'value' => 'b'],
             ],
             'required' => [
                 'enabled' => true,
-                'rules' => [['fieldId' => 2, 'operator' => 'eq', 'value' => 'c']],
+                'rules' => [['field' => 'f2', 'operator' => 'eq', 'value' => 'c']],
             ],
         ]];
 
-        $this->assertSame([1, 2], ConditionalEvaluator::referencedFieldIds($config));
-        $this->assertSame([], ConditionalEvaluator::referencedFieldIds([]));
+        $this->assertSame(['f1', 'f2'], ConditionalEvaluator::referencedFields($config));
+        $this->assertSame([], ConditionalEvaluator::referencedFields([]));
     }
 
     // --- unknown / deleted target fields ---------------------------------
@@ -200,14 +200,14 @@ class ConditionalEvaluatorTest extends TestCase
         // Rule references field 99 which is not in the values map.
         $configEq = ['conditional' => [
             'enabled' => true, 'action' => 'show',
-            'rules' => [['fieldId' => 99, 'operator' => 'eq', 'value' => 'x']],
+            'rules' => [['field' => 'f99', 'operator' => 'eq', 'value' => 'x']],
         ]];
-        $this->assertFalse(ConditionalEvaluator::isVisible($configEq, [1 => 'x']));
+        $this->assertFalse(ConditionalEvaluator::isVisible($configEq, ['f1' => 'x']));
 
         $configEmpty = ['conditional' => [
             'enabled' => true, 'action' => 'show',
-            'rules' => [['fieldId' => 99, 'operator' => 'empty', 'value' => '']],
+            'rules' => [['field' => 'f99', 'operator' => 'empty', 'value' => '']],
         ]];
-        $this->assertTrue(ConditionalEvaluator::isVisible($configEmpty, [1 => 'x']));
+        $this->assertTrue(ConditionalEvaluator::isVisible($configEmpty, ['f1' => 'x']));
     }
 }

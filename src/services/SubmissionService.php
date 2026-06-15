@@ -103,12 +103,12 @@ class SubmissionService extends Component
 
         $formModel = new FormModel($form);
 
-        // (3) Resolve every field's value up front so conditional rules can be
-        // evaluated against the complete submitted snapshot (a field's
-        // visibility may depend on any other field).
-        $valuesById = [];
+        // (3) Resolve every field's value up front, keyed by field handle, so
+        // conditional rules can be evaluated against the complete submitted
+        // snapshot (a field's visibility may depend on any other field).
+        $valuesByHandle = [];
         foreach ($formModel->getFields() as $fieldId => $field) {
-            $valuesById[(int) $fieldId] = $this->valueForField($values, (int) $fieldId);
+            $valuesByHandle[$field->getName()] = $this->valueForField($values, (int) $fieldId);
         }
 
         // (4) Validate every visible field and build the persisted data payload.
@@ -120,13 +120,13 @@ class SubmissionService extends Component
         $errors = [];
 
         foreach ($formModel->getFields() as $fieldId => $field) {
-            if (!$field->isVisible($valuesById)) {
+            if (!$field->isVisible($valuesByHandle)) {
                 continue;
             }
 
-            $value = $valuesById[(int) $fieldId];
+            $value = $valuesByHandle[$field->getName()];
 
-            $fieldErrors = $field->validateValue($value, $valuesById);
+            $fieldErrors = $field->validateValue($value, $valuesByHandle);
             if (!empty($fieldErrors)) {
                 $errors['field_' . $fieldId] = $fieldErrors;
             }

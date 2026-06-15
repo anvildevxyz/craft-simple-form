@@ -66,7 +66,7 @@ class FieldModel extends Model
      * Fields with no conditional logic are always visible, so this is a no-op
      * for existing forms.
      *
-     * @param array<int, mixed> $formData posted values keyed by bare field id
+     * @param array<string, mixed> $formData posted values keyed by field handle
      */
     public function isVisible(array $formData = []): bool
     {
@@ -80,7 +80,7 @@ class FieldModel extends Model
      * together. (Callers must still treat hidden fields as not-required via
      * {@see self::isVisible()} — visibility wins.)
      *
-     * @param array<int, mixed> $formData posted values keyed by bare field id
+     * @param array<string, mixed> $formData posted values keyed by field handle
      */
     public function isRequired(array $formData = []): bool
     {
@@ -97,7 +97,7 @@ class FieldModel extends Model
      * static flag and any conditional-required rule. With no `$formData` (the
      * legacy call shape) behaviour is unchanged.
      *
-     * @param array<int, mixed> $formData
+     * @param array<string, mixed> $formData posted values keyed by field handle
      * @return string[]
      */
     public function validateValue(mixed $value, array $formData = []): array
