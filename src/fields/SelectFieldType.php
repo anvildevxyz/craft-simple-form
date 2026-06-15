@@ -30,10 +30,9 @@ class SelectFieldType extends FieldType
 
     public function renderInput(string $name, mixed $value = null): string
     {
-        $attrs = sprintf('name="%s"', htmlspecialchars($name));
-        if ($this->config['required'] ?? false) {
-            $attrs .= ' required';
-        }
+        // A <select> carries its value via the selected <option>, so reuse the
+        // shared value-less control attributes (name/required/placeholder).
+        $attrs = $this->controlAttributes($name);
 
         $options = $this->getOptions();
         $html = sprintf('<select %s class="fullwidth">', $attrs);

@@ -30,13 +30,9 @@ class TextareaFieldType extends FieldType
 
     public function renderInput(string $name, mixed $value = null): string
     {
-        $attrs = sprintf('name="%s"', htmlspecialchars($name));
-        if ($this->config['required'] ?? false) {
-            $attrs .= ' required';
-        }
-        if ($placeholder = $this->config['placeholder'] ?? null) {
-            $attrs .= sprintf(' placeholder="%s"', htmlspecialchars((string) $placeholder));
-        }
+        // A <textarea>'s value lives between the tags, so reuse the shared
+        // value-less control attributes (name/required/placeholder).
+        $attrs = $this->controlAttributes($name);
         $value = $value ? htmlspecialchars((string) $value) : '';
         return sprintf(
             '<textarea %s class="fullwidth" rows="6">%s</textarea>',

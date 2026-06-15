@@ -39,18 +39,16 @@ class CaptchaService extends Component
             return false;
         }
 
+        /** @var \craft\web\Request $request */
+        $request = Craft::$app->getRequest();
+
         if ($token === null) {
-            /** @var \craft\web\Request $request */
-            $request = Craft::$app->getRequest();
             $token = (string) $request->getBodyParam(self::TOKEN_PARAM, '');
         }
 
         if ($token === '') {
             return false;
         }
-
-        /** @var \craft\web\Request $request */
-        $request = Craft::$app->getRequest();
 
         try {
             $response = Craft::createGuzzleClient()->post(self::VERIFY_URL, [

@@ -89,16 +89,24 @@ class UpdateFieldTool implements ToolInterface
             ? (int)$arguments['siteId']
             : (int)Craft::$app->getSites()->getPrimarySite()->id;
 
-        // Label is per-site; default to the existing label on the target site.
-        if (array_key_exists('label', $arguments)) {
-            $label = (string)$arguments['label'];
-        } else {
-            $label = $this->currentLabel($fieldId, $siteId) ?? (string)$field['name'];
-        }
+        // Label and helpText are per-site; default unspecified ones to the
+        // field's existing values on the target site. Both live in the same
+        // (fieldId, siteId) row, so fetch them in a single query.
+        $siteRow = (new \craft\db\Query())
+            ->select(['label', 'helpText'])
+            ->from('{{%simpleform_fields_sites}}')
+            ->where(['fieldId' => $fieldId, 'siteId' => $siteId])
+            ->one();
+        $currentLabel = is_array($siteRow) && is_string($siteRow['label'] ?? null) ? $siteRow['label'] : null;
+        $currentHelpText = is_array($siteRow) && is_string($siteRow['helpText'] ?? null) ? $siteRow['helpText'] : null;
+
+        $label = array_key_exists('label', $arguments)
+            ? (string)$arguments['label']
+            : ($currentLabel ?? (string)$field['name']);
 
         $helpText = array_key_exists('helpText', $arguments)
             ? (string)$arguments['helpText']
-            : (string)($this->currentHelpText($fieldId, $siteId) ?? '');
+            : (string)($currentHelpText ?? '');
 
         $errors = FieldOps::validate($type, $label, $handle, $config, $formId, $fieldId);
         if ($errors !== []) {
@@ -114,25 +122,5 @@ class UpdateFieldTool implements ToolInterface
             'fieldId' => $fieldId,
             'form' => $fresh instanceof Form ? FormPresenter::form($fresh) : null,
         ];
-    }
-
-    private function currentLabel(int $fieldId, int $siteId): ?string
-    {
-        $label = (new \craft\db\Query())
-            ->select(['label'])
-            ->from('{{%simpleform_fields_sites}}')
-            ->where(['fieldId' => $fieldId, 'siteId' => $siteId])
-            ->scalar();
-        return is_string($label) ? $label : null;
-    }
-
-    private function currentHelpText(int $fieldId, int $siteId): ?string
-    {
-        $help = (new \craft\db\Query())
-            ->select(['helpText'])
-            ->from('{{%simpleform_fields_sites}}')
-            ->where(['fieldId' => $fieldId, 'siteId' => $siteId])
-            ->scalar();
-        return is_string($help) ? $help : null;
     }
 }

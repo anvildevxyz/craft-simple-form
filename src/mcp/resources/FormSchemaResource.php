@@ -30,11 +30,15 @@ final class FormSchemaResource implements ResourceProviderInterface
     public function list(): array
     {
         $resources = [];
+        $seen = [];
+        // siteId('*') returns one element instance per site; dedupe by handle so
+        // a multi-site form yields a single (handle-keyed) resource entry.
         $forms = Form::find()->siteId('*')->status(null)->all();
         foreach ($forms as $form) {
-            if (!$form instanceof Form || $form->handle === null) {
+            if (!$form instanceof Form || $form->handle === null || isset($seen[$form->handle])) {
                 continue;
             }
+            $seen[$form->handle] = true;
             $resources[] = [
                 'uri' => self::SCHEME . '://' . $form->handle,
                 'name' => $form->name ?? $form->handle,

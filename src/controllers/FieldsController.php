@@ -109,7 +109,8 @@ class FieldsController extends Controller
         $config = json_decode($request->getBodyParam('config', '{}'), true) ?? [];
 
         $db = Craft::$app->getDb();
-        $field = (new Query())->from('{{%simpleform_fields}}')->where(['id' => $fieldId])->one();
+        // Only formId (cache invalidation) and the immutable type are needed.
+        $field = (new Query())->select(['formId', 'type'])->from('{{%simpleform_fields}}')->where(['id' => $fieldId])->one();
         if (!$field) {
             throw new NotFoundHttpException('Field not found');
         }
@@ -163,15 +164,16 @@ class FieldsController extends Controller
         $fieldId = $request->getRequiredBodyParam('fieldId');
 
         $db = Craft::$app->getDb();
-        $field = (new Query())->from('{{%simpleform_fields}}')->where(['id' => $fieldId])->one();
-        if (!$field) {
+        // Only the formId is needed (existence check + cache invalidation).
+        $formId = (new Query())->select(['formId'])->from('{{%simpleform_fields}}')->where(['id' => $fieldId])->scalar();
+        if ($formId === false) {
             throw new NotFoundHttpException('Field not found');
         }
 
         try {
             // _sites rows cascade via FK.
             $db->createCommand()->delete('{{%simpleform_fields}}', ['id' => $fieldId])->execute();
-            Plugin::getInstance()->getFormStructure()->invalidate((int)$field['formId']);
+            Plugin::getInstance()->getFormStructure()->invalidate((int)$formId);
             return $this->asJson(['success' => true, 'message' => 'Field deleted successfully']);
         } catch (\Exception $e) {
             Craft::warning('Error deleting field: ' . $e->getMessage(), 'simple-form');

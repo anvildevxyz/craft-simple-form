@@ -3,8 +3,11 @@
 namespace fabianhaef\simpleform\tests\integration;
 
 use Craft;
+use craft\enums\PropagationMethod;
+use craft\models\Site;
 use craft\web\Response;
 use fabianhaef\simpleform\controllers\McpController;
+use fabianhaef\simpleform\elements\Form;
 use fabianhaef\simpleform\elements\Submission;
 use fabianhaef\simpleform\mcp\Scopes;
 use fabianhaef\simpleform\Plugin;
@@ -112,6 +115,64 @@ class McpResourcesTest extends SimpleFormTestCase
         $handles = array_column($schema['fields'], 'handle');
         $this->assertContains('fullName', $handles);
         $this->assertContains('email', $handles);
+    }
+
+    public function testMultiSiteFormAppearsOnceInResourceList(): void
+    {
+        // Regression for #71: a form propagated to multiple sites must yield a
+        // single (handle-keyed) resource entry, not one per site.
+        $this->requireCraft();
+        $second = $this->createSecondSite();
+        $token = $this->issueToken([Scopes::FORMS_MANAGE, Scopes::SUBMISSIONS_READ]);
+
+        $primary = Craft::$app->getSites()->getPrimarySite();
+        $form = new Form();
+        $form->name = 'Multi';
+        $form->handle = 'multiSiteResForm';
+        $form->title = 'Multi';
+        $form->siteId = $primary->id;
+        $form->propagationMethod = PropagationMethod::All;
+        $this->assertTrue(Craft::$app->getElements()->saveElement($form), 'Multi-site form should save');
+
+        // Sanity: the form really does exist on both sites.
+        $this->assertNotNull(Form::find()->id($form->id)->siteId($second->id)->one());
+
+        $list = $this->rpc('resources/list', [], $token);
+        $uris = array_column($list['result']['resources'], 'uri');
+
+        $this->assertSame(
+            1,
+            count(array_keys($uris, 'form://multiSiteResForm', true)),
+            'Form schema resource must be listed once for a multi-site form',
+        );
+        $this->assertSame(
+            1,
+            count(array_keys($uris, 'submissions://multiSiteResForm', true)),
+            'Submissions dataset resource must be listed once for a multi-site form',
+        );
+    }
+
+    private function createSecondSite(): Site
+    {
+        $sitesService = Craft::$app->getSites();
+        foreach ($sitesService->getAllSites() as $existing) {
+            if ($existing->handle === 'integrationSecondSite') {
+                return $existing;
+            }
+        }
+
+        $primary = $sitesService->getPrimarySite();
+        $site = new Site([
+            'groupId' => $primary->groupId,
+            'name' => 'Integration Second Site',
+            'handle' => 'integrationSecondSite',
+            'language' => 'de',
+            'hasUrls' => false,
+            'primary' => false,
+        ]);
+        $this->assertTrue($sitesService->saveSite($site), 'Second site should save: ' . implode(', ', $site->getFirstErrors()));
+
+        return $site;
     }
 
     public function testSubmissionsResourceHiddenAndDeniedWithoutSubmissionsRead(): void

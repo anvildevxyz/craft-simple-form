@@ -105,25 +105,41 @@ abstract class FieldType
      */
     protected function validateOptionMembership(mixed $value): array
     {
-        if (!in_array($value, array_keys($this->getOptions()))) {
-            return [Craft::t('simple-form', 'Please select a valid option.')];
+        // O(1) key lookup — getOptions() is keyed by option value (label always
+        // set), so an isset() check is equivalent to membership without the
+        // array_keys() allocation. is_scalar guards against a non-scalar
+        // (array) posted value reaching the array offset.
+        $options = $this->getOptions();
+        if (is_scalar($value) && isset($options[$value])) {
+            return [];
         }
-        return [];
+        return [Craft::t('simple-form', 'Please select a valid option.')];
     }
 
     abstract public function renderInput(string $name, mixed $value = null): string;
 
-    protected function getInputAttributes(string $name, mixed $value = null): string
+    /**
+     * The value-less control attributes (name, required, placeholder) shared by
+     * every field control. Inputs add a value via {@see self::getInputAttributes()};
+     * <textarea>/<select> carry the value in their markup, so they use this directly.
+     */
+    protected function controlAttributes(string $name): string
     {
         $attrs = sprintf('name="%s"', htmlspecialchars($name));
-        if ($value !== null) {
-            $attrs .= sprintf(' value="%s"', htmlspecialchars((string) $value));
-        }
         if ($this->config['required'] ?? false) {
             $attrs .= ' required';
         }
         if ($placeholder = $this->config['placeholder'] ?? null) {
-            $attrs .= sprintf(' placeholder="%s"', htmlspecialchars($placeholder));
+            $attrs .= sprintf(' placeholder="%s"', htmlspecialchars((string) $placeholder));
+        }
+        return $attrs;
+    }
+
+    protected function getInputAttributes(string $name, mixed $value = null): string
+    {
+        $attrs = $this->controlAttributes($name);
+        if ($value !== null) {
+            $attrs .= sprintf(' value="%s"', htmlspecialchars((string) $value));
         }
         return $attrs;
     }

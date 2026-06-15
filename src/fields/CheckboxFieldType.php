@@ -27,7 +27,8 @@ class CheckboxFieldType extends FieldType
             $options = $this->getOptions();
             $values = is_array($value) ? $value : [$value];
             foreach ($values as $v) {
-                if (!in_array($v, array_keys($options))) {
+                // O(1) key lookup; getOptions() is keyed by option value.
+                if (!is_scalar($v) || !isset($options[$v])) {
                     $errors[] = Craft::t('simple-form', 'Please select valid options.');
                     break;
                 }
