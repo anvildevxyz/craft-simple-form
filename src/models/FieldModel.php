@@ -3,6 +3,7 @@
 namespace fabianhaef\simpleform\models;
 
 use Craft;
+use fabianhaef\simpleform\helpers\ConditionalEvaluator;
 use fabianhaef\simpleform\Plugin;
 use yii\base\Model;
 
@@ -52,13 +53,69 @@ class FieldModel extends Model
     }
 
     /**
+     * @return array<string, mixed>
+     */
+    public function getConfig(): array
+    {
+        return $this->config;
+    }
+
+    /**
+     * Is this field visible given the full set of submitted values?
+     *
+     * Fields with no conditional logic are always visible, so this is a no-op
+     * for existing forms.
+     *
+     * @param array<int, mixed> $formData posted values keyed by bare field id
+     */
+    public function isVisible(array $formData = []): bool
+    {
+        return ConditionalEvaluator::isVisible($this->config, $formData);
+    }
+
+    /**
+     * Is this field required for the given submitted values?
+     *
+     * The static `required` flag and any conditional-required rule are ORed
+     * together. (Callers must still treat hidden fields as not-required via
+     * {@see self::isVisible()} — visibility wins.)
+     *
+     * @param array<int, mixed> $formData posted values keyed by bare field id
+     */
+    public function isRequired(array $formData = []): bool
+    {
+        return ($this->config['required'] ?? false)
+            || ConditionalEvaluator::isRequiredByCondition($this->config, $formData);
+    }
+
+    /**
+     * Validate a single field value.
+     *
+     * When `$formData` (the full submitted snapshot, keyed by bare field id) is
+     * supplied, conditional logic is honored: a field hidden by its conditions
+     * is never validated, and its effective required-ness is the OR of the
+     * static flag and any conditional-required rule. With no `$formData` (the
+     * legacy call shape) behaviour is unchanged.
+     *
+     * @param array<int, mixed> $formData
      * @return string[]
      */
-    public function validateValue(mixed $value): array
+    public function validateValue(mixed $value, array $formData = []): array
     {
+        // Hidden fields are never validated — their value is moot.
+        if (!$this->isVisible($formData)) {
+            return [];
+        }
+
         try {
             $fieldTypeRegistry = Plugin::getInstance()->getFieldTypeRegistry();
-            $fieldType = $fieldTypeRegistry->getFieldType($this->type, $this->config);
+
+            // Resolve effective required-ness (static OR conditional) and let the
+            // field type enforce it, so there is a single required code path.
+            $config = $this->config;
+            $config['required'] = $this->isRequired($formData);
+
+            $fieldType = $fieldTypeRegistry->getFieldType($this->type, $config);
 
             if (!$fieldType) {
                 Craft::warning(sprintf('Unknown field type: %s', $this->type), 'simple-form');

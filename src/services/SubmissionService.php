@@ -103,14 +103,30 @@ class SubmissionService extends Component
 
         $formModel = new FormModel($form);
 
-        // (3) Validate every field and build the persisted data payload.
+        // (3) Resolve every field's value up front so conditional rules can be
+        // evaluated against the complete submitted snapshot (a field's
+        // visibility may depend on any other field).
+        $valuesById = [];
+        foreach ($formModel->getFields() as $fieldId => $field) {
+            $valuesById[(int) $fieldId] = $this->valueForField($values, (int) $fieldId);
+        }
+
+        // (4) Validate every visible field and build the persisted data payload.
+        // Fields hidden by conditional logic are neither validated nor stored —
+        // a hidden field's posted value is never trusted (so a crafted POST
+        // cannot inject data the visitor never saw), and a hidden required
+        // field cannot block submission.
         $data = [];
         $errors = [];
 
         foreach ($formModel->getFields() as $fieldId => $field) {
-            $value = $this->valueForField($values, (int) $fieldId);
+            if (!$field->isVisible($valuesById)) {
+                continue;
+            }
 
-            $fieldErrors = $field->validateValue($value);
+            $value = $valuesById[(int) $fieldId];
+
+            $fieldErrors = $field->validateValue($value, $valuesById);
             if (!empty($fieldErrors)) {
                 $errors['field_' . $fieldId] = $fieldErrors;
             }
@@ -126,7 +142,7 @@ class SubmissionService extends Component
             return ['submission' => null, 'errors' => $errors];
         }
 
-        // (4) Build + save the submission element.
+        // (5) Build + save the submission element.
         $siteId = $context['siteId'] ?? $form->siteId ?? Craft::$app->getSites()->getCurrentSite()->id;
 
         $submission = new Submission();
@@ -136,7 +152,7 @@ class SubmissionService extends Component
         $submission->userId = isset($context['userId']) ? (int) $context['userId'] : null;
         $submission->readStatus = SubmissionStatus::NEW;
 
-        // (5) Fire the before-save event (same as the Twig path).
+        // (6) Fire the before-save event (same as the Twig path).
         $beforeEvent = new SubmissionEvent($submission, $form, $data, true);
         Plugin::getInstance()->trigger(Plugin::EVENT_BEFORE_SUBMISSION_SAVE, $beforeEvent);
 
@@ -144,11 +160,11 @@ class SubmissionService extends Component
             return ['submission' => null, 'errors' => ['submission' => ['Failed to save submission']]];
         }
 
-        // (6) Fire the after-save event.
+        // (7) Fire the after-save event.
         $afterEvent = new SubmissionEvent($submission, $form, $data, true);
         Plugin::getInstance()->trigger(Plugin::EVENT_AFTER_SUBMISSION_SAVE, $afterEvent);
 
-        // (7) Send the notification email when a recipient is configured.
+        // (8) Send the notification email when a recipient is configured.
         if ($form->emailTo) {
             Plugin::getInstance()->getEmailService()->sendSubmissionEmail($form, $submission, $data);
         }
