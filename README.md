@@ -1,7 +1,5 @@
 # Simple Form
 
-[![CI](https://github.com/fabianhaef/craft-simple-form/actions/workflows/ci.yml/badge.svg)](https://github.com/fabianhaef/craft-simple-form/actions/workflows/ci.yml)
-
 A lightweight, translatable form builder for Craft CMS. Create forms in the Control Panel, render them in your templates, and manage submissions—with full multi-site translation support.
 
 ## Features
