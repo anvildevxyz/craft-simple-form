@@ -239,7 +239,11 @@ class SubmissionService extends Component
         }
 
         $submission->readStatus = $status;
-        return Craft::$app->getElements()->saveElement($submission);
+        $saved = Craft::$app->getElements()->saveElement($submission);
+        if ($saved) {
+            Plugin::getInstance()->getAudit()->log('submission.status', 'submission', $submissionId, 'status → ' . $status);
+        }
+        return $saved;
     }
 
     /**

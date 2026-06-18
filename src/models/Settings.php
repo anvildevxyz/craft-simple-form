@@ -104,6 +104,7 @@ class Settings extends Model
      */
     public int $retainSubmissionsDays = 0;
     public int $retainIntegrationLogsDays = 90;
+    public int $retainAuditLogDays = 365;
 
     /**
      * When pruning submissions, scrub their data + user reference in place instead
@@ -160,7 +161,7 @@ class Settings extends Model
                 'when' => fn(): bool => !$this->isEnvReference($this->defaultEmailSender),
             ],
             [['enableHoneypot', 'enableCaptcha', 'cacheFormStructure', 'inlineFormAssets', 'enableMcp', 'dispatchIntegrationsSynchronously', 'enableAkismet', 'anonymizeInsteadOfDelete'], 'boolean'],
-            [['retainSubmissionsDays', 'retainIntegrationLogsDays'], 'integer', 'min' => 0],
+            [['retainSubmissionsDays', 'retainIntegrationLogsDays', 'retainAuditLogDays'], 'integer', 'min' => 0],
             [['akismetMode'], 'in', 'range' => [self::AKISMET_FLAG, self::AKISMET_BLOCK]],
             [['akismetApiKey'], 'required', 'when' => fn(): bool => $this->enableAkismet],
             [['mcpTokens'], 'safe'],

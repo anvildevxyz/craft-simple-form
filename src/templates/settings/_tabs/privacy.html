@@ -36,3 +36,15 @@
     size: 6,
     value: settings.retainIntegrationLogsDays,
 }) }}
+
+{{ forms.textField({
+    label: 'Delete audit log after (days)'|t('simple-form'),
+    instructions: 'Audit-trail rows older than this are pruned. 0 = keep forever.'|t('simple-form'),
+    id: 'retainAuditLogDays',
+    name: 'retainAuditLogDays',
+    type: 'number',
+    min: 0,
+    step: 1,
+    size: 6,
+    value: settings.retainAuditLogDays,
+}) }}

@@ -37,7 +37,7 @@ class SettingsController extends Controller
             'akismetApiKey',
             'akismetMode',
         ],
-        'privacy' => ['retainSubmissionsDays', 'retainIntegrationLogsDays', 'anonymizeInsteadOfDelete'],
+        'privacy' => ['retainSubmissionsDays', 'retainIntegrationLogsDays', 'retainAuditLogDays', 'anonymizeInsteadOfDelete'],
         // The MCP tab persists only the enable toggle through the generic save;
         // tokens are created/revoked via dedicated actions (one-time secret).
         'mcp' => ['enableMcp'],
@@ -45,7 +45,7 @@ class SettingsController extends Controller
 
     private const BOOL_FIELDS = ['enableHoneypot', 'enableCaptcha', 'enableMcp', 'enableAkismet', 'anonymizeInsteadOfDelete'];
     private const FLOAT_FIELDS = ['recaptchaV3MinScore'];
-    private const INT_FIELDS = ['retainSubmissionsDays', 'retainIntegrationLogsDays'];
+    private const INT_FIELDS = ['retainSubmissionsDays', 'retainIntegrationLogsDays', 'retainAuditLogDays'];
 
     public function actionIndex(): Response
     {

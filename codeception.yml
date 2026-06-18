@@ -37,6 +37,8 @@ modules:
           params: {}
         - class: fabianhaef\simpleform\migrations\m260618_000005_submission_element_fk
           params: {}
+        - class: fabianhaef\simpleform\migrations\m260618_000006_audit_log
+          params: {}
       plugins:
         - handle: simple-form
           class: fabianhaef\simpleform\Plugin

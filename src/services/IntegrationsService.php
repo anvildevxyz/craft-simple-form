@@ -153,17 +153,25 @@ class IntegrationsService extends Component
             'dateUpdated' => $now,
         ];
 
-        if ($integration->id === null) {
+        $isNew = $integration->id === null;
+        if ($isNew) {
             $integration->uid = StringHelper::UUID();
             $db->createCommand()->insert(self::TABLE, $attrs + [
                 'dateCreated' => $now,
                 'uid' => $integration->uid,
             ])->execute();
             $integration->id = (int) $db->getLastInsertID();
-            return true;
+        } else {
+            $db->createCommand()->update(self::TABLE, $attrs, ['id' => $integration->id])->execute();
         }
 
-        $db->createCommand()->update(self::TABLE, $attrs, ['id' => $integration->id])->execute();
+        Plugin::getInstance()->getAudit()->log(
+            $isNew ? 'integration.create' : 'integration.save',
+            'integration',
+            $integration->id,
+            sprintf('%s (%s)', $integration->name, $integration->type),
+        );
+
         return true;
     }
 
@@ -272,6 +280,9 @@ class IntegrationsService extends Component
         $count = Craft::$app->getDb()->createCommand()
             ->delete(self::TABLE, ['id' => $id])
             ->execute();
+        if ($count > 0) {
+            Plugin::getInstance()->getAudit()->log('integration.delete', 'integration', $id);
+        }
         return $count > 0;
     }
 

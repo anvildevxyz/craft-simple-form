@@ -29,13 +29,16 @@ class RetentionService extends Component
     /**
      * Run all retention sweeps. Returns counts for logging/telemetry.
      *
-     * @return array{submissions: int, integrationLogs: int}
+     * @return array{submissions: int, integrationLogs: int, auditLog: int}
      */
     public function runGarbageCollection(): array
     {
         return [
             'submissions' => $this->purgeSubmissions(),
             'integrationLogs' => $this->pruneIntegrationLogs(),
+            'auditLog' => Plugin::getInstance()->getAudit()->prune(
+                Plugin::getInstance()->getSettings()->retainAuditLogDays,
+            ),
         ];
     }
 

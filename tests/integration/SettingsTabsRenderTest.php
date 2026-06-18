@@ -29,6 +29,8 @@ class SettingsTabsRenderTest extends SimpleFormTestCase
                 'mcpScopeLabels' => [],
                 'integrations' => [],
                 'typeNames' => ['webhook' => 'Webhook'],
+                'auditEntries' => [],
+                'auditUserNames' => [],
             ], $extra));
         } finally {
             $view->setTemplateMode($mode);
@@ -40,7 +42,7 @@ class SettingsTabsRenderTest extends SimpleFormTestCase
         $this->requireCraft();
         $settings = new Settings();
 
-        foreach (['general', 'email', 'spam', 'privacy', 'integrations', 'mcp'] as $tab) {
+        foreach (['general', 'email', 'spam', 'privacy', 'integrations', 'audit', 'mcp'] as $tab) {
             $html = $this->render($tab, $settings);
             $this->assertNotSame('', trim($html), "Tab '$tab' rendered empty");
         }

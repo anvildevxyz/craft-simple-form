@@ -8,6 +8,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- Audit log (Settings → Audit Log): an append-only trail of form, integration,
+  notification and submission-status changes (actor, action, target, summary),
+  filterable and pruned by a configurable retention window (Settings → Privacy).
 - Submissions are now soft-deleted (trashable) and restorable, with a **Trashed**
   source on the element index. A permanent delete now cascades the plugin row
   (added the missing `simpleform_submissions` → `elements` foreign key), so trash

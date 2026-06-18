@@ -1,0 +1,32 @@
+<h2>{{ 'Audit Log'|t('simple-form') }}</h2>
+<p class="light">{{ 'Recent changes to forms, integrations, notifications and submission statuses.'|t('simple-form') }}</p>
+
+{% if auditEntries is not empty %}
+    <table class="data fullwidth">
+        <thead>
+            <tr>
+                <th>{{ 'When'|t('simple-form') }}</th>
+                <th>{{ 'User'|t('simple-form') }}</th>
+                <th>{{ 'Action'|t('simple-form') }}</th>
+                <th>{{ 'Target'|t('simple-form') }}</th>
+                <th>{{ 'Details'|t('simple-form') }}</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for entry in auditEntries %}
+                <tr>
+                    <td>{{ entry.dateCreated|datetime('short') }}</td>
+                    <td>{{ entry.userId ? (auditUserNames[entry.userId] ?? ('#' ~ entry.userId)) : 'System'|t('simple-form') }}</td>
+                    <td><code>{{ entry.action }}</code></td>
+                    <td>{{ entry.targetType }}{{ entry.targetId ? ' #' ~ entry.targetId }}</td>
+                    <td>{{ entry.summary }}</td>
+                </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+{% else %}
+    <div class="zilch sf-empty-state">
+        <p class="sf-empty-heading">{{ 'No audit entries yet.'|t('simple-form') }}</p>
+        <p class="light">{{ 'Changes to forms and integrations will appear here.'|t('simple-form') }}</p>
+    </div>
+{% endif %}

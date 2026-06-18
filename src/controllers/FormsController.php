@@ -10,6 +10,7 @@ use fabianhaef\simpleform\elements\Form;
 use fabianhaef\simpleform\helpers\FieldQueryHelper;
 use fabianhaef\simpleform\helpers\SimpleFormPermissions;
 use fabianhaef\simpleform\helpers\SiteHelper;
+use fabianhaef\simpleform\Plugin;
 use fabianhaef\simpleform\services\FieldSyncService;
 use yii\web\NotFoundHttpException;
 use yii\web\Response;
@@ -134,6 +135,8 @@ class FormsController extends Controller
             return $this->redirect("simple-form/forms/edit/{$form->id}?site={$site->handle}");
         }
 
+        Plugin::getInstance()->getAudit()->log('form.save', 'form', (int) $form->id, (string) ($form->title ?? $form->name));
+
         Craft::$app->getSession()->setNotice(Craft::t('simple-form', 'Form saved successfully'));
         return $this->redirect("simple-form/forms/edit/{$form->id}?site={$site->handle}");
     }
@@ -154,6 +157,8 @@ class FormsController extends Controller
         if (!Craft::$app->getElements()->deleteElement($form)) {
             return $this->asJsonErrors($form->getErrors());
         }
+
+        Plugin::getInstance()->getAudit()->log('form.delete', 'form', (int) $formId, (string) ($form->title ?? $form->name));
 
         return $this->asJsonSuccess();
     }

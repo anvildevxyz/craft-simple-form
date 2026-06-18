@@ -65,25 +65,37 @@ class NotificationsService extends Component
             'dateUpdated' => $now,
         ];
 
-        if ($notification->id === null) {
+        $isNew = $notification->id === null;
+        if ($isNew) {
             $notification->uid = StringHelper::UUID();
             $db->createCommand()->insert(self::TABLE, $attrs + [
                 'dateCreated' => $now,
                 'uid' => $notification->uid,
             ])->execute();
             $notification->id = (int) $db->getLastInsertID();
-            return true;
+        } else {
+            $db->createCommand()->update(self::TABLE, $attrs, ['id' => $notification->id])->execute();
         }
 
-        $db->createCommand()->update(self::TABLE, $attrs, ['id' => $notification->id])->execute();
+        Plugin::getInstance()->getAudit()->log(
+            $isNew ? 'notification.create' : 'notification.save',
+            'notification',
+            $notification->id,
+            sprintf('%s → %s', $notification->name, $notification->recipient),
+        );
+
         return true;
     }
 
     public function delete(int $id): bool
     {
-        return (int) Craft::$app->getDb()->createCommand()
+        $deleted = (int) Craft::$app->getDb()->createCommand()
             ->delete(self::TABLE, ['id' => $id])
             ->execute() > 0;
+        if ($deleted) {
+            Plugin::getInstance()->getAudit()->log('notification.delete', 'notification', $id);
+        }
+        return $deleted;
     }
 
     public function toggle(int $id): ?bool

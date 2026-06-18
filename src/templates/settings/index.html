@@ -15,6 +15,7 @@
     spam: { label: 'Spam Protection'|t('simple-form'), url: cpUrl('simple-form/settings/spam') },
     privacy: { label: 'Privacy'|t('simple-form'), url: cpUrl('simple-form/settings/privacy') },
     integrations: { label: 'Integrations'|t('simple-form'), url: cpUrl('simple-form/settings/integrations') },
+    audit: { label: 'Audit Log'|t('simple-form'), url: cpUrl('simple-form/settings/audit') },
     mcp: { label: 'MCP Server'|t('simple-form'), url: cpUrl('simple-form/settings/mcp') },
 } %}
 {% set selectedTab = selectedSettingsSubnavItem %}
@@ -22,7 +23,7 @@
 {# The MCP and Integrations tabs own their own independent forms / AJAX
    actions, so they cannot live inside a single full-page form. Every other tab
    posts through the shared settings/save form. #}
-{% set standaloneTabs = ['mcp', 'integrations'] %}
+{% set standaloneTabs = ['mcp', 'integrations', 'audit'] %}
 {% set fullPageForm = selectedSettingsSubnavItem not in standaloneTabs %}
 
 {% block actionButton %}

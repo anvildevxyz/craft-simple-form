@@ -37,6 +37,7 @@ use fabianhaef\simpleform\mcp\TokenManager;
 use fabianhaef\simpleform\models\Settings;
 use fabianhaef\simpleform\services\AkismetService;
 use fabianhaef\simpleform\services\AssetUploadService;
+use fabianhaef\simpleform\services\AuditService;
 use fabianhaef\simpleform\services\CaptchaProviderRegistry;
 use fabianhaef\simpleform\services\CaptchaService;
 use fabianhaef\simpleform\services\EmailService;
@@ -73,7 +74,7 @@ class Plugin extends BasePlugin
      */
     public const EVENT_REGISTER_CAPTCHA_PROVIDERS = 'registerCaptchaProviders';
 
-    public string $schemaVersion = '2.7.0';
+    public string $schemaVersion = '2.8.0';
     public bool $hasCpSection = true;
     public bool $hasCpSettings = false;
     public bool $hasCpPermissions = true;
@@ -102,6 +103,7 @@ class Plugin extends BasePlugin
             'retention' => RetentionService::class,
             'reports' => ReportsService::class,
             'notifications' => NotificationsService::class,
+            'audit' => AuditService::class,
         ]);
 
         Craft::$app->getI18n()->translations['simple-form'] ??= [
@@ -354,6 +356,13 @@ class Plugin extends BasePlugin
         return $service;
     }
 
+    public function getAudit(): AuditService
+    {
+        /** @var AuditService $service */
+        $service = $this->get('audit');
+        return $service;
+    }
+
     public function getName(): string
     {
         return Craft::t('simple-form', 'Simple Form');
@@ -424,6 +433,7 @@ class Plugin extends BasePlugin
         $event->rules['simple-form/settings/mcp/revoke-token'] = 'simple-form/settings/revoke-mcp-token';
         // Integrations management lives under Settings. Specific routes must
         // precede the generic settings/<tab> catch-all below.
+        $event->rules['simple-form/settings/audit'] = 'simple-form/audit/index';
         $event->rules['simple-form/settings/integrations'] = 'simple-form/integrations/settings-index';
         $event->rules['simple-form/settings/integrations/new'] = 'simple-form/integrations/edit';
         $event->rules['simple-form/settings/integrations/<integrationId:\d+>'] = 'simple-form/integrations/edit';
