@@ -8,6 +8,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- Email-marketing integration connectors: **Mailchimp** (upsert a member into an
+  audience, with double opt-in and merge-field mapping) and **ActiveCampaign**
+  (sync a contact and optionally add to a list). API-key authenticated; built on
+  the integrations framework.
 - Slack and Discord integration connectors: post each submission to an incoming
   webhook as a message — auto field list or a `{handle}` placeholder template,
   with optional channel/username overrides. Built on the integrations framework.
