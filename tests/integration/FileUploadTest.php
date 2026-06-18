@@ -4,9 +4,12 @@ namespace fabianhaef\simpleform\tests\integration;
 
 use Craft;
 use craft\db\Query;
+use craft\web\Response;
 use craft\web\UploadedFile;
+use fabianhaef\simpleform\controllers\SubmitController;
 use fabianhaef\simpleform\fields\FileFieldType;
 use fabianhaef\simpleform\Plugin;
+use fabianhaef\simpleform\services\AssetUploadService;
 
 /**
  * #89 — file-upload field: server-side upload validation, the asset-id storage
@@ -90,6 +93,62 @@ class FileUploadTest extends SimpleFormTestCase
         $data = is_array($row['data']) ? $row['data'] : json_decode((string) $row['data'], true);
         $this->assertSame('file', $data['field_' . $fileFieldId]['type']);
         $this->assertSame([4242, 4243], $data['field_' . $fileFieldId]['value']);
+    }
+
+    /**
+     * Regression for the smoke-test finding: SubmitController must route through
+     * the upload-aware createFromRequest(), not call submit() with body params
+     * only (which silently drops file uploads, storing null). Drives the real
+     * controller with an injected $_FILES entry + a stubbed asset service so it
+     * needs no volume.
+     */
+    public function testSubmitControllerProcessesFileUploads(): void
+    {
+        $this->requireCraft();
+        $form = $this->createForm('Upload Wiring', 'upload_wiring');
+        $textId = $this->createField($form->id, 'text', 'name', 'Name');
+        $fileId = $this->createField($form->id, 'file', 'attachment', 'Attachment'); // no ext restriction
+
+        // Stub the asset service so the assertion is volume-independent.
+        Plugin::getInstance()->set('assetUploadService', new class extends AssetUploadService {
+            public function saveUploads(array $files, array $fieldConfig): array
+            {
+                return [9999];
+            }
+        });
+
+        $tmp = tempnam(sys_get_temp_dir(), 'sfu');
+        file_put_contents($tmp, '%PDF-1.4');
+        $_FILES['field_' . $fileId] = [
+            'name' => 'doc.pdf',
+            'type' => 'application/pdf',
+            'tmp_name' => $tmp,
+            'error' => UPLOAD_ERR_OK,
+            'size' => 8,
+        ];
+        UploadedFile::reset();
+
+        $request = Craft::$app->getRequest();
+        $request->setBodyParams(['formHandle' => 'upload_wiring', 'field_' . $textId => 'Ada']);
+        $_SERVER['REQUEST_METHOD'] = 'POST';
+        Craft::$app->set('response', new Response());
+
+        try {
+            $controller = new SubmitController('submit', Plugin::getInstance());
+            $controller->enableCsrfValidation = false;
+            $response = $controller->actionIndex();
+            $this->assertTrue(($response->data['success'] ?? false) === true, (string) json_encode($response->data));
+        } finally {
+            unset($_FILES['field_' . $fileId]);
+            UploadedFile::reset();
+            Plugin::getInstance()->set('assetUploadService', AssetUploadService::class);
+            @unlink($tmp);
+        }
+
+        $row = (new Query())->from('{{%simpleform_submissions}}')
+            ->where(['formId' => $form->id])->orderBy(['id' => SORT_DESC])->one();
+        $data = is_array($row['data']) ? $row['data'] : json_decode((string) $row['data'], true);
+        $this->assertSame([9999], $data['field_' . $fileId]['value'], 'file field must carry the uploaded asset ids, not null');
     }
 
     public function testSaveUploadsCreatesAssetWhenVolumeAvailable(): void

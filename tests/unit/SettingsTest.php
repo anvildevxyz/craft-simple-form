@@ -89,13 +89,13 @@ class SettingsTest extends TestCase
 
     public function testSubmitControllerRoutesThroughSubmissionService(): void
     {
-        // Honeypot + captcha enforcement now lives in the shared, transport-
-        // agnostic SubmissionService::submit() so the Twig and GraphQL paths run
-        // it identically; the controller just adapts the request and reports the
-        // outcome.
+        // The controller MUST route through createFromRequest() — the upload-aware
+        // entry point that resolves file uploads (→ assets), honeypot, and userId
+        // before delegating to submit(). Calling submit() directly with body-only
+        // values silently drops file uploads (regression guarded here).
         $code = $this->source('controllers/SubmitController.php');
 
-        $this->assertStringContainsString('getSubmissionService()->submit(', $code);
+        $this->assertStringContainsString('getSubmissionService()->createFromRequest(', $code);
         $this->assertStringContainsString('submitMessage', $code);
     }
 

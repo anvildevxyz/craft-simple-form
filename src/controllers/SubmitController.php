@@ -40,15 +40,12 @@ class SubmitController extends Controller
             ]);
         }
 
-        // Route through the shared, transport-agnostic submit path so validation,
-        // spam protection, the before/after events, and email all run identically
-        // to the GraphQL mutation.
-        $userId = Craft::$app->getUser()->getId();
-        $result = Plugin::getInstance()->getSubmissionService()->submit($form, $this->fieldValues($request), [
-            'honeypot' => (string) $request->getBodyParam('__honeypot', ''),
-            'captchaToken' => null,
-            'userId' => $userId !== null ? (int) $userId : null,
-        ]);
+        // createFromRequest is the upload-aware entry point: it resolves field
+        // values (including file uploads → Craft assets), the honeypot, and the
+        // userId, then routes through the shared submit() path so validation,
+        // spam protection, events, and email all run identically to the GraphQL
+        // mutation. Building values here would skip file-field handling.
+        $result = Plugin::getInstance()->getSubmissionService()->createFromRequest($form, $request);
 
         // A silently-dropped honeypot hit returns no submission and no errors:
         // report success so bots get no signal, but never persist the row.
@@ -70,22 +67,5 @@ class SubmitController extends Controller
             'success' => true,
             'message' => $settings->submitMessage,
         ]);
-    }
-
-    /**
-     * Collect the posted field values keyed by `field_<id>` from the request.
-     *
-     * @return array<string, mixed>
-     */
-    private function fieldValues(\craft\web\Request $request): array
-    {
-        $values = [];
-        $body = $request->getBodyParams();
-        foreach ($body as $key => $value) {
-            if (is_string($key) && str_starts_with($key, 'field_')) {
-                $values[$key] = $value;
-            }
-        }
-        return $values;
     }
 }
