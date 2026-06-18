@@ -2,6 +2,7 @@
 
 {% set title = 'Forms'|t('simple-form') %}
 {% set selectedSubnavItem = 'forms' %}
+{% do craft.app.view.registerAssetBundle('fabianhaef\\simpleform\\web\\assets\\cp\\SimpleFormCpAsset') %}
 
 {% block content %}
 <div class="buttons">
@@ -57,14 +58,4 @@
 {% else %}
     <p>{{ 'No forms yet.'|t('simple-form') }}</p>
 {% endif %}
-
-<style>
-    .delete {
-        cursor: pointer;
-        opacity: 0.7;
-    }
-    .delete:hover {
-        opacity: 1;
-    }
-</style>
 {% endblock %}

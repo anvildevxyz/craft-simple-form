@@ -2,6 +2,7 @@
 
 {% set title = 'Submission #'|t('simple-form') ~ submission.id %}
 {% set selectedSubnavItem = 'submissions' %}
+{% do craft.app.view.registerAssetBundle('fabianhaef\\simpleform\\web\\assets\\cp\\SimpleFormCpAsset') %}
 
 {% block content %}
 <div class="buttons">
@@ -9,7 +10,10 @@
     {% if form %}
         <a href="{{ cpUrl('simple-form/forms/edit/' ~ form.id) }}" class="btn">{{ 'Edit Form'|t('simple-form') }}</a>
     {% endif %}
-    <button id="toggle-status-btn" class="btn secondary">
+    <button id="toggle-status-btn" class="btn secondary"
+            data-action="{{ cpUrl('simple-form/submissions/toggle-status') }}"
+            data-submission-id="{{ submission.id }}"
+            data-error="{{ 'Couldn’t update the status.'|t('simple-form') }}">
         {{ 'Mark as {status}'|t('simple-form', { status: (submission.readStatus == 'new' ? 'Read'|t('simple-form') : (submission.readStatus == 'read' ? 'Archived'|t('simple-form') : 'New'|t('simple-form'))) }) }}
     </button>
 </div>
@@ -124,94 +128,5 @@
     {% endif %}
 </div>
 
-<style>
-    .status-label {
-        display: inline-block;
-        padding: 2px 8px;
-        border-radius: 3px;
-        font-size: 11px;
-        font-weight: bold;
-    }
-    .status-success { background: #27ae60; color: #fff; }
-    .status-failed { background: #d0021b; color: #fff; }
-    .status-pending { background: #f5a623; color: #fff; }
 
-    .buttons {
-        margin-bottom: 20px;
-    }
-
-    .buttons a,
-    .buttons button {
-        margin-right: 10px;
-    }
-
-    .submission-detail {
-        background: #fff;
-        border: 1px solid #ddd;
-        border-radius: 4px;
-        padding: 20px;
-    }
-
-    .detail-header {
-        display: flex;
-        justify-content: space-between;
-        align-items: flex-start;
-    }
-
-    .detail-info p {
-        margin: 10px 0;
-    }
-
-    .detail-info strong {
-        display: inline-block;
-        width: 100px;
-    }
-
-    .status {
-        display: inline-block;
-        padding: 4px 8px;
-        border-radius: 3px;
-        font-size: 12px;
-        font-weight: bold;
-    }
-
-    .status.new {
-        background-color: #4099ff;
-        color: white;
-    }
-
-    .status.read {
-        background-color: #90a4ae;
-        color: white;
-    }
-
-    .status.archived {
-        background-color: #ccc;
-        color: #333;
-    }
-</style>
-
-<script>
-document.getElementById('toggle-status-btn').addEventListener('click', function() {
-    const submissionId = {{ submission.id }};
-    const xhr = new XMLHttpRequest();
-    xhr.open('POST', '{{ cpUrl("simple-form/submissions/toggle-status") }}', true);
-    xhr.setRequestHeader('X-Requested-With', 'XMLHttpRequest');
-    xhr.setRequestHeader('X-CSRF-Token', Craft.csrfTokenValue);
-    xhr.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded');
-
-    xhr.onload = function() {
-        if (xhr.status === 200) {
-            const response = JSON.parse(xhr.responseText);
-            if (response.success) {
-                location.reload();
-            } else {
-                Craft.cp.displayError(response.error || '{{ 'Couldn’t update the status.'|t('simple-form')|e('js') }}');
-            }
-        }
-    };
-
-    xhr.send('submissionId=' + submissionId);
-});
-</script>
 {% endblock %}

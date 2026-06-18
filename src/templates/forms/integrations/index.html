@@ -2,6 +2,7 @@
 
 {% set title = 'Integrations'|t('simple-form') ~ ' — ' ~ (form.title ?: form.name) %}
 {% set selectedSubnavItem = 'forms' %}
+{% do craft.app.view.registerAssetBundle('fabianhaef\\simpleform\\web\\assets\\cp\\SimpleFormCpAsset') %}
 
 {% set crumbs = [
     { label: 'Simple Form'|t('simple-form'), url: cpUrl('simple-form/forms') },
@@ -17,6 +18,12 @@
     </a>
 </div>
 
+<div id="sf-integrations"
+     data-toggle-url="{{ cpUrl('simple-form/integrations/toggle') }}"
+     data-delete-url="{{ cpUrl('simple-form/integrations/delete') }}"
+     data-confirm-delete="{{ 'Delete this integration?'|t('simple-form') }}"
+     data-error="{{ 'Couldn’t complete that action.'|t('simple-form') }}"
+     data-network-error="{{ 'Network error — please try again.'|t('simple-form') }}">
 {% if integrations %}
     <table class="data fullwidth collapsible">
         <thead>
@@ -56,48 +63,5 @@
 {% else %}
     <p>{{ 'No integrations yet. Add one to push submissions to a webhook or other service.'|t('simple-form') }}</p>
 {% endif %}
-
-<script>
-(function () {
-    var csrf = Craft.csrfTokenValue;
-    function post(url, body, cb) {
-        var xhr = new XMLHttpRequest();
-        xhr.open('POST', url, true);
-        xhr.setRequestHeader('X-Requested-With', 'XMLHttpRequest');
-        xhr.setRequestHeader('X-CSRF-Token', csrf);
-        xhr.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded');
-        // The toggle/delete actions call requireAcceptsJson(); without this header
-        // Craft rejects the request with a 400.
-        xhr.setRequestHeader('Accept', 'application/json');
-        xhr.onload = function () {
-            var r = null;
-            try { r = JSON.parse(xhr.responseText); } catch (e) { r = null; }
-            if (xhr.status === 200 && r && r.success) {
-                cb(r);
-            } else {
-                Craft.cp.displayError((r && r.error) || '{{ "Couldn’t complete that action."|t("simple-form")|e("js") }}');
-            }
-        };
-        xhr.onerror = function () {
-            Craft.cp.displayError('{{ "Network error — please try again."|t("simple-form")|e("js") }}');
-        };
-        xhr.send(body);
-    }
-    document.querySelectorAll('.status-toggle').forEach(function (btn) {
-        btn.addEventListener('click', function () {
-            post('{{ cpUrl("simple-form/integrations/toggle") }}', 'integrationId=' + btn.dataset.id, function () {
-                location.reload();
-            });
-        });
-    });
-    document.querySelectorAll('.delete[data-id]').forEach(function (el) {
-        el.addEventListener('click', function () {
-            if (!confirm('{{ "Delete this integration?"|t("simple-form")|e("js") }}')) return;
-            post('{{ cpUrl("simple-form/integrations/delete") }}', 'integrationId=' + el.dataset.id, function () {
-                location.reload();
-            });
-        });
-    });
-})();
-</script>
+</div>
 {% endblock %}

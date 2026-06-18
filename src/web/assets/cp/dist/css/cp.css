@@ -1,0 +1,235 @@
+/*
+ * Simple Form — Control Panel styles.
+ *
+ * Consolidated from the per-template inline <style> blocks (#100). Structural
+ * surfaces use Craft theme tokens (--pane-bg, --input-border-color,
+ * --light-text-color, --link-color) so they track light/dark mode; the status
+ * accent colors stay explicit because Craft's themed CSS doesn't expose a
+ * red/blue/green palette as custom properties.
+ */
+
+/* ---------- Shared: submission status badges ----------
+   Scoped to the modifier classes (not bare `.status`) so the full ruleset
+   stays distinct from Craft's core `.status` indicator dot. */
+.status.new,
+.status.read,
+.status.archived,
+.status.spam {
+    display: inline-block;
+    padding: 4px 8px;
+    border-radius: 3px;
+    font-size: 12px;
+    font-weight: bold;
+}
+
+.status.new { background-color: #4099ff; color: #fff; }
+.status.read { background-color: #90a4ae; color: #fff; }
+.status.archived { background-color: #ccc; color: #333; }
+.status.spam { background-color: #d0021b; color: #fff; }
+
+/* Integration dispatch outcome labels (submission detail). */
+.status-label {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 3px;
+    font-size: 11px;
+    font-weight: bold;
+}
+.status-success { background: #27ae60; color: #fff; }
+.status-failed { background: #d0021b; color: #fff; }
+.status-pending { background: #f5a623; color: #fff; }
+
+/* ---------- Shared: action buttons row ---------- */
+.buttons {
+    margin-bottom: 20px;
+    display: flex;
+    gap: 10px;
+}
+
+.buttons input,
+.buttons select {
+    padding: 8px 12px;
+    border: 1px solid var(--input-border-color, #ccc);
+    border-radius: 4px;
+}
+
+/* ---------- Shared: pagination ---------- */
+.pagination {
+    margin-top: 20px;
+    text-align: center;
+}
+
+.pagination a,
+.pagination span {
+    margin: 0 5px;
+    padding: 5px 10px;
+    border: 1px solid var(--input-border-color, #ddd);
+    border-radius: 3px;
+    text-decoration: none;
+    display: inline-block;
+}
+
+.pagination a:hover { background-color: var(--button-bg--hover, #f5f5f5); }
+
+.pagination span.current {
+    background-color: var(--link-color, #0066cc);
+    color: #fff;
+    border-color: var(--link-color, #0066cc);
+}
+
+/* ---------- Forms index: delete control ---------- */
+.delete {
+    cursor: pointer;
+    opacity: 0.7;
+}
+.delete:hover { opacity: 1; }
+
+/* ---------- Submissions index: stat cards ---------- */
+.submission-stats {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 20px;
+    flex-wrap: wrap;
+}
+
+.stat-card {
+    flex: 1;
+    min-width: 100px;
+    padding: 12px 16px;
+    background: var(--pane-bg, #fff);
+    border: 1px solid var(--input-border-color, #ddd);
+    border-radius: 4px;
+    text-align: center;
+    text-decoration: none;
+    color: inherit;
+    transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+.stat-card:hover { border-color: var(--link-color, #0066cc); }
+
+.stat-card.is-active {
+    border-color: var(--link-color, #0066cc);
+    box-shadow: 0 0 0 1px var(--link-color, #0066cc);
+}
+
+.stat-card .stat-value {
+    display: block;
+    font-size: 22px;
+    font-weight: bold;
+    line-height: 1.2;
+}
+
+.stat-card .stat-label {
+    display: block;
+    font-size: 11px;
+    text-transform: uppercase;
+    color: var(--light-text-color, #8a8a8f);
+    margin-top: 4px;
+}
+
+.stat-card.stat-new .stat-value { color: #4099ff; }
+.stat-card.stat-spam .stat-value { color: #d0021b; }
+
+/* ---------- Submission detail ---------- */
+.submission-detail {
+    background: var(--pane-bg, #fff);
+    border: 1px solid var(--input-border-color, #ddd);
+    border-radius: 4px;
+    padding: 20px;
+}
+
+.detail-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+}
+
+.detail-info p { margin: 10px 0; }
+
+.detail-info strong {
+    display: inline-block;
+    width: 100px;
+}
+
+/* ---------- Form builder (forms/edit) ---------- */
+.sf-builder { display: flex; gap: 24px; align-items: flex-start; }
+.sf-canvas-col { flex: 1 1 auto; min-width: 0; }
+.sf-sidebar { flex: 0 0 280px; width: 280px; }
+
+.sf-canvas {
+    min-height: 120px;
+    border: 1px dashed #cdd8e4;
+    border-radius: 5px;
+    padding: 12px;
+    background: #f9fbfd;
+}
+.sf-canvas .sf-empty { margin: 24px 0; text-align: center; }
+
+.sf-field {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 12px;
+    margin-bottom: 8px;
+    background: #fff;
+    border: 1px solid #dfe5ec;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: border-color .15s, box-shadow .15s;
+}
+.sf-field:hover { border-color: #9aa5b1; }
+.sf-field.sel { border-color: #1f6fff; box-shadow: 0 0 0 1px #1f6fff; }
+.sf-field.dragging { opacity: .45; }
+.sf-field-label { font-weight: 600; }
+.sf-field-req { color: #cf2c2c; font-weight: 700; }
+.sf-field-type { margin-left: auto; font-size: 12px; color: #8a949e; text-transform: capitalize; }
+.sf-field-del {
+    border: none; background: transparent; color: #8a949e;
+    font-size: 18px; line-height: 1; cursor: pointer; padding: 0 4px;
+}
+.sf-field-del:hover { color: #cf2c2c; }
+.sf-grip { color: #b3bcc6; cursor: grab; user-select: none; letter-spacing: -2px; }
+
+.sf-panel {
+    border: 1px solid #dfe5ec;
+    border-radius: 5px;
+    padding: 14px;
+    background: #fff;
+    position: sticky;
+    top: 12px;
+}
+.sf-panel-title { font-size: 13px; text-transform: uppercase; letter-spacing: .04em; color: #8a949e; margin: 0 0 10px; }
+
+.sf-palette-item {
+    display: flex; align-items: center; gap: 8px; width: 100%;
+    text-align: left; padding: 9px 10px; margin-bottom: 6px;
+    border: 1px solid #dfe5ec; border-radius: 4px; background: #f7f9fc;
+    cursor: grab; font-size: 14px;
+}
+.sf-palette-item:hover { background: #eef3fb; border-color: #9aa5b1; }
+.sf-palette-item:active { cursor: grabbing; }
+
+.sf-inspector-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
+.sf-inspector .field { margin-bottom: 14px; }
+.sf-inspector-back { padding: 4px 12px; }
+
+.sf-option-row { display: flex; gap: 6px; margin-bottom: 6px; }
+.sf-option-row .text { flex: 1; min-width: 0; }
+.sf-option-del { padding: 4px 10px; }
+.sf-option-add { margin-top: 4px; }
+
+.sf-cond { margin-top: 4px; }
+.sf-cond hr { margin: 14px 0 10px; }
+.sf-cond-line { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+.sf-cond-match { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; font-size: 13px; color: #5f6b7a; }
+.sf-cond-rules { border-left: 2px solid #dfe5ec; padding-left: 10px; margin-bottom: 12px; }
+.sf-cond-rule { display: flex; gap: 6px; margin-bottom: 6px; align-items: center; }
+.sf-cond-rule .select, .sf-cond-rule .sf-cond-value { flex: 1; min-width: 0; }
+.sf-cond-del { padding: 4px 9px; }
+.sf-cond-add { margin-top: 2px; }
+
+@media (max-width: 800px) {
+    .sf-builder { flex-direction: column; }
+    .sf-sidebar { width: 100%; flex-basis: auto; }
+    .sf-panel { position: static; }
+}
