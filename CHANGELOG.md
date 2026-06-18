@@ -8,6 +8,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- Console commands (`php craft simple-form/*`): `submissions/purge` (delete or
+  anonymize old submissions, optional `--form`), `submissions/export` (CSV to
+  stdout or `--out`), `integrations/redispatch` (re-queue dispatch for a
+  submission), `cache/warm` + `cache/clear` (form-structure cache), and `doctor`
+  (config + data health check).
 - Data retention (Settings → Privacy): submissions and integration dispatch logs
   can be auto-pruned past a configurable age on Craft's garbage-collection run
   (0 = keep forever). Submissions can be hard-deleted or anonymized in place

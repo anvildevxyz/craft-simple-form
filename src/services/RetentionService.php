@@ -43,7 +43,7 @@ class RetentionService extends Component
      * Prune (or anonymize) submissions older than `retainSubmissionsDays`.
      * Returns the number of submissions affected. No-op when the setting is 0.
      */
-    public function purgeSubmissions(?int $days = null, ?bool $anonymize = null): int
+    public function purgeSubmissions(?int $days = null, ?bool $anonymize = null, ?int $formId = null): int
     {
         $settings = Plugin::getInstance()->getSettings();
         $days ??= $settings->retainSubmissionsDays;
@@ -54,11 +54,14 @@ class RetentionService extends Component
         }
 
         $cutoff = Db::prepareDateForDb($this->cutoff($days));
-        $ids = (new Query())
+        $query = (new Query())
             ->select(['id'])
             ->from(self::SUBMISSIONS)
-            ->where(['<', 'dateCreated', $cutoff])
-            ->column();
+            ->where(['<', 'dateCreated', $cutoff]);
+        if ($formId !== null) {
+            $query->andWhere(['formId' => $formId]);
+        }
+        $ids = $query->column();
 
         $ids = array_map('intval', $ids);
         if ($ids === []) {
