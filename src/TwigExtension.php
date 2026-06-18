@@ -68,7 +68,7 @@ class TwigExtension extends AbstractExtension
         $settings = Plugin::getInstance()->getSettings();
 
         if ($settings->enableHoneypot) {
-            $html .= '<input type="hidden" name="__honeypot" value="" style="display:none;">';
+            $html .= '<input type="hidden" name="__honeypot" value="" style="display:none;" aria-hidden="true" autocomplete="off">';
         }
 
         $steps = FormSteps::group($fields);
@@ -104,7 +104,7 @@ class TwigExtension extends AbstractExtension
             $html .= '<button type="button" class="simple-form-step-next">'
                 . htmlspecialchars(Craft::t('simple-form', 'Next')) . '</button>';
             $html .= '<button type="submit" class="simple-form-submit-btn" hidden>' . htmlspecialchars($submitText) . '</button>';
-            $html .= '<span class="simple-form-step-progress" aria-live="polite"></span>';
+            $html .= '<span class="simple-form-step-progress" role="status" aria-live="polite"></span>';
             $html .= '</div>';
         }
 
@@ -151,16 +151,40 @@ class TwigExtension extends AbstractExtension
                 . htmlspecialchars((string) json_encode($conditional), ENT_QUOTES) . '"';
         }
 
+        // Choice groups (radio/checkbox) carry many inputs, so the group is
+        // labelled with a role="group" + aria-labelledby pointing at a span;
+        // single controls keep a <label for> tied to the input's id (#105).
+        $isChoice = $fieldType->isChoiceGroup();
+        $labelId = $fieldName . '-label';
+
         $html = '<div class="simple-form-group"' . $groupAttrs . '>';
         if ($label) {
-            $required = !empty($fieldConfig['required']) ? ' <span class="required">*</span>' : '';
-            $html .= '<label for="' . htmlspecialchars($fieldName) . '">' . htmlspecialchars($label) . $required . '</label>';
+            // The required marker is decorative — the control's `required`
+            // attribute is what assistive tech announces.
+            $required = !empty($fieldConfig['required'])
+                ? ' <span class="required" aria-hidden="true">*</span>'
+                : '';
+            if ($isChoice) {
+                $html .= '<span class="simple-form-label" id="' . htmlspecialchars($labelId) . '">'
+                    . htmlspecialchars($label) . $required . '</span>';
+            } else {
+                $html .= '<label for="' . htmlspecialchars($fieldName) . '">'
+                    . htmlspecialchars($label) . $required . '</label>';
+            }
         }
         if ($helpText) {
             $html .= '<small class="help-text">' . htmlspecialchars($helpText) . '</small>';
         }
 
-        $html .= '<div class="input-wrapper">';
+        if ($isChoice) {
+            $wrapAttrs = ' role="group"';
+            if ($label) {
+                $wrapAttrs .= ' aria-labelledby="' . htmlspecialchars($labelId) . '"';
+            }
+            $html .= '<div class="input-wrapper"' . $wrapAttrs . '>';
+        } else {
+            $html .= '<div class="input-wrapper">';
+        }
         $html .= $fieldType->renderInput($fieldName);
         $html .= '</div>';
         $html .= '</div>';

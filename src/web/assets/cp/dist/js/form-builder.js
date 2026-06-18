@@ -22,6 +22,9 @@
     var hidden = document.getElementById('sf-fields-data');
     if (!canvas || !hidden) { return; }
 
+    // Programmatically focusable so focus can land here after a field is removed.
+    canvas.setAttribute('tabindex', '-1');
+
     var seq = 0;
     function uid() { return 'new-' + (++seq) + '-' + Math.random().toString(36).slice(2, 7); }
 
@@ -105,6 +108,13 @@
         var el = document.createElement('div');
         el.className = 'sf-field' + (f.clientId === selectedId ? ' sel' : '');
         el.setAttribute('draggable', 'true');
+        // Keyboard-selectable: focusable + Enter/Space opens the inspector (#105).
+        el.setAttribute('tabindex', '0');
+        el.setAttribute('role', 'button');
+        el.setAttribute('aria-label', (f.label || '(untitled)') + ' — ' + (TYPE_LABELS[f.type] || f.type));
+        el.addEventListener('keydown', function(e) {
+            if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); select(f.clientId); focusInspector(); }
+        });
         el.dataset.cid = f.clientId;
 
         var grip = document.createElement('span');
@@ -128,6 +138,26 @@
 
     // ---- mutation --------------------------------------------------------
 
+    // Off-screen live region so screen-reader users hear add/remove (#105).
+    var liveRegion = null;
+    function announce(message) {
+        if (!liveRegion) {
+            liveRegion = document.createElement('div');
+            liveRegion.className = 'sf-sr-only';
+            liveRegion.setAttribute('aria-live', 'polite');
+            liveRegion.setAttribute('role', 'status');
+            (sfBuilder || document.body).appendChild(liveRegion);
+        }
+        // Clear then set on a tick so a repeated message is still announced.
+        liveRegion.textContent = '';
+        window.setTimeout(function() { liveRegion.textContent = message; }, 50);
+    }
+
+    function focusInspector() {
+        var first = inspector.querySelector('input, select, textarea');
+        if (first) { first.focus(); }
+    }
+
     function addField(type, atIndex) {
         var label = TYPE_LABELS[type] || 'Field';
         var f = normalize({ id: null, type: type, label: label, config: defaultConfig(type) });
@@ -136,12 +166,20 @@
         else { fields.splice(Math.max(0, atIndex), 0, f); }
         commit();
         select(f.clientId);
+        // Land keyboard focus in the editor and announce the change.
+        announce(label + ' field added.');
+        focusInspector();
     }
 
     function removeField(cid) {
         fields = fields.filter(function(f) { return f.clientId !== cid; });
         if (selectedId === cid) { selectedId = null; showPalette(); }
         commit();
+        announce('Field removed.');
+        // Move focus somewhere sensible now that the row is gone.
+        var nextField = canvas.querySelector('.sf-field');
+        if (nextField && typeof nextField.focus === 'function') { nextField.focus(); }
+        else { canvas.focus(); }
     }
 
     function select(cid) {

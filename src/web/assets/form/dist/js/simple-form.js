@@ -217,6 +217,16 @@
         initConditions(form);
         initSteps(form);
 
+        // Remove any prior error state so re-submits don't stack duplicate
+        // messages and resolved fields lose their invalid wiring (a11y, #105).
+        function clearErrors() {
+            form.querySelectorAll(".form-error").forEach(function (el) { el.remove(); });
+            form.querySelectorAll("[aria-invalid=\"true\"]").forEach(function (el) {
+                el.removeAttribute("aria-invalid");
+                el.removeAttribute("aria-describedby");
+            });
+        }
+
         form.addEventListener("submit", function (e) {
             e.preventDefault();
             var formData = new FormData(form); // disabled (hidden) inputs are excluded
@@ -229,20 +239,31 @@
             })
                 .then(function (response) { return response.json(); })
                 .then(function (data) {
+                    clearErrors();
                     if (data.success) {
                         alert(data.message || "Form submitted successfully!");
                         form.reset();
                     } else if (data.errors) {
                         Object.keys(data.errors).forEach(function (fieldKey) {
                             var errorMessages = data.errors[fieldKey];
-                            var fieldElement = form.querySelector("[name=\"" + fieldKey + "\"]");
+                            var fieldElement = form.querySelector("[name=\"" + fieldKey + "\"]")
+                                || form.querySelector("[name=\"" + fieldKey + "[]\"]");
                             if (fieldElement) {
+                                var errorId = "sf-error-" + (fieldElement.id || fieldKey).replace(/[^\w-]/g, "-");
                                 var errorDiv = document.createElement("div");
                                 errorDiv.className = "form-error";
+                                errorDiv.id = errorId;
+                                errorDiv.setAttribute("role", "alert");
                                 errorDiv.innerHTML = errorMessages.join("<br>");
+                                // Tie the message to the control for assistive tech.
+                                fieldElement.setAttribute("aria-invalid", "true");
+                                fieldElement.setAttribute("aria-describedby", errorId);
                                 fieldElement.parentNode.appendChild(errorDiv);
                             }
                         });
+                        // Move focus to the first field that needs attention.
+                        var firstInvalid = form.querySelector("[aria-invalid=\"true\"]");
+                        if (firstInvalid) { firstInvalid.focus(); }
                     }
                 })
                 .catch(function (error) { console.error("Form submission error:", error); });

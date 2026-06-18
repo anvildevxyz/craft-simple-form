@@ -22,8 +22,10 @@
     font-weight: bold;
 }
 
-.status.new { background-color: #4099ff; color: #fff; }
-.status.read { background-color: #90a4ae; color: #fff; }
+/* Badge colors carry the status text too (not color-only); blue/slate
+   darkened to clear WCAG AA contrast against white (#105). */
+.status.new { background-color: #2563eb; color: #fff; }
+.status.read { background-color: #546e7a; color: #fff; }
 .status.archived { background-color: #ccc; color: #333; }
 .status.spam { background-color: #d0021b; color: #fff; }
 
@@ -158,8 +160,21 @@
     margin-top: 4px;
 }
 
-.stat-card.stat-new .stat-value { color: #4099ff; }
+.stat-card.stat-new .stat-value { color: #2563eb; }
 .stat-card.stat-spam .stat-value { color: #d0021b; }
+
+/* Visually hidden but available to screen readers (builder live region). */
+.sf-sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+}
 
 /* ---------- Submission detail ---------- */
 .submission-detail {
