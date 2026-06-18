@@ -162,7 +162,11 @@
     if (integrationType && integrationType.dataset.newUrl) {
         integrationType.addEventListener('change', function () {
             if (!this.value) { return; }
-            window.location = integrationType.dataset.newUrl + '?type=' + encodeURIComponent(this.value);
+            // cpUrl() already carries a ?site= query, so merge the param rather
+            // than blindly appending a second '?'.
+            var url = new URL(integrationType.dataset.newUrl, window.location.origin);
+            url.searchParams.set('type', this.value);
+            window.location = url.toString();
         });
     }
 
