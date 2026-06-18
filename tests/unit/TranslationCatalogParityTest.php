@@ -33,6 +33,8 @@ class TranslationCatalogParityTest extends TestCase
         'Description', // identical in fr
         'Tokens',      // it
         'Endpoint:',   // de
+        'Spam',        // borrowed term — identical in de/es/it
+        'Status:',     // identical in German
     ];
 
     /**

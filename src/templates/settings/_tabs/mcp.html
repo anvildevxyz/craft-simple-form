@@ -1,16 +1,6 @@
 {% import "_includes/forms.twig" as forms %}
-{% from _self import scopeLabel %}
 
-{% macro scopeLabel(scope) %}
-    {%- apply spaceless -%}
-        {% set labels = {
-            'forms:manage': 'Manage forms (read form definitions)'|t('simple-form'),
-            'submissions:read': 'Read submissions (reserved — no tool yet)'|t('simple-form'),
-            'submissions:export': 'Export submissions (reserved — no tool yet)'|t('simple-form'),
-        } %}
-        {{ labels[scope] ?? scope }}
-    {%- endapply -%}
-{% endmacro %}
+{# Scope labels come from the controller (Scopes::label() — single source). #}
 
 <h2>{{ 'MCP Server'|t('simple-form') }}</h2>
 <p class="light">
@@ -83,7 +73,7 @@
                     <td>{{ token.label }}</td>
                     <td>
                         {% for scope in token.scopes %}
-                            <span class="token">{{ scopeLabel(scope) }}</span>{% if not loop.last %} {% endif %}
+                            <span class="token">{{ (mcpScopeLabels[scope] ?? scope)|t('simple-form') }}</span>{% if not loop.last %} {% endif %}
                         {% endfor %}
                     </td>
                     <td>{{ token.dateCreated ? token.dateCreated|datetime('short') : '—' }}</td>
@@ -120,7 +110,7 @@
 
     {% set scopeOptions = [] %}
     {% for scope in mcpScopes %}
-        {% set scopeOptions = scopeOptions|merge([{ label: scopeLabel(scope), value: scope }]) %}
+        {% set scopeOptions = scopeOptions|merge([{ label: (mcpScopeLabels[scope] ?? scope)|t('simple-form'), value: scope }]) %}
     {% endfor %}
 
     {{ forms.checkboxGroupField({

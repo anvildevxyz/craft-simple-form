@@ -165,6 +165,12 @@ class SettingsController extends Controller
         if ($tab === 'mcp') {
             $vars['mcpTokens'] = Plugin::getInstance()->getMcpTokenManager()->allTokens();
             $vars['mcpScopes'] = Scopes::all();
+            // Single source of truth for scope labels (was duplicated + stale in
+            // an inline template macro and the translation catalog).
+            $vars['mcpScopeLabels'] = array_combine(
+                Scopes::all(),
+                array_map([Scopes::class, 'label'], Scopes::all()),
+            );
             // Plaintext secret is only ever surfaced once, immediately after
             // creation, via the flash set in actionCreateMcpToken().
             $vars['mcpNewSecret'] = Craft::$app->getSession()->getFlash('mcpNewSecret');
