@@ -14,6 +14,7 @@ use craft\events\RegisterUserPermissionsEvent;
 use craft\services\Gql;
 use craft\services\UserPermissions;
 use craft\web\UrlManager;
+use fabianhaef\simpleform\events\SubmissionEvent;
 use fabianhaef\simpleform\gql\mutations\FormMutations;
 use fabianhaef\simpleform\gql\queries\FormQueries;
 use fabianhaef\simpleform\gql\types\ConditionalRuleType;
@@ -110,6 +111,16 @@ class Plugin extends BasePlugin
         ]);
 
         $this->registerGraphQl();
+
+        // Dispatch outbound integrations after a submission is saved. Queued by
+        // default (see IntegrationsService) so third-party latency/outages never
+        // block or fail the visitor's submission.
+        $this->on(
+            self::EVENT_AFTER_SUBMISSION_SAVE,
+            function(SubmissionEvent $e): void {
+                $this->getIntegrations()->dispatchForSubmission($e->submission);
+            }
+        );
     }
 
     /**

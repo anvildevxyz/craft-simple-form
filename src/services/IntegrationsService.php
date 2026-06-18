@@ -3,11 +3,16 @@
 namespace fabianhaef\simpleform\services;
 
 use Craft;
+use craft\helpers\App;
 use craft\helpers\Db;
 use craft\helpers\Json;
 use craft\helpers\StringHelper;
+use fabianhaef\simpleform\elements\Submission;
 use fabianhaef\simpleform\integrations\DispatchStatus;
+use fabianhaef\simpleform\integrations\IntegrationResult;
+use fabianhaef\simpleform\jobs\SendIntegrationJob;
 use fabianhaef\simpleform\models\IntegrationModel;
+use fabianhaef\simpleform\Plugin;
 use yii\base\Component;
 
 /**
@@ -96,6 +101,71 @@ class IntegrationsService extends Component
         return true;
     }
 
+    /**
+     * Entry point from the EVENT_AFTER_SUBMISSION_SAVE listener: dispatch every
+     * enabled integration on the submission's form. Queued by default; run inline
+     * only when `dispatchIntegrationsSynchronously` is on.
+     */
+    public function dispatchForSubmission(Submission $submission): void
+    {
+        $integrations = $this->getEnabledIntegrationsForForm((int) $submission->formId);
+        if ($integrations === []) {
+            return;
+        }
+
+        $sync = Plugin::getInstance()->getSettings()->dispatchIntegrationsSynchronously;
+
+        foreach ($integrations as $integration) {
+            if ($integration->id === null) {
+                continue;
+            }
+            if ($sync) {
+                $this->runOnce($integration, $submission);
+                continue;
+            }
+            Craft::$app->getQueue()->push(new SendIntegrationJob([
+                'integrationId' => $integration->id,
+                'submissionId' => (int) $submission->id,
+            ]));
+        }
+    }
+
+    /**
+     * Perform a single dispatch attempt for one integration + submission, record
+     * a log row, and return the result. Shared by the queue job and the sync path.
+     */
+    public function runOnce(IntegrationModel $integration, Submission $submission): IntegrationResult
+    {
+        $integrationId = (int) $integration->id;
+        $submissionId = (int) $submission->id;
+        $attempt = $this->countAttempts($integrationId, $submissionId) + 1;
+
+        $type = Plugin::getInstance()->getIntegrationTypeRegistry()->getType($integration->type);
+        if ($type === null) {
+            $message = "Unknown integration type: {$integration->type}";
+            $this->logDispatch($integrationId, $submissionId, DispatchStatus::FAILED, $attempt, null, $message);
+            return IntegrationResult::failure(null, $message);
+        }
+
+        try {
+            $result = $type->send($submission, $this->parseEnvSettings($integration->settings));
+        } catch (\Throwable $e) {
+            $this->logDispatch($integrationId, $submissionId, DispatchStatus::FAILED, $attempt, null, $e->getMessage());
+            return IntegrationResult::failure(null, $e->getMessage());
+        }
+
+        $this->logDispatch(
+            $integrationId,
+            $submissionId,
+            $result->success ? DispatchStatus::SUCCESS : DispatchStatus::FAILED,
+            $attempt,
+            $result->responseCode,
+            $result->message,
+        );
+
+        return $result;
+    }
+
     public function deleteIntegration(int $id): bool
     {
         $count = Craft::$app->getDb()->createCommand()
@@ -147,6 +217,38 @@ class IntegrationsService extends Component
             ->where(['submissionId' => $submissionId])
             ->orderBy(['dateCreated' => SORT_DESC, 'id' => SORT_DESC])
             ->all();
+    }
+
+    private function countAttempts(int $integrationId, int $submissionId): int
+    {
+        return (int) (new \craft\db\Query())
+            ->from(self::LOG_TABLE)
+            ->where(['integrationId' => $integrationId, 'submissionId' => $submissionId])
+            ->count();
+    }
+
+    /**
+     * Resolve env references (`$VAR`) in string settings so connectors receive
+     * usable secrets/URLs without each having to parse. Walks nested arrays.
+     *
+     * @param array<string, mixed> $settings
+     * @return array<string, mixed>
+     */
+    private function parseEnvSettings(array $settings): array
+    {
+        $walk = static function($value) use (&$walk) {
+            if (is_string($value)) {
+                return App::parseEnv($value);
+            }
+            if (is_array($value)) {
+                return array_map($walk, $value);
+            }
+            return $value;
+        };
+
+        /** @var array<string, mixed> $parsed */
+        $parsed = array_map($walk, $settings);
+        return $parsed;
     }
 
     /**

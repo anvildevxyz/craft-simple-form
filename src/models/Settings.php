@@ -55,6 +55,16 @@ class Settings extends Model
     public bool $inlineFormAssets = false;
 
     /**
+     * Whether outbound integrations run inline during the submission request
+     * instead of being pushed to the queue.
+     *
+     * Defaults to false (queue): a slow or failing third party must never block
+     * or fail the visitor's submission. Set to true only for local/dev debugging
+     * where you want the dispatch (and its errors) to surface synchronously.
+     */
+    public bool $dispatchIntegrationsSynchronously = false;
+
+    /**
      * Minimum score (0.0–1.0) a reCAPTCHA v3 response must meet to pass.
      */
     public float $recaptchaV3MinScore = 0.5;
@@ -112,7 +122,7 @@ class Settings extends Model
                 'email',
                 'when' => fn(): bool => !$this->isEnvReference($this->defaultEmailSender),
             ],
-            [['enableHoneypot', 'enableCaptcha', 'cacheFormStructure', 'inlineFormAssets', 'enableMcp'], 'boolean'],
+            [['enableHoneypot', 'enableCaptcha', 'cacheFormStructure', 'inlineFormAssets', 'enableMcp', 'dispatchIntegrationsSynchronously'], 'boolean'],
             [['mcpTokens'], 'safe'],
             [['captchaType'], 'in', 'range' => [self::CAPTCHA_V3, self::CAPTCHA_V2]],
             [['storageLocation'], 'in', 'range' => ['database']],
