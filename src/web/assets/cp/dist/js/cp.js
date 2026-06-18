@@ -37,6 +37,71 @@
         xhr.send(body);
     }
 
+    function t(message) {
+        return (window.Craft && Craft.t) ? Craft.t('app', message) : message;
+    }
+
+    /**
+     * Promise-based confirmation rendered as a Craft-styled <dialog> — replaces
+     * the native confirm() so destructive CP actions get a consistent,
+     * accessible (focus-trapped, Esc-dismissable) prompt. Resolves true when
+     * confirmed, false on cancel/dismiss.
+     */
+    function sfConfirm(message) {
+        return new Promise(function (resolve) {
+            var dialog = document.createElement('dialog');
+            dialog.className = 'sf-confirm';
+
+            var msg = document.createElement('p');
+            msg.className = 'sf-confirm-msg';
+            msg.textContent = message;
+
+            var actions = document.createElement('div');
+            actions.className = 'sf-confirm-actions';
+
+            var cancel = document.createElement('button');
+            cancel.type = 'button';
+            cancel.className = 'btn';
+            cancel.textContent = t('Cancel');
+
+            var ok = document.createElement('button');
+            ok.type = 'button';
+            ok.className = 'btn submit';
+            ok.textContent = t('OK');
+
+            actions.appendChild(cancel);
+            actions.appendChild(ok);
+            dialog.appendChild(msg);
+            dialog.appendChild(actions);
+            document.body.appendChild(dialog);
+
+            function done(result) {
+                if (dialog.open) { dialog.close(); }
+                dialog.remove();
+                resolve(result);
+            }
+            cancel.addEventListener('click', function () { done(false); });
+            ok.addEventListener('click', function () { done(true); });
+            // Esc / backdrop dismissal counts as cancel.
+            dialog.addEventListener('cancel', function (e) { e.preventDefault(); done(false); });
+
+            dialog.showModal();
+            ok.focus();
+        });
+    }
+
+    // Any form opting into confirmation defers submit until the user agrees.
+    document.querySelectorAll('form[data-sf-confirm]').forEach(function (form) {
+        var armed = false;
+        form.addEventListener('submit', function (e) {
+            if (armed) { return; }
+            e.preventDefault();
+            sfConfirm(form.dataset.sfConfirm).then(function (ok) {
+                if (ok) { armed = true; form.submit(); }
+            });
+        });
+    });
+
     // --- Submission detail: toggle read status ---
     var toggleBtn = document.getElementById('toggle-status-btn');
     if (toggleBtn) {
@@ -66,9 +131,11 @@
         });
         integrations.querySelectorAll('.delete[data-id]').forEach(function (el) {
             el.addEventListener('click', function () {
-                if (!confirm(integrations.dataset.confirmDelete)) { return; }
-                postJson(integrations.dataset.deleteUrl, 'integrationId=' + el.dataset.id,
-                    function () { location.reload(); }, msgs);
+                sfConfirm(integrations.dataset.confirmDelete).then(function (ok) {
+                    if (!ok) { return; }
+                    postJson(integrations.dataset.deleteUrl, 'integrationId=' + el.dataset.id,
+                        function () { location.reload(); }, msgs);
+                });
             });
         });
     }

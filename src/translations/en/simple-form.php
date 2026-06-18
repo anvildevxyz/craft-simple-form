@@ -100,4 +100,8 @@ return [
     'Network error — please try again.' => 'Network error — please try again.',
     'Delete integration {name}' => 'Delete integration {name}',
     'Delete this integration?' => 'Delete this integration?',
+    'Message' => 'Message',
+    'Resend' => 'Resend',
+    'Resend this dispatch?' => 'Resend this dispatch?',
+    'The most recent dispatch failed for one or more integrations. Resend below to retry.' => 'The most recent dispatch failed for one or more integrations. Resend below to retry.',
 ];

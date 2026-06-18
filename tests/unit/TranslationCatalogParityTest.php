@@ -36,6 +36,7 @@ class TranslationCatalogParityTest extends TestCase
         'Spam',        // borrowed term — identical in de/es/it
         'Status:',     // identical in German
         'Total',       // identical in fr/es (de=Gesamt, it=Totale)
+        'Message',     // identical in fr (de=Nachricht, es=Mensaje, it=Messaggio)
     ];
 
     /**

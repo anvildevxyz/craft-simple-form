@@ -90,6 +90,21 @@
     {% if integrationLogs is defined and integrationLogs %}
         <hr>
         <h3>{{ 'Integration Dispatches'|t('simple-form') }}</h3>
+
+        {# Logs come newest-first, so the first row seen per integration is its
+           latest dispatch. Warn if any integration's latest attempt failed. #}
+        {% set latestStatus = {} %}
+        {% for log in integrationLogs %}
+            {% if latestStatus[log.integrationId] is not defined %}
+                {% set latestStatus = latestStatus|merge({ (log.integrationId): log.status }) %}
+            {% endif %}
+        {% endfor %}
+        {% if 'failed' in latestStatus|values %}
+            <p class="sf-dispatch-warning">
+                {{ 'The most recent dispatch failed for one or more integrations. Resend below to retry.'|t('simple-form') }}
+            </p>
+        {% endif %}
+
         <table class="data fullwidth">
             <thead>
                 <tr>
@@ -98,6 +113,7 @@
                     <th>{{ 'Code'|t('simple-form') }}</th>
                     <th>{{ 'Attempt'|t('simple-form') }}</th>
                     <th>{{ 'When'|t('simple-form') }}</th>
+                    <th>{{ 'Message'|t('simple-form') }}</th>
                     {% if canManageIntegrations %}<th></th>{% endif %}
                 </tr>
             </thead>
@@ -109,9 +125,10 @@
                         <td>{{ log.responseCode ?? '—' }}</td>
                         <td>{{ log.attempts }}</td>
                         <td>{{ log.dateCreated }}</td>
+                        <td class="sf-log-message{{ log.status == 'failed' ? ' is-error' : '' }}">{{ log.message ?: '—' }}</td>
                         {% if canManageIntegrations %}
                             <td class="thin">
-                                <form method="post" style="display:inline">
+                                <form method="post" style="display:inline" data-sf-confirm="{{ 'Resend this dispatch?'|t('simple-form') }}">
                                     {{ csrfInput() }}
                                     <input type="hidden" name="action" value="simple-form/integrations/resend">
                                     {{ redirectInput('simple-form/submissions/' ~ submission.id) }}

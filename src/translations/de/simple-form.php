@@ -106,4 +106,8 @@ return [
     'Network error — please try again.' => 'Netzwerkfehler – bitte erneut versuchen.',
     'Delete integration {name}' => 'Integration {name} löschen',
     'Delete this integration?' => 'Diese Integration löschen?',
+    'Message' => 'Nachricht',
+    'Resend' => 'Erneut senden',
+    'Resend this dispatch?' => 'Diese Übermittlung erneut senden?',
+    'The most recent dispatch failed for one or more integrations. Resend below to retry.' => 'Die letzte Übermittlung ist für eine oder mehrere Integrationen fehlgeschlagen. Unten erneut senden, um es zu wiederholen.',
 ];

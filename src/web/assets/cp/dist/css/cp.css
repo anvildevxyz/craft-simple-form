@@ -77,6 +77,37 @@
     border-color: var(--link-color, #0066cc);
 }
 
+/* ---------- Confirmation dialog (replaces native confirm) ---------- */
+.sf-confirm {
+    border: none;
+    border-radius: 5px;
+    padding: 24px;
+    max-width: 380px;
+    background: var(--pane-bg, #fff);
+    color: var(--text-color, #3f4d5a);
+    box-shadow: 0 6px 30px rgba(0, 0, 0, 0.25);
+}
+.sf-confirm::backdrop { background: rgba(0, 0, 0, 0.4); }
+.sf-confirm-msg { margin: 0 0 18px; font-size: 14px; }
+.sf-confirm-actions { display: flex; justify-content: flex-end; gap: 10px; }
+
+/* ---------- Submission detail: dispatch failure banner ---------- */
+.sf-dispatch-warning {
+    margin: 0 0 14px;
+    padding: 10px 14px;
+    border-radius: 4px;
+    border-left: 3px solid #d0021b;
+    background: rgba(208, 2, 27, 0.08);
+    font-size: 13px;
+}
+.sf-log-message {
+    max-width: 320px;
+    color: var(--light-text-color, #8a8a8f);
+    font-size: 12px;
+    word-break: break-word;
+}
+.sf-log-message.is-error { color: #d0021b; }
+
 /* ---------- Forms index: delete control ---------- */
 .delete {
     cursor: pointer;

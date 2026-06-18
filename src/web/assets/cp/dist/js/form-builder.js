@@ -648,8 +648,11 @@
             if (errs.length) {
                 e.preventDefault();
                 e.stopImmediatePropagation();
-                if (window.Craft && Craft.cp && Craft.cp.displayError) { Craft.cp.displayError(errs[0]); }
-                else { alert(errs[0]); }
+                // Surface every validation problem, not just the first, via
+                // Craft's notice stack (no native alert()).
+                if (window.Craft && Craft.cp && Craft.cp.displayError) {
+                    errs.forEach(function(msg) { Craft.cp.displayError(msg); });
+                }
             }
         });
     }

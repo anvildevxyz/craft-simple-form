@@ -32,6 +32,25 @@ class CpAssetBundleTest extends TestCase
         $this->assertStringContainsString('sfData.initialFields', $js);
     }
 
+    public function testNoNativeDialogCallsInCpJs(): void
+    {
+        foreach (['js/cp.js', 'js/form-builder.js'] as $rel) {
+            $js = (string) file_get_contents(self::DIST . '/' . $rel);
+            // Strip block + line comments so prose mentioning confirm()/alert()
+            // in docblocks doesn't trip the check (#103).
+            $code = (string) preg_replace('!/\*.*?\*/!s', '', $js);
+            $code = (string) preg_replace('!//.*$!m', '', $code);
+            $this->assertStringNotContainsString('alert(', $code, "$rel uses native alert()");
+            // sfConfirm() keeps its capital C, so a lowercase match means a
+            // native confirm()/window.confirm() crept back in.
+            $this->assertStringNotContainsString('confirm(', $code, "$rel uses native confirm()");
+        }
+
+        $cp = (string) file_get_contents(self::DIST . '/js/cp.js');
+        $this->assertStringContainsString('function sfConfirm', $cp, 'cp.js provides the dialog-based confirm');
+        $this->assertStringContainsString("createElement('dialog')", $cp);
+    }
+
     public function testNoInlineStyleOrScriptInCpTemplates(): void
     {
         $offenders = [];
