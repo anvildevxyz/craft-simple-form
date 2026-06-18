@@ -3,7 +3,9 @@
 namespace fabianhaef\simpleform\services;
 
 use fabianhaef\simpleform\events\RegisterIntegrationTypesEvent;
+use fabianhaef\simpleform\integrations\DiscordIntegration;
 use fabianhaef\simpleform\integrations\IntegrationTypeInterface;
+use fabianhaef\simpleform\integrations\SlackIntegration;
 use fabianhaef\simpleform\integrations\WebhookIntegration;
 use fabianhaef\simpleform\Plugin;
 use yii\base\Component;
@@ -25,6 +27,8 @@ class IntegrationTypeRegistry extends Component
 
         // Core connectors.
         $this->registerType(WebhookIntegration::class);
+        $this->registerType(SlackIntegration::class);
+        $this->registerType(DiscordIntegration::class);
 
         // Let third parties contribute their own. Fired on the Plugin class so the
         // registration ergonomics match field types / MCP tools. Guarded on the

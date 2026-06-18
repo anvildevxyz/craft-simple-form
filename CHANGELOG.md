@@ -8,6 +8,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- Slack and Discord integration connectors: post each submission to an incoming
+  webhook as a message — auto field list or a `{handle}` placeholder template,
+  with optional channel/username overrides. Built on the integrations framework.
 - Outbound integrations framework: push submissions to external services via a
   pluggable connector architecture, with a built-in **Webhook** connector
   (JSON/form-encoded, optional HMAC-SHA256 signing, field mapping). Dispatch runs

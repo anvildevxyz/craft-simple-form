@@ -6,7 +6,7 @@ use Craft;
 use craft\helpers\Cp;
 use craft\helpers\Json;
 use fabianhaef\simpleform\elements\Submission;
-use fabianhaef\simpleform\models\FormModel;
+use fabianhaef\simpleform\integrations\support\SubmissionValues;
 use GuzzleHttp\Client;
 
 /**
@@ -156,7 +156,7 @@ class WebhookIntegration implements IntegrationTypeInterface
      */
     public function buildPayload(Submission $submission, array $settings): array
     {
-        $byHandle = $this->valuesByHandle($submission);
+        $byHandle = SubmissionValues::byHandle($submission);
 
         $mapping = $settings['fieldMapping'] ?? [];
         if (is_array($mapping) && $mapping !== []) {
@@ -181,30 +181,6 @@ class WebhookIntegration implements IntegrationTypeInterface
             'dateCreated' => $submission->dateCreated?->format(\DateTimeInterface::ATOM),
             'data' => $values,
         ];
-    }
-
-    /**
-     * Flatten the stored submission data to a `handle => value` map. Falls back
-     * to the raw `field_<id>` key when the field handle can't be resolved.
-     *
-     * @return array<string, mixed>
-     */
-    private function valuesByHandle(Submission $submission): array
-    {
-        $handleByKey = [];
-        $form = $submission->getForm();
-        if ($form !== null) {
-            foreach ((new FormModel($form))->getFields() as $fieldId => $field) {
-                $handleByKey['field_' . $fieldId] = $field->getName();
-            }
-        }
-
-        $out = [];
-        foreach ($submission->data ?? [] as $key => $entry) {
-            $value = is_array($entry) ? ($entry['value'] ?? null) : $entry;
-            $out[$handleByKey[$key] ?? $key] = $value;
-        }
-        return $out;
     }
 
     protected function httpClient(): Client
