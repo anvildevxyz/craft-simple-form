@@ -30,6 +30,7 @@ use fabianhaef\simpleform\helpers\SimpleFormPermissions;
 use fabianhaef\simpleform\mcp\TokenManager;
 use fabianhaef\simpleform\models\Settings;
 use fabianhaef\simpleform\services\AkismetService;
+use fabianhaef\simpleform\services\AssetUploadService;
 use fabianhaef\simpleform\services\CaptchaProviderRegistry;
 use fabianhaef\simpleform\services\CaptchaService;
 use fabianhaef\simpleform\services\EmailService;
@@ -81,6 +82,7 @@ class Plugin extends BasePlugin
             'captchaService' => CaptchaService::class,
             'captchaProviderRegistry' => CaptchaProviderRegistry::class,
             'akismetService' => AkismetService::class,
+            'assetUploadService' => AssetUploadService::class,
             'formStructure' => FormStructureService::class,
             'mcpTokenManager' => TokenManager::class,
             'integrationTypeRegistry' => IntegrationTypeRegistry::class,
@@ -218,6 +220,13 @@ class Plugin extends BasePlugin
     {
         /** @var AkismetService $service */
         $service = $this->get('akismetService');
+        return $service;
+    }
+
+    public function getAssetUploadService(): AssetUploadService
+    {
+        /** @var AssetUploadService $service */
+        $service = $this->get('assetUploadService');
         return $service;
     }
 

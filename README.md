@@ -5,7 +5,7 @@ A lightweight, translatable form builder for Craft CMS. Create forms in the Cont
 ## Features
 
 - **Form Builder**: Create and manage forms with an intuitive CP interface
-- **8 Field Types**: Text, Email, Textarea, Select, Checkbox, Radio, Date, Number
+- **9 Field Types**: Text, Email, Textarea, Select, Checkbox, Radio, Date, Number, File Upload
 - **Conditional Logic**: Show/hide fields and make them required based on other fields' values ([guide](docs/conditional-logic.md))
 - **Outbound Integrations**: Push submissions to webhooks (and pluggable connectors) asynchronously, with retries, dispatch logs, and resend ([guide](docs/integrations.md))
 - **Translatable**: Form titles, descriptions, and field labels translate per site

@@ -170,11 +170,17 @@ class FormsController extends Controller
     {
         $supportedSites = $this->getSupportedSitesForForm($form);
 
+        $volumes = array_map(
+            static fn($v): array => ['handle' => $v->handle, 'name' => $v->name],
+            Craft::$app->getVolumes()->getAllVolumes(),
+        );
+
         return $this->renderTemplate('simple-form/forms/edit', [
             'form' => $form,
             'currentSite' => $site,
             'supportedSites' => $supportedSites,
             'builderData' => $builderDataJson,
+            'volumes' => array_values($volumes),
             // The source site authors canonical option labels; other sites only
             // translate them. Single-site forms are always their own source.
             'isSourceSite' => count($supportedSites) <= 1

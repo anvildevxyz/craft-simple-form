@@ -8,6 +8,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- File-upload field type: visitors can attach files, saved as Craft Assets in a
+  configurable volume, with server-enforced extension allowlist, max size, and
+  single/multiple limits. Uploaded files are linked in the notification email and
+  downloadable from the submission detail screen; orphaned assets are rolled back
+  if a submission ultimately fails.
 - Akismet content spam scoring: each submission is checked against Akismet
   (when enabled) and either **flagged** (saved with a new `spam` status, visible
   and filterable in the CP) or **blocked** (silently dropped), per setting. Fails

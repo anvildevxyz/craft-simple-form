@@ -165,6 +165,7 @@
                 { type: 'radio', label: 'Radio Buttons'|t('simple-form') },
                 { type: 'date', label: 'Date'|t('simple-form') },
                 { type: 'number', label: 'Number'|t('simple-form') },
+                { type: 'file', label: 'File Upload'|t('simple-form') },
             ] %}
             {% for p in palette %}
                 <button type="button" class="sf-palette-item" draggable="true" data-type="{{ p.type }}">
@@ -186,10 +187,11 @@
     // On non-source sites the option editor is translation-only: option values
     // and the source labels are locked, and only the per-site label is editable.
     var SF_SOURCE_SITE = {{ (isSourceSite ?? true) ? 'true' : 'false' }};
+    var SF_VOLUMES = {{ (volumes ?? [])|json_encode|raw }};
 
     var TYPE_LABELS = {
         text: 'Text', email: 'Email', textarea: 'Textarea', select: 'Select',
-        checkbox: 'Checkbox', radio: 'Radio', date: 'Date', number: 'Number'
+        checkbox: 'Checkbox', radio: 'Radio', date: 'Date', number: 'Number', file: 'File Upload'
     };
     var OPTION_TYPES = ['select', 'checkbox', 'radio'];
 
@@ -447,6 +449,28 @@
             s.addEventListener('change', function() { c.format = s.value; serialize(); });
             sel.appendChild(s); fmtRow._input.appendChild(sel);
             inspector.appendChild(fmtRow);
+        } else if (f.type === 'file') {
+            var volOpts = [{ value: '', label: '(first available)' }].concat(
+                (SF_VOLUMES || []).map(function(v) { return { value: v.handle, label: v.name }; }));
+            var volRow = row('Asset Volume');
+            volRow._input.appendChild(selectEl(volOpts, c.volume || '', function(v) {
+                if (v === '') { delete c.volume; } else { c.volume = v; } serialize();
+            }));
+            inspector.appendChild(volRow);
+
+            var extRow = row('Allowed Extensions');
+            extRow._input.appendChild(textInput(c.allowedExtensions || '', function(v) {
+                if (v.trim() === '') { delete c.allowedExtensions; } else { c.allowedExtensions = v; } serialize();
+            }));
+            inspector.appendChild(extRow);
+
+            inspector.appendChild(numberRow('Max Size (MB)', c.maxSize, function(v) { setNum(c, 'maxSize', v); }));
+
+            var multRow = row('Allow Multiple Files');
+            var cb = document.createElement('input'); cb.type = 'checkbox'; cb.checked = !!c.multiple;
+            cb.addEventListener('change', function() { c.multiple = cb.checked; serialize(); });
+            multRow._input.appendChild(cb);
+            inspector.appendChild(multRow);
         }
     }
 

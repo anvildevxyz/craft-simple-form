@@ -60,7 +60,16 @@
                 <tr>
                     <td>{{ fieldData.label ?? fieldKey }}</td>
                     <td>
-                        {% if fieldData.value is iterable and fieldData.value is not string %}
+                        {% if fieldData.type == 'file' %}
+                            {% for assetId in fieldData.value %}
+                                {% set asset = craft.assets().id(assetId).one() %}
+                                {% if asset %}
+                                    <a href="{{ asset.url }}" target="_blank" rel="noopener">{{ asset.filename }}</a>{% if not loop.last %}<br>{% endif %}
+                                {% endif %}
+                            {% else %}
+                                —
+                            {% endfor %}
+                        {% elseif fieldData.value is iterable and fieldData.value is not string %}
                             {{ fieldData.value|join(', ') }}
                         {% else %}
                             {{ fieldData.value ?? '—' }}

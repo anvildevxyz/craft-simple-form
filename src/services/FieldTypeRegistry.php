@@ -6,6 +6,7 @@ use fabianhaef\simpleform\fields\CheckboxFieldType;
 use fabianhaef\simpleform\fields\DateFieldType;
 use fabianhaef\simpleform\fields\EmailFieldType;
 use fabianhaef\simpleform\fields\FieldType;
+use fabianhaef\simpleform\fields\FileFieldType;
 use fabianhaef\simpleform\fields\NumberFieldType;
 use fabianhaef\simpleform\fields\RadioFieldType;
 use fabianhaef\simpleform\fields\SelectFieldType;
@@ -39,6 +40,7 @@ class FieldTypeRegistry extends Component
         $this->registerFieldType(RadioFieldType::class);
         $this->registerFieldType(DateFieldType::class);
         $this->registerFieldType(NumberFieldType::class);
+        $this->registerFieldType(FileFieldType::class);
     }
 
     /**

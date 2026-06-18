@@ -1,0 +1,127 @@
+<?php
+
+namespace fabianhaef\simpleform\fields;
+
+use Craft;
+use craft\web\UploadedFile;
+
+/**
+ * A file/asset upload field. Uploaded files are saved as Craft Assets (in the
+ * configured volume) by the submission path; the stored value is the list of
+ * asset ids. Config: `volume` (handle), `allowedExtensions` (csv/array),
+ * `maxSize` (MB), `multiple` (bool).
+ */
+class FileFieldType extends FieldType
+{
+    public static function getType(): string
+    {
+        return 'file';
+    }
+
+    public static function getLabel(): string
+    {
+        return 'File Upload';
+    }
+
+    public function isMultiple(): bool
+    {
+        return (bool) ($this->config['multiple'] ?? false);
+    }
+
+    /**
+     * Allowed lowercase extensions (no dot), or [] for "any".
+     *
+     * @return list<string>
+     */
+    public function allowedExtensions(): array
+    {
+        $raw = $this->config['allowedExtensions'] ?? [];
+        if (is_string($raw)) {
+            $raw = preg_split('/[\s,]+/', $raw) ?: [];
+        }
+        if (!is_array($raw)) {
+            return [];
+        }
+        $out = [];
+        foreach ($raw as $ext) {
+            $ext = strtolower(ltrim(trim((string) $ext), '.'));
+            if ($ext !== '') {
+                $out[] = $ext;
+            }
+        }
+        return array_values(array_unique($out));
+    }
+
+    /** Maximum allowed size per file in bytes, or null for no limit. */
+    public function maxBytes(): ?int
+    {
+        $mb = $this->config['maxSize'] ?? null;
+        return (is_numeric($mb) && $mb > 0) ? (int) ((float) $mb * 1024 * 1024) : null;
+    }
+
+    /**
+     * Validate the uploaded files for this field (server-enforced): required,
+     * count, per-file upload error, size, and extension allowlist.
+     *
+     * @param array<int, UploadedFile> $files
+     * @return string[]
+     */
+    public function validateUpload(array $files): array
+    {
+        // Drop "no file selected" placeholders.
+        $files = array_values(array_filter(
+            $files,
+            static fn(UploadedFile $f): bool => $f->error !== UPLOAD_ERR_NO_FILE,
+        ));
+
+        $errors = [];
+
+        if ($files === []) {
+            if ($this->config['required'] ?? false) {
+                $errors[] = Craft::t('simple-form', 'This field is required.');
+            }
+            return $errors;
+        }
+
+        if (!$this->isMultiple() && count($files) > 1) {
+            $errors[] = Craft::t('simple-form', 'Only one file may be uploaded.');
+        }
+
+        $allowed = $this->allowedExtensions();
+        $maxBytes = $this->maxBytes();
+
+        foreach ($files as $file) {
+            if ($file->error !== UPLOAD_ERR_OK) {
+                $errors[] = Craft::t('simple-form', 'Upload failed for “{name}”.', ['name' => $file->name]);
+                continue;
+            }
+            $ext = strtolower((string) $file->getExtension());
+            if ($allowed !== [] && !in_array($ext, $allowed, true)) {
+                $errors[] = Craft::t('simple-form', 'File type “.{ext}” is not allowed.', ['ext' => $ext]);
+            }
+            if ($maxBytes !== null && $file->size > $maxBytes) {
+                $errors[] = Craft::t('simple-form', '“{name}” exceeds the maximum size.', ['name' => $file->name]);
+            }
+        }
+
+        return $errors;
+    }
+
+    public function renderInput(string $name, mixed $value = null): string
+    {
+        $attrs = sprintf('name="%s"', htmlspecialchars($this->isMultiple() ? $name . '[]' : $name));
+        if ($this->config['required'] ?? false) {
+            $attrs .= ' required';
+        }
+        if ($this->isMultiple()) {
+            $attrs .= ' multiple';
+        }
+        $allowed = $this->allowedExtensions();
+        if ($allowed !== []) {
+            $accept = implode(',', array_map(static fn(string $e): string => '.' . $e, $allowed));
+            $attrs .= sprintf(' accept="%s"', htmlspecialchars($accept));
+        }
+
+        return sprintf('<input type="file" %s class="text fullwidth">', $attrs);
+    }
+}

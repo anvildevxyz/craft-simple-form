@@ -49,7 +49,18 @@ class TwigExtension extends AbstractExtension
         $siteId = Craft::$app->getSites()->getCurrentSite()->id;
         $fields = Plugin::getInstance()->getFormStructure()->getFieldSet((int)$form->id, $siteId);
 
-        $html = '<form class="simple-form" method="POST" action="' . Craft::$app->getUrlManager()->createUrl('simple-form/submit') . '">';
+        // A multipart enctype is required for file fields on the no-JS POST path
+        // (the JS fetch+FormData submit is already multipart).
+        $hasFileField = false;
+        foreach ($fields as $field) {
+            if (($field['type'] ?? null) === 'file') {
+                $hasFileField = true;
+                break;
+            }
+        }
+        $enctype = $hasFileField ? ' enctype="multipart/form-data"' : '';
+
+        $html = '<form class="simple-form" method="POST"' . $enctype . ' action="' . Craft::$app->getUrlManager()->createUrl('simple-form/submit') . '">';
         $html .= Craft::$app->getView()->renderString('{{ csrfInput() }}');
         $html .= '<input type="hidden" name="formHandle" value="' . htmlspecialchars($handle) . '">';
 

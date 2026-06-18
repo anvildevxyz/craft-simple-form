@@ -4,10 +4,12 @@ namespace fabianhaef\simpleform\services;
 
 use Craft;
 use craft\web\Request;
+use craft\web\UploadedFile;
 use fabianhaef\simpleform\elements\Form;
 use fabianhaef\simpleform\elements\Submission;
 use fabianhaef\simpleform\elements\SubmissionStatus;
 use fabianhaef\simpleform\events\SubmissionEvent;
+use fabianhaef\simpleform\fields\FileFieldType;
 use fabianhaef\simpleform\models\FormModel;
 use fabianhaef\simpleform\models\Settings;
 use fabianhaef\simpleform\Plugin;
@@ -44,18 +46,56 @@ class SubmissionService extends Component
         $formModel = new FormModel($formElement);
 
         // Pull each field's posted value (field_<id>) out of the request body.
+        // File fields are special: their uploads are validated here and turned
+        // into Asset ids, which become the field's value.
         $values = [];
+        $pendingUploads = [];
+        $fileErrors = [];
         foreach ($formModel->getFields() as $fieldId => $field) {
-            $values[$fieldId] = $request->getBodyParam('field_' . $fieldId);
+            if ($field->getType() === FileFieldType::getType()) {
+                $files = UploadedFile::getInstancesByName('field_' . $fieldId);
+                $config = $field->getConfig();
+                $config['required'] = $field->isRequired();
+                $errors = (new FileFieldType($config))->validateUpload($files);
+                if ($errors !== []) {
+                    $fileErrors['field_' . $fieldId] = $errors;
+                }
+                $pendingUploads[$fieldId] = ['files' => $files, 'config' => $config];
+                $values[$fieldId] = [];
+            } else {
+                $values[$fieldId] = $request->getBodyParam('field_' . $fieldId);
+            }
+        }
+
+        // Reject before creating any asset if a file failed validation.
+        if ($fileErrors !== []) {
+            return ['submission' => null, 'errors' => $fileErrors];
+        }
+
+        // Uploads validated — persist them as assets and use the ids as values.
+        $uploadService = Plugin::getInstance()->getAssetUploadService();
+        $createdAssetIds = [];
+        foreach ($pendingUploads as $fieldId => $info) {
+            $ids = $uploadService->saveUploads($info['files'], $info['config']);
+            $values[$fieldId] = $ids;
+            $createdAssetIds = array_merge($createdAssetIds, $ids);
         }
 
         $userId = Craft::$app->getUser()->getId();
 
-        return $this->submit($formElement, $values, [
+        $result = $this->submit($formElement, $values, [
             'honeypot' => (string) $request->getBodyParam('__honeypot', ''),
             'captchaToken' => null, // CaptchaService reads the request body itself.
             'userId' => $userId !== null ? (int) $userId : null,
         ]);
+
+        // No row persisted (validation error, honeypot/captcha/spam drop) → don't
+        // leave orphaned assets behind.
+        if ($result['submission'] === null && $createdAssetIds !== []) {
+            $uploadService->deleteAssets(...$createdAssetIds);
+        }
+
+        return $result;
     }
 
     /**

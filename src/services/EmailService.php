@@ -125,7 +125,9 @@ class EmailService extends Component
 
         foreach ($data as $fieldData) {
             $label = htmlspecialchars($fieldData['label'] ?? '');
-            $value = $this->formatFieldValue($fieldData['value']);
+            $value = ($fieldData['type'] ?? null) === 'file'
+                ? $this->formatFileValue($fieldData['value'])
+                : $this->formatFieldValue($fieldData['value']);
 
             $html .= '<tr style="border-bottom: 1px solid #ddd;">';
             $html .= '<td style="padding: 10px; font-weight: bold; width: 30%;">' . $label . '</td>';
@@ -158,5 +160,33 @@ class EmailService extends Component
         }
 
         return htmlspecialchars((string) $value);
+    }
+
+    /**
+     * Render a file field's stored asset ids as download links (filename + URL).
+     *
+     * @param mixed $value list of asset ids
+     */
+    private function formatFileValue(mixed $value): string
+    {
+        $ids = is_array($value) ? $value : [];
+        if ($ids === []) {
+            return '<em style="color: #999;">—</em>';
+        }
+
+        $links = [];
+        foreach ($ids as $id) {
+            $asset = \craft\elements\Asset::find()->id((int) $id)->one();
+            if (!$asset instanceof \craft\elements\Asset) {
+                continue;
+            }
+            $url = $asset->getUrl();
+            $name = htmlspecialchars((string) $asset->getFilename());
+            $links[] = $url
+                ? '<a href="' . htmlspecialchars((string) $url) . '">' . $name . '</a>'
+                : $name;
+        }
+
+        return $links === [] ? '<em style="color: #999;">—</em>' : implode('<br>', $links);
     }
 }
