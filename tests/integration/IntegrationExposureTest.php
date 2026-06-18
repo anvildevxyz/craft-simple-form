@@ -24,12 +24,13 @@ class IntegrationExposureTest extends SimpleFormTestCase
     {
         $form = $this->createForm('Exposure', $handle);
         $integration = new IntegrationModel();
-        $integration->formId = (int) $form->id;
         $integration->type = 'webhook';
         $integration->name = 'Ops hook';
         $integration->enabled = true;
         $integration->settings = ['url' => 'https://example.test/hook', 'secret' => self::SECRET];
-        Plugin::getInstance()->getIntegrations()->saveIntegration($integration);
+        $integrations = Plugin::getInstance()->getIntegrations();
+        $integrations->saveIntegration($integration);
+        $integrations->toggleFormIntegration((int) $form->id, (int) $integration->id);
 
         return (int) $form->id;
     }

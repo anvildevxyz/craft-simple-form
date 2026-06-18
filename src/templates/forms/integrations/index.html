@@ -10,51 +10,51 @@
     { label: (form.title ?: form.name), url: cpUrl('simple-form/forms/edit/' ~ form.id) },
 ] %}
 
-{% block content %}
-<div class="buttons">
-    <a class="btn" href="{{ cpUrl('simple-form/forms/edit/' ~ form.id) }}">← {{ 'Back to form'|t('simple-form') }}</a>
-    <a class="btn submit add icon" href="{{ cpUrl('simple-form/forms/' ~ form.id ~ '/integrations/new') }}">
-        {{ 'New integration'|t('simple-form') }}
+{% block actionButton %}
+    <a class="btn" href="{{ cpUrl('simple-form/settings/integrations') }}">
+        {{ 'Manage integrations'|t('simple-form') }}
     </a>
-</div>
+{% endblock %}
 
-<div id="sf-integrations"
-     data-toggle-url="{{ cpUrl('simple-form/integrations/toggle') }}"
-     data-delete-url="{{ cpUrl('simple-form/integrations/delete') }}"
-     data-confirm-delete="{{ 'Delete this integration?'|t('simple-form') }}"
+{% block content %}
+<p class="light">
+    {{ 'Choose which integrations receive this form’s submissions. Integrations are defined under Settings → Integrations.'|t('simple-form') }}
+</p>
+
+<div id="sf-form-integrations"
+     data-toggle-url="{{ cpUrl('simple-form/integrations/toggle-form') }}"
+     data-form-id="{{ form.id }}"
      data-error="{{ 'Couldn’t complete that action.'|t('simple-form') }}"
      data-network-error="{{ 'Network error — please try again.'|t('simple-form') }}">
-{% if integrations %}
+{% if integrations is not empty %}
     <table class="data fullwidth collapsible">
         <thead>
             <tr>
                 <th>{{ 'Name'|t('simple-form') }}</th>
                 <th>{{ 'Type'|t('simple-form') }}</th>
-                <th>{{ 'Enabled'|t('simple-form') }}</th>
-                <th></th>
+                <th>{{ 'Active on this form'|t('simple-form') }}</th>
             </tr>
         </thead>
         <tbody>
             {% for integration in integrations %}
+                {% set attached = integration.id in attachedIds %}
                 <tr data-id="{{ integration.id }}">
                     <td>
-                        <a href="{{ cpUrl('simple-form/forms/' ~ form.id ~ '/integrations/' ~ integration.id) }}">
+                        <a href="{{ cpUrl('simple-form/settings/integrations/' ~ integration.id) }}">
                             {{ integration.name }}
                         </a>
+                        {% if not integration.enabled %}
+                            <span class="light">— {{ 'globally disabled'|t('simple-form') }}</span>
+                        {% endif %}
                     </td>
                     <td>{{ typeNames[integration.type] ?? integration.type }}</td>
                     <td>
-                        <button type="button" class="status-toggle btn small{{ integration.enabled ? ' active' : '' }}"
-                                data-id="{{ integration.id }}">
-                            <span class="status {{ integration.enabled ? 'on' : 'off' }}"></span>
-                            {{ integration.enabled ? 'Enabled'|t('simple-form') : 'Disabled'|t('simple-form') }}
+                        <button type="button" class="attach-toggle btn small{{ attached ? ' active' : '' }}"
+                                data-id="{{ integration.id }}"
+                                aria-pressed="{{ attached ? 'true' : 'false' }}">
+                            <span class="status {{ attached ? 'on' : 'off' }}"></span>
+                            {{ attached ? 'Enabled'|t('simple-form') : 'Disabled'|t('simple-form') }}
                         </button>
-                    </td>
-                    <td class="thin">
-                        <button type="button" class="delete icon"
-                                title="{{ 'Delete'|t('simple-form') }}"
-                                aria-label="{{ 'Delete integration {name}'|t('simple-form', { name: integration.name }) }}"
-                                data-id="{{ integration.id }}"></button>
                     </td>
                 </tr>
             {% endfor %}
@@ -62,8 +62,9 @@
     </table>
 {% else %}
     <div class="zilch sf-empty-state">
-        <p>{{ 'No integrations yet. Add one to push submissions to a webhook or other service.'|t('simple-form') }}</p>
-        <a class="btn submit add icon" href="{{ cpUrl('simple-form/forms/' ~ form.id ~ '/integrations/new') }}">{{ 'New integration'|t('simple-form') }}</a>
+        <p class="sf-empty-heading">{{ 'No integrations defined yet.'|t('simple-form') }}</p>
+        <p class="light">{{ 'Create an integration under Settings, then enable it here.'|t('simple-form') }}</p>
+        <a class="btn submit add icon" href="{{ cpUrl('simple-form/settings/integrations/new') }}">{{ 'New Integration'|t('simple-form') }}</a>
     </div>
 {% endif %}
 </div>

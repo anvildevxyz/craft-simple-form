@@ -13,18 +13,28 @@
     general: { label: 'General'|t('simple-form'), url: cpUrl('simple-form/settings/general') },
     email: { label: 'Email'|t('simple-form'), url: cpUrl('simple-form/settings/email') },
     spam: { label: 'Spam Protection'|t('simple-form'), url: cpUrl('simple-form/settings/spam') },
+    integrations: { label: 'Integrations'|t('simple-form'), url: cpUrl('simple-form/settings/integrations') },
     mcp: { label: 'MCP Server'|t('simple-form'), url: cpUrl('simple-form/settings/mcp') },
 } %}
 {% set selectedTab = selectedSettingsSubnavItem %}
 
-{# The MCP tab owns several independent forms (enable toggle, create token,
-   revoke), so it cannot live inside a single full-page form. Every other tab
+{# The MCP and Integrations tabs own their own independent forms / AJAX
+   actions, so they cannot live inside a single full-page form. Every other tab
    posts through the shared settings/save form. #}
-{% set fullPageForm = selectedSettingsSubnavItem != 'mcp' %}
+{% set standaloneTabs = ['mcp', 'integrations'] %}
+{% set fullPageForm = selectedSettingsSubnavItem not in standaloneTabs %}
+
+{% block actionButton %}
+    {% if selectedSettingsSubnavItem == 'integrations' %}
+        <a class="btn submit add icon" href="{{ cpUrl('simple-form/settings/integrations/new') }}">
+            {{ 'New Integration'|t('simple-form') }}
+        </a>
+    {% endif %}
+{% endblock %}
 
 {% block content %}
-    {% if selectedSettingsSubnavItem == 'mcp' %}
-        {% include 'simple-form/settings/_tabs/mcp' %}
+    {% if selectedSettingsSubnavItem in standaloneTabs %}
+        {% include 'simple-form/settings/_tabs/' ~ selectedSettingsSubnavItem %}
     {% else %}
         <input type="hidden" name="action" value="simple-form/settings/save">
         <input type="hidden" name="tab" value="{{ selectedSettingsSubnavItem }}">

@@ -97,12 +97,15 @@ class IntegrationDispatchTest extends SimpleFormTestCase
 
     private function makeIntegration(int $formId, string $type, bool $enabled = true): IntegrationModel
     {
+        $service = Plugin::getInstance()->getIntegrations();
         $m = new IntegrationModel();
-        $m->formId = $formId;
         $m->type = $type;
         $m->name = ucfirst($type);
         $m->enabled = $enabled;
-        $this->assertTrue(Plugin::getInstance()->getIntegrations()->saveIntegration($m));
+        $this->assertTrue($service->saveIntegration($m));
+        // Attach the global definition to the form so it is in the form's
+        // dispatch set.
+        $service->toggleFormIntegration($formId, (int) $m->id);
         return $m;
     }
 

@@ -16,34 +16,20 @@ use fabianhaef\simpleform\Plugin;
 use yii\base\Component;
 
 /**
- * Owns per-form integration configs and the dispatch log. Slice 1 provides the
- * CRUD + logging surface; async dispatch off EVENT_AFTER_SUBMISSION_SAVE is
- * wired in slice 2 (#77).
+ * Owns the global integration definitions, their per-form attachments, and the
+ * dispatch log. Integrations are defined once and attached to forms through
+ * `simpleform_form_integrations`; dispatch off EVENT_AFTER_SUBMISSION_SAVE
+ * targets the attached + globally-enabled set for the submission's form.
  */
 class IntegrationsService extends Component
 {
     private const TABLE = '{{%simpleform_integrations}}';
     private const LOG_TABLE = '{{%simpleform_integration_logs}}';
+    private const PIVOT_TABLE = '{{%simpleform_form_integrations}}';
 
     /**
-     * All integrations configured on a form, ordered by sortOrder.
-     *
-     * @return list<IntegrationModel>
-     */
-    public function getIntegrationsForForm(int $formId): array
-    {
-        $rows = (new \craft\db\Query())
-            ->from(self::TABLE)
-            ->where(['formId' => $formId])
-            ->orderBy(['sortOrder' => SORT_ASC, 'id' => SORT_ASC])
-            ->all();
-
-        return array_map([$this, 'rowToModel'], $rows);
-    }
-
-    /**
-     * Every integration across all forms (for the global CP index), ordered by
-     * form then sortOrder.
+     * Every integration definition (the global Settings index), ordered by
+     * sortOrder then id.
      *
      * @return list<IntegrationModel>
      */
@@ -51,14 +37,35 @@ class IntegrationsService extends Component
     {
         $rows = (new \craft\db\Query())
             ->from(self::TABLE)
-            ->orderBy(['formId' => SORT_ASC, 'sortOrder' => SORT_ASC, 'id' => SORT_ASC])
+            ->orderBy(['sortOrder' => SORT_ASC, 'id' => SORT_ASC])
             ->all();
 
         return array_map([$this, 'rowToModel'], $rows);
     }
 
     /**
-     * Only the enabled integrations on a form — the dispatch set.
+     * The integrations attached to a form (regardless of their global enabled
+     * flag), ordered by sortOrder. Used by the read-only exposure surfaces
+     * (MCP / GraphQL) and the per-form management screen.
+     *
+     * @return list<IntegrationModel>
+     */
+    public function getIntegrationsForForm(int $formId): array
+    {
+        $rows = (new \craft\db\Query())
+            ->select(['i.*'])
+            ->from(['i' => self::TABLE])
+            ->innerJoin(['fi' => self::PIVOT_TABLE], '[[fi.integrationId]] = [[i.id]]')
+            ->where(['fi.formId' => $formId])
+            ->orderBy(['i.sortOrder' => SORT_ASC, 'i.id' => SORT_ASC])
+            ->all();
+
+        return array_map([$this, 'rowToModel'], $rows);
+    }
+
+    /**
+     * Only the integrations attached to a form *and* globally enabled — the
+     * dispatch set.
      *
      * @return list<IntegrationModel>
      */
@@ -68,6 +75,50 @@ class IntegrationsService extends Component
             $this->getIntegrationsForForm($formId),
             static fn(IntegrationModel $i): bool => $i->enabled,
         ));
+    }
+
+    /**
+     * The ids of integrations attached to a form, for rendering per-form toggles.
+     *
+     * @return list<int>
+     */
+    public function getAttachedIntegrationIds(int $formId): array
+    {
+        return array_map('intval', (new \craft\db\Query())
+            ->select(['integrationId'])
+            ->from(self::PIVOT_TABLE)
+            ->where(['formId' => $formId])
+            ->column());
+    }
+
+    /**
+     * Attach or detach a single integration from a form. Returns the resulting
+     * attached state (true = now attached).
+     */
+    public function toggleFormIntegration(int $formId, int $integrationId): bool
+    {
+        $db = Craft::$app->getDb();
+        $exists = (new \craft\db\Query())
+            ->from(self::PIVOT_TABLE)
+            ->where(['formId' => $formId, 'integrationId' => $integrationId])
+            ->exists();
+
+        if ($exists) {
+            $db->createCommand()
+                ->delete(self::PIVOT_TABLE, ['formId' => $formId, 'integrationId' => $integrationId])
+                ->execute();
+            return false;
+        }
+
+        $now = Db::prepareDateForDb(new \DateTime());
+        $db->createCommand()->insert(self::PIVOT_TABLE, [
+            'formId' => $formId,
+            'integrationId' => $integrationId,
+            'dateCreated' => $now,
+            'dateUpdated' => $now,
+            'uid' => StringHelper::UUID(),
+        ])->execute();
+        return true;
     }
 
     public function getIntegrationById(int $id): ?IntegrationModel
@@ -92,7 +143,6 @@ class IntegrationsService extends Component
         $db = Craft::$app->getDb();
         $now = Db::prepareDateForDb(new \DateTime());
         $attrs = [
-            'formId' => $integration->formId,
             'type' => $integration->type,
             'name' => $integration->name,
             'enabled' => $integration->enabled,
@@ -344,7 +394,6 @@ class IntegrationsService extends Component
     {
         $model = new IntegrationModel();
         $model->id = (int) $row['id'];
-        $model->formId = (int) $row['formId'];
         $model->type = (string) $row['type'];
         $model->name = (string) $row['name'];
         $model->enabled = (bool) $row['enabled'];

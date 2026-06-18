@@ -65,7 +65,7 @@ class Plugin extends BasePlugin
      */
     public const EVENT_REGISTER_CAPTCHA_PROVIDERS = 'registerCaptchaProviders';
 
-    public string $schemaVersion = '2.4.0';
+    public string $schemaVersion = '2.5.0';
     public bool $hasCpSection = true;
     public bool $hasCpSettings = false;
     public bool $hasCpPermissions = true;
@@ -310,9 +310,6 @@ class Plugin extends BasePlugin
         if ($isAdmin || $user?->can(SimpleFormPermissions::MANAGE_FORMS)) {
             $subnav['forms'] = ['label' => Craft::t('simple-form', 'Forms'), 'url' => 'simple-form/forms'];
         }
-        if ($isAdmin || $user?->can(SimpleFormPermissions::MANAGE_INTEGRATIONS)) {
-            $subnav['integrations'] = ['label' => Craft::t('simple-form', 'Integrations'), 'url' => 'simple-form/integrations'];
-        }
         if ($isAdmin || $user?->can(SimpleFormPermissions::VIEW_SUBMISSIONS)) {
             $subnav['submissions'] = ['label' => Craft::t('simple-form', 'Submissions'), 'url' => 'simple-form/submissions'];
         }
@@ -336,15 +333,15 @@ class Plugin extends BasePlugin
         $event->rules['simple-form/forms/edit/<formId:\d+>'] = 'simple-form/forms/edit';
         $event->rules['simple-form/forms/save'] = 'simple-form/forms/save';
         $event->rules['simple-form/forms/delete/<formId:\d+>'] = 'simple-form/forms/delete';
-        // Per-form integrations management
+        // Integrations: global definitions managed under Settings, enabled per form.
         $event->rules['simple-form/integrations'] = 'simple-form/integrations/global-index';
-        $event->rules['simple-form/forms/<formId:\d+>/integrations'] = 'simple-form/integrations/index';
-        $event->rules['simple-form/forms/<formId:\d+>/integrations/new'] = 'simple-form/integrations/edit';
-        $event->rules['simple-form/forms/<formId:\d+>/integrations/<integrationId:\d+>'] = 'simple-form/integrations/edit';
         $event->rules['simple-form/integrations/save'] = 'simple-form/integrations/save';
         $event->rules['simple-form/integrations/delete'] = 'simple-form/integrations/delete';
         $event->rules['simple-form/integrations/toggle'] = 'simple-form/integrations/toggle';
+        $event->rules['simple-form/integrations/toggle-form'] = 'simple-form/integrations/toggle-form';
         $event->rules['simple-form/integrations/resend'] = 'simple-form/integrations/resend';
+        // Per-form: choose which global integrations are active on a form.
+        $event->rules['simple-form/forms/<formId:\d+>/integrations'] = 'simple-form/integrations/index';
 
         $event->rules['simple-form/submissions'] = 'simple-form/submissions/index';
         $event->rules['simple-form/submissions/export'] = 'simple-form/submissions/export';
@@ -354,6 +351,11 @@ class Plugin extends BasePlugin
         $event->rules['simple-form/settings/save'] = 'simple-form/settings/save';
         $event->rules['simple-form/settings/mcp/create-token'] = 'simple-form/settings/create-mcp-token';
         $event->rules['simple-form/settings/mcp/revoke-token'] = 'simple-form/settings/revoke-mcp-token';
+        // Integrations management lives under Settings. Specific routes must
+        // precede the generic settings/<tab> catch-all below.
+        $event->rules['simple-form/settings/integrations'] = 'simple-form/integrations/settings-index';
+        $event->rules['simple-form/settings/integrations/new'] = 'simple-form/integrations/edit';
+        $event->rules['simple-form/settings/integrations/<integrationId:\d+>'] = 'simple-form/integrations/edit';
         $event->rules['simple-form/settings/<tab:\w+>'] = 'simple-form/settings/section';
 
         // Fields AJAX endpoints

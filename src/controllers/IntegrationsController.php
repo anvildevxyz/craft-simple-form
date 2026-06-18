@@ -33,30 +33,32 @@ class IntegrationsController extends Controller
     }
 
     /**
-     * Global index: every integration across all forms (CP subnav entry point).
+     * Global integration management, rendered as the Settings → Integrations tab.
      */
-    public function actionGlobalIndex(): Response
+    public function actionSettingsIndex(): Response
     {
         $service = Plugin::getInstance()->getIntegrations();
-        $integrations = $service->getAllIntegrations();
 
-        // Resolve each integration's form (id => title) for the Form column.
-        $forms = [];
-        foreach ($integrations as $integration) {
-            $fid = (int) $integration->formId;
-            if (!isset($forms[$fid])) {
-                $form = Form::find()->siteId('*')->id($fid)->status(null)->one();
-                $forms[$fid] = $form instanceof Form ? ($form->title ?? $form->name) : ('#' . $fid);
-            }
-        }
-
-        return $this->renderTemplate('simple-form/integrations/index', [
-            'integrations' => $integrations,
-            'formTitles' => $forms,
+        return $this->renderTemplate('simple-form/settings/index', [
+            'selectedSettingsSubnavItem' => 'integrations',
+            'integrations' => $service->getAllIntegrations(),
             'typeNames' => Plugin::getInstance()->getIntegrationTypeRegistry()->getAllTypes(),
         ]);
     }
 
+    /**
+     * Legacy `/simple-form/integrations` entry point — integrations now live
+     * under Settings.
+     */
+    public function actionGlobalIndex(): Response
+    {
+        return $this->redirect('simple-form/settings/integrations');
+    }
+
+    /**
+     * Per-form screen: every global integration with a toggle controlling
+     * whether it is attached to (dispatched for) this form.
+     */
     public function actionIndex(int $formId): Response
     {
         $form = $this->getFormOrFail($formId);
@@ -64,20 +66,23 @@ class IntegrationsController extends Controller
 
         return $this->renderTemplate('simple-form/forms/integrations/index', [
             'form' => $form,
-            'integrations' => $service->getIntegrationsForForm($formId),
+            'integrations' => $service->getAllIntegrations(),
+            'attachedIds' => $service->getAttachedIntegrationIds($formId),
             'typeNames' => Plugin::getInstance()->getIntegrationTypeRegistry()->getAllTypes(),
         ]);
     }
 
-    public function actionEdit(int $formId, ?int $integrationId = null): Response
+    /**
+     * Create/edit a global integration definition (Settings → Integrations).
+     */
+    public function actionEdit(?int $integrationId = null): Response
     {
-        $form = $this->getFormOrFail($formId);
         $registry = Plugin::getInstance()->getIntegrationTypeRegistry();
 
         $integration = null;
         if ($integrationId !== null) {
             $integration = Plugin::getInstance()->getIntegrations()->getIntegrationById($integrationId);
-            if ($integration === null || $integration->formId !== $formId) {
+            if ($integration === null) {
                 throw new NotFoundHttpException('Integration not found');
             }
         }
@@ -88,8 +93,7 @@ class IntegrationsController extends Controller
 
         // New integration with no type chosen yet -> show the type picker.
         if ($typeHandle === null) {
-            return $this->renderTemplate('simple-form/forms/integrations/edit', [
-                'form' => $form,
+            return $this->renderTemplate('simple-form/settings/integrations/edit', [
                 'integration' => null,
                 'type' => null,
                 'availableTypes' => $registry->getAllTypes(),
@@ -104,13 +108,11 @@ class IntegrationsController extends Controller
 
         if ($integration === null) {
             $integration = new IntegrationModel();
-            $integration->formId = $formId;
             $integration->type = $typeHandle;
             $integration->name = $type::displayName();
         }
 
-        return $this->renderTemplate('simple-form/forms/integrations/edit', [
-            'form' => $form,
+        return $this->renderTemplate('simple-form/settings/integrations/edit', [
             'integration' => $integration,
             'type' => $type,
             'availableTypes' => null,
@@ -124,8 +126,6 @@ class IntegrationsController extends Controller
         /** @var \craft\web\Request $request */
         $request = Craft::$app->getRequest();
 
-        $formId = (int) $request->getRequiredBodyParam('formId');
-        $form = $this->getFormOrFail($formId);
         $integrationId = $request->getBodyParam('integrationId');
         $registry = Plugin::getInstance()->getIntegrationTypeRegistry();
         $service = Plugin::getInstance()->getIntegrations();
@@ -133,13 +133,12 @@ class IntegrationsController extends Controller
         $integration = null;
         if ($integrationId) {
             $integration = $service->getIntegrationById((int) $integrationId);
-            if ($integration === null || $integration->formId !== $formId) {
+            if ($integration === null) {
                 throw new NotFoundHttpException('Integration not found');
             }
         }
         if ($integration === null) {
             $integration = new IntegrationModel();
-            $integration->formId = $formId;
         }
 
         $integration->type = (string) $request->getRequiredBodyParam('type');
@@ -156,8 +155,7 @@ class IntegrationsController extends Controller
         $errors = $service->validateSettings($type, $integration->settings);
         if ($errors !== [] || !$service->saveIntegration($integration)) {
             Craft::$app->getSession()->setError(Craft::t('simple-form', 'Couldn’t save integration.'));
-            return $this->renderTemplate('simple-form/forms/integrations/edit', [
-                'form' => $form,
+            return $this->renderTemplate('simple-form/settings/integrations/edit', [
                 'integration' => $integration,
                 'type' => $type,
                 'availableTypes' => null,
@@ -166,7 +164,7 @@ class IntegrationsController extends Controller
         }
 
         Craft::$app->getSession()->setNotice(Craft::t('simple-form', 'Integration saved.'));
-        return $this->redirect("simple-form/forms/{$formId}/integrations");
+        return $this->redirect('simple-form/settings/integrations');
     }
 
     public function actionDelete(): Response
@@ -186,6 +184,9 @@ class IntegrationsController extends Controller
         return $this->asJsonSuccess();
     }
 
+    /**
+     * Toggle a global integration's master enabled flag (Settings list).
+     */
     public function actionToggle(): Response
     {
         $this->requirePostRequest();
@@ -203,6 +204,29 @@ class IntegrationsController extends Controller
         $service->saveIntegration($integration);
 
         return $this->asJsonSuccess(['enabled' => $integration->enabled]);
+    }
+
+    /**
+     * Attach/detach an integration from a form (per-form management screen).
+     */
+    public function actionToggleForm(): Response
+    {
+        $this->requirePostRequest();
+        $this->requireAcceptsJson();
+        /** @var \craft\web\Request $request */
+        $request = Craft::$app->getRequest();
+
+        $formId = (int) $request->getRequiredBodyParam('formId');
+        $integrationId = (int) $request->getRequiredBodyParam('integrationId');
+        $service = Plugin::getInstance()->getIntegrations();
+
+        if ($service->getIntegrationById($integrationId) === null) {
+            return $this->asJsonError(Craft::t('simple-form', 'Couldn’t complete that action.'));
+        }
+
+        $attached = $service->toggleFormIntegration($formId, $integrationId);
+
+        return $this->asJsonSuccess(['attached' => $attached]);
     }
 
     /**

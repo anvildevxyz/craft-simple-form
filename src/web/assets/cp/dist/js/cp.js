@@ -140,6 +140,23 @@
         });
     }
 
+    // --- Per-form integrations: attach/detach a global integration to a form ---
+    var formIntegrations = document.getElementById('sf-form-integrations');
+    if (formIntegrations) {
+        var fiMsgs = {
+            generic: formIntegrations.dataset.error,
+            network: formIntegrations.dataset.networkError,
+        };
+        var fiFormId = formIntegrations.dataset.formId;
+        formIntegrations.querySelectorAll('.attach-toggle').forEach(function (btn) {
+            btn.addEventListener('click', function () {
+                postJson(formIntegrations.dataset.toggleUrl,
+                    'formId=' + fiFormId + '&integrationId=' + btn.dataset.id,
+                    function () { location.reload(); }, fiMsgs);
+            });
+        });
+    }
+
     // --- Settings → Spam: conditional visibility of provider/type blocks ---
     // Craft's checkboxField renders a hidden input *and* the checkbox under the
     // same name; target the checkbox specifically.

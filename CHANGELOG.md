@@ -8,6 +8,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- Integrations are now defined centrally under **Settings → Integrations**
+  (create / edit / delete / enable) and enabled per form from each form's
+  Integrations screen. One integration definition can be reused across many
+  forms. Primary actions (**New Form**, **New Integration**) now render as
+  Control Panel header action buttons.
 - Dashboard widgets: a **Form Submissions** count widget (selectable range —
   today / 7 days / 30 days / all — and optional per-form filter) and a **Recent
   Submissions** widget linking to each submission. Both respect the current site

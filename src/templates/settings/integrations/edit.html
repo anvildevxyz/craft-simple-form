@@ -1,28 +1,26 @@
 {% extends '_layouts/cp.twig' %}
 {% import '_includes/forms.twig' as forms %}
 
-{% set title = 'Integration'|t('simple-form') ~ ' — ' ~ (form.title ?: form.name) %}
-{% set selectedSubnavItem = 'forms' %}
+{% set title = integration and integration.id
+    ? 'Edit Integration'|t('simple-form')
+    : 'New Integration'|t('simple-form') %}
+{% set selectedSubnavItem = 'settings' %}
+{% do craft.app.view.registerAssetBundle('fabianhaef\\simpleform\\web\\assets\\cp\\SimpleFormCpAsset') %}
 
 {% set crumbs = [
     { label: 'Simple Form'|t('simple-form'), url: cpUrl('simple-form/forms') },
-    { label: 'Forms'|t('simple-form'), url: cpUrl('simple-form/forms') },
-    { label: (form.title ?: form.name), url: cpUrl('simple-form/forms/edit/' ~ form.id) },
-    { label: 'Integrations'|t('simple-form'), url: cpUrl('simple-form/forms/' ~ form.id ~ '/integrations') },
+    { label: 'Settings'|t('simple-form'), url: cpUrl('simple-form/settings') },
+    { label: 'Integrations'|t('simple-form'), url: cpUrl('simple-form/settings/integrations') },
 ] %}
 
 {% block content %}
-<div class="buttons">
-    <a class="btn" href="{{ cpUrl('simple-form/forms/' ~ form.id ~ '/integrations') }}">← {{ 'Back'|t('simple-form') }}</a>
-</div>
-
 {% if availableTypes is not null %}
     {# Type picker for a brand-new integration #}
     <h2>{{ 'Choose an integration type'|t('simple-form') }}</h2>
     <ul>
         {% for handle, name in availableTypes %}
             <li>
-                <a class="btn" href="{{ cpUrl('simple-form/forms/' ~ form.id ~ '/integrations/new', { type: handle }) }}">
+                <a class="btn" href="{{ cpUrl('simple-form/settings/integrations/new', { type: handle }) }}">
                     {{ name }}
                 </a>
             </li>
@@ -34,7 +32,7 @@
     <form method="post" accept-charset="UTF-8">
         {{ csrfInput() }}
         <input type="hidden" name="action" value="simple-form/integrations/save">
-        <input type="hidden" name="formId" value="{{ form.id }}">
+        {{ redirectInput('simple-form/settings/integrations') }}
         {% if integration.id %}<input type="hidden" name="integrationId" value="{{ integration.id }}">{% endif %}
         <input type="hidden" name="type" value="{{ integration.type }}">
 
@@ -51,6 +49,7 @@
             id: 'enabled',
             name: 'enabled',
             on: integration.enabled,
+            instructions: 'When off, this integration is skipped on every form it is enabled on.'|t('simple-form'),
         }) }}
 
         <hr>

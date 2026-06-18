@@ -4,13 +4,13 @@
 {% set selectedSubnavItem = 'forms' %}
 {% do craft.app.view.registerAssetBundle('fabianhaef\\simpleform\\web\\assets\\cp\\SimpleFormCpAsset') %}
 
-{% block content %}
-<div class="buttons">
+{% block actionButton %}
     <a class="btn submit add icon" href="{{ cpUrl('simple-form/forms/new') }}">
         {{ 'New Form'|t('simple-form') }}
     </a>
-</div>
+{% endblock %}
 
+{% block content %}
 {% if forms %}
     <table class="data fullwidth collapsible">
         <thead>

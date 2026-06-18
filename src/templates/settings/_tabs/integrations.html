@@ -1,0 +1,55 @@
+<h2>{{ 'Integrations'|t('simple-form') }}</h2>
+<p class="light">
+    {{ 'Define outbound integrations once here (webhook, Slack, Mailchimp, …), then enable them per form from each form’s Integrations screen.'|t('simple-form') }}
+</p>
+
+<div id="sf-integrations"
+     data-toggle-url="{{ cpUrl('simple-form/integrations/toggle') }}"
+     data-delete-url="{{ cpUrl('simple-form/integrations/delete') }}"
+     data-confirm-delete="{{ 'Delete this integration? It will be removed from every form it is enabled on.'|t('simple-form') }}"
+     data-error="{{ 'Couldn’t complete that action.'|t('simple-form') }}"
+     data-network-error="{{ 'Network error — please try again.'|t('simple-form') }}">
+{% if integrations is not empty %}
+    <table class="data fullwidth collapsible">
+        <thead>
+            <tr>
+                <th>{{ 'Name'|t('simple-form') }}</th>
+                <th>{{ 'Type'|t('simple-form') }}</th>
+                <th>{{ 'Enabled'|t('simple-form') }}</th>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for integration in integrations %}
+                <tr data-id="{{ integration.id }}">
+                    <td>
+                        <a href="{{ cpUrl('simple-form/settings/integrations/' ~ integration.id) }}">
+                            {{ integration.name }}
+                        </a>
+                    </td>
+                    <td>{{ typeNames[integration.type] ?? integration.type }}</td>
+                    <td>
+                        <button type="button" class="status-toggle btn small{{ integration.enabled ? ' active' : '' }}"
+                                data-id="{{ integration.id }}">
+                            <span class="status {{ integration.enabled ? 'on' : 'off' }}"></span>
+                            {{ integration.enabled ? 'Enabled'|t('simple-form') : 'Disabled'|t('simple-form') }}
+                        </button>
+                    </td>
+                    <td class="thin">
+                        <button type="button" class="delete icon"
+                                title="{{ 'Delete'|t('simple-form') }}"
+                                aria-label="{{ 'Delete integration {name}'|t('simple-form', { name: integration.name }) }}"
+                                data-id="{{ integration.id }}"></button>
+                    </td>
+                </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+{% else %}
+    <div class="zilch sf-empty-state">
+        <p class="sf-empty-heading">{{ 'No integrations yet.'|t('simple-form') }}</p>
+        <p class="light">{{ 'Create one to push form submissions to a webhook or other service.'|t('simple-form') }}</p>
+        <a class="btn submit add icon" href="{{ cpUrl('simple-form/settings/integrations/new') }}">{{ 'New Integration'|t('simple-form') }}</a>
+    </div>
+{% endif %}
+</div>

@@ -108,11 +108,12 @@ class IntegrationsLifecycleTest extends SimpleFormTestCase
         $fieldId = $this->createField($form->id, 'text', 'name', 'Name');
 
         $integration = new IntegrationModel();
-        $integration->formId = (int) $form->id;
         $integration->type = 'capturing';
         $integration->name = 'Capturing';
         $integration->enabled = true;
-        Plugin::getInstance()->getIntegrations()->saveIntegration($integration);
+        $integrations = Plugin::getInstance()->getIntegrations();
+        $integrations->saveIntegration($integration);
+        $integrations->toggleFormIntegration((int) $form->id, (int) $integration->id);
 
         // Submit: the connector receives the payload and a success log is written.
         $service = Plugin::getInstance()->getSubmissionService();

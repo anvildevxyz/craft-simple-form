@@ -8,26 +8,31 @@ use fabianhaef\simpleform\models\IntegrationModel;
 use fabianhaef\simpleform\Plugin;
 
 /**
- * Proves the integrations migration applied and the service round-trips configs
- * + logs, including the form-delete cascade and submission-delete set-null.
+ * Proves the integrations migration applied and the service round-trips global
+ * integration definitions, their per-form attachments, and the dispatch log,
+ * including the form-delete cascade of attachments and submission-delete
+ * set-null.
  */
 class IntegrationsServiceTest extends SimpleFormTestCase
 {
+    private function makeIntegration(string $name, bool $enabled = true): IntegrationModel
+    {
+        $model = new IntegrationModel();
+        $model->type = 'webhook';
+        $model->name = $name;
+        $model->enabled = $enabled;
+        $model->settings = ['url' => 'https://example.test/hook'];
+        $this->assertTrue(Plugin::getInstance()->getIntegrations()->saveIntegration($model));
+        $this->assertNotNull($model->id);
+        return $model;
+    }
+
     public function testSaveAndFetchIntegration(): void
     {
         $this->requireCraft();
-        $form = $this->createForm('Contact', 'contact_int_save');
         $service = Plugin::getInstance()->getIntegrations();
 
-        $model = new IntegrationModel();
-        $model->formId = (int) $form->id;
-        $model->type = 'webhook';
-        $model->name = 'Zapier hook';
-        $model->enabled = true;
-        $model->settings = ['url' => 'https://example.test/hook'];
-
-        $this->assertTrue($service->saveIntegration($model));
-        $this->assertNotNull($model->id);
+        $model = $this->makeIntegration('Zapier hook');
 
         $fetched = $service->getIntegrationById($model->id);
         $this->assertNotNull($fetched);
@@ -36,36 +41,50 @@ class IntegrationsServiceTest extends SimpleFormTestCase
         $this->assertSame('https://example.test/hook', $fetched->settings['url']);
     }
 
-    public function testEnabledFilterAndUpdate(): void
+    public function testAttachmentDrivesPerFormDispatchSet(): void
     {
         $this->requireCraft();
         $form = $this->createForm('Contact', 'contact_int_enabled');
         $service = Plugin::getInstance()->getIntegrations();
         $formId = (int) $form->id;
 
-        $on = new IntegrationModel();
-        $on->formId = $formId;
-        $on->type = 'webhook';
-        $on->name = 'On';
-        $on->enabled = true;
-        $service->saveIntegration($on);
+        $on = $this->makeIntegration('On', true);
+        $off = $this->makeIntegration('Off', false);
 
-        $off = new IntegrationModel();
-        $off->formId = $formId;
-        $off->type = 'webhook';
-        $off->name = 'Off';
-        $off->enabled = false;
-        $service->saveIntegration($off);
+        // Nothing attached yet.
+        $this->assertCount(0, $service->getIntegrationsForForm($formId));
 
+        $this->assertTrue($service->toggleFormIntegration($formId, $on->id));
+        $this->assertTrue($service->toggleFormIntegration($formId, $off->id));
+
+        // Both attached, but only the globally-enabled one is in the dispatch set.
         $this->assertCount(2, $service->getIntegrationsForForm($formId));
         $enabled = $service->getEnabledIntegrationsForForm($formId);
         $this->assertCount(1, $enabled);
         $this->assertSame('On', $enabled[0]->name);
 
-        // Update flips enabled off.
+        // Flipping the global switch off removes it from the dispatch set without
+        // detaching it.
         $on->enabled = false;
         $this->assertTrue($service->saveIntegration($on));
+        $this->assertCount(2, $service->getIntegrationsForForm($formId));
         $this->assertCount(0, $service->getEnabledIntegrationsForForm($formId));
+    }
+
+    public function testToggleFormIntegrationDetaches(): void
+    {
+        $this->requireCraft();
+        $form = $this->createForm('Contact', 'contact_int_detach');
+        $service = Plugin::getInstance()->getIntegrations();
+        $formId = (int) $form->id;
+        $hook = $this->makeIntegration('Hook');
+
+        $this->assertTrue($service->toggleFormIntegration($formId, $hook->id));
+        $this->assertSame([$hook->id], $service->getAttachedIntegrationIds($formId));
+
+        // Toggling again detaches.
+        $this->assertFalse($service->toggleFormIntegration($formId, $hook->id));
+        $this->assertSame([], $service->getAttachedIntegrationIds($formId));
     }
 
     public function testInvalidIntegrationFailsValidation(): void
@@ -73,21 +92,16 @@ class IntegrationsServiceTest extends SimpleFormTestCase
         $this->requireCraft();
         $service = Plugin::getInstance()->getIntegrations();
 
-        $model = new IntegrationModel(); // missing formId/type/name
+        $model = new IntegrationModel(); // missing type/name
         $this->assertFalse($service->saveIntegration($model));
     }
 
     public function testLogDispatchAndFetchBySubmission(): void
     {
         $this->requireCraft();
-        $form = $this->createForm('Contact', 'contact_int_log');
         $service = Plugin::getInstance()->getIntegrations();
 
-        $model = new IntegrationModel();
-        $model->formId = (int) $form->id;
-        $model->type = 'webhook';
-        $model->name = 'Hook';
-        $service->saveIntegration($model);
+        $model = $this->makeIntegration('Hook');
 
         // No real submission needed for the log query; submissionId is nullable.
         $logId = $service->logDispatch($model->id, null, DispatchStatus::FAILED, 2, 500, 'server error');
@@ -104,14 +118,9 @@ class IntegrationsServiceTest extends SimpleFormTestCase
     public function testInvalidStatusFallsBackToPending(): void
     {
         $this->requireCraft();
-        $form = $this->createForm('Contact', 'contact_int_status');
         $service = Plugin::getInstance()->getIntegrations();
 
-        $model = new IntegrationModel();
-        $model->formId = (int) $form->id;
-        $model->type = 'webhook';
-        $model->name = 'Hook';
-        $service->saveIntegration($model);
+        $model = $this->makeIntegration('Hook');
 
         $logId = $service->logDispatch($model->id, null, 'bogus-status');
         $row = (new \craft\db\Query())
@@ -121,19 +130,13 @@ class IntegrationsServiceTest extends SimpleFormTestCase
         $this->assertSame(DispatchStatus::PENDING, $row['status']);
     }
 
-    public function testGetAllIntegrationsSpansForms(): void
+    public function testGetAllIntegrationsReturnsEveryDefinition(): void
     {
         $this->requireCraft();
-        $formA = $this->createForm('Global A', 'global_a');
-        $formB = $this->createForm('Global B', 'global_b');
         $service = Plugin::getInstance()->getIntegrations();
 
-        foreach ([[$formA, 'A1'], [$formA, 'A2'], [$formB, 'B1']] as [$form, $name]) {
-            $m = new IntegrationModel();
-            $m->formId = (int) $form->id;
-            $m->type = 'webhook';
-            $m->name = $name;
-            $service->saveIntegration($m);
+        foreach (['A1', 'A2', 'B1'] as $name) {
+            $this->makeIntegration($name);
         }
 
         $names = array_map(static fn(IntegrationModel $i): string => $i->name, $service->getAllIntegrations());
@@ -179,27 +182,21 @@ class IntegrationsServiceTest extends SimpleFormTestCase
         $this->assertArrayHasKey('method', $errors);
     }
 
-    public function testDeletingFormCascadesIntegrations(): void
+    public function testDeletingFormCascadesAttachmentsNotDefinitions(): void
     {
         $this->requireCraft();
         $form = $this->createForm('Contact', 'contact_int_cascade');
         $service = Plugin::getInstance()->getIntegrations();
         $formId = (int) $form->id;
 
-        $model = new IntegrationModel();
-        $model->formId = $formId;
-        $model->type = 'webhook';
-        $model->name = 'Hook';
-        $service->saveIntegration($model);
-        $service->logDispatch($model->id, null, DispatchStatus::SUCCESS);
+        $model = $this->makeIntegration('Hook');
+        $service->toggleFormIntegration($formId, $model->id);
+        $this->assertCount(1, $service->getIntegrationsForForm($formId));
 
         Craft::$app->getElements()->deleteElement($form, true);
 
+        // The attachment is gone, but the global definition survives.
         $this->assertCount(0, $service->getIntegrationsForForm($formId));
-        $remainingLogs = (new \craft\db\Query())
-            ->from('{{%simpleform_integration_logs}}')
-            ->where(['integrationId' => $model->id])
-            ->count();
-        $this->assertSame(0, (int) $remainingLogs);
+        $this->assertNotNull($service->getIntegrationById($model->id));
     }
 }
