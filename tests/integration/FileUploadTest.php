@@ -151,6 +151,65 @@ class FileUploadTest extends SimpleFormTestCase
         $this->assertSame([9999], $data['field_' . $fileId]['value'], 'file field must carry the uploaded asset ids, not null');
     }
 
+    /**
+     * Regression (found by the craft-review workflow): when an upload succeeds but
+     * a sibling required field fails validation, the just-created assets must be
+     * rolled back so no orphan asset is left behind (createFromRequest lines that
+     * call deleteAssets() when no submission persists). Volume-independent via a
+     * stub that records the deleted ids.
+     */
+    public function testFailedSubmissionRollsBackUploadedAssets(): void
+    {
+        $this->requireCraft();
+        $form = $this->createForm('Upload Rollback', 'upload_rollback');
+        $requiredTextId = $this->createField($form->id, 'text', 'name', 'Name', true); // required
+        $fileId = $this->createField($form->id, 'file', 'attachment', 'Attachment');
+
+        $stub = new class extends AssetUploadService {
+            /** @var list<int> */
+            public array $deleted = [];
+            public function saveUploads(array $files, array $fieldConfig): array
+            {
+                return [9999];
+            }
+            public function deleteAssets(int ...$ids): void
+            {
+                $this->deleted = $ids;
+            }
+        };
+        Plugin::getInstance()->set('assetUploadService', $stub);
+
+        $tmp = tempnam(sys_get_temp_dir(), 'sfu');
+        file_put_contents($tmp, '%PDF-1.4');
+        $_FILES['field_' . $fileId] = [
+            'name' => 'doc.pdf', 'type' => 'application/pdf', 'tmp_name' => $tmp,
+            'error' => UPLOAD_ERR_OK, 'size' => 8,
+        ];
+        UploadedFile::reset();
+
+        $request = Craft::$app->getRequest();
+        // Upload a file but leave the REQUIRED text field empty → validation fails.
+        $request->setBodyParams(['formHandle' => 'upload_rollback', 'field_' . $requiredTextId => '']);
+
+        try {
+            $result = Plugin::getInstance()->getSubmissionService()->createFromRequest($form, $request);
+        } finally {
+            unset($_FILES['field_' . $fileId]);
+            UploadedFile::reset();
+            Plugin::getInstance()->set('assetUploadService', AssetUploadService::class);
+            @unlink($tmp);
+        }
+
+        // (a) no submission, with a field error on the required text field
+        $this->assertNull($result['submission']);
+        $this->assertArrayHasKey('field_' . $requiredTextId, $result['errors'] ?? []);
+        // (b) no orphan submission row
+        $count = (new Query())->from('{{%simpleform_submissions}}')->where(['formId' => $form->id])->count();
+        $this->assertSame(0, (int) $count);
+        // (c) the created asset was rolled back
+        $this->assertSame([9999], $stub->deleted, 'orphaned upload assets must be deleted when the submission fails');
+    }
+
     public function testSaveUploadsCreatesAssetWhenVolumeAvailable(): void
     {
         $this->requireCraft();
