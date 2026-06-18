@@ -16,7 +16,7 @@ class CaptchaProviderRegistryTest extends TestCase
     {
         $registry = new CaptchaProviderRegistry();
         $this->assertInstanceOf(RecaptchaProvider::class, $registry->getProvider('recaptcha'));
-        $this->assertSame(['recaptcha' => 'Google reCAPTCHA'], $registry->all());
+        $this->assertSame('Google reCAPTCHA', $registry->all()['recaptcha']);
     }
 
     public function testResolveFallsBackToRecaptchaForUnknownOrEmpty(): void

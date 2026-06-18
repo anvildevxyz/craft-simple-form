@@ -8,6 +8,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- Cloudflare Turnstile captcha provider, selectable as an alternative to reCAPTCHA
+  (site/secret keys are env-aware).
 - Pluggable captcha provider architecture: a `CaptchaProviderInterface` + registry
   behind a `selectedCaptchaProvider` setting, so alternative captchas can slot in
   without touching the submit path or form renderer. The existing Google reCAPTCHA

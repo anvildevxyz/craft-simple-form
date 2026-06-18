@@ -29,6 +29,8 @@ class SettingsController extends Controller
             'recaptchaV3SecretKey',
             'recaptchaV2SiteKey',
             'recaptchaV2SecretKey',
+            'turnstileSiteKey',
+            'turnstileSecretKey',
         ],
         // The MCP tab persists only the enable toggle through the generic save;
         // tokens are created/revoked via dedicated actions (one-time secret).

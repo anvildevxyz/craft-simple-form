@@ -4,6 +4,7 @@ namespace fabianhaef\simpleform\services;
 
 use fabianhaef\simpleform\captcha\CaptchaProviderInterface;
 use fabianhaef\simpleform\captcha\RecaptchaProvider;
+use fabianhaef\simpleform\captcha\TurnstileProvider;
 use fabianhaef\simpleform\events\RegisterCaptchaProvidersEvent;
 use fabianhaef\simpleform\Plugin;
 use yii\base\Component;
@@ -25,6 +26,7 @@ class CaptchaProviderRegistry extends Component
         parent::init();
 
         $this->registerProvider(RecaptchaProvider::class);
+        $this->registerProvider(TurnstileProvider::class);
 
         if (!class_exists(\Craft::class) || \Craft::$app === null) {
             return;

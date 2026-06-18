@@ -92,6 +92,26 @@
         }) }}
     </div>
     </div>{# /recaptcha-provider-settings #}
+
+    <div id="turnstile-provider-settings" class="captcha-provider-settings"{% if (settings.selectedCaptchaProvider ?? 'recaptcha') != 'turnstile' %} style="display:none;"{% endif %}>
+        {{ forms.autosuggestField({
+            label: 'Turnstile Site Key'|t('simple-form'),
+            name: 'turnstileSiteKey',
+            value: settings.turnstileSiteKey ?? '',
+            suggestEnvVars: true,
+            instructions: 'Your Cloudflare Turnstile site key.'|t('simple-form'),
+            errors: settings.getErrors('turnstileSiteKey') ?? [],
+        }) }}
+
+        {{ forms.autosuggestField({
+            label: 'Turnstile Secret Key'|t('simple-form'),
+            name: 'turnstileSecretKey',
+            value: settings.turnstileSecretKey ?? '',
+            suggestEnvVars: true,
+            instructions: 'Your Cloudflare Turnstile secret key. Use an environment variable (e.g. $TURNSTILE_SECRET) to keep it out of project config.'|t('simple-form'),
+            errors: settings.getErrors('turnstileSecretKey') ?? [],
+        }) }}
+    </div>{# /turnstile-provider-settings #}
 </div>
 
 {% js %}
