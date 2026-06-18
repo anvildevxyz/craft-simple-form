@@ -8,6 +8,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- Dashboard widgets: a **Form Submissions** count widget (selectable range —
+  today / 7 days / 30 days / all — and optional per-form filter) and a **Recent
+  Submissions** widget linking to each submission. Both respect the current site
+  and the view-submissions permission.
 - Submissions CSV export in the Control Panel: an **Export CSV** button on the
   submissions index downloads the currently-filtered submissions (form, status,
   search, date range), with metadata columns plus one column per field label.

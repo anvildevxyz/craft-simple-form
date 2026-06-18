@@ -5,12 +5,14 @@ namespace fabianhaef\simpleform;
 use Craft;
 use craft\base\Model;
 use craft\base\Plugin as BasePlugin;
+use craft\events\RegisterComponentTypesEvent;
 use craft\events\RegisterGqlMutationsEvent;
 use craft\events\RegisterGqlQueriesEvent;
 use craft\events\RegisterGqlSchemaComponentsEvent;
 use craft\events\RegisterGqlTypesEvent;
 use craft\events\RegisterUrlRulesEvent;
 use craft\events\RegisterUserPermissionsEvent;
+use craft\services\Dashboard;
 use craft\services\Gql;
 use craft\services\UserPermissions;
 use craft\web\UrlManager;
@@ -39,6 +41,8 @@ use fabianhaef\simpleform\services\FormStructureService;
 use fabianhaef\simpleform\services\IntegrationsService;
 use fabianhaef\simpleform\services\IntegrationTypeRegistry;
 use fabianhaef\simpleform\services\SubmissionService;
+use fabianhaef\simpleform\widgets\RecentSubmissionsWidget;
+use fabianhaef\simpleform\widgets\SubmissionCountWidget;
 use yii\base\Event;
 
 /**
@@ -112,6 +116,15 @@ class Plugin extends BasePlugin
             UserPermissions::EVENT_REGISTER_PERMISSIONS,
             function(RegisterUserPermissionsEvent $e) {
                 $e->permissions[] = SimpleFormPermissions::definitions();
+            }
+        );
+
+        Event::on(
+            Dashboard::class,
+            Dashboard::EVENT_REGISTER_WIDGET_TYPES,
+            static function(RegisterComponentTypesEvent $e): void {
+                $e->types[] = SubmissionCountWidget::class;
+                $e->types[] = RecentSubmissionsWidget::class;
             }
         );
 
