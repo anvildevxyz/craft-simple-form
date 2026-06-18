@@ -18,7 +18,7 @@ class TranslationCatalogParityTest extends TestCase
     private const TRANSLATIONS_DIR = __DIR__ . '/../../src/translations';
 
     /** Locales shipped alongside the English source. */
-    private const LOCALES = ['de', 'fr', 'es', 'it'];
+    private const LOCALES = ['de', 'fr', 'es', 'it', 'ja', 'nl', 'pt'];
 
     /**
      * Values that are intentionally identical to English (proper nouns, brand
