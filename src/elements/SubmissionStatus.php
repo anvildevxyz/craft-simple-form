@@ -14,10 +14,12 @@ final class SubmissionStatus
     public const NEW = 'new';
     public const READ = 'read';
     public const ARCHIVED = 'archived';
+    public const SPAM = 'spam';
 
     /**
-     * Every status, in cycle/display order (the CP toggle advances through
-     * this list and wraps around).
+     * The statuses in the CP toggle cycle, in order (the toggle advances through
+     * this list and wraps around). SPAM is intentionally excluded — it's set by
+     * the spam check, not by manual cycling.
      *
      * @return list<string>
      */
@@ -30,8 +32,19 @@ final class SubmissionStatus
         ];
     }
 
+    /**
+     * Every valid `readStatus` value, including SPAM. Mirrors the migration's
+     * enum and gates {@see isValid()}.
+     *
+     * @return list<string>
+     */
+    public static function allValid(): array
+    {
+        return [...self::all(), self::SPAM];
+    }
+
     public static function isValid(string $status): bool
     {
-        return in_array($status, self::all(), true);
+        return in_array($status, self::allValid(), true);
     }
 }

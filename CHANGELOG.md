@@ -8,6 +8,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- Akismet content spam scoring: each submission is checked against Akismet
+  (when enabled) and either **flagged** (saved with a new `spam` status, visible
+  and filterable in the CP) or **blocked** (silently dropped), per setting. Fails
+  open — a missing key or Akismet outage never rejects a legitimate submission.
 - hCaptcha captcha provider, selectable as an alternative to reCAPTCHA
   (site/secret keys are env-aware).
 - Cloudflare Turnstile captcha provider, selectable as an alternative to reCAPTCHA

@@ -9,6 +9,7 @@ use fabianhaef\simpleform\elements\Submission;
 use fabianhaef\simpleform\elements\SubmissionStatus;
 use fabianhaef\simpleform\events\SubmissionEvent;
 use fabianhaef\simpleform\models\FormModel;
+use fabianhaef\simpleform\models\Settings;
 use fabianhaef\simpleform\Plugin;
 use yii\base\Component;
 
@@ -142,7 +143,15 @@ class SubmissionService extends Component
             return ['submission' => null, 'errors' => $errors];
         }
 
-        // (5) Build + save the submission element.
+        // (5) Content spam scoring (Akismet). A spam verdict either drops the
+        // submission silently (block — like the honeypot, no signal to the bot)
+        // or saves it flagged as spam for review (flag, the default).
+        $isSpam = Plugin::getInstance()->getAkismetService()->isSpam($form, $data);
+        if ($isSpam && Plugin::getInstance()->getSettings()->akismetMode === Settings::AKISMET_BLOCK) {
+            return ['submission' => null, 'errors' => null];
+        }
+
+        // (6) Build + save the submission element.
         $siteId = $context['siteId'] ?? $form->siteId ?? Craft::$app->getSites()->getCurrentSite()->id;
 
         $submission = new Submission();
@@ -150,9 +159,9 @@ class SubmissionService extends Component
         $submission->siteId = (int) $siteId;
         $submission->data = $data;
         $submission->userId = isset($context['userId']) ? (int) $context['userId'] : null;
-        $submission->readStatus = SubmissionStatus::NEW;
+        $submission->readStatus = $isSpam ? SubmissionStatus::SPAM : SubmissionStatus::NEW;
 
-        // (6) Fire the before-save event (same as the Twig path).
+        // (7) Fire the before-save event (same as the Twig path).
         $beforeEvent = new SubmissionEvent($submission, $form, $data, true);
         Plugin::getInstance()->trigger(Plugin::EVENT_BEFORE_SUBMISSION_SAVE, $beforeEvent);
 
@@ -160,12 +169,13 @@ class SubmissionService extends Component
             return ['submission' => null, 'errors' => ['submission' => ['Failed to save submission']]];
         }
 
-        // (7) Fire the after-save event.
+        // (8) Fire the after-save event.
         $afterEvent = new SubmissionEvent($submission, $form, $data, true);
         Plugin::getInstance()->trigger(Plugin::EVENT_AFTER_SUBMISSION_SAVE, $afterEvent);
 
-        // (8) Send the notification email when a recipient is configured.
-        if ($form->emailTo) {
+        // (9) Send the notification email when a recipient is configured —
+        // skipped for spam-flagged submissions.
+        if ($form->emailTo && !$isSpam) {
             Plugin::getInstance()->getEmailService()->sendSubmissionEmail($form, $submission, $data);
         }
 

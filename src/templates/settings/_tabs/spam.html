@@ -134,6 +134,41 @@
     </div>{# /hcaptcha-provider-settings #}
 </div>
 
+<hr>
+
+<h3>{{ 'Akismet'|t('simple-form') }}</h3>
+<p class="light">{{ 'Content-based spam scoring that complements CAPTCHA.'|t('simple-form') }}</p>
+
+{{ forms.checkboxField({
+    label: 'Enable Akismet'|t('simple-form'),
+    name: 'enableAkismet',
+    value: 1,
+    checked: settings.enableAkismet ?? false,
+    instructions: 'Score each submission with Akismet and flag or block likely spam.'|t('simple-form'),
+}) }}
+
+<div id="akismet-settings" style="display: {% if settings.enableAkismet ?? false %}block{% else %}none{% endif %};">
+    {{ forms.autosuggestField({
+        label: 'Akismet API Key'|t('simple-form'),
+        name: 'akismetApiKey',
+        value: settings.akismetApiKey ?? '',
+        suggestEnvVars: true,
+        instructions: 'Your Akismet API key. Use an environment variable (e.g. $AKISMET_KEY) to keep it out of project config.'|t('simple-form'),
+        errors: settings.getErrors('akismetApiKey') ?? [],
+    }) }}
+
+    {{ forms.selectField({
+        label: 'On spam verdict'|t('simple-form'),
+        id: 'akismetMode',
+        name: 'akismetMode',
+        options: {
+            'flag': 'Flag (save as spam for review)'|t('simple-form'),
+            'block': 'Block (silently drop the submission)'|t('simple-form'),
+        },
+        value: settings.akismetMode ?? 'flag',
+    }) }}
+</div>
+
 {% js %}
 (function() {
     // Craft's checkboxField renders a hidden input *and* the checkbox under the
@@ -176,6 +211,14 @@
         showProvider(providerSelect.value);
         providerSelect.addEventListener('change', function() {
             showProvider(this.value);
+        });
+    }
+
+    var enableAkismet = document.querySelector('input[type="checkbox"][name="enableAkismet"]');
+    var akismetSettings = document.getElementById('akismet-settings');
+    if (enableAkismet && akismetSettings) {
+        enableAkismet.addEventListener('change', function() {
+            akismetSettings.style.display = this.checked ? 'block' : 'none';
         });
     }
 })();

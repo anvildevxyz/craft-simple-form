@@ -33,13 +33,16 @@ class SettingsController extends Controller
             'turnstileSecretKey',
             'hcaptchaSiteKey',
             'hcaptchaSecretKey',
+            'enableAkismet',
+            'akismetApiKey',
+            'akismetMode',
         ],
         // The MCP tab persists only the enable toggle through the generic save;
         // tokens are created/revoked via dedicated actions (one-time secret).
         'mcp' => ['enableMcp'],
     ];
 
-    private const BOOL_FIELDS = ['enableHoneypot', 'enableCaptcha', 'enableMcp'];
+    private const BOOL_FIELDS = ['enableHoneypot', 'enableCaptcha', 'enableMcp', 'enableAkismet'];
     private const FLOAT_FIELDS = ['recaptchaV3MinScore'];
 
     public function actionIndex(): Response

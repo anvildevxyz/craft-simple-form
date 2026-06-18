@@ -29,6 +29,7 @@ use fabianhaef\simpleform\gql\types\SubmitFormPayloadType;
 use fabianhaef\simpleform\helpers\SimpleFormPermissions;
 use fabianhaef\simpleform\mcp\TokenManager;
 use fabianhaef\simpleform\models\Settings;
+use fabianhaef\simpleform\services\AkismetService;
 use fabianhaef\simpleform\services\CaptchaProviderRegistry;
 use fabianhaef\simpleform\services\CaptchaService;
 use fabianhaef\simpleform\services\EmailService;
@@ -79,6 +80,7 @@ class Plugin extends BasePlugin
             'submissionService' => SubmissionService::class,
             'captchaService' => CaptchaService::class,
             'captchaProviderRegistry' => CaptchaProviderRegistry::class,
+            'akismetService' => AkismetService::class,
             'formStructure' => FormStructureService::class,
             'mcpTokenManager' => TokenManager::class,
             'integrationTypeRegistry' => IntegrationTypeRegistry::class,
@@ -210,6 +212,13 @@ class Plugin extends BasePlugin
         /** @var CaptchaProviderRegistry $registry */
         $registry = $this->get('captchaProviderRegistry');
         return $registry;
+    }
+
+    public function getAkismetService(): AkismetService
+    {
+        /** @var AkismetService $service */
+        $service = $this->get('akismetService');
+        return $service;
     }
 
     public function getEmailService(): EmailService

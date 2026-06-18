@@ -29,6 +29,8 @@ modules:
           params: {}
         - class: fabianhaef\simpleform\migrations\m260618_000001_integrations
           params: {}
+        - class: fabianhaef\simpleform\migrations\m260618_000002_submission_spam_status
+          params: {}
       plugins:
         - handle: simple-form
           class: fabianhaef\simpleform\Plugin

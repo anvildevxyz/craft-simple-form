@@ -19,6 +19,7 @@
         <option value="new"{% if status == 'new' %} selected{% endif %}>New</option>
         <option value="read"{% if status == 'read' %} selected{% endif %}>Read</option>
         <option value="archived"{% if status == 'archived' %} selected{% endif %}>Archived</option>
+        <option value="spam"{% if status == 'spam' %} selected{% endif %}>Spam</option>
     </select>
 </div>
 
@@ -123,6 +124,11 @@
     .status.archived {
         background-color: #ccc;
         color: #333;
+    }
+
+    .status.spam {
+        background-color: #d0021b;
+        color: white;
     }
 
     .pagination {

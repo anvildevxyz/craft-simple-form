@@ -120,6 +120,7 @@ class SubmissionsController extends Controller
             'new' => (int) $db->createCommand($baseQuery . ' AND readStatus = :status', array_merge($params, [':status' => SubmissionStatus::NEW]))->queryScalar(),
             'read' => (int) $db->createCommand($baseQuery . ' AND readStatus = :status', array_merge($params, [':status' => SubmissionStatus::READ]))->queryScalar(),
             'archived' => (int) $db->createCommand($baseQuery . ' AND readStatus = :status', array_merge($params, [':status' => SubmissionStatus::ARCHIVED]))->queryScalar(),
+            'spam' => (int) $db->createCommand($baseQuery . ' AND readStatus = :status', array_merge($params, [':status' => SubmissionStatus::SPAM]))->queryScalar(),
         ];
     }
 

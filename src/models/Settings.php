@@ -37,6 +37,15 @@ class Settings extends Model
     public ?string $turnstileSecretKey = null;
     public ?string $hcaptchaSiteKey = null;
     public ?string $hcaptchaSecretKey = null;
+
+    public const AKISMET_FLAG = 'flag';
+    public const AKISMET_BLOCK = 'block';
+
+    /** Content spam scoring via Akismet (complements captcha). */
+    public bool $enableAkismet = false;
+    public ?string $akismetApiKey = null;
+    /** What to do with a spam verdict: flag (save as spam) or block (drop). */
+    public string $akismetMode = self::AKISMET_FLAG;
     public string $storageLocation = 'database';
     public string $submitMessage = 'Thank you! Your submission has been received.';
     public string $errorMessage = 'There was an error submitting your form. Please try again.';
@@ -116,6 +125,7 @@ class Settings extends Model
                     'turnstileSecretKey',
                     'hcaptchaSiteKey',
                     'hcaptchaSecretKey',
+                    'akismetApiKey',
                 ],
             ],
         ];
@@ -135,7 +145,9 @@ class Settings extends Model
                 'email',
                 'when' => fn(): bool => !$this->isEnvReference($this->defaultEmailSender),
             ],
-            [['enableHoneypot', 'enableCaptcha', 'cacheFormStructure', 'inlineFormAssets', 'enableMcp', 'dispatchIntegrationsSynchronously'], 'boolean'],
+            [['enableHoneypot', 'enableCaptcha', 'cacheFormStructure', 'inlineFormAssets', 'enableMcp', 'dispatchIntegrationsSynchronously', 'enableAkismet'], 'boolean'],
+            [['akismetMode'], 'in', 'range' => [self::AKISMET_FLAG, self::AKISMET_BLOCK]],
+            [['akismetApiKey'], 'required', 'when' => fn(): bool => $this->enableAkismet],
             [['mcpTokens'], 'safe'],
             [['captchaType'], 'in', 'range' => [self::CAPTCHA_V3, self::CAPTCHA_V2]],
             [['selectedCaptchaProvider'], 'string'],
