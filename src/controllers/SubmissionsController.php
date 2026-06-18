@@ -31,6 +31,51 @@ class SubmissionsController extends Controller
 
         return true;
     }
+    /**
+     * Build the submissions query from the current request's filters (form,
+     * status, search, date range) for the current site — shared by the index
+     * listing and the CSV export so both honor the same filters.
+     */
+    private function buildFilteredQuery(\craft\web\Request $request, int $siteId): \fabianhaef\simpleform\elements\db\SubmissionQuery
+    {
+        $query = Submission::find()
+            ->siteId($siteId)
+            ->orderBy(['dateCreated' => SORT_DESC]);
+
+        if ($formId = $request->getQueryParam('formId')) {
+            $query->formId((int)$formId);
+        }
+        $status = $request->getQueryParam('status', SubmissionStatus::NEW);
+        if ($status && $status !== 'all') {
+            $query->status($status);
+        }
+        if ($search = $request->getQueryParam('search')) {
+            $query->search($search);
+        }
+        if ($dateFrom = $request->getQueryParam('dateFrom')) {
+            $query->andWhere(['>=', 'elements.dateCreated', $dateFrom . ' 00:00:00']);
+        }
+        if ($dateTo = $request->getQueryParam('dateTo')) {
+            $query->andWhere(['<=', 'elements.dateCreated', $dateTo . ' 23:59:59']);
+        }
+
+        return $query;
+    }
+
+    public function actionExport(): Response
+    {
+        /** @var \craft\web\Request $request */
+        $request = Craft::$app->getRequest();
+        $siteId = Craft::$app->getSites()->getCurrentSite()->id;
+
+        $submissions = $this->buildFilteredQuery($request, $siteId)->all();
+        $csv = \fabianhaef\simpleform\helpers\SubmissionCsv::fromSubmissions($submissions);
+
+        return $this->response->sendContentAsFile($csv, 'submissions.csv', [
+            'mimeType' => 'text/csv',
+        ]);
+    }
+
     public function actionIndex(): Response
     {
         /** @var \craft\web\Request $request */
@@ -42,29 +87,7 @@ class SubmissionsController extends Controller
         $dateTo = $request->getQueryParam('dateTo');
         $siteId = Craft::$app->getSites()->getCurrentSite()->id;
 
-        $query = Submission::find()
-            ->siteId($siteId)
-            ->orderBy(['dateCreated' => SORT_DESC]);
-
-        if ($formId) {
-            $query->formId((int)$formId);
-        }
-
-        if ($status && $status !== 'all') {
-            $query->status($status);
-        }
-
-        if ($search) {
-            $query->search($search);
-        }
-
-        if ($dateFrom) {
-            $query->andWhere(['>=', 'elements.dateCreated', $dateFrom . ' 00:00:00']);
-        }
-
-        if ($dateTo) {
-            $query->andWhere(['<=', 'elements.dateCreated', $dateTo . ' 23:59:59']);
-        }
+        $query = $this->buildFilteredQuery($request, $siteId);
 
         // Store total count before pagination
         $total = $query->count();

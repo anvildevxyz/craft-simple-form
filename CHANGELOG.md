@@ -8,6 +8,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- Submissions CSV export in the Control Panel: an **Export CSV** button on the
+  submissions index downloads the currently-filtered submissions (form, status,
+  search, date range), with metadata columns plus one column per field label.
 - Multi-step / multi-page forms: assign each field a step via its “Step / Page”
   number in the builder; the rendered form shows one step at a time with
   next/back navigation, a progress indicator, and per-step client validation. The

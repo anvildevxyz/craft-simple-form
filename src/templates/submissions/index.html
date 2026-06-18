@@ -21,6 +21,14 @@
         <option value="archived"{% if status == 'archived' %} selected{% endif %}>Archived</option>
         <option value="spam"{% if status == 'spam' %} selected{% endif %}>Spam</option>
     </select>
+    <a class="btn"
+       href="{{ cpUrl('simple-form/submissions/export', {
+           formId: formId,
+           status: status,
+           search: search,
+           dateFrom: dateFrom,
+           dateTo: dateTo,
+       }) }}">{{ 'Export CSV'|t('simple-form') }}</a>
 </div>
 
 {% if submissions %}
