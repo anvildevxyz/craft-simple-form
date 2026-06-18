@@ -8,6 +8,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- Pluggable captcha provider architecture: a `CaptchaProviderInterface` + registry
+  behind a `selectedCaptchaProvider` setting, so alternative captchas can slot in
+  without touching the submit path or form renderer. The existing Google reCAPTCHA
+  (v2/v3) is now a `RecaptchaProvider` and remains the default — existing installs
+  behave identically. Register custom providers via
+  `Plugin::EVENT_REGISTER_CAPTCHA_PROVIDERS`.
 - CRM integration connectors: **HubSpot** (create a contact or deal via the v3
   API with a private-app token) and **Pipedrive** (create a person), mapping form
   fields to CRM properties. Built on the integrations framework.

@@ -2,24 +2,18 @@
 
 namespace fabianhaef\simpleform\services;
 
-use Craft;
+use fabianhaef\simpleform\captcha\CaptchaProviderInterface;
 use fabianhaef\simpleform\models\Settings;
 use fabianhaef\simpleform\Plugin;
-use GuzzleHttp\Exception\GuzzleException;
 use yii\base\Component;
 
 /**
- * Server-side verification of reCAPTCHA responses.
+ * Captcha verification, delegated to the selected provider
+ * (see {@see CaptchaProviderRegistry}). Stays a thin facade so callers
+ * (SubmissionService, TwigExtension) don't depend on the concrete provider.
  */
 class CaptchaService extends Component
 {
-    public const VERIFY_URL = 'https://www.google.com/recaptcha/api/siteverify';
-
-    /**
-     * Body param the frontend submits the captcha token under.
-     */
-    public const TOKEN_PARAM = 'g-recaptcha-response';
-
     /**
      * Verify the captcha token on the current request.
      *
@@ -33,47 +27,27 @@ class CaptchaService extends Component
             return true;
         }
 
-        $secret = $settings->getParsedSecretKey();
-        if (!$secret) {
-            Craft::warning('Captcha is enabled but no secret key is configured.', 'simple-form');
-            return false;
+        return $this->provider()->verify($token, $settings);
+    }
+
+    /**
+     * Render the selected provider's widget, or '' when captcha is disabled.
+     */
+    public function renderWidget(): string
+    {
+        $settings = $this->getSettings();
+        if (!$settings->enableCaptcha) {
+            return '';
         }
+        return $this->provider()->renderWidget($settings);
+    }
 
-        /** @var \craft\web\Request $request */
-        $request = Craft::$app->getRequest();
-
-        if ($token === null) {
-            $token = (string) $request->getBodyParam(self::TOKEN_PARAM, '');
-        }
-
-        if ($token === '') {
-            return false;
-        }
-
-        try {
-            $response = Craft::createGuzzleClient()->post(self::VERIFY_URL, [
-                'form_params' => [
-                    'secret' => $secret,
-                    'response' => $token,
-                    'remoteip' => $request->getUserIP(),
-                ],
-            ]);
-            $result = json_decode((string) $response->getBody(), true);
-        } catch (GuzzleException $e) {
-            Craft::warning('Captcha verification request failed: ' . $e->getMessage(), 'simple-form');
-            return false;
-        }
-
-        if (!is_array($result) || empty($result['success'])) {
-            return false;
-        }
-
-        // v3 returns a confidence score; enforce the configured threshold.
-        if ($settings->captchaType === Settings::CAPTCHA_V3 && isset($result['score'])) {
-            return (float) $result['score'] >= $settings->recaptchaV3MinScore;
-        }
-
-        return true;
+    /** The provider selected in settings (falls back to the default). */
+    public function provider(): CaptchaProviderInterface
+    {
+        return Plugin::getInstance()
+            ->getCaptchaProviderRegistry()
+            ->resolve($this->getSettings()->selectedCaptchaProvider);
     }
 
     private function getSettings(): Settings

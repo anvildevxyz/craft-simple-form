@@ -3,7 +3,6 @@
 namespace fabianhaef\simpleform;
 
 use Craft;
-use craft\helpers\App;
 use fabianhaef\simpleform\elements\Form;
 use fabianhaef\simpleform\helpers\FieldQueryHelper;
 use fabianhaef\simpleform\models\Settings;
@@ -147,8 +146,9 @@ class TwigExtension extends AbstractExtension
     }
 
     /**
-     * Render the reCAPTCHA widget markup for the configured captcha type, or an
-     * empty string when captcha is disabled or unconfigured.
+     * Render the selected captcha provider's widget, or an empty string when
+     * captcha is disabled/unconfigured. Delegates to the provider via
+     * {@see CaptchaService} so new captcha types need no change here.
      */
     private function renderCaptcha(Settings $settings): string
     {
@@ -156,46 +156,6 @@ class TwigExtension extends AbstractExtension
             return '';
         }
 
-        $siteKey = $settings->getActiveSiteKey();
-        if (!$siteKey) {
-            return '';
-        }
-        // Site keys may be stored as env references; resolve before output.
-        $siteKey = App::parseEnv($siteKey);
-        if (!$siteKey) {
-            return '';
-        }
-        $siteKey = htmlspecialchars((string) $siteKey, ENT_QUOTES);
-
-        if ($settings->captchaType === Settings::CAPTCHA_V2) {
-            // The v2 widget injects its own `g-recaptcha-response` field on submit.
-            return '<div class="simple-form-group">'
-                . '<div class="g-recaptcha" data-sitekey="' . $siteKey . '"></div>'
-                . '</div>'
-                . '<script src="https://www.google.com/recaptcha/api.js" async defer></script>';
-        }
-
-        // v3 is invisible: keep a fresh token in a hidden field that rides along
-        // with the form\'s existing fetch submit.
-        return '<input type="hidden" name="g-recaptcha-response" value="">'
-            . '<script src="https://www.google.com/recaptcha/api.js?render=' . $siteKey . '"></script>'
-            . '<script>
-                (function() {
-                    var siteKey = "' . $siteKey . '";
-                    function refreshToken() {
-                        if (typeof grecaptcha === "undefined") { return; }
-                        grecaptcha.ready(function() {
-                            grecaptcha.execute(siteKey, { action: "submit" }).then(function(token) {
-                                document.querySelectorAll("input[name=\'g-recaptcha-response\']").forEach(function(input) {
-                                    input.value = token;
-                                });
-                            });
-                        });
-                    }
-                    refreshToken();
-                    // Tokens expire after ~2 minutes; refresh well before that.
-                    setInterval(refreshToken, 90000);
-                })();
-            </script>';
+        return Plugin::getInstance()->getCaptchaService()->renderWidget();
     }
 }

@@ -36,6 +36,7 @@ class SettingsTest extends TestCase
         $this->assertTrue($defaults['enableHoneypot'], 'Honeypot should be on by default');
         $this->assertFalse($defaults['enableCaptcha'], 'Captcha should be off by default');
         $this->assertSame('recaptcha-v3', $defaults['captchaType']);
+        $this->assertSame('recaptcha', $defaults['selectedCaptchaProvider'], 'reCAPTCHA stays the default provider (backward compatible)');
         $this->assertSame('database', $defaults['storageLocation']);
         $this->assertSame(0.5, $defaults['recaptchaV3MinScore']);
         $this->assertNotEmpty($defaults['submitMessage']);
@@ -112,6 +113,13 @@ class SettingsTest extends TestCase
 
         $this->assertStringContainsString('enableHoneypot', $code);
         $this->assertStringContainsString('renderCaptcha', $code);
+        // The widget markup now lives in the provider; the Twig extension delegates.
+        $this->assertStringContainsString('getCaptchaService()->renderWidget()', $code);
+    }
+
+    public function testRecaptchaProviderRendersWidgetMarkup(): void
+    {
+        $code = $this->source('captcha/RecaptchaProvider.php');
         $this->assertStringContainsString('g-recaptcha', $code);
     }
 }

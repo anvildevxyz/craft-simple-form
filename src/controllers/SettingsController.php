@@ -22,6 +22,7 @@ class SettingsController extends Controller
         'spam' => [
             'enableHoneypot',
             'enableCaptcha',
+            'selectedCaptchaProvider',
             'captchaType',
             'recaptchaV3MinScore',
             'recaptchaV3SiteKey',
@@ -149,6 +150,10 @@ class SettingsController extends Controller
             'settings' => Plugin::getInstance()->getSettings(),
             'selectedSettingsSubnavItem' => $tab,
         ];
+
+        if ($tab === 'spam') {
+            $vars['captchaProviders'] = Plugin::getInstance()->getCaptchaProviderRegistry()->all();
+        }
 
         if ($tab === 'mcp') {
             $vars['mcpTokens'] = Plugin::getInstance()->getMcpTokenManager()->allTokens();

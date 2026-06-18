@@ -29,6 +29,7 @@ use fabianhaef\simpleform\gql\types\SubmitFormPayloadType;
 use fabianhaef\simpleform\helpers\SimpleFormPermissions;
 use fabianhaef\simpleform\mcp\TokenManager;
 use fabianhaef\simpleform\models\Settings;
+use fabianhaef\simpleform\services\CaptchaProviderRegistry;
 use fabianhaef\simpleform\services\CaptchaService;
 use fabianhaef\simpleform\services\EmailService;
 use fabianhaef\simpleform\services\FieldTypeRegistry;
@@ -52,6 +53,12 @@ class Plugin extends BasePlugin
      */
     public const EVENT_REGISTER_INTEGRATION_TYPES = 'registerIntegrationTypes';
 
+    /**
+     * @event RegisterCaptchaProvidersEvent Fired so third parties can register
+     * captcha providers (see RegisterCaptchaProvidersEvent).
+     */
+    public const EVENT_REGISTER_CAPTCHA_PROVIDERS = 'registerCaptchaProviders';
+
     public string $schemaVersion = '2.4.0';
     public bool $hasCpSection = true;
     public bool $hasCpSettings = false;
@@ -71,6 +78,7 @@ class Plugin extends BasePlugin
             'emailService' => EmailService::class,
             'submissionService' => SubmissionService::class,
             'captchaService' => CaptchaService::class,
+            'captchaProviderRegistry' => CaptchaProviderRegistry::class,
             'formStructure' => FormStructureService::class,
             'mcpTokenManager' => TokenManager::class,
             'integrationTypeRegistry' => IntegrationTypeRegistry::class,
@@ -195,6 +203,13 @@ class Plugin extends BasePlugin
         /** @var CaptchaService $service */
         $service = $this->get('captchaService');
         return $service;
+    }
+
+    public function getCaptchaProviderRegistry(): CaptchaProviderRegistry
+    {
+        /** @var CaptchaProviderRegistry $registry */
+        $registry = $this->get('captchaProviderRegistry');
+        return $registry;
     }
 
     public function getEmailService(): EmailService

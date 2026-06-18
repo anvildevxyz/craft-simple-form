@@ -23,6 +23,11 @@ class Settings extends Model
     public ?string $defaultEmailSenderName = null;
     public bool $enableHoneypot = true;
     public bool $enableCaptcha = false;
+    /**
+     * The selected captcha provider handle (see CaptchaProviderRegistry).
+     * Defaults to reCAPTCHA so existing installs behave identically.
+     */
+    public string $selectedCaptchaProvider = 'recaptcha';
     public string $captchaType = self::CAPTCHA_V3;
     public ?string $recaptchaV3SiteKey = null;
     public ?string $recaptchaV3SecretKey = null;
@@ -125,6 +130,7 @@ class Settings extends Model
             [['enableHoneypot', 'enableCaptcha', 'cacheFormStructure', 'inlineFormAssets', 'enableMcp', 'dispatchIntegrationsSynchronously'], 'boolean'],
             [['mcpTokens'], 'safe'],
             [['captchaType'], 'in', 'range' => [self::CAPTCHA_V3, self::CAPTCHA_V2]],
+            [['selectedCaptchaProvider'], 'string'],
             [['storageLocation'], 'in', 'range' => ['database']],
             [['recaptchaV3MinScore'], 'number', 'min' => 0, 'max' => 1],
             [

@@ -23,6 +23,16 @@
 
 <div id="captcha-settings" style="display: {% if settings.enableCaptcha ?? false %}block{% else %}none{% endif %};">
     {{ forms.selectField({
+        label: 'CAPTCHA Provider'|t('simple-form'),
+        id: 'selectedCaptchaProvider',
+        name: 'selectedCaptchaProvider',
+        options: captchaProviders ?? {'recaptcha': 'Google reCAPTCHA'},
+        value: settings.selectedCaptchaProvider ?? 'recaptcha',
+        instructions: 'Which CAPTCHA service to use.'|t('simple-form'),
+    }) }}
+
+    <div id="recaptcha-provider-settings" class="captcha-provider-settings"{% if (settings.selectedCaptchaProvider ?? 'recaptcha') != 'recaptcha' %} style="display:none;"{% endif %}>
+    {{ forms.selectField({
         label: 'CAPTCHA Type'|t('simple-form'),
         id: 'captchaType',
         name: 'captchaType',
@@ -81,6 +91,7 @@
             errors: settings.getErrors('recaptchaV2SecretKey') ?? [],
         }) }}
     </div>
+    </div>{# /recaptcha-provider-settings #}
 </div>
 
 {% js %}
@@ -109,6 +120,22 @@
         showCaptchaType(captchaType.value);
         captchaType.addEventListener('change', function() {
             showCaptchaType(this.value);
+        });
+    }
+
+    // Show only the selected provider's settings block.
+    var providerSelect = document.getElementById('selectedCaptchaProvider');
+    function showProvider(handle) {
+        document.querySelectorAll('.captcha-provider-settings').forEach(function(el) {
+            el.style.display = 'none';
+        });
+        var el = document.getElementById(handle + '-provider-settings');
+        if (el) { el.style.display = 'block'; }
+    }
+    if (providerSelect) {
+        showProvider(providerSelect.value);
+        providerSelect.addEventListener('change', function() {
+            showProvider(this.value);
         });
     }
 })();
