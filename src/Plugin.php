@@ -13,11 +13,13 @@ use craft\events\RegisterGqlTypesEvent;
 use craft\events\RegisterUrlRulesEvent;
 use craft\events\RegisterUserPermissionsEvent;
 use craft\services\Dashboard;
+use craft\services\Fields;
 use craft\services\Gc;
 use craft\services\Gql;
 use craft\services\UserPermissions;
 use craft\web\UrlManager;
 use fabianhaef\simpleform\events\SubmissionEvent;
+use fabianhaef\simpleform\fields\FormField;
 use fabianhaef\simpleform\gql\mutations\FormMutations;
 use fabianhaef\simpleform\gql\queries\FormQueries;
 use fabianhaef\simpleform\gql\types\ConditionalRuleType;
@@ -128,6 +130,15 @@ class Plugin extends BasePlugin
             static function(RegisterComponentTypesEvent $e): void {
                 $e->types[] = SubmissionCountWidget::class;
                 $e->types[] = RecentSubmissionsWidget::class;
+            }
+        );
+
+        // A custom field that embeds a form in any element's field layout.
+        Event::on(
+            Fields::class,
+            Fields::EVENT_REGISTER_FIELD_TYPES,
+            static function(RegisterComponentTypesEvent $e): void {
+                $e->types[] = FormField::class;
             }
         );
 

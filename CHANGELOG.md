@@ -8,6 +8,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **Form field type**: embed a form in any element's field layout (entries, users,
+  categories, …). Lock it to one form in the field settings, or let authors pick a
+  form per entry. The value normalizes to the Form element — `entry.myForm.handle`
+  works and it renders with `{{ simpleForm(entry.myForm.handle) }}`.
 - Console commands (`php craft simple-form/*`): `submissions/purge` (delete or
   anonymize old submissions, optional `--form`), `submissions/export` (CSV to
   stdout or `--out`), `integrations/redispatch` (re-queue dispatch for a

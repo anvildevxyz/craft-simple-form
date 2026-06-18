@@ -1,0 +1,10 @@
+{% import "_includes/forms.twig" as forms %}
+
+{{ forms.selectField({
+    label: 'Form'|t('simple-form'),
+    instructions: 'Lock this field to one form, or let the author choose a form per entry.'|t('simple-form'),
+    id: 'formId',
+    name: 'formId',
+    options: [{ label: 'Let the author choose'|t('simple-form'), value: 0 }]|merge(forms),
+    value: field.formId,
+}) }}
