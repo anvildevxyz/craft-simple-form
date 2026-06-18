@@ -8,6 +8,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- hCaptcha captcha provider, selectable as an alternative to reCAPTCHA
+  (site/secret keys are env-aware).
 - Cloudflare Turnstile captcha provider, selectable as an alternative to reCAPTCHA
   (site/secret keys are env-aware).
 - Pluggable captcha provider architecture: a `CaptchaProviderInterface` + registry

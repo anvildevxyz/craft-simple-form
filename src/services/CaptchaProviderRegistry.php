@@ -3,6 +3,7 @@
 namespace fabianhaef\simpleform\services;
 
 use fabianhaef\simpleform\captcha\CaptchaProviderInterface;
+use fabianhaef\simpleform\captcha\HcaptchaProvider;
 use fabianhaef\simpleform\captcha\RecaptchaProvider;
 use fabianhaef\simpleform\captcha\TurnstileProvider;
 use fabianhaef\simpleform\events\RegisterCaptchaProvidersEvent;
@@ -27,6 +28,7 @@ class CaptchaProviderRegistry extends Component
 
         $this->registerProvider(RecaptchaProvider::class);
         $this->registerProvider(TurnstileProvider::class);
+        $this->registerProvider(HcaptchaProvider::class);
 
         if (!class_exists(\Craft::class) || \Craft::$app === null) {
             return;

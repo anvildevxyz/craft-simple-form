@@ -35,6 +35,8 @@ class Settings extends Model
     public ?string $recaptchaV2SecretKey = null;
     public ?string $turnstileSiteKey = null;
     public ?string $turnstileSecretKey = null;
+    public ?string $hcaptchaSiteKey = null;
+    public ?string $hcaptchaSecretKey = null;
     public string $storageLocation = 'database';
     public string $submitMessage = 'Thank you! Your submission has been received.';
     public string $errorMessage = 'There was an error submitting your form. Please try again.';
@@ -112,6 +114,8 @@ class Settings extends Model
                     'recaptchaV2SecretKey',
                     'turnstileSiteKey',
                     'turnstileSecretKey',
+                    'hcaptchaSiteKey',
+                    'hcaptchaSecretKey',
                 ],
             ],
         ];
@@ -155,6 +159,11 @@ class Settings extends Model
                 ['turnstileSiteKey', 'turnstileSecretKey'],
                 'required',
                 'when' => fn(): bool => $this->enableCaptcha && $this->selectedCaptchaProvider === 'turnstile',
+            ],
+            [
+                ['hcaptchaSiteKey', 'hcaptchaSecretKey'],
+                'required',
+                'when' => fn(): bool => $this->enableCaptcha && $this->selectedCaptchaProvider === 'hcaptcha',
             ],
         ];
     }

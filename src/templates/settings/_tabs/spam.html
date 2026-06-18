@@ -112,6 +112,26 @@
             errors: settings.getErrors('turnstileSecretKey') ?? [],
         }) }}
     </div>{# /turnstile-provider-settings #}
+
+    <div id="hcaptcha-provider-settings" class="captcha-provider-settings"{% if (settings.selectedCaptchaProvider ?? 'recaptcha') != 'hcaptcha' %} style="display:none;"{% endif %}>
+        {{ forms.autosuggestField({
+            label: 'hCaptcha Site Key'|t('simple-form'),
+            name: 'hcaptchaSiteKey',
+            value: settings.hcaptchaSiteKey ?? '',
+            suggestEnvVars: true,
+            instructions: 'Your hCaptcha site key.'|t('simple-form'),
+            errors: settings.getErrors('hcaptchaSiteKey') ?? [],
+        }) }}
+
+        {{ forms.autosuggestField({
+            label: 'hCaptcha Secret Key'|t('simple-form'),
+            name: 'hcaptchaSecretKey',
+            value: settings.hcaptchaSecretKey ?? '',
+            suggestEnvVars: true,
+            instructions: 'Your hCaptcha secret key. Use an environment variable (e.g. $HCAPTCHA_SECRET) to keep it out of project config.'|t('simple-form'),
+            errors: settings.getErrors('hcaptchaSecretKey') ?? [],
+        }) }}
+    </div>{# /hcaptcha-provider-settings #}
 </div>
 
 {% js %}
