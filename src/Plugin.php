@@ -13,6 +13,7 @@ use craft\events\RegisterGqlTypesEvent;
 use craft\events\RegisterUrlRulesEvent;
 use craft\events\RegisterUserPermissionsEvent;
 use craft\services\Dashboard;
+use craft\services\Gc;
 use craft\services\Gql;
 use craft\services\UserPermissions;
 use craft\web\UrlManager;
@@ -40,6 +41,7 @@ use fabianhaef\simpleform\services\FieldTypeRegistry;
 use fabianhaef\simpleform\services\FormStructureService;
 use fabianhaef\simpleform\services\IntegrationsService;
 use fabianhaef\simpleform\services\IntegrationTypeRegistry;
+use fabianhaef\simpleform\services\RetentionService;
 use fabianhaef\simpleform\services\SubmissionService;
 use fabianhaef\simpleform\widgets\RecentSubmissionsWidget;
 use fabianhaef\simpleform\widgets\SubmissionCountWidget;
@@ -91,6 +93,7 @@ class Plugin extends BasePlugin
             'mcpTokenManager' => TokenManager::class,
             'integrationTypeRegistry' => IntegrationTypeRegistry::class,
             'integrations' => IntegrationsService::class,
+            'retention' => RetentionService::class,
         ]);
 
         Craft::$app->getI18n()->translations['simple-form'] ??= [
@@ -135,6 +138,16 @@ class Plugin extends BasePlugin
             // toggle and bearer auth, so a disabled server still 404s cleanly.
             'simple-form/mcp' => 'simple-form/mcp/index',
         ]);
+
+        // Data-retention housekeeping: prune aged submissions + integration logs
+        // on Craft's garbage-collection run (opt-in via settings; 0 = keep forever).
+        Event::on(
+            Gc::class,
+            Gc::EVENT_RUN,
+            function(): void {
+                $this->getRetention()->runGarbageCollection();
+            }
+        );
 
         $this->registerGraphQl();
 
@@ -289,6 +302,13 @@ class Plugin extends BasePlugin
     {
         /** @var IntegrationsService $service */
         $service = $this->get('integrations');
+        return $service;
+    }
+
+    public function getRetention(): RetentionService
+    {
+        /** @var RetentionService $service */
+        $service = $this->get('retention');
         return $service;
     }
 

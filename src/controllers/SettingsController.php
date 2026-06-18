@@ -37,13 +37,15 @@ class SettingsController extends Controller
             'akismetApiKey',
             'akismetMode',
         ],
+        'privacy' => ['retainSubmissionsDays', 'retainIntegrationLogsDays', 'anonymizeInsteadOfDelete'],
         // The MCP tab persists only the enable toggle through the generic save;
         // tokens are created/revoked via dedicated actions (one-time secret).
         'mcp' => ['enableMcp'],
     ];
 
-    private const BOOL_FIELDS = ['enableHoneypot', 'enableCaptcha', 'enableMcp', 'enableAkismet'];
+    private const BOOL_FIELDS = ['enableHoneypot', 'enableCaptcha', 'enableMcp', 'enableAkismet', 'anonymizeInsteadOfDelete'];
     private const FLOAT_FIELDS = ['recaptchaV3MinScore'];
+    private const INT_FIELDS = ['retainSubmissionsDays', 'retainIntegrationLogsDays'];
 
     public function actionIndex(): Response
     {
@@ -74,6 +76,8 @@ class SettingsController extends Controller
                 $values[$field] = (bool) $request->getBodyParam($field);
             } elseif (in_array($field, self::FLOAT_FIELDS, true)) {
                 $values[$field] = (float) $request->getBodyParam($field, $values[$field] ?? 0.5);
+            } elseif (in_array($field, self::INT_FIELDS, true)) {
+                $values[$field] = (int) $request->getBodyParam($field, $values[$field] ?? 0);
             } else {
                 $values[$field] = $request->getBodyParam($field, $values[$field] ?? null);
             }

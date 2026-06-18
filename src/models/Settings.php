@@ -98,6 +98,20 @@ class Settings extends Model
     public bool $enableMcp = false;
 
     /**
+     * Data retention. Submissions (and integration dispatch logs) older than the
+     * configured number of days are pruned on Craft's garbage-collection run.
+     * 0 = keep forever.
+     */
+    public int $retainSubmissionsDays = 0;
+    public int $retainIntegrationLogsDays = 90;
+
+    /**
+     * When pruning submissions, scrub their data + user reference in place instead
+     * of deleting the row, so aggregate counts/stats survive while PII does not.
+     */
+    public bool $anonymizeInsteadOfDelete = false;
+
+    /**
      * Configured MCP access tokens, stored as hash-only arrays (see
      * {@see \fabianhaef\simpleform\mcp\McpToken}). The plaintext secret is NEVER
      * stored here — only its keyed hash. Shape per entry:
@@ -145,7 +159,8 @@ class Settings extends Model
                 'email',
                 'when' => fn(): bool => !$this->isEnvReference($this->defaultEmailSender),
             ],
-            [['enableHoneypot', 'enableCaptcha', 'cacheFormStructure', 'inlineFormAssets', 'enableMcp', 'dispatchIntegrationsSynchronously', 'enableAkismet'], 'boolean'],
+            [['enableHoneypot', 'enableCaptcha', 'cacheFormStructure', 'inlineFormAssets', 'enableMcp', 'dispatchIntegrationsSynchronously', 'enableAkismet', 'anonymizeInsteadOfDelete'], 'boolean'],
+            [['retainSubmissionsDays', 'retainIntegrationLogsDays'], 'integer', 'min' => 0],
             [['akismetMode'], 'in', 'range' => [self::AKISMET_FLAG, self::AKISMET_BLOCK]],
             [['akismetApiKey'], 'required', 'when' => fn(): bool => $this->enableAkismet],
             [['mcpTokens'], 'safe'],

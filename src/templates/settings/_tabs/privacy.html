@@ -1,0 +1,38 @@
+{% import "_includes/forms.twig" as forms %}
+
+<h2>{{ 'Data Retention'|t('simple-form') }}</h2>
+<p class="light">
+    {{ 'Automatically prune old data on Craft’s garbage-collection run. Use 0 to keep data forever.'|t('simple-form') }}
+</p>
+
+{{ forms.textField({
+    label: 'Delete submissions after (days)'|t('simple-form'),
+    instructions: 'Submissions older than this are removed during garbage collection. 0 = keep forever.'|t('simple-form'),
+    id: 'retainSubmissionsDays',
+    name: 'retainSubmissionsDays',
+    type: 'number',
+    min: 0,
+    step: 1,
+    size: 6,
+    value: settings.retainSubmissionsDays,
+}) }}
+
+{{ forms.lightswitchField({
+    label: 'Anonymize instead of delete'|t('simple-form'),
+    instructions: 'When on, expired submissions keep their row (so counts/stats survive) but their submitted data and user reference are scrubbed.'|t('simple-form'),
+    id: 'anonymizeInsteadOfDelete',
+    name: 'anonymizeInsteadOfDelete',
+    on: settings.anonymizeInsteadOfDelete,
+}) }}
+
+{{ forms.textField({
+    label: 'Delete integration logs after (days)'|t('simple-form'),
+    instructions: 'Outbound-integration dispatch log rows older than this are pruned. 0 = keep forever.'|t('simple-form'),
+    id: 'retainIntegrationLogsDays',
+    name: 'retainIntegrationLogsDays',
+    type: 'number',
+    min: 0,
+    step: 1,
+    size: 6,
+    value: settings.retainIntegrationLogsDays,
+}) }}

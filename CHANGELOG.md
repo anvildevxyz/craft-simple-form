@@ -8,6 +8,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- Data retention (Settings → Privacy): submissions and integration dispatch logs
+  can be auto-pruned past a configurable age on Craft's garbage-collection run
+  (0 = keep forever). Submissions can be hard-deleted or anonymized in place
+  (scrubbing the submitted data + user reference while keeping the row for stats).
 - Integrations are now defined centrally under **Settings → Integrations**
   (create / edit / delete / enable) and enabled per form from each form's
   Integrations screen. One integration definition can be reused across many

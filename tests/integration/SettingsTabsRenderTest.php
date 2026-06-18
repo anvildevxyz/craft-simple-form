@@ -40,7 +40,7 @@ class SettingsTabsRenderTest extends SimpleFormTestCase
         $this->requireCraft();
         $settings = new Settings();
 
-        foreach (['general', 'email', 'spam', 'integrations', 'mcp'] as $tab) {
+        foreach (['general', 'email', 'spam', 'privacy', 'integrations', 'mcp'] as $tab) {
             $html = $this->render($tab, $settings);
             $this->assertNotSame('', trim($html), "Tab '$tab' rendered empty");
         }
