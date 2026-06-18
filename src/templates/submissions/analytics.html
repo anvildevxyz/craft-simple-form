@@ -1,0 +1,106 @@
+{% extends '_layouts/cp.twig' %}
+
+{% set title = 'Submissions Analytics'|t('simple-form') %}
+{% set selectedSubnavItem = 'submissions' %}
+{% do craft.app.view.registerAssetBundle('fabianhaef\\simpleform\\web\\assets\\cp\\SimpleFormCpAsset') %}
+
+{% set crumbs = [
+    { label: 'Simple Form'|t('simple-form'), url: cpUrl('simple-form/forms') },
+    { label: 'Submissions'|t('simple-form'), url: cpUrl('simple-form/submissions') },
+] %}
+
+{% block actionButton %}
+    <a class="btn" href="{{ cpUrl('simple-form/submissions') }}">{{ '← Back to submissions'|t('simple-form') }}</a>
+{% endblock %}
+
+{% block content %}
+    {# Range selector #}
+    <div class="sf-analytics-ranges">
+        {% for r in ranges %}
+            <a class="btn{{ r == days ? ' active' : '' }}"
+               href="{{ cpUrl('simple-form/submissions/analytics', { range: r, formId: formId }) }}">
+                {{ 'Last {n} days'|t('simple-form', { n: r }) }}
+            </a>
+        {% endfor %}
+    </div>
+
+    {# Status breakdown #}
+    <div class="submission-stats">
+        {% set cards = [
+            { label: 'Total'|t('simple-form'), value: stats.total, key: '' },
+            { label: 'New'|t('simple-form'), value: stats.new, key: 'new' },
+            { label: 'Read'|t('simple-form'), value: stats.read, key: 'read' },
+            { label: 'Archived'|t('simple-form'), value: stats.archived, key: 'archived' },
+            { label: 'Spam'|t('simple-form'), value: stats.spam, key: 'spam' },
+        ] %}
+        {% for card in cards %}
+            <div class="stat-card{{ card.key ? ' stat-' ~ card.key : '' }}">
+                <span class="stat-value">{{ card.value }}</span>
+                <span class="stat-label">{{ card.label }}</span>
+            </div>
+        {% endfor %}
+    </div>
+
+    {# Submissions over time — lightweight CSS bar chart #}
+    <h2>{{ 'Submissions over time'|t('simple-form') }}</h2>
+    {% set maxCount = 1 %}
+    {% for point in perDay %}{% set maxCount = max(maxCount, point.count) %}{% endfor %}
+    {% set totalInRange = 0 %}
+    {% for point in perDay %}{% set totalInRange = totalInRange + point.count %}{% endfor %}
+
+    {% if totalInRange %}
+        <div class="sf-bar-chart" role="img"
+             aria-label="{{ '{n} submissions over the last {d} days'|t('simple-form', { n: totalInRange, d: days }) }}">
+            {% for point in perDay %}
+                <div class="sf-bar-col" title="{{ point.date }}: {{ point.count }}">
+                    <div class="sf-bar" style="height: {{ (point.count / maxCount * 100)|round }}%"></div>
+                </div>
+            {% endfor %}
+        </div>
+        <p class="light">{{ '{n} submissions in this range.'|t('simple-form', { n: totalInRange }) }}</p>
+    {% else %}
+        <p class="light">{{ 'No submissions in this range.'|t('simple-form') }}</p>
+    {% endif %}
+
+    {# Spam vs ham #}
+    <h2>{{ 'Spam'|t('simple-form') }}</h2>
+    <p class="light">
+        {{ '{spam} spam / {ham} legitimate'|t('simple-form', { spam: spam.spam, ham: spam.ham }) }}
+        {% if (spam.spam + spam.ham) > 0 %}
+            ({{ (spam.spam / (spam.spam + spam.ham) * 100)|round }}% {{ 'spam'|t('simple-form') }})
+        {% endif %}
+    </p>
+
+    {# Per-form totals #}
+    <h2>{{ 'By form'|t('simple-form') }}</h2>
+    {% if perForm|length %}
+        <table class="data fullwidth">
+            <thead>
+                <tr>
+                    <th>{{ 'Form'|t('simple-form') }}</th>
+                    <th>{{ 'Submissions'|t('simple-form') }}</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for row in perForm %}
+                    <tr>
+                        <td><a href="{{ cpUrl('simple-form/submissions', { formId: row.formId, status: 'all' }) }}">{{ row.name }}</a></td>
+                        <td>{{ row.count }}</td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    {% else %}
+        <p class="light">{{ 'No forms yet.'|t('simple-form') }}</p>
+    {% endif %}
+
+    {# Integration dispatch health #}
+    {% if (dispatch.success + dispatch.failed + dispatch.pending) > 0 %}
+        <h2>{{ 'Integration dispatches'|t('simple-form') }}</h2>
+        <div class="submission-stats">
+            <div class="stat-card stat-read"><span class="stat-value">{{ dispatch.success }}</span><span class="stat-label">{{ 'Success'|t('simple-form') }}</span></div>
+            <div class="stat-card stat-spam"><span class="stat-value">{{ dispatch.failed }}</span><span class="stat-label">{{ 'Failed'|t('simple-form') }}</span></div>
+            <div class="stat-card"><span class="stat-value">{{ dispatch.pending }}</span><span class="stat-label">{{ 'Pending'|t('simple-form') }}</span></div>
+        </div>
+    {% endif %}
+{% endblock %}

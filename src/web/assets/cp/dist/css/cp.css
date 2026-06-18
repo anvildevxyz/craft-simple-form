@@ -294,3 +294,22 @@
     .sf-sidebar { width: 100%; flex-basis: auto; }
     .sf-panel { position: static; }
 }
+
+/* Submissions analytics (#111) */
+.sf-analytics-ranges { display: flex; gap: 6px; margin-bottom: 16px; }
+.sf-analytics-ranges .btn.active { background: var(--gray-200, #e4e7eb); font-weight: 600; }
+.sf-bar-chart {
+    display: flex;
+    align-items: flex-end;
+    gap: 2px;
+    height: 160px;
+    padding: 8px 0;
+    border-bottom: 1px solid var(--hairline-color, #e3e5e8);
+}
+.sf-bar-col { flex: 1 1 0; display: flex; align-items: flex-end; height: 100%; min-width: 2px; }
+.sf-bar {
+    width: 100%;
+    min-height: 1px;
+    background: var(--enabled-color, #3a85ee);
+    border-radius: 2px 2px 0 0;
+}

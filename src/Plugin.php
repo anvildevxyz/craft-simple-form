@@ -44,6 +44,7 @@ use fabianhaef\simpleform\services\FieldTypeRegistry;
 use fabianhaef\simpleform\services\FormStructureService;
 use fabianhaef\simpleform\services\IntegrationsService;
 use fabianhaef\simpleform\services\IntegrationTypeRegistry;
+use fabianhaef\simpleform\services\ReportsService;
 use fabianhaef\simpleform\services\RetentionService;
 use fabianhaef\simpleform\services\SubmissionService;
 use fabianhaef\simpleform\web\twig\variables\SimpleFormVariable;
@@ -98,6 +99,7 @@ class Plugin extends BasePlugin
             'integrationTypeRegistry' => IntegrationTypeRegistry::class,
             'integrations' => IntegrationsService::class,
             'retention' => RetentionService::class,
+            'reports' => ReportsService::class,
         ]);
 
         Craft::$app->getI18n()->translations['simple-form'] ??= [
@@ -336,6 +338,13 @@ class Plugin extends BasePlugin
         return $service;
     }
 
+    public function getReports(): ReportsService
+    {
+        /** @var ReportsService $service */
+        $service = $this->get('reports');
+        return $service;
+    }
+
     public function getName(): string
     {
         return Craft::t('simple-form', 'Simple Form');
@@ -388,6 +397,7 @@ class Plugin extends BasePlugin
         $event->rules['simple-form/forms/<formId:\d+>/integrations'] = 'simple-form/integrations/index';
 
         $event->rules['simple-form/submissions'] = 'simple-form/submissions/index';
+        $event->rules['simple-form/submissions/analytics'] = 'simple-form/submissions/analytics';
         $event->rules['simple-form/submissions/export'] = 'simple-form/submissions/export';
         $event->rules['simple-form/submissions/<submissionId:\d+>'] = 'simple-form/submissions/view';
         $event->rules['simple-form/submissions/toggle-status'] = 'simple-form/submissions/toggle-status';

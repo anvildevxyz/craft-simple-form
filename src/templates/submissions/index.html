@@ -4,6 +4,10 @@
 {% set selectedSubnavItem = 'submissions' %}
 {% do craft.app.view.registerAssetBundle('fabianhaef\\simpleform\\web\\assets\\cp\\SimpleFormCpAsset') %}
 
+{% block actionButton %}
+    <a class="btn" href="{{ cpUrl('simple-form/submissions/analytics') }}">{{ 'Analytics'|t('simple-form') }}</a>
+{% endblock %}
+
 {% block content %}
 {# On a true first run (no submissions at all) the stats + filter bar are
    noise, so they only appear once at least one submission exists (#102). #}

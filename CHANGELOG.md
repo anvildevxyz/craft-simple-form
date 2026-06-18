@@ -8,6 +8,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- Submissions analytics dashboard (Submissions → Analytics): submissions-over-time
+  chart with a 7/30/90-day range selector, status breakdown, spam-vs-legitimate
+  split, per-form totals, and integration dispatch health — backed by a
+  ReportsService.
 - `craft.simpleForm.*` template API: `.form(handleOrId)`, `.forms(criteria)`,
   `.submissions(criteria)` (element queries) and `.render(handle, options)`
   (rendered markup). The existing `simpleForm()` function is unchanged.

@@ -129,29 +129,41 @@ class SubmissionsController extends Controller
      */
     private function getSubmissionStats(int $siteId, ?int $formId = null): array
     {
-        // Count through the same element query the listing uses, so the stat
-        // cards always agree with the table. A raw COUNT on the
-        // simpleform_submissions.siteId column diverges from the element's
-        // site (elements_sites) and can report zero while rows are listed.
-        $count = function(?string $status) use ($siteId, $formId): int {
-            $query = Submission::find()->siteId($siteId);
-            if ($formId) {
-                $query->formId($formId);
-            }
-            if ($status !== null) {
-                $query->status($status);
-            }
+        return Plugin::getInstance()->getReports()->statusBreakdown($siteId, $formId);
+    }
 
-            return (int) $query->count();
-        };
+    /**
+     * Submissions analytics: trends, status + spam split, per-form totals, and
+     * integration dispatch health. Read-only; gated by viewSubmissions.
+     */
+    public function actionAnalytics(): Response
+    {
+        /** @var \craft\web\Request $request */
+        $request = Craft::$app->getRequest();
+        $siteId = Craft::$app->getSites()->getCurrentSite()->id;
+        $formId = $request->getQueryParam('formId');
+        $formId = $formId !== null && $formId !== '' ? (int) $formId : null;
 
-        return [
-            'total' => $count(null),
-            'new' => $count(SubmissionStatus::NEW),
-            'read' => $count(SubmissionStatus::READ),
-            'archived' => $count(SubmissionStatus::ARCHIVED),
-            'spam' => $count(SubmissionStatus::SPAM),
-        ];
+        $allowedRanges = [7, 30, 90];
+        $days = (int) $request->getQueryParam('range', 30);
+        if (!in_array($days, $allowedRanges, true)) {
+            $days = 30;
+        }
+
+        $reports = Plugin::getInstance()->getReports();
+
+        return $this->renderTemplate('simple-form/submissions/analytics', [
+            'siteId' => $siteId,
+            'formId' => $formId,
+            'days' => $days,
+            'ranges' => $allowedRanges,
+            'forms' => Form::find()->siteId($siteId)->orderBy(['title' => SORT_ASC])->all(),
+            'stats' => $reports->statusBreakdown($siteId, $formId),
+            'spam' => $reports->spamRate($siteId, $formId),
+            'perDay' => $reports->submissionsPerDay($siteId, $days, $formId),
+            'perForm' => $reports->perFormTotals($siteId),
+            'dispatch' => $reports->dispatchHealth(),
+        ]);
     }
 
     public function actionView(int $submissionId): Response
