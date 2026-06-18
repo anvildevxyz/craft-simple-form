@@ -5,14 +5,21 @@
 {% set selectedSubnavItem = 'settings' %}
 {% set selectedSettingsSubnavItem = selectedSettingsSubnavItem ?? 'general' %}
 
+{# Native Craft header tabs for the settings sub-sections (replaces the
+   hand-rolled _sidebar.html). Each tab is a real URL; selectedTab highlights
+   the active one. #}
+{% set tabs = {
+    general: { label: 'General'|t('simple-form'), url: cpUrl('simple-form/settings/general') },
+    email: { label: 'Email'|t('simple-form'), url: cpUrl('simple-form/settings/email') },
+    spam: { label: 'Spam Protection'|t('simple-form'), url: cpUrl('simple-form/settings/spam') },
+    mcp: { label: 'MCP Server'|t('simple-form'), url: cpUrl('simple-form/settings/mcp') },
+} %}
+{% set selectedTab = selectedSettingsSubnavItem %}
+
 {# The MCP tab owns several independent forms (enable toggle, create token,
    revoke), so it cannot live inside a single full-page form. Every other tab
    posts through the shared settings/save form. #}
 {% set fullPageForm = selectedSettingsSubnavItem != 'mcp' %}
-
-{% block sidebar %}
-    {% include 'simple-form/settings/_sidebar' %}
-{% endblock %}
 
 {% block content %}
     {% if selectedSettingsSubnavItem == 'mcp' %}
