@@ -5,9 +5,9 @@
 
 {% block content %}
 <div class="buttons">
-    <a href="{{ cpUrl('simple-form/submissions') }}" class="btn">← Back</a>
+    <a href="{{ cpUrl('simple-form/submissions') }}" class="btn">{{ '← Back'|t('simple-form') }}</a>
     <button id="toggle-status-btn" class="btn secondary">
-        Mark as {{ submission.readStatus == 'new' ? 'Read' : (submission.readStatus == 'read' ? 'Archived' : 'New') }}
+        {{ 'Mark as {status}'|t('simple-form', { status: (submission.readStatus == 'new' ? 'Read'|t('simple-form') : (submission.readStatus == 'read' ? 'Archived'|t('simple-form') : 'New'|t('simple-form'))) }) }}
     </button>
 </div>
 
@@ -15,29 +15,29 @@
     <div class="detail-header">
         <div class="detail-info">
             <p>
-                <strong>Form:</strong>
+                <strong>{{ 'Form:'|t('simple-form') }}</strong>
                 <a href="{{ cpUrl('simple-form/submissions', {formId: form.id}) }}">
                     {{ form.title ?? form.name }}
                 </a>
             </p>
             <p>
-                <strong>Status:</strong>
+                <strong>{{ 'Status:'|t('simple-form') }}</strong>
                 <span class="status {{ submission.readStatus }}">
                     {{ submission.readStatus|upper }}
                 </span>
             </p>
             <p>
-                <strong>Date:</strong>
+                <strong>{{ 'Date:'|t('simple-form') }}</strong>
                 {{ submission.dateCreated|date('Y-m-d H:i:s') }}
             </p>
             {% if submission.userId %}
                 {% set user = craft.users.id(submission.userId).one() %}
                 <p>
-                    <strong>User:</strong>
+                    <strong>{{ 'User:'|t('simple-form') }}</strong>
                     {% if user %}
                         {{ user.fullName ?? user.username }}
                     {% else %}
-                        Unknown User
+                        {{ 'Unknown User'|t('simple-form') }}
                     {% endif %}
                 </p>
             {% endif %}
@@ -203,7 +203,7 @@ document.getElementById('toggle-status-btn').addEventListener('click', function(
             if (response.success) {
                 location.reload();
             } else {
-                alert('Error: ' + response.error);
+                Craft.cp.displayError(response.error || '{{ 'Couldn’t update the status.'|t('simple-form')|e('js') }}');
             }
         }
     };

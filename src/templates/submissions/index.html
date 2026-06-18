@@ -5,9 +5,9 @@
 
 {% block content %}
 <div class="buttons">
-    <input type="text" class="text" id="search-input" placeholder="Search submissions..." value="{{ search ?? '' }}">
+    <input type="text" class="text" id="search-input" placeholder="{{ 'Search submissions…'|t('simple-form') }}" value="{{ search ?? '' }}">
     <select id="form-filter">
-        <option value="">All Forms</option>
+        <option value="">{{ 'All Forms'|t('simple-form') }}</option>
         {% for form in forms %}
             <option value="{{ form.id }}"{% if formId == form.id %} selected{% endif %}>
                 {{ form.title ?? form.name }}
@@ -15,11 +15,11 @@
         {% endfor %}
     </select>
     <select id="status-filter">
-        <option value="">All Statuses</option>
-        <option value="new"{% if status == 'new' %} selected{% endif %}>New</option>
-        <option value="read"{% if status == 'read' %} selected{% endif %}>Read</option>
-        <option value="archived"{% if status == 'archived' %} selected{% endif %}>Archived</option>
-        <option value="spam"{% if status == 'spam' %} selected{% endif %}>Spam</option>
+        <option value="">{{ 'All Statuses'|t('simple-form') }}</option>
+        <option value="new"{% if status == 'new' %} selected{% endif %}>{{ 'New'|t('simple-form') }}</option>
+        <option value="read"{% if status == 'read' %} selected{% endif %}>{{ 'Read'|t('simple-form') }}</option>
+        <option value="archived"{% if status == 'archived' %} selected{% endif %}>{{ 'Archived'|t('simple-form') }}</option>
+        <option value="spam"{% if status == 'spam' %} selected{% endif %}>{{ 'Spam'|t('simple-form') }}</option>
     </select>
     <a class="btn"
        href="{{ cpUrl('simple-form/submissions/export', {
@@ -65,7 +65,7 @@
                         {% endif %}
                     </td>
                     <td class="thin">
-                        <a href="{{ cpUrl('simple-form/submissions/' ~ submission.id) }}">View</a>
+                        <a href="{{ cpUrl('simple-form/submissions/' ~ submission.id) }}">{{ 'View'|t('simple-form') }}</a>
                     </td>
                 </tr>
             {% endfor %}
@@ -77,7 +77,7 @@
     {% if totalPages > 1 %}
         <nav class="pagination">
             {% if page > 1 %}
-                <a href="{{ cpUrl('simple-form/submissions', {page: page - 1}) }}">« Previous</a>
+                <a href="{{ cpUrl('simple-form/submissions', {page: page - 1}) }}">{{ '« Previous'|t('simple-form') }}</a>
             {% endif %}
 
             {% for p in 1..totalPages %}
@@ -89,7 +89,7 @@
             {% endfor %}
 
             {% if page < totalPages %}
-                <a href="{{ cpUrl('simple-form/submissions', {page: page + 1}) }}">Next »</a>
+                <a href="{{ cpUrl('simple-form/submissions', {page: page + 1}) }}">{{ 'Next »'|t('simple-form') }}</a>
             {% endif %}
         </nav>
     {% endif %}

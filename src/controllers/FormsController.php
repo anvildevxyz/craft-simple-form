@@ -121,7 +121,7 @@ class FormsController extends Controller
         }
 
         if (!Craft::$app->getElements()->saveElement($form)) {
-            Craft::$app->getSession()->setError('Unable to save form');
+            Craft::$app->getSession()->setError(Craft::t('simple-form', 'Unable to save form'));
             Craft::warning('Form save failed: ' . json_encode($form->getErrors()), 'simple-form');
             return $this->renderEdit($form, $site, $this->encodeBuilderJson($items));
         }
@@ -130,11 +130,11 @@ class FormsController extends Controller
             $fieldSync->sync($form, $items, $site->id);
         } catch (\Throwable $e) {
             Craft::warning('Field sync failed: ' . $e->getMessage(), 'simple-form');
-            Craft::$app->getSession()->setError('Form saved, but its fields could not be saved.');
+            Craft::$app->getSession()->setError(Craft::t('simple-form', 'Form saved, but its fields could not be saved.'));
             return $this->redirect("simple-form/forms/edit/{$form->id}?site={$site->handle}");
         }
 
-        Craft::$app->getSession()->setNotice('Form saved successfully');
+        Craft::$app->getSession()->setNotice(Craft::t('simple-form', 'Form saved successfully'));
         return $this->redirect("simple-form/forms/edit/{$form->id}?site={$site->handle}");
     }
 

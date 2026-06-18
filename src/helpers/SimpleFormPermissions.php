@@ -2,6 +2,8 @@
 
 namespace fabianhaef\simpleform\helpers;
 
+use Craft;
+
 class SimpleFormPermissions
 {
     public const MANAGE_FORMS = 'simple-form:manageForms';
@@ -16,21 +18,21 @@ class SimpleFormPermissions
     public static function definitions(): array
     {
         return [
-            'heading' => 'Simple Form',
+            'heading' => Craft::t('simple-form', 'Simple Form'),
             'permissions' => [
                 self::MANAGE_FORMS => [
-                    'label' => 'Manage forms and fields',
+                    'label' => Craft::t('simple-form', 'Manage forms and fields'),
                     'nested' => [
-                        self::MANAGE_INTEGRATIONS => ['label' => 'Manage form integrations'],
+                        self::MANAGE_INTEGRATIONS => ['label' => Craft::t('simple-form', 'Manage form integrations')],
                     ],
                 ],
                 self::VIEW_SUBMISSIONS => [
-                    'label' => 'View submissions',
+                    'label' => Craft::t('simple-form', 'View submissions'),
                     'nested' => [
-                        self::MANAGE_SUBMISSIONS => ['label' => 'Toggle submission read status'],
+                        self::MANAGE_SUBMISSIONS => ['label' => Craft::t('simple-form', 'Toggle submission read status')],
                     ],
                 ],
-                self::MANAGE_SETTINGS => ['label' => 'Manage plugin settings'],
+                self::MANAGE_SETTINGS => ['label' => Craft::t('simple-form', 'Manage plugin settings')],
             ],
         ];
     }

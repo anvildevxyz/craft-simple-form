@@ -1,34 +1,41 @@
 <?php
 
-namespace fabianhaef\simpleform\tests\unit;
+namespace fabianhaef\simpleform\tests\integration;
 
 use fabianhaef\simpleform\helpers\SimpleFormPermissions;
-use PHPUnit\Framework\TestCase;
 
-class SimpleFormPermissionsTest extends TestCase
+/**
+ * Permission definitions. Lives in the integration suite because the labels are
+ * now wrapped in Craft::t() (#94), which needs a bootstrapped Craft app.
+ *
+ * @group requires-craft
+ */
+class SimpleFormPermissionsTest extends SimpleFormTestCase
 {
     public function testPermissionKeysAreDefined(): void
     {
-        $this->assertEquals('simple-form:manageForms', SimpleFormPermissions::MANAGE_FORMS);
-        $this->assertEquals('simple-form:viewSubmissions', SimpleFormPermissions::VIEW_SUBMISSIONS);
-        $this->assertEquals('simple-form:manageSubmissions', SimpleFormPermissions::MANAGE_SUBMISSIONS);
-        $this->assertEquals('simple-form:manageSettings', SimpleFormPermissions::MANAGE_SETTINGS);
+        $this->assertSame('simple-form:manageForms', SimpleFormPermissions::MANAGE_FORMS);
+        $this->assertSame('simple-form:viewSubmissions', SimpleFormPermissions::VIEW_SUBMISSIONS);
+        $this->assertSame('simple-form:manageSubmissions', SimpleFormPermissions::MANAGE_SUBMISSIONS);
+        $this->assertSame('simple-form:manageIntegrations', SimpleFormPermissions::MANAGE_INTEGRATIONS);
+        $this->assertSame('simple-form:manageSettings', SimpleFormPermissions::MANAGE_SETTINGS);
     }
 
     public function testDefinitionsReturnsValidStructure(): void
     {
+        $this->requireCraft();
         $defs = SimpleFormPermissions::definitions();
 
         $this->assertIsArray($defs);
         $this->assertArrayHasKey('heading', $defs);
         $this->assertArrayHasKey('permissions', $defs);
-        $this->assertEquals('Simple Form', $defs['heading']);
+        $this->assertSame('Simple Form', $defs['heading']);
     }
 
     public function testDefinitionsIncludesAllPermissions(): void
     {
-        $defs = SimpleFormPermissions::definitions();
-        $permissions = $defs['permissions'];
+        $this->requireCraft();
+        $permissions = SimpleFormPermissions::definitions()['permissions'];
 
         $this->assertArrayHasKey(SimpleFormPermissions::MANAGE_FORMS, $permissions);
         $this->assertArrayHasKey(SimpleFormPermissions::VIEW_SUBMISSIONS, $permissions);
@@ -37,18 +44,17 @@ class SimpleFormPermissionsTest extends TestCase
 
     public function testManageIntegrationsIsNestedUnderManageForms(): void
     {
-        $defs = SimpleFormPermissions::definitions();
-        $manageForms = $defs['permissions'][SimpleFormPermissions::MANAGE_FORMS];
+        $this->requireCraft();
+        $manageForms = SimpleFormPermissions::definitions()['permissions'][SimpleFormPermissions::MANAGE_FORMS];
 
-        $this->assertSame('simple-form:manageIntegrations', SimpleFormPermissions::MANAGE_INTEGRATIONS);
         $this->assertArrayHasKey('nested', $manageForms);
         $this->assertArrayHasKey(SimpleFormPermissions::MANAGE_INTEGRATIONS, $manageForms['nested']);
     }
 
     public function testManageSubmissionsIsNestedUnderViewSubmissions(): void
     {
-        $defs = SimpleFormPermissions::definitions();
-        $viewSubmissions = $defs['permissions'][SimpleFormPermissions::VIEW_SUBMISSIONS];
+        $this->requireCraft();
+        $viewSubmissions = SimpleFormPermissions::definitions()['permissions'][SimpleFormPermissions::VIEW_SUBMISSIONS];
 
         $this->assertArrayHasKey('nested', $viewSubmissions);
         $this->assertArrayHasKey(SimpleFormPermissions::MANAGE_SUBMISSIONS, $viewSubmissions['nested']);
@@ -56,10 +62,8 @@ class SimpleFormPermissionsTest extends TestCase
 
     public function testEachPermissionHasLabel(): void
     {
-        $defs = SimpleFormPermissions::definitions();
-        $permissions = $defs['permissions'];
-
-        foreach ($permissions as $key => $perm) {
+        $this->requireCraft();
+        foreach (SimpleFormPermissions::definitions()['permissions'] as $key => $perm) {
             $this->assertArrayHasKey('label', $perm, "Permission $key missing label");
             $this->assertIsString($perm['label']);
             $this->assertNotEmpty($perm['label']);

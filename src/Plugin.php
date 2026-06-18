@@ -308,13 +308,13 @@ class Plugin extends BasePlugin
         $subnav = [];
 
         if ($isAdmin || $user?->can(SimpleFormPermissions::MANAGE_FORMS)) {
-            $subnav['forms'] = ['label' => 'Forms', 'url' => 'simple-form/forms'];
+            $subnav['forms'] = ['label' => Craft::t('simple-form', 'Forms'), 'url' => 'simple-form/forms'];
         }
         if ($isAdmin || $user?->can(SimpleFormPermissions::VIEW_SUBMISSIONS)) {
-            $subnav['submissions'] = ['label' => 'Submissions', 'url' => 'simple-form/submissions'];
+            $subnav['submissions'] = ['label' => Craft::t('simple-form', 'Submissions'), 'url' => 'simple-form/submissions'];
         }
         if ($isAdmin || $user?->can(SimpleFormPermissions::MANAGE_SETTINGS)) {
-            $subnav['settings'] = ['label' => 'Settings', 'url' => 'simple-form/settings'];
+            $subnav['settings'] = ['label' => Craft::t('simple-form', 'Settings'), 'url' => 'simple-form/settings'];
         }
 
         if (empty($subnav)) {
