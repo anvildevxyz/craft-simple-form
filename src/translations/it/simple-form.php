@@ -110,4 +110,10 @@ return [
     'Resend' => 'Reinvia',
     'Resend this dispatch?' => 'Reinviare questo invio?',
     'The most recent dispatch failed for one or more integrations. Resend below to retry.' => 'L’ultimo invio non è riuscito per una o più integrazioni. Reinvia qui sotto per riprovare.',
+    'These defenses stack — enable any combination of the honeypot, CAPTCHA, and Akismet below.' => 'Queste difese si combinano: attiva qui sotto qualsiasi combinazione di honeypot, CAPTCHA e Akismet.',
+    'Honeypot' => 'Honeypot',
+    'CAPTCHA' => 'CAPTCHA',
+    'Token Management' => 'Gestione dei token',
+    'Issue and revoke the bearer tokens MCP clients authenticate with.' => 'Emetti e revoca i token Bearer con cui si autenticano i client MCP.',
+    'The sender address is required; the sender name is optional.' => 'L’indirizzo del mittente è obbligatorio; il nome è facoltativo.',
 ];

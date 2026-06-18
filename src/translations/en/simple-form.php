@@ -104,4 +104,10 @@ return [
     'Resend' => 'Resend',
     'Resend this dispatch?' => 'Resend this dispatch?',
     'The most recent dispatch failed for one or more integrations. Resend below to retry.' => 'The most recent dispatch failed for one or more integrations. Resend below to retry.',
+    'These defenses stack — enable any combination of the honeypot, CAPTCHA, and Akismet below.' => 'These defenses stack — enable any combination of the honeypot, CAPTCHA, and Akismet below.',
+    'Honeypot' => 'Honeypot',
+    'CAPTCHA' => 'CAPTCHA',
+    'Token Management' => 'Token Management',
+    'Issue and revoke the bearer tokens MCP clients authenticate with.' => 'Issue and revoke the bearer tokens MCP clients authenticate with.',
+    'The sender address is required; the sender name is optional.' => 'The sender address is required; the sender name is optional.',
 ];

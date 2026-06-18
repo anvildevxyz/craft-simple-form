@@ -37,6 +37,8 @@ class TranslationCatalogParityTest extends TestCase
         'Status:',     // identical in German
         'Total',       // identical in fr/es (de=Gesamt, it=Totale)
         'Message',     // identical in fr (de=Nachricht, es=Mensaje, it=Messaggio)
+        'Honeypot',    // borrowed term — kept verbatim in all shipped locales
+        'CAPTCHA',     // acronym — identical in all shipped locales
     ];
 
     /**

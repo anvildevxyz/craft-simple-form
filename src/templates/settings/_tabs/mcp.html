@@ -35,6 +35,9 @@
 
 <hr>
 
+<h3>{{ 'Token Management'|t('simple-form') }}</h3>
+<p class="light">{{ 'Issue and revoke the bearer tokens MCP clients authenticate with.'|t('simple-form') }}</p>
+
 {# One-time secret display, immediately after creation. #}
 {% if mcpNewSecret is defined and mcpNewSecret %}
     <div class="pane" style="border-left: 3px solid var(--success-color, #27ae60);">
@@ -52,7 +55,7 @@
 {% endif %}
 
 {# 2. Existing tokens + per-row revoke. #}
-<h3>{{ 'Tokens'|t('simple-form') }}</h3>
+<h4>{{ 'Tokens'|t('simple-form') }}</h4>
 
 {% if mcpTokens is empty %}
     <p class="light">{{ 'No tokens yet.'|t('simple-form') }}</p>
@@ -79,7 +82,7 @@
                     <td>{{ token.dateCreated ? token.dateCreated|datetime('short') : '—' }}</td>
                     <td>{{ token.lastUsed ? token.lastUsed|datetime('short') : 'never'|t('simple-form') }}</td>
                     <td class="thin">
-                        <form method="post" accept-charset="UTF-8" onsubmit="return confirm('{{ 'Revoke this token?'|t('simple-form') }}');">
+                        <form method="post" accept-charset="UTF-8" data-sf-confirm="{{ 'Revoke this token?'|t('simple-form') }}">
                             {{ csrfInput() }}
                             <input type="hidden" name="action" value="simple-form/settings/revoke-mcp-token">
                             <input type="hidden" name="id" value="{{ token.id }}">
@@ -96,7 +99,7 @@
 <hr>
 
 {# 3. Create token. #}
-<h3>{{ 'Create a token'|t('simple-form') }}</h3>
+<h4>{{ 'Create a token'|t('simple-form') }}</h4>
 <form method="post" accept-charset="UTF-8">
     {{ csrfInput() }}
     <input type="hidden" name="action" value="simple-form/settings/create-mcp-token">

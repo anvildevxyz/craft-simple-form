@@ -1,7 +1,9 @@
 {% import "_includes/forms.twig" as forms %}
 
 <h2>{{ 'Spam Protection'|t('simple-form') }}</h2>
-<p class="light">{{ 'Configure spam prevention and CAPTCHA settings.'|t('simple-form') }}</p>
+<p class="light">{{ 'These defenses stack — enable any combination of the honeypot, CAPTCHA, and Akismet below.'|t('simple-form') }}</p>
+
+<h3>{{ 'Honeypot'|t('simple-form') }}</h3>
 
 {{ forms.checkboxField({
     label: 'Enable Honeypot Field'|t('simple-form'),
@@ -12,6 +14,8 @@
 }) }}
 
 <hr>
+
+<h3>{{ 'CAPTCHA'|t('simple-form') }}</h3>
 
 {{ forms.checkboxField({
     label: 'Enable CAPTCHA'|t('simple-form'),
@@ -66,7 +70,11 @@
         {{ forms.textField({
             label: 'reCAPTCHA v3 Minimum Score'|t('simple-form'),
             name: 'recaptchaV3MinScore',
+            type: 'number',
             value: settings.recaptchaV3MinScore ?? 0.5,
+            min: 0,
+            max: 1,
+            step: 0.1,
             instructions: 'Responses scoring below this threshold (0.0–1.0) are rejected.'|t('simple-form'),
             errors: settings.getErrors('recaptchaV3MinScore') ?? [],
         }) }}
