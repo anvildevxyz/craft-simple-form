@@ -35,6 +35,14 @@
 {{ redirectInput('simple-form/forms') }}
 {{ csrfInput() }}
 
+{% if form.id %}
+<div class="buttons" style="margin-bottom: 14px;">
+    <a class="btn" href="{{ cpUrl('simple-form/forms/' ~ form.id ~ '/integrations') }}">
+        {{ 'Integrations'|t('simple-form') }}
+    </a>
+</div>
+{% endif %}
+
 {% if craft.app.isMultiSite %}
 <h2>{{ 'Multi-Site'|t('simple-form') }}</h2>
 
