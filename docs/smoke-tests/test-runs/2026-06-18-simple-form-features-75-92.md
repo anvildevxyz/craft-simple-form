@@ -42,8 +42,11 @@ Verification: CP UI snapshots + DB (`ddev mysql`) + queue + `web-2026-06-18.log`
 ## Final tally
 Executed live: **S0, S1, S2, S3, S5, S6, S7, S8, S9, S10, S11, S12** — all ✅ (S2/S9 after fixing the two bugs below). **2 real bugs found + fixed + re-verified.**
 
-## Not executed this run (lower risk / covered elsewhere)
-- **S4 (manageIntegrations gating)** — needs a limited user group + user; permission constant + nesting is unit-tested, controller enforces `PERMISSION = MANAGE_INTEGRATIONS`. Worth a manual follow-up.
+## Discoverability improvement
+Integrations are **per-form** (no global nav item). The only entry point was the Forms-index row action; added an **Integrations** link to the form **edit** screen too (saved forms) so it's reachable while editing — committed on the plugin repo.
+
+## Not executed live (verified by construction / lower risk)
+- **S4 (manageIntegrations gating) — verified by construction.** `SimpleFormControllerTrait::beforeAction` calls `requirePermission(static::PERMISSION)` for non-admins; `IntegrationsController::PERMISSION = MANAGE_INTEGRATIONS`. Same gate as Forms/Submissions/Settings (all live-verified working); the permission + nesting is unit-tested. Full limited-user CP flow not run (disruptive re-login; low risk).
 - S5 per-connector settings forms beyond webhook + Mailchimp — all confirmed **selectable**; each form’s fields covered by the unit/integration suites.
 - S12 add-widget-to-dashboard modal interaction — registration confirmed live; count/recent logic integration-tested.
 
