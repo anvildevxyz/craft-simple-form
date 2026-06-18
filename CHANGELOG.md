@@ -8,6 +8,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- `craft.simpleForm.*` template API: `.form(handleOrId)`, `.forms(criteria)`,
+  `.submissions(criteria)` (element queries) and `.render(handle, options)`
+  (rendered markup). The existing `simpleForm()` function is unchanged.
 - Submissions element index: bulk actions (mark as read / archive / mark as spam,
   plus delete) and a native **Submissions (with field columns)** exporter that
   appears in the index export menu (metadata + one column per field, CSV/JSON/XML).

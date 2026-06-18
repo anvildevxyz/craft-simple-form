@@ -17,6 +17,7 @@ use craft\services\Fields;
 use craft\services\Gc;
 use craft\services\Gql;
 use craft\services\UserPermissions;
+use craft\web\twig\variables\CraftVariable;
 use craft\web\UrlManager;
 use fabianhaef\simpleform\events\SubmissionEvent;
 use fabianhaef\simpleform\fields\FormField;
@@ -45,6 +46,7 @@ use fabianhaef\simpleform\services\IntegrationsService;
 use fabianhaef\simpleform\services\IntegrationTypeRegistry;
 use fabianhaef\simpleform\services\RetentionService;
 use fabianhaef\simpleform\services\SubmissionService;
+use fabianhaef\simpleform\web\twig\variables\SimpleFormVariable;
 use fabianhaef\simpleform\widgets\RecentSubmissionsWidget;
 use fabianhaef\simpleform\widgets\SubmissionCountWidget;
 use yii\base\Event;
@@ -110,6 +112,17 @@ class Plugin extends BasePlugin
         if (!Craft::$app->getRequest()->getIsConsoleRequest()) {
             Craft::$app->getView()->registerTwigExtension(new TwigExtension());
         }
+
+        // craft.simpleForm.* template API (complements the simpleForm() function).
+        Event::on(
+            CraftVariable::class,
+            CraftVariable::EVENT_INIT,
+            static function(Event $e): void {
+                /** @var CraftVariable $variable */
+                $variable = $e->sender;
+                $variable->set('simpleForm', SimpleFormVariable::class);
+            }
+        );
 
         Craft::$app->getUrlManager()->on(
             UrlManager::EVENT_REGISTER_CP_URL_RULES,
