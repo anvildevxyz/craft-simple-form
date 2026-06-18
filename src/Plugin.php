@@ -44,6 +44,7 @@ use fabianhaef\simpleform\services\FieldTypeRegistry;
 use fabianhaef\simpleform\services\FormStructureService;
 use fabianhaef\simpleform\services\IntegrationsService;
 use fabianhaef\simpleform\services\IntegrationTypeRegistry;
+use fabianhaef\simpleform\services\NotificationsService;
 use fabianhaef\simpleform\services\ReportsService;
 use fabianhaef\simpleform\services\RetentionService;
 use fabianhaef\simpleform\services\SubmissionService;
@@ -72,7 +73,7 @@ class Plugin extends BasePlugin
      */
     public const EVENT_REGISTER_CAPTCHA_PROVIDERS = 'registerCaptchaProviders';
 
-    public string $schemaVersion = '2.5.0';
+    public string $schemaVersion = '2.6.0';
     public bool $hasCpSection = true;
     public bool $hasCpSettings = false;
     public bool $hasCpPermissions = true;
@@ -100,6 +101,7 @@ class Plugin extends BasePlugin
             'integrations' => IntegrationsService::class,
             'retention' => RetentionService::class,
             'reports' => ReportsService::class,
+            'notifications' => NotificationsService::class,
         ]);
 
         Craft::$app->getI18n()->translations['simple-form'] ??= [
@@ -345,6 +347,13 @@ class Plugin extends BasePlugin
         return $service;
     }
 
+    public function getNotifications(): NotificationsService
+    {
+        /** @var NotificationsService $service */
+        $service = $this->get('notifications');
+        return $service;
+    }
+
     public function getName(): string
     {
         return Craft::t('simple-form', 'Simple Form');
@@ -395,6 +404,14 @@ class Plugin extends BasePlugin
         $event->rules['simple-form/integrations/resend'] = 'simple-form/integrations/resend';
         // Per-form: choose which global integrations are active on a form.
         $event->rules['simple-form/forms/<formId:\d+>/integrations'] = 'simple-form/integrations/index';
+
+        // Per-form email notifications (admin alerts + autoresponders).
+        $event->rules['simple-form/notifications/save'] = 'simple-form/notifications/save';
+        $event->rules['simple-form/notifications/delete'] = 'simple-form/notifications/delete';
+        $event->rules['simple-form/notifications/toggle'] = 'simple-form/notifications/toggle';
+        $event->rules['simple-form/forms/<formId:\d+>/notifications'] = 'simple-form/notifications/index';
+        $event->rules['simple-form/forms/<formId:\d+>/notifications/new'] = 'simple-form/notifications/edit';
+        $event->rules['simple-form/forms/<formId:\d+>/notifications/<notificationId:\d+>'] = 'simple-form/notifications/edit';
 
         $event->rules['simple-form/submissions'] = 'simple-form/submissions/index';
         $event->rules['simple-form/submissions/analytics'] = 'simple-form/submissions/analytics';

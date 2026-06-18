@@ -33,6 +33,8 @@ modules:
           params: {}
         - class: fabianhaef\simpleform\migrations\m260618_000003_global_form_integrations
           params: {}
+        - class: fabianhaef\simpleform\migrations\m260618_000004_notifications
+          params: {}
       plugins:
         - handle: simple-form
           class: fabianhaef\simpleform\Plugin

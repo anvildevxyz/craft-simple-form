@@ -1,0 +1,73 @@
+{% extends '_layouts/cp.twig' %}
+
+{% set title = 'Notifications'|t('simple-form') ~ ' — ' ~ (form.title ?: form.name) %}
+{% set selectedSubnavItem = 'forms' %}
+{% do craft.app.view.registerAssetBundle('fabianhaef\\simpleform\\web\\assets\\cp\\SimpleFormCpAsset') %}
+
+{% set crumbs = [
+    { label: 'Simple Form'|t('simple-form'), url: cpUrl('simple-form/forms') },
+    { label: 'Forms'|t('simple-form'), url: cpUrl('simple-form/forms') },
+    { label: (form.title ?: form.name), url: cpUrl('simple-form/forms/edit/' ~ form.id) },
+] %}
+
+{% block actionButton %}
+    <a class="btn submit add icon" href="{{ cpUrl('simple-form/forms/' ~ form.id ~ '/notifications/new') }}">
+        {{ 'New notification'|t('simple-form') }}
+    </a>
+{% endblock %}
+
+{% block content %}
+<p class="light">{{ 'Send email when this form is submitted. Add an autoresponder by setting the recipient to a form field.'|t('simple-form') }}</p>
+
+<div id="sf-notifications"
+     data-toggle-url="{{ cpUrl('simple-form/notifications/toggle') }}"
+     data-delete-url="{{ cpUrl('simple-form/notifications/delete') }}"
+     data-confirm-delete="{{ 'Delete this notification?'|t('simple-form') }}"
+     data-error="{{ 'Couldn’t complete that action.'|t('simple-form') }}"
+     data-network-error="{{ 'Network error — please try again.'|t('simple-form') }}">
+{% if notifications is not empty %}
+    <table class="data fullwidth collapsible">
+        <thead>
+            <tr>
+                <th>{{ 'Name'|t('simple-form') }}</th>
+                <th>{{ 'Recipient'|t('simple-form') }}</th>
+                <th>{{ 'Enabled'|t('simple-form') }}</th>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for notification in notifications %}
+                <tr data-id="{{ notification.id }}">
+                    <td>
+                        <a href="{{ cpUrl('simple-form/forms/' ~ form.id ~ '/notifications/' ~ notification.id) }}">
+                            {{ notification.name }}
+                        </a>
+                    </td>
+                    <td>
+                        {{ notification.recipient }}
+                        {% if notification.recipientType == 'field' %}<span class="light">({{ 'autoresponder'|t('simple-form') }})</span>{% endif %}
+                    </td>
+                    <td>
+                        <button type="button" class="status-toggle btn small{{ notification.enabled ? ' active' : '' }}" data-id="{{ notification.id }}">
+                            <span class="status {{ notification.enabled ? 'on' : 'off' }}"></span>
+                            {{ notification.enabled ? 'Enabled'|t('simple-form') : 'Disabled'|t('simple-form') }}
+                        </button>
+                    </td>
+                    <td class="thin">
+                        <button type="button" class="delete icon" title="{{ 'Delete'|t('simple-form') }}"
+                                aria-label="{{ 'Delete notification {name}'|t('simple-form', { name: notification.name }) }}"
+                                data-id="{{ notification.id }}"></button>
+                    </td>
+                </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+{% else %}
+    <div class="zilch sf-empty-state">
+        <p class="sf-empty-heading">{{ 'No notifications yet.'|t('simple-form') }}</p>
+        <p class="light">{{ 'Add one to email someone (or the submitter) when this form is submitted.'|t('simple-form') }}</p>
+        <a class="btn submit add icon" href="{{ cpUrl('simple-form/forms/' ~ form.id ~ '/notifications/new') }}">{{ 'New notification'|t('simple-form') }}</a>
+    </div>
+{% endif %}
+</div>
+{% endblock %}

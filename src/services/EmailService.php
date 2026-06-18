@@ -14,21 +14,69 @@ use yii\base\Component;
 class EmailService extends Component
 {
     /**
+     * Send every notification that fires for this submission. When the form has
+     * no notification rows, fall back to its legacy email columns so existing
+     * forms keep working unchanged.
+     *
      * @param array<string, mixed> $data
      */
     public function sendSubmissionEmail(Form $form, Submission $submission, array $data): bool
+    {
+        $resolved = Plugin::getInstance()->getNotifications()->resolveForSubmission($form, $submission, $data);
+
+        if ($resolved === []) {
+            return $this->sendLegacy($form, $submission, $data);
+        }
+
+        $allSent = true;
+        foreach ($resolved as $entry) {
+            $notification = $entry['notification'];
+            $sent = $this->send(
+                $entry['recipients'],
+                $this->renderSubjectFor($notification->subject, $form),
+                $this->renderBodyFor($notification->body, $form, $submission, $data),
+                $notification->replyTo,
+            );
+            $allSent = $allSent && $sent;
+        }
+
+        return $allSent;
+    }
+
+    /**
+     * Legacy single-notification path driven by the form's own email columns.
+     *
+     * @param array<string, mixed> $data
+     */
+    private function sendLegacy(Form $form, Submission $submission, array $data): bool
     {
         if (!$form->emailTo) {
             return false;
         }
 
-        try {
-            $subject = $this->renderSubject($form);
-            $body = $this->renderBody($form, $submission, $data);
+        return $this->send(
+            $form->emailTo,
+            $this->renderSubjectFor($form->emailSubject, $form),
+            $this->renderBodyFor($form->emailBody, $form, $submission, $data),
+            $form->emailReplyTo,
+        );
+    }
 
+    /**
+     * Compose + send one email.
+     *
+     * @param list<string>|string $to
+     */
+    private function send(array|string $to, string $subject, string $body, ?string $replyTo): bool
+    {
+        if ($to === [] || $to === '') {
+            return false;
+        }
+
+        try {
             $mail = Craft::$app->getMailer()
                 ->compose()
-                ->setTo($form->emailTo)
+                ->setTo($to)
                 ->setSubject($subject)
                 ->setHtmlBody($body);
 
@@ -43,9 +91,8 @@ class EmailService extends Component
                 $mail->setFrom($fromName ? [$fromEmail => $fromName] : $fromEmail);
             }
 
-            // Set reply-to if configured
-            if ($form->emailReplyTo) {
-                $mail->setReplyTo($form->emailReplyTo);
+            if ($replyTo) {
+                $mail->setReplyTo($replyTo);
             }
 
             return $mail->send();
@@ -60,11 +107,10 @@ class EmailService extends Component
         return Plugin::getInstance()->getSettings();
     }
 
-    private function renderSubject(Form $form): string
+    private function renderSubjectFor(?string $subject, Form $form): string
     {
-        // Use configured subject or fallback
-        if ($form->emailSubject) {
-            return $form->emailSubject;
+        if ($subject !== null && trim($subject) !== '') {
+            return $subject;
         }
         return Craft::t('simple-form', 'New Submission: {formTitle}', [
             'formTitle' => $form->title ?? $form->name,
@@ -72,24 +118,22 @@ class EmailService extends Component
     }
 
     /**
-     * Render the notification body: the form's per-site email body template when
-     * set (so it localises with the submission's site), otherwise the shared
-     * default template. Never returns blank — a render failure falls back to the
-     * default.
+     * Render a notification body template (per-site so it localises), falling
+     * back to the shared default template when blank or on a render error.
      *
      * @param array<string, mixed> $data
      */
-    private function renderBody(Form $form, Submission $submission, array $data): string
+    private function renderBodyFor(?string $body, Form $form, Submission $submission, array $data): string
     {
-        if ($form->emailBody !== null && trim($form->emailBody) !== '') {
+        if ($body !== null && trim($body) !== '') {
             try {
-                return Craft::$app->getView()->renderString($form->emailBody, [
+                return Craft::$app->getView()->renderString($body, [
                     'form' => $form,
                     'submission' => $submission,
                     'data' => $data,
                 ], View::TEMPLATE_MODE_SITE);
             } catch (\Throwable $e) {
-                Craft::warning('Failed to render per-site email body, using default: ' . $e->getMessage(), 'simple-form');
+                Craft::warning('Failed to render notification body, using default: ' . $e->getMessage(), 'simple-form');
             }
         }
 

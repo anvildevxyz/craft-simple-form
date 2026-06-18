@@ -8,6 +8,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- Per-form email notifications (form → Notifications): add any number of
+  notifications, each with its own recipient, subject, reply-to and body. A
+  recipient can be a fixed address **or a form field**, enabling autoresponders
+  to the submitter. Each notification can be gated by a send condition (reusing
+  the conditional-logic engine). Existing single-recipient forms are migrated to
+  a default notification automatically.
 - Submissions analytics dashboard (Submissions → Analytics): submissions-over-time
   chart with a 7/30/90-day range selector, status breakdown, spam-vs-legitimate
   split, per-form totals, and integration dispatch health — backed by a
