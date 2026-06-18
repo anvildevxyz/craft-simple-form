@@ -31,6 +31,8 @@ use fabianhaef\simpleform\services\CaptchaService;
 use fabianhaef\simpleform\services\EmailService;
 use fabianhaef\simpleform\services\FieldTypeRegistry;
 use fabianhaef\simpleform\services\FormStructureService;
+use fabianhaef\simpleform\services\IntegrationsService;
+use fabianhaef\simpleform\services\IntegrationTypeRegistry;
 use fabianhaef\simpleform\services\SubmissionService;
 use yii\base\Event;
 
@@ -41,6 +43,12 @@ class Plugin extends BasePlugin
 {
     public const EVENT_BEFORE_SUBMISSION_SAVE = 'beforeSubmissionSave';
     public const EVENT_AFTER_SUBMISSION_SAVE = 'afterSubmissionSave';
+
+    /**
+     * @event RegisterIntegrationTypesEvent Fired so third parties can register
+     * outbound-integration connectors (see RegisterIntegrationTypesEvent).
+     */
+    public const EVENT_REGISTER_INTEGRATION_TYPES = 'registerIntegrationTypes';
 
     public string $schemaVersion = '2.4.0';
     public bool $hasCpSection = true;
@@ -63,6 +71,8 @@ class Plugin extends BasePlugin
             'captchaService' => CaptchaService::class,
             'formStructure' => FormStructureService::class,
             'mcpTokenManager' => TokenManager::class,
+            'integrationTypeRegistry' => IntegrationTypeRegistry::class,
+            'integrations' => IntegrationsService::class,
         ]);
 
         Craft::$app->getI18n()->translations['simple-form'] ??= [
@@ -207,6 +217,20 @@ class Plugin extends BasePlugin
         /** @var TokenManager $manager */
         $manager = $this->get('mcpTokenManager');
         return $manager;
+    }
+
+    public function getIntegrationTypeRegistry(): IntegrationTypeRegistry
+    {
+        /** @var IntegrationTypeRegistry $registry */
+        $registry = $this->get('integrationTypeRegistry');
+        return $registry;
+    }
+
+    public function getIntegrations(): IntegrationsService
+    {
+        /** @var IntegrationsService $service */
+        $service = $this->get('integrations');
+        return $service;
     }
 
     public function getName(): string

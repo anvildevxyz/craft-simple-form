@@ -27,6 +27,8 @@ modules:
           params: {}
         - class: fabianhaef\simpleform\migrations\m260615_000003_field_error_message
           params: {}
+        - class: fabianhaef\simpleform\migrations\m260618_000001_integrations
+          params: {}
       plugins:
         - handle: simple-form
           class: fabianhaef\simpleform\Plugin
