@@ -4,6 +4,26 @@
 {% set selectedSubnavItem = 'submissions' %}
 
 {% block content %}
+{% if stats is defined %}
+    {# Stats summary, ported from the old list.html. Each card is a status
+       filter link; the card matching the active status is highlighted. #}
+    <div class="submission-stats">
+        {% set cards = [
+            { key: '', label: 'Total'|t('simple-form'), value: stats.total ?? 0 },
+            { key: 'new', label: 'New'|t('simple-form'), value: stats.new ?? 0 },
+            { key: 'read', label: 'Read'|t('simple-form'), value: stats.read ?? 0 },
+            { key: 'archived', label: 'Archived'|t('simple-form'), value: stats.archived ?? 0 },
+            { key: 'spam', label: 'Spam'|t('simple-form'), value: stats.spam ?? 0 },
+        ] %}
+        {% for card in cards %}
+            <a class="stat-card{{ status == card.key ? ' is-active' : '' }}{{ card.key ? ' stat-' ~ card.key : '' }}"
+               href="{{ cpUrl('simple-form/submissions', { formId: formId, status: card.key, search: search }) }}">
+                <span class="stat-value">{{ card.value }}</span>
+                <span class="stat-label">{{ card.label }}</span>
+            </a>
+        {% endfor %}
+    </div>
+{% endif %}
 <div class="buttons">
     <input type="text" class="text" id="search-input" placeholder="{{ 'Search submissions…'|t('simple-form') }}" value="{{ search ?? '' }}">
     <select id="form-filter">
@@ -98,6 +118,53 @@
 {% endif %}
 
 <style>
+    .submission-stats {
+        display: flex;
+        gap: 10px;
+        margin-bottom: 20px;
+        flex-wrap: wrap;
+    }
+
+    .stat-card {
+        flex: 1;
+        min-width: 100px;
+        padding: 12px 16px;
+        background: #fff;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+        text-align: center;
+        text-decoration: none;
+        color: inherit;
+        transition: border-color 0.15s, box-shadow 0.15s;
+    }
+
+    .stat-card:hover {
+        border-color: #0066cc;
+    }
+
+    .stat-card.is-active {
+        border-color: #0066cc;
+        box-shadow: 0 0 0 1px #0066cc;
+    }
+
+    .stat-card .stat-value {
+        display: block;
+        font-size: 22px;
+        font-weight: bold;
+        line-height: 1.2;
+    }
+
+    .stat-card .stat-label {
+        display: block;
+        font-size: 11px;
+        text-transform: uppercase;
+        color: #8a8a8f;
+        margin-top: 4px;
+    }
+
+    .stat-card.stat-new .stat-value { color: #4099ff; }
+    .stat-card.stat-spam .stat-value { color: #d0021b; }
+
     .buttons {
         margin-bottom: 20px;
         display: flex;

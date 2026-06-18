@@ -129,21 +129,28 @@ class SubmissionsController extends Controller
      */
     private function getSubmissionStats(int $siteId, ?int $formId = null): array
     {
-        $db = Craft::$app->getDb();
-        $baseQuery = 'SELECT COUNT(*) FROM {{%simpleform_submissions}} WHERE siteId = :siteId';
-        $params = [':siteId' => $siteId];
+        // Count through the same element query the listing uses, so the stat
+        // cards always agree with the table. A raw COUNT on the
+        // simpleform_submissions.siteId column diverges from the element's
+        // site (elements_sites) and can report zero while rows are listed.
+        $count = function(?string $status) use ($siteId, $formId): int {
+            $query = Submission::find()->siteId($siteId);
+            if ($formId) {
+                $query->formId($formId);
+            }
+            if ($status !== null) {
+                $query->status($status);
+            }
 
-        if ($formId) {
-            $baseQuery .= ' AND formId = :formId';
-            $params[':formId'] = $formId;
-        }
+            return (int) $query->count();
+        };
 
         return [
-            'total' => (int) $db->createCommand($baseQuery, $params)->queryScalar(),
-            'new' => (int) $db->createCommand($baseQuery . ' AND readStatus = :status', array_merge($params, [':status' => SubmissionStatus::NEW]))->queryScalar(),
-            'read' => (int) $db->createCommand($baseQuery . ' AND readStatus = :status', array_merge($params, [':status' => SubmissionStatus::READ]))->queryScalar(),
-            'archived' => (int) $db->createCommand($baseQuery . ' AND readStatus = :status', array_merge($params, [':status' => SubmissionStatus::ARCHIVED]))->queryScalar(),
-            'spam' => (int) $db->createCommand($baseQuery . ' AND readStatus = :status', array_merge($params, [':status' => SubmissionStatus::SPAM]))->queryScalar(),
+            'total' => $count(null),
+            'new' => $count(SubmissionStatus::NEW),
+            'read' => $count(SubmissionStatus::READ),
+            'archived' => $count(SubmissionStatus::ARCHIVED),
+            'spam' => $count(SubmissionStatus::SPAM),
         ];
     }
 

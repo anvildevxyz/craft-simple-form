@@ -35,6 +35,7 @@ class TranslationCatalogParityTest extends TestCase
         'Endpoint:',   // de
         'Spam',        // borrowed term — identical in de/es/it
         'Status:',     // identical in German
+        'Total',       // identical in fr/es (de=Gesamt, it=Totale)
     ];
 
     /**

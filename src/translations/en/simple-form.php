@@ -82,6 +82,7 @@ return [
     'All Statuses' => 'All Statuses',
     'New' => 'New',
     'Read' => 'Read',
+    'Total' => 'Total',
     'Archived' => 'Archived',
     'Spam' => 'Spam',
     'View' => 'View',

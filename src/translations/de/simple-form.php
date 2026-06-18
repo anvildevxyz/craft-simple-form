@@ -88,6 +88,7 @@ return [
     'All Statuses' => 'Alle Status',
     'New' => 'Neu',
     'Read' => 'Gelesen',
+    'Total' => 'Gesamt',
     'Archived' => 'Archiviert',
     'Spam' => 'Spam',
     'View' => 'Ansehen',
