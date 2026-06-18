@@ -63,6 +63,49 @@ final class SubmissionCsv
         return $csv;
     }
 
+    /**
+     * The same data as {@see fromSubmissions()} but as associative rows (metadata
+     * keys + one key per field label), for Craft's element-exporter framework
+     * which formats the array to CSV/JSON/XML. Every row carries the union of
+     * columns so they align.
+     *
+     * @param array<int, Submission> $submissions
+     * @return list<array<string, string>>
+     */
+    public static function toRows(array $submissions): array
+    {
+        $fieldCols = [];
+        foreach ($submissions as $submission) {
+            foreach (($submission->data ?? []) as $key => $entry) {
+                if (!isset($fieldCols[$key])) {
+                    $fieldCols[$key] = is_array($entry) ? (string) ($entry['label'] ?? $key) : (string) $key;
+                }
+            }
+        }
+
+        $rows = [];
+        foreach ($submissions as $submission) {
+            $form = $submission->getForm();
+            $row = [
+                'ID' => (string) $submission->id,
+                'Form' => (string) ($form->title ?? $form->name ?? $submission->formId),
+                'Status' => (string) $submission->readStatus,
+                'Submitted' => $submission->dateCreated?->format('Y-m-d H:i:s') ?? '',
+            ];
+
+            $data = $submission->data ?? [];
+            foreach ($fieldCols as $key => $label) {
+                $entry = $data[$key] ?? null;
+                $value = is_array($entry) ? ($entry['value'] ?? '') : $entry;
+                $row[$label] = self::scalar($value);
+            }
+
+            $rows[] = $row;
+        }
+
+        return $rows;
+    }
+
     private static function scalar(mixed $value): string
     {
         if ($value === null || $value === false) {

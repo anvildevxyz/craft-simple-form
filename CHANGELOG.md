@@ -8,6 +8,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- Submissions element index: bulk actions (mark as read / archive / mark as spam,
+  plus delete) and a native **Submissions (with field columns)** exporter that
+  appears in the index export menu (metadata + one column per field, CSV/JSON/XML).
 - **Form field type**: embed a form in any element's field layout (entries, users,
   categories, …). Lock it to one form in the field settings, or let authors pick a
   form per entry. The value normalizes to the Form element — `entry.myForm.handle`

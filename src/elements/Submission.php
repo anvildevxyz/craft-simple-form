@@ -5,9 +5,12 @@ namespace fabianhaef\simpleform\elements;
 use Craft;
 use craft\base\Element;
 use craft\db\Query;
+use craft\elements\actions\Delete;
 use craft\helpers\Db;
 use craft\helpers\StringHelper;
+use fabianhaef\simpleform\elements\actions\SetSubmissionStatus;
 use fabianhaef\simpleform\elements\db\SubmissionQuery;
+use fabianhaef\simpleform\elements\exporters\SubmissionExporter;
 
 class Submission extends Element
 {
@@ -160,6 +163,29 @@ class Submission extends Element
     protected static function defineDefaultTableAttributes(string $source): array
     {
         return ['form', 'dateCreated', 'readStatus'];
+    }
+
+    /**
+     * @return array<int, mixed>
+     */
+    protected static function defineActions(?string $source = null): array
+    {
+        return [
+            ['type' => SetSubmissionStatus::class, 'status' => SubmissionStatus::READ],
+            ['type' => SetSubmissionStatus::class, 'status' => SubmissionStatus::ARCHIVED],
+            ['type' => SetSubmissionStatus::class, 'status' => SubmissionStatus::SPAM],
+            Delete::class,
+        ];
+    }
+
+    /**
+     * @return array<int, mixed>
+     */
+    protected static function defineExporters(string $source): array
+    {
+        $exporters = parent::defineExporters($source);
+        $exporters[] = SubmissionExporter::class;
+        return $exporters;
     }
 
     /**
