@@ -8,6 +8,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- CRM integration connectors: **HubSpot** (create a contact or deal via the v3
+  API with a private-app token) and **Pipedrive** (create a person), mapping form
+  fields to CRM properties. Built on the integrations framework.
 - Email-marketing integration connectors: **Mailchimp** (upsert a member into an
   audience, with double opt-in and merge-field mapping) and **ActiveCampaign**
   (sync a contact and optionally add to a list). API-key authenticated; built on

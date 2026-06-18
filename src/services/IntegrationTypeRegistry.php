@@ -5,8 +5,10 @@ namespace fabianhaef\simpleform\services;
 use fabianhaef\simpleform\events\RegisterIntegrationTypesEvent;
 use fabianhaef\simpleform\integrations\ActiveCampaignIntegration;
 use fabianhaef\simpleform\integrations\DiscordIntegration;
+use fabianhaef\simpleform\integrations\HubSpotIntegration;
 use fabianhaef\simpleform\integrations\IntegrationTypeInterface;
 use fabianhaef\simpleform\integrations\MailchimpIntegration;
+use fabianhaef\simpleform\integrations\PipedriveIntegration;
 use fabianhaef\simpleform\integrations\SlackIntegration;
 use fabianhaef\simpleform\integrations\WebhookIntegration;
 use fabianhaef\simpleform\Plugin;
@@ -33,6 +35,8 @@ class IntegrationTypeRegistry extends Component
         $this->registerType(DiscordIntegration::class);
         $this->registerType(MailchimpIntegration::class);
         $this->registerType(ActiveCampaignIntegration::class);
+        $this->registerType(HubSpotIntegration::class);
+        $this->registerType(PipedriveIntegration::class);
 
         // Let third parties contribute their own. Fired on the Plugin class so the
         // registration ergonomics match field types / MCP tools. Guarded on the

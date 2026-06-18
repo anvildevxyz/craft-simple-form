@@ -6,11 +6,11 @@ use fabianhaef\simpleform\elements\Submission;
 use fabianhaef\simpleform\integrations\support\ApiConnector;
 
 /**
- * Shared base for email-marketing connectors (Mailchimp, ActiveCampaign) that
- * subscribe a submitter to an audience/list via an authenticated API. The
+ * Shared base for CRM connectors (HubSpot, Pipedrive) that create a
+ * contact/lead/deal from a submission via a token-authenticated API. The
  * HTTP/email/mapping plumbing comes from {@see ApiConnector}.
  */
-abstract class AbstractMarketingIntegration implements IntegrationTypeInterface
+abstract class AbstractCrmIntegration implements IntegrationTypeInterface
 {
     use ApiConnector;
 
@@ -25,8 +25,8 @@ abstract class AbstractMarketingIntegration implements IntegrationTypeInterface
     public function defineSettingsRules(): array
     {
         return [
-            [['apiKey'], 'required'],
-            [['apiKey'], 'string'],
+            [['apiToken'], 'required'],
+            [['apiToken'], 'string'],
         ];
     }
 }
