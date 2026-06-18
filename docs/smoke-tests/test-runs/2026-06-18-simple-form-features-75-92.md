@@ -45,8 +45,14 @@ Executed live: **S0, S1, S2, S3, S5, S6, S7, S8, S9, S10, S11, S12** — all ✅
 ## Discoverability improvement
 Integrations are **per-form** (no global nav item). The only entry point was the Forms-index row action; added an **Integrations** link to the form **edit** screen too (saved forms) so it's reachable while editing — committed on the plugin repo.
 
-## Not executed live (verified by construction / lower risk)
-- **S4 (manageIntegrations gating) — verified by construction.** `SimpleFormControllerTrait::beforeAction` calls `requirePermission(static::PERMISSION)` for non-admins; `IntegrationsController::PERMISSION = MANAGE_INTEGRATIONS`. Same gate as Forms/Submissions/Settings (all live-verified working); the permission + nesting is unit-tested. Full limited-user CP flow not run (disruptive re-login; low risk).
+## S4 (manageIntegrations gating) — ✅ verified LIVE with a limited user
+Created group **sfLimited** (CP access + `accessplugin-simple-form` + `simple-form:viewSubmissions` only) and user `limited@example.test`, logged in as them:
+- `/admin/simple-form/submissions` + view → **200** (has viewSubmissions)
+- `/admin/simple-form/forms` → **403** (lacks manageForms)
+- `/admin/simple-form/forms/9130/integrations` → **403** (lacks manageIntegrations)
+- Simple Form subnav shows **only Submissions** (no Forms/Settings) — `getCpNavItem` gates by permission.
+
+**Note (not a bug, worth documenting):** every `/admin/simple-form/*` URL also requires Craft's section permission **`accessplugin-simple-form`**; without it Craft returns 403 before the plugin's own gate runs (it gates the whole section). So a user needs *both* plugin-section access *and* the granular Simple Form permission. Initially missed this in setup → all URLs 403'd until granted.
 - S5 per-connector settings forms beyond webhook + Mailchimp — all confirmed **selectable**; each form’s fields covered by the unit/integration suites.
 - S12 add-widget-to-dashboard modal interaction — registration confirmed live; count/recent logic integration-tested.
 
