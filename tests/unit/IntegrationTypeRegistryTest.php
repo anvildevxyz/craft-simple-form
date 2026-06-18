@@ -48,9 +48,20 @@ class IntegrationTypeRegistryTest extends TestCase
         $registry = new IntegrationTypeRegistry();
         $registry->registerType(StubIntegrationType::class);
 
-        $this->assertSame(['stub'], $registry->typeHandles());
-        $this->assertSame(['stub' => 'Stub Connector'], $registry->getAllTypes());
+        // The core Webhook connector is always registered; the stub adds to it.
+        $this->assertContains('stub', $registry->typeHandles());
+        $this->assertContains('webhook', $registry->typeHandles());
+        $this->assertSame('Stub Connector', $registry->getAllTypes()['stub']);
         $this->assertInstanceOf(StubIntegrationType::class, $registry->getType('stub'));
+    }
+
+    public function testWebhookIsRegisteredByDefault(): void
+    {
+        $registry = new IntegrationTypeRegistry();
+        $this->assertInstanceOf(
+            \fabianhaef\simpleform\integrations\WebhookIntegration::class,
+            $registry->getType('webhook'),
+        );
     }
 
     public function testGetUnknownTypeReturnsNull(): void
