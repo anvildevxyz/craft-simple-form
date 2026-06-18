@@ -8,6 +8,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- Outbound integrations framework: push submissions to external services via a
+  pluggable connector architecture, with a built-in **Webhook** connector
+  (JSON/form-encoded, optional HMAC-SHA256 signing, field mapping). Dispatch runs
+  asynchronously on the queue with retries, per-attempt logging, a CP management
+  screen per form, a submission-detail dispatch panel with **Resend**, and a new
+  `manageIntegrations` permission. Read-only exposure via GraphQL
+  (`SimpleForm.integrations`) and the MCP `list_integrations` tool — never
+  exposing settings/secrets. Register custom connectors via
+  `Plugin::EVENT_REGISTER_INTEGRATION_TYPES`. See [docs/integrations.md](docs/integrations.md).
 - Conditional logic: show/hide fields and make them conditionally required based
   on other fields' values, with live client-side evaluation and authoritative
   server-side enforcement (hidden fields are not validated or stored). Exposed

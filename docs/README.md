@@ -8,6 +8,9 @@ overview and installation live in the [project README](../README.md).)
 - **[Conditional logic](conditional-logic.md)** — show/hide fields and make them
   conditionally required based on other fields' values, with live client-side
   evaluation and authoritative server-side enforcement.
+- **[Outbound integrations](integrations.md)** — push submissions to webhooks and
+  pluggable connectors asynchronously, with retries, dispatch logs, resend, and a
+  read-only GraphQL/MCP surface. Includes how to write a custom connector.
 
 ## Testing
 
