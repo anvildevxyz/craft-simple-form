@@ -59,6 +59,9 @@
         xhr.setRequestHeader('X-Requested-With', 'XMLHttpRequest');
         xhr.setRequestHeader('X-CSRF-Token', csrf);
         xhr.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded');
+        // The toggle/delete actions call requireAcceptsJson(); without this header
+        // Craft rejects the request with a 400.
+        xhr.setRequestHeader('Accept', 'application/json');
         xhr.onload = function () { if (xhr.status === 200) cb(JSON.parse(xhr.responseText)); };
         xhr.send(body);
     }
