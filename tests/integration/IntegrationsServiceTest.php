@@ -121,6 +121,27 @@ class IntegrationsServiceTest extends SimpleFormTestCase
         $this->assertSame(DispatchStatus::PENDING, $row['status']);
     }
 
+    public function testGetAllIntegrationsSpansForms(): void
+    {
+        $this->requireCraft();
+        $formA = $this->createForm('Global A', 'global_a');
+        $formB = $this->createForm('Global B', 'global_b');
+        $service = Plugin::getInstance()->getIntegrations();
+
+        foreach ([[$formA, 'A1'], [$formA, 'A2'], [$formB, 'B1']] as [$form, $name]) {
+            $m = new IntegrationModel();
+            $m->formId = (int) $form->id;
+            $m->type = 'webhook';
+            $m->name = $name;
+            $service->saveIntegration($m);
+        }
+
+        $names = array_map(static fn(IntegrationModel $i): string => $i->name, $service->getAllIntegrations());
+        foreach (['A1', 'A2', 'B1'] as $expected) {
+            $this->assertContains($expected, $names);
+        }
+    }
+
     public function testValidateSettingsRejectsMissingWebhookUrl(): void
     {
         $this->requireCraft();

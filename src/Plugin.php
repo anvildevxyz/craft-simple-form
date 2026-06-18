@@ -310,6 +310,9 @@ class Plugin extends BasePlugin
         if ($isAdmin || $user?->can(SimpleFormPermissions::MANAGE_FORMS)) {
             $subnav['forms'] = ['label' => Craft::t('simple-form', 'Forms'), 'url' => 'simple-form/forms'];
         }
+        if ($isAdmin || $user?->can(SimpleFormPermissions::MANAGE_INTEGRATIONS)) {
+            $subnav['integrations'] = ['label' => Craft::t('simple-form', 'Integrations'), 'url' => 'simple-form/integrations'];
+        }
         if ($isAdmin || $user?->can(SimpleFormPermissions::VIEW_SUBMISSIONS)) {
             $subnav['submissions'] = ['label' => Craft::t('simple-form', 'Submissions'), 'url' => 'simple-form/submissions'];
         }
@@ -334,6 +337,7 @@ class Plugin extends BasePlugin
         $event->rules['simple-form/forms/save'] = 'simple-form/forms/save';
         $event->rules['simple-form/forms/delete/<formId:\d+>'] = 'simple-form/forms/delete';
         // Per-form integrations management
+        $event->rules['simple-form/integrations'] = 'simple-form/integrations/global-index';
         $event->rules['simple-form/forms/<formId:\d+>/integrations'] = 'simple-form/integrations/index';
         $event->rules['simple-form/forms/<formId:\d+>/integrations/new'] = 'simple-form/integrations/edit';
         $event->rules['simple-form/forms/<formId:\d+>/integrations/<integrationId:\d+>'] = 'simple-form/integrations/edit';

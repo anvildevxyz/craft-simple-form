@@ -5,6 +5,11 @@
 {% set selectedSubnavItem = 'forms' %}
 {% set fullPageForm = true %}
 
+{% set crumbs = [
+    { label: 'Simple Form'|t('simple-form'), url: cpUrl('simple-form/forms') },
+    { label: 'Forms'|t('simple-form'), url: cpUrl('simple-form/forms') },
+] %}
+
 {# Native CP header site selector (same mechanism as _layouts/elementindex):
    prepend a site crumb whose disclosure menu links to ?site=<handle> on this path. #}
 {% if craft.app.getIsMultiSite() and form.id and supportedSites|length > 1 %}

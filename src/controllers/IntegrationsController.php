@@ -32,6 +32,31 @@ class IntegrationsController extends Controller
         return $form;
     }
 
+    /**
+     * Global index: every integration across all forms (CP subnav entry point).
+     */
+    public function actionGlobalIndex(): Response
+    {
+        $service = Plugin::getInstance()->getIntegrations();
+        $integrations = $service->getAllIntegrations();
+
+        // Resolve each integration's form (id => title) for the Form column.
+        $forms = [];
+        foreach ($integrations as $integration) {
+            $fid = (int) $integration->formId;
+            if (!isset($forms[$fid])) {
+                $form = Form::find()->siteId('*')->id($fid)->status(null)->one();
+                $forms[$fid] = $form instanceof Form ? ($form->title ?? $form->name) : ('#' . $fid);
+            }
+        }
+
+        return $this->renderTemplate('simple-form/integrations/index', [
+            'integrations' => $integrations,
+            'formTitles' => $forms,
+            'typeNames' => Plugin::getInstance()->getIntegrationTypeRegistry()->getAllTypes(),
+        ]);
+    }
+
     public function actionIndex(int $formId): Response
     {
         $form = $this->getFormOrFail($formId);

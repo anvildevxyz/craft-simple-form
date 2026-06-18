@@ -1,0 +1,50 @@
+{% extends '_layouts/cp.twig' %}
+
+{% set title = 'Integrations'|t('simple-form') %}
+{% set selectedSubnavItem = 'integrations' %}
+
+{% set crumbs = [
+    { label: 'Simple Form'|t('simple-form'), url: cpUrl('simple-form/forms') },
+] %}
+
+{% block content %}
+{% if integrations %}
+    <table class="data fullwidth collapsible">
+        <thead>
+            <tr>
+                <th>{{ 'Name'|t('simple-form') }}</th>
+                <th>{{ 'Form'|t('simple-form') }}</th>
+                <th>{{ 'Type'|t('simple-form') }}</th>
+                <th>{{ 'Enabled'|t('simple-form') }}</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for integration in integrations %}
+                <tr>
+                    <td>
+                        <a href="{{ cpUrl('simple-form/forms/' ~ integration.formId ~ '/integrations/' ~ integration.id) }}">
+                            {{ integration.name }}
+                        </a>
+                    </td>
+                    <td>
+                        <a href="{{ cpUrl('simple-form/forms/' ~ integration.formId ~ '/integrations') }}">
+                            {{ formTitles[integration.formId] ?? ('#' ~ integration.formId) }}
+                        </a>
+                    </td>
+                    <td>{{ typeNames[integration.type] ?? integration.type }}</td>
+                    <td>
+                        <span class="status {{ integration.enabled ? 'on' : 'off' }}"></span>
+                        {{ integration.enabled ? 'Enabled'|t('simple-form') : 'Disabled'|t('simple-form') }}
+                    </td>
+                </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+{% else %}
+    <div class="zilch">
+        <p>{{ 'No integrations configured yet.'|t('simple-form') }}</p>
+        <p class="light">{{ 'Open a form and add an integration (webhook, Slack, Mailchimp, …) to push its submissions to other services.'|t('simple-form') }}</p>
+        <a class="btn submit" href="{{ cpUrl('simple-form/forms') }}">{{ 'Go to Forms'|t('simple-form') }}</a>
+    </div>
+{% endif %}
+{% endblock %}

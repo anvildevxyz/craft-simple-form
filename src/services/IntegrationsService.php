@@ -42,6 +42,22 @@ class IntegrationsService extends Component
     }
 
     /**
+     * Every integration across all forms (for the global CP index), ordered by
+     * form then sortOrder.
+     *
+     * @return list<IntegrationModel>
+     */
+    public function getAllIntegrations(): array
+    {
+        $rows = (new \craft\db\Query())
+            ->from(self::TABLE)
+            ->orderBy(['formId' => SORT_ASC, 'sortOrder' => SORT_ASC, 'id' => SORT_ASC])
+            ->all();
+
+        return array_map([$this, 'rowToModel'], $rows);
+    }
+
+    /**
      * Only the enabled integrations on a form — the dispatch set.
      *
      * @return list<IntegrationModel>

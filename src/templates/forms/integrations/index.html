@@ -3,6 +3,12 @@
 {% set title = 'Integrations'|t('simple-form') ~ ' — ' ~ (form.title ?: form.name) %}
 {% set selectedSubnavItem = 'forms' %}
 
+{% set crumbs = [
+    { label: 'Simple Form'|t('simple-form'), url: cpUrl('simple-form/forms') },
+    { label: 'Forms'|t('simple-form'), url: cpUrl('simple-form/forms') },
+    { label: (form.title ?: form.name), url: cpUrl('simple-form/forms/edit/' ~ form.id) },
+] %}
+
 {% block content %}
 <div class="buttons">
     <a class="btn" href="{{ cpUrl('simple-form/forms/edit/' ~ form.id) }}">← {{ 'Back to form'|t('simple-form') }}</a>
