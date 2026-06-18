@@ -9,12 +9,14 @@ Verification: CP UI snapshots + DB (`ddev mysql`) + queue + `web-2026-06-18.log`
 |----------|--------|----------|
 | S0 builder create | ✅ | Form 9130 + fields name(text,#9), email(email,#10) persisted; palette shows all 9 types incl. File Upload; Step/Page input present |
 | S1 add Webhook integration | ✅ | `simpleform_integrations` row id 2 (webhook/“Ops hook”/enabled), settings JSON (no plaintext secret) |
+| **S2 toggle + delete** | **❌ → ✅ (bug fixed)** | Toggle/delete returned 400 — see bug #2. After fix: toggle flips `enabled=0`; delete removes row + cascades logs |
 | S3 submit → dispatch + Resend | ✅ | submission 9131; queue ran; `integration_logs` success/200/attempt 1; detail panel + Resend → second row attempt 2 |
-| S5 connectors selectable | ✅ | Type picker lists all 7 (webhook/slack/discord/mailchimp/activecampaign/hubspot/pipedrive); webhook settings form renders URL/method/format/secret |
+| S5 connectors selectable + forms | ✅ | Type picker lists all 7; webhook + Mailchimp settings forms render; blank Mailchimp save → “Api Key/Audience Id cannot be blank” (no row) |
+| S10 multi-step | ✅ | front-end `smoke/simple-form` route renders Step 1 of 2 (Name+File) → Next → Step 2 (Email)+Back+Submit; submit 9135 = one submission, all fields |
 | S6 captcha providers | ✅ | Provider select = [recaptcha,turnstile,hcaptcha]; switching to Turnstile shows only its block + reveals turnstile key fields (JS toggle) |
 | S7 Akismet spam status/filter | ✅ | Akismet settings section present; `UPDATE readStatus='spam'` succeeds (enum migration); index **Spam** filter lists 9132 with SPAM badge |
 | S8 file field builder config | ✅ | field #11 config `{volume:uploads, maxSize:5, allowedExtensions:"pdf,png"}`; volume dropdown populated from SF_VOLUMES |
-| **S9 file upload → asset** | **❌ → ✅ (bug fixed)** | See below |
+| **S9 file upload → asset + link** | **❌ → ✅ (bug fixed)** | See bug #1; after fix submission 9134 → asset 9133, detail shows download link to `/uploads/fix-verify.pdf` |
 | S11 CSV export | ✅ | `text/csv` + `attachment; filename="submissions.csv"`; header `ID,Form,Status,Submitted,Name,Email,"File Upload"`; all rows; file col = asset id |
 | S12 dashboard widgets | ✅ | “Form Submissions” + “Recent Submissions” appear in the New Widget menu (registration); count/recent logic covered by integration tests |
 
@@ -27,12 +29,29 @@ Verification: CP UI snapshots + DB (`ddev mysql`) + queue + `web-2026-06-18.log`
 
 **Re-verified live:** submission 9134 → `field_11: value [9133]`, asset **9133 `fix-verify.pdf`** created in `uploads`. Gate green: 157 unit / 140 integration (1 vol-skip) / 39 JS.
 
+## 🐛 Bug #2 found + fixed — S2 (integration toggle/delete 400)
+**Symptom:** clicking the enable toggle (and delete) on the per-form Integrations index did nothing; the POST returned **HTTP 400**.
+
+**Root cause:** the index template's `post()` XHR helper set `X-Requested-With`/`X-CSRF-Token`/`Content-Type` but **not `Accept: application/json`**, while `IntegrationsController::actionToggle()` and `actionDelete()` call `requireAcceptsJson()` → 400. Slipped because #79's CP UI was authored while the browser backend was down (never live-tested).
+
+**Fix (`25a7b6b`):** add `xhr.setRequestHeader('Accept', 'application/json')` to the shared `post()` helper (covers both toggle + delete). **Re-verified live:** toggle flips `enabled`, delete removes the row and cascades its `integration_logs`.
+
+## Front-end smoke harness added
+`templates/_smoke/simple-form.twig` + route `smoke/simple-form` (site repo, mirrors the existing beacon/cartograph smoke templates) render `{{ simpleForm('smokeForm') }}` so the multi-step + file-input + JS can be exercised live.
+
+## Final tally
+Executed live: **S0, S1, S2, S3, S5, S6, S7, S8, S9, S10, S11, S12** — all ✅ (S2/S9 after fixing the two bugs below). **2 real bugs found + fixed + re-verified.**
+
 ## Not executed this run (lower risk / covered elsewhere)
-- S2 (toggle/delete integration), S4 (manageIntegrations gating) — controller logic covered by integration tests; quick manual follow-up.
-- S5 per-connector settings forms beyond webhook — all confirmed **selectable**; each form’s fields covered by the unit/integration suites.
-- S9 submission-detail download link — not viewed live (rendering logic in `view.html`, integration-covered).
-- S10 multi-step render — no front-end page renders the form in dev; covered by `MultiStepFormTest` (step markup + single submission).
-- S12 add-widget-to-dashboard modal interaction — registration confirmed; widget count/recent logic integration-tested.
+- **S4 (manageIntegrations gating)** — needs a limited user group + user; permission constant + nesting is unit-tested, controller enforces `PERMISSION = MANAGE_INTEGRATIONS`. Worth a manual follow-up.
+- S5 per-connector settings forms beyond webhook + Mailchimp — all confirmed **selectable**; each form’s fields covered by the unit/integration suites.
+- S12 add-widget-to-dashboard modal interaction — registration confirmed live; count/recent logic integration-tested.
+
+## Bugs found
+1. **File uploads dropped** — `SubmitController` bypassed `createFromRequest` (`c1f830b`).
+2. **Integration toggle/delete 400** — missing `Accept: application/json` header (`25a7b6b`).
+
+Both were CP/front-end paths authored while the Playwright backend was down — exactly the gap this smoke run closed.
 
 ## Test data left behind
-Form **9130 “Smoke Form”** (handle `smokeForm`) with fields name/email/attachment + Webhook integration id 2; submissions 9131 (new), 9132 (spam), 9134 (with asset 9133); asset 9133 `fix-verify.pdf` in `uploads`. Remove if undesired.
+Front-end harness: `templates/_smoke/simple-form.twig` + `smoke/simple-form` route (site repo). Form **9130 “Smoke Form”** (handle `smokeForm`, now multi-step: email on page 2) with fields name/email/attachment; submissions 9131 (new), 9132 (spam), 9134 (asset 9133), 9135 (multi-step); asset 9133 `fix-verify.pdf` in `uploads`. Remove if undesired.
