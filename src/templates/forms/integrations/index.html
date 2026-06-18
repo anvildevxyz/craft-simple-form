@@ -38,9 +38,10 @@
                         </button>
                     </td>
                     <td class="thin">
-                        <a class="delete icon" title="{{ 'Delete'|t('simple-form') }}"
-                           role="button"
-                           data-id="{{ integration.id }}"></a>
+                        <button type="button" class="delete icon"
+                                title="{{ 'Delete'|t('simple-form') }}"
+                                aria-label="{{ 'Delete integration {name}'|t('simple-form', { name: integration.name }) }}"
+                                data-id="{{ integration.id }}"></button>
                     </td>
                 </tr>
             {% endfor %}
@@ -62,21 +63,32 @@
         // The toggle/delete actions call requireAcceptsJson(); without this header
         // Craft rejects the request with a 400.
         xhr.setRequestHeader('Accept', 'application/json');
-        xhr.onload = function () { if (xhr.status === 200) cb(JSON.parse(xhr.responseText)); };
+        xhr.onload = function () {
+            var r = null;
+            try { r = JSON.parse(xhr.responseText); } catch (e) { r = null; }
+            if (xhr.status === 200 && r && r.success) {
+                cb(r);
+            } else {
+                Craft.cp.displayError((r && r.error) || '{{ "Couldn’t complete that action."|t("simple-form")|e("js") }}');
+            }
+        };
+        xhr.onerror = function () {
+            Craft.cp.displayError('{{ "Network error — please try again."|t("simple-form")|e("js") }}');
+        };
         xhr.send(body);
     }
     document.querySelectorAll('.status-toggle').forEach(function (btn) {
         btn.addEventListener('click', function () {
-            post('{{ cpUrl("simple-form/integrations/toggle") }}', 'integrationId=' + btn.dataset.id, function (r) {
-                if (r.success) location.reload();
+            post('{{ cpUrl("simple-form/integrations/toggle") }}', 'integrationId=' + btn.dataset.id, function () {
+                location.reload();
             });
         });
     });
     document.querySelectorAll('.delete[data-id]').forEach(function (el) {
         el.addEventListener('click', function () {
             if (!confirm('{{ "Delete this integration?"|t("simple-form")|e("js") }}')) return;
-            post('{{ cpUrl("simple-form/integrations/delete") }}', 'integrationId=' + el.dataset.id, function (r) {
-                if (r.success) location.reload();
+            post('{{ cpUrl("simple-form/integrations/delete") }}', 'integrationId=' + el.dataset.id, function () {
+                location.reload();
             });
         });
     });
