@@ -6,6 +6,9 @@
 {% block content %}
 <div class="buttons">
     <a href="{{ cpUrl('simple-form/submissions') }}" class="btn">{{ '← Back'|t('simple-form') }}</a>
+    {% if form %}
+        <a href="{{ cpUrl('simple-form/forms/edit/' ~ form.id) }}" class="btn">{{ 'Edit Form'|t('simple-form') }}</a>
+    {% endif %}
     <button id="toggle-status-btn" class="btn secondary">
         {{ 'Mark as {status}'|t('simple-form', { status: (submission.readStatus == 'new' ? 'Read'|t('simple-form') : (submission.readStatus == 'read' ? 'Archived'|t('simple-form') : 'New'|t('simple-form'))) }) }}
     </button>
