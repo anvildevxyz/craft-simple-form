@@ -13,21 +13,34 @@
     { label: 'Integrations'|t('simple-form'), url: cpUrl('simple-form/settings/integrations') },
 ] %}
 
+{# Editing an existing integration locks the type — changing it would orphan the
+   saved settings. New integrations pick a type from the dropdown, which loads
+   that type's fields. #}
+{% set isExisting = integration and integration.id %}
+
 {% block content %}
-{% if availableTypes is not null %}
-    {# Type picker for a brand-new integration #}
-    <h2>{{ 'Choose an integration type'|t('simple-form') }}</h2>
-    <ul>
-        {% for handle, name in availableTypes %}
-            <li>
-                <a class="btn" href="{{ cpUrl('simple-form/settings/integrations/new', { type: handle }) }}">
-                    {{ name }}
-                </a>
-            </li>
-        {% else %}
-            <li>{{ 'No integration types are available.'|t('simple-form') }}</li>
-        {% endfor %}
-    </ul>
+<div class="field">
+    <div class="heading">
+        <label id="integration-type-label" for="sf-integration-type">{{ 'Integration type'|t('simple-form') }}</label>
+    </div>
+    <div class="input">
+        <div class="select{{ isExisting ? ' disabled' : '' }}">
+            <select id="sf-integration-type"
+                    aria-labelledby="integration-type-label"
+                    {{ isExisting ? 'disabled' : '' }}
+                    {% if not isExisting %}data-new-url="{{ cpUrl('simple-form/settings/integrations/new') }}"{% endif %}>
+                <option value="">{{ 'Choose a type…'|t('simple-form') }}</option>
+                {% set selectedType = integration ? integration.type : null %}
+                {% for handle, name in availableTypes %}
+                    <option value="{{ handle }}"{{ selectedType == handle ? ' selected' : '' }}>{{ name }}</option>
+                {% endfor %}
+            </select>
+        </div>
+    </div>
+</div>
+
+{% if type is null %}
+    <p class="light">{{ 'Choose an integration type to configure it.'|t('simple-form') }}</p>
 {% else %}
     <form method="post" accept-charset="UTF-8">
         {{ csrfInput() }}

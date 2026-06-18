@@ -157,6 +157,15 @@
         });
     }
 
+    // --- Integration editor: pick a type from the dropdown, load its fields ---
+    var integrationType = document.getElementById('sf-integration-type');
+    if (integrationType && integrationType.dataset.newUrl) {
+        integrationType.addEventListener('change', function () {
+            if (!this.value) { return; }
+            window.location = integrationType.dataset.newUrl + '?type=' + encodeURIComponent(this.value);
+        });
+    }
+
     // --- Settings → Spam: conditional visibility of provider/type blocks ---
     // Craft's checkboxField renders a hidden input *and* the checkbox under the
     // same name; target the checkbox specifically.

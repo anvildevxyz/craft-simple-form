@@ -91,22 +91,14 @@ class IntegrationsController extends Controller
         $request = Craft::$app->getRequest();
         $typeHandle = $integration?->type ?? $request->getQueryParam('type');
 
-        // New integration with no type chosen yet -> show the type picker.
-        if ($typeHandle === null) {
-            return $this->renderTemplate('simple-form/settings/integrations/edit', [
-                'integration' => null,
-                'type' => null,
-                'availableTypes' => $registry->getAllTypes(),
-                'errors' => [],
-            ]);
-        }
-
-        $type = $registry->getType($typeHandle);
-        if ($type === null) {
+        // Resolve the chosen type (from the dropdown / an existing record). When
+        // none is chosen yet the template just shows the type dropdown.
+        $type = $typeHandle !== null ? $registry->getType($typeHandle) : null;
+        if ($typeHandle !== null && $type === null) {
             throw new NotFoundHttpException('Unknown integration type');
         }
 
-        if ($integration === null) {
+        if ($type !== null && $integration === null) {
             $integration = new IntegrationModel();
             $integration->type = $typeHandle;
             $integration->name = $type::displayName();
@@ -115,7 +107,7 @@ class IntegrationsController extends Controller
         return $this->renderTemplate('simple-form/settings/integrations/edit', [
             'integration' => $integration,
             'type' => $type,
-            'availableTypes' => null,
+            'availableTypes' => $registry->getAllTypes(),
             'errors' => [],
         ]);
     }
@@ -158,7 +150,7 @@ class IntegrationsController extends Controller
             return $this->renderTemplate('simple-form/settings/integrations/edit', [
                 'integration' => $integration,
                 'type' => $type,
-                'availableTypes' => null,
+                'availableTypes' => $registry->getAllTypes(),
                 'errors' => $errors,
             ]);
         }
