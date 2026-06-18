@@ -8,6 +8,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- Submissions are now soft-deleted (trashable) and restorable, with a **Trashed**
+  source on the element index. A permanent delete now cascades the plugin row
+  (added the missing `simpleform_submissions` → `elements` foreign key), so trash
+  GC and retention purges no longer orphan rows.
 - Per-form email notifications (form → Notifications): add any number of
   notifications, each with its own recipient, subject, reply-to and body. A
   recipient can be a fixed address **or a form field**, enabling autoresponders

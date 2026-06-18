@@ -209,6 +209,15 @@ class Submission extends Element
             ];
         }
 
+        // Recoverable deletes: a Trashed source so soft-deleted submissions can be
+        // reviewed and restored (Craft adds the Restore/Delete-permanently actions).
+        $sources[] = ['heading' => Craft::t('simple-form', 'Trash')];
+        $sources[] = [
+            'key' => 'trashed',
+            'label' => Craft::t('simple-form', 'Trashed'),
+            'criteria' => ['trashed' => true],
+        ];
+
         return $sources;
     }
 }

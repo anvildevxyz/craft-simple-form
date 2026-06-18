@@ -73,7 +73,7 @@ class Plugin extends BasePlugin
      */
     public const EVENT_REGISTER_CAPTCHA_PROVIDERS = 'registerCaptchaProviders';
 
-    public string $schemaVersion = '2.6.0';
+    public string $schemaVersion = '2.7.0';
     public bool $hasCpSection = true;
     public bool $hasCpSettings = false;
     public bool $hasCpPermissions = true;

@@ -35,6 +35,8 @@ modules:
           params: {}
         - class: fabianhaef\simpleform\migrations\m260618_000004_notifications
           params: {}
+        - class: fabianhaef\simpleform\migrations\m260618_000005_submission_element_fk
+          params: {}
       plugins:
         - handle: simple-form
           class: fabianhaef\simpleform\Plugin
