@@ -38,7 +38,7 @@ class FieldsController extends Controller
 
         $errors = $this->validateFieldInput($type, $label, $handle, $config, (int)$formId, null);
         if (!empty($errors)) {
-            return $this->asJson(['success' => false, 'errors' => $errors]);
+            return $this->asJsonErrors($errors);
         }
 
         $db = Craft::$app->getDb();
@@ -83,14 +83,10 @@ class FieldsController extends Controller
 
             Plugin::getInstance()->getFormStructure()->invalidate((int)$formId);
 
-            return $this->asJson([
-                'success' => true,
-                'fieldId' => $fieldId,
-                'message' => 'Field added successfully',
-            ]);
+            return $this->asJsonSuccess(['fieldId' => $fieldId]);
         } catch (\Exception $e) {
             Craft::warning('Error adding field: ' . $e->getMessage(), 'simple-form');
-            return $this->asJson(['success' => false, 'error' => 'Failed to add field']);
+            return $this->asJsonError('Failed to add field');
         }
     }
 
@@ -117,7 +113,7 @@ class FieldsController extends Controller
 
         $errors = $this->validateFieldInput($field['type'], $label, $handle, $config, (int)$field['formId'], (int)$fieldId);
         if (!empty($errors)) {
-            return $this->asJson(['success' => false, 'errors' => $errors]);
+            return $this->asJsonErrors($errors);
         }
 
         $now = date('Y-m-d H:i:s');
@@ -149,10 +145,10 @@ class FieldsController extends Controller
 
             Plugin::getInstance()->getFormStructure()->invalidate((int)$field['formId']);
 
-            return $this->asJson(['success' => true, 'message' => 'Field updated successfully']);
+            return $this->asJsonSuccess();
         } catch (\Exception $e) {
             Craft::warning('Error updating field: ' . $e->getMessage(), 'simple-form');
-            return $this->asJson(['success' => false, 'error' => 'Failed to update field']);
+            return $this->asJsonError('Failed to update field');
         }
     }
 
@@ -174,10 +170,10 @@ class FieldsController extends Controller
             // _sites rows cascade via FK.
             $db->createCommand()->delete('{{%simpleform_fields}}', ['id' => $fieldId])->execute();
             Plugin::getInstance()->getFormStructure()->invalidate((int)$formId);
-            return $this->asJson(['success' => true, 'message' => 'Field deleted successfully']);
+            return $this->asJsonSuccess();
         } catch (\Exception $e) {
             Craft::warning('Error deleting field: ' . $e->getMessage(), 'simple-form');
-            return $this->asJson(['success' => false, 'error' => 'Failed to delete field']);
+            return $this->asJsonError('Failed to delete field');
         }
     }
 
@@ -189,7 +185,7 @@ class FieldsController extends Controller
 
         $fields = $request->getRequiredBodyParam('fields');
         if (!is_array($fields)) {
-            return $this->asJson(['success' => false, 'error' => 'Fields parameter must be an array']);
+            return $this->asJsonError('Fields parameter must be an array');
         }
 
         $db = Craft::$app->getDb();
@@ -219,10 +215,10 @@ class FieldsController extends Controller
                 Plugin::getInstance()->getFormStructure()->invalidate((int)$formId);
             }
 
-            return $this->asJson(['success' => true, 'message' => 'Fields reordered successfully']);
+            return $this->asJsonSuccess();
         } catch (\Exception $e) {
             Craft::warning('Error reordering fields: ' . $e->getMessage(), 'simple-form');
-            return $this->asJson(['success' => false, 'error' => 'Failed to reorder fields']);
+            return $this->asJsonError('Failed to reorder fields');
         }
     }
 

@@ -152,13 +152,10 @@ class FormsController extends Controller
         }
 
         if (!Craft::$app->getElements()->deleteElement($form)) {
-            return $this->asJson([
-                'success' => false,
-                'errors' => $form->getErrors(),
-            ]);
+            return $this->asJsonErrors($form->getErrors());
         }
 
-        return $this->asJson(['success' => true]);
+        return $this->asJsonSuccess();
     }
 
     /**

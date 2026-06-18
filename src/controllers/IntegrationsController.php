@@ -179,7 +179,11 @@ class IntegrationsController extends Controller
         $integrationId = (int) $request->getRequiredBodyParam('integrationId');
         $deleted = Plugin::getInstance()->getIntegrations()->deleteIntegration($integrationId);
 
-        return $this->asJson(['success' => $deleted]);
+        if (!$deleted) {
+            return $this->asJsonError(Craft::t('simple-form', 'Couldn’t complete that action.'));
+        }
+
+        return $this->asJsonSuccess();
     }
 
     public function actionToggle(): Response
@@ -192,13 +196,13 @@ class IntegrationsController extends Controller
         $service = Plugin::getInstance()->getIntegrations();
         $integration = $service->getIntegrationById((int) $request->getRequiredBodyParam('integrationId'));
         if ($integration === null) {
-            return $this->asJson(['success' => false, 'error' => 'Integration not found']);
+            return $this->asJsonError(Craft::t('simple-form', 'Couldn’t complete that action.'));
         }
 
         $integration->enabled = !$integration->enabled;
         $service->saveIntegration($integration);
 
-        return $this->asJson(['success' => true, 'enabled' => $integration->enabled]);
+        return $this->asJsonSuccess(['enabled' => $integration->enabled]);
     }
 
     /**

@@ -206,7 +206,7 @@ class SubmissionsController extends Controller
             ->one();
 
         if (!$submission) {
-            return $this->asJson(['success' => false, 'error' => 'Submission not found']);
+            return $this->asJsonError(Craft::t('simple-form', 'Couldn’t update the status.'));
         }
 
         $statuses = SubmissionStatus::all();
@@ -215,12 +215,9 @@ class SubmissionsController extends Controller
         $submission->readStatus = $statuses[$nextIndex];
 
         if (!Craft::$app->getElements()->saveElement($submission)) {
-            return $this->asJson(['success' => false, 'error' => 'Failed to save status']);
+            return $this->asJsonError(Craft::t('simple-form', 'Couldn’t update the status.'));
         }
 
-        return $this->asJson([
-            'success' => true,
-            'status' => $submission->readStatus,
-        ]);
+        return $this->asJsonSuccess(['status' => $submission->readStatus]);
     }
 }
