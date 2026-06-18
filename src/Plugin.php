@@ -22,6 +22,7 @@ use fabianhaef\simpleform\gql\types\FieldConditionalType;
 use fabianhaef\simpleform\gql\types\FieldOptionType;
 use fabianhaef\simpleform\gql\types\FieldValidationType;
 use fabianhaef\simpleform\gql\types\FormFieldType;
+use fabianhaef\simpleform\gql\types\FormIntegrationType;
 use fabianhaef\simpleform\gql\types\FormType;
 use fabianhaef\simpleform\gql\types\SubmissionErrorType;
 use fabianhaef\simpleform\gql\types\SubmitFormPayloadType;
@@ -140,6 +141,7 @@ class Plugin extends BasePlugin
                     FieldOptionType::class,
                     FieldValidationType::class,
                     FormFieldType::class,
+                    FormIntegrationType::class,
                     FormType::class,
                     SubmissionErrorType::class,
                     SubmitFormPayloadType::class,

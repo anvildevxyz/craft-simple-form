@@ -16,6 +16,7 @@ use fabianhaef\simpleform\mcp\tools\ExportSubmissionsTool;
 use fabianhaef\simpleform\mcp\tools\GetFormTool;
 use fabianhaef\simpleform\mcp\tools\GetSubmissionTool;
 use fabianhaef\simpleform\mcp\tools\ListFormsTool;
+use fabianhaef\simpleform\mcp\tools\ListIntegrationsTool;
 use fabianhaef\simpleform\mcp\tools\QuerySubmissionsTool;
 use fabianhaef\simpleform\mcp\tools\ReorderFieldsTool;
 use fabianhaef\simpleform\mcp\tools\SubmissionStatsTool;
@@ -69,6 +70,8 @@ class McpServer
             new UpdateFieldTool(),
             new ReorderFieldsTool(),
             new DeleteFieldTool(),
+            // Integrations (#80) — read-only; scope: forms:manage. Never exposes secrets.
+            new ListIntegrationsTool(),
             // Submissions (#64) — scopes: submissions:read / submissions:export.
             new QuerySubmissionsTool(),
             new GetSubmissionTool(),

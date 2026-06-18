@@ -287,6 +287,41 @@ class IntegrationsService extends Component
     }
 
     /**
+     * Recent dispatch health for one integration: attempt counts by status plus
+     * the latest attempt's status/time/code. Diagnostic only — no payloads.
+     *
+     * @return array{total: int, success: int, failed: int, pending: int, lastStatus: ?string, lastDispatchedAt: ?string, lastResponseCode: ?int}
+     */
+    public function getDispatchHealth(int $integrationId): array
+    {
+        $rows = (new \craft\db\Query())
+            ->from(self::LOG_TABLE)
+            ->where(['integrationId' => $integrationId])
+            ->orderBy(['dateCreated' => SORT_DESC, 'id' => SORT_DESC])
+            ->all();
+
+        $counts = [DispatchStatus::SUCCESS => 0, DispatchStatus::FAILED => 0, DispatchStatus::PENDING => 0];
+        foreach ($rows as $row) {
+            $status = (string) $row['status'];
+            if (isset($counts[$status])) {
+                $counts[$status]++;
+            }
+        }
+
+        $last = $rows[0] ?? null;
+
+        return [
+            'total' => count($rows),
+            'success' => $counts[DispatchStatus::SUCCESS],
+            'failed' => $counts[DispatchStatus::FAILED],
+            'pending' => $counts[DispatchStatus::PENDING],
+            'lastStatus' => $last['status'] ?? null,
+            'lastDispatchedAt' => $last['dateCreated'] ?? null,
+            'lastResponseCode' => ($last !== null && $last['responseCode'] !== null) ? (int) $last['responseCode'] : null,
+        ];
+    }
+
+    /**
      * @param array<string, mixed> $row
      */
     private function rowToModel(array $row): IntegrationModel

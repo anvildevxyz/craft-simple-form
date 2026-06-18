@@ -45,6 +45,10 @@ class FormType extends SimpleFormObjectType
                 'type' => Type::nonNull(Type::listOf(Type::nonNull(FormFieldType::getType()))),
                 'description' => 'The form\'s fields in display order.',
             ],
+            'integrations' => [
+                'type' => Type::nonNull(Type::listOf(Type::nonNull(FormIntegrationType::getType()))),
+                'description' => 'The form\'s outbound integrations (name/type/enabled only; never settings or secrets).',
+            ],
         ];
     }
 }

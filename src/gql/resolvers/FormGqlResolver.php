@@ -31,7 +31,27 @@ final class FormGqlResolver
             'description' => $form->description,
             'siteId' => $siteId,
             'fields' => array_map([self::class, 'mapField'], $rawFields),
+            'integrations' => self::mapIntegrations((int) $form->id),
         ];
+    }
+
+    /**
+     * Expose a form's integrations read-only — name/type/enabled only. Settings
+     * (which may hold secrets) are deliberately never included.
+     *
+     * @return list<array{name: string, type: string, enabled: bool}>
+     */
+    private static function mapIntegrations(int $formId): array
+    {
+        $result = [];
+        foreach (Plugin::getInstance()->getIntegrations()->getIntegrationsForForm($formId) as $integration) {
+            $result[] = [
+                'name' => $integration->name,
+                'type' => $integration->type,
+                'enabled' => $integration->enabled,
+            ];
+        }
+        return $result;
     }
 
     /**
