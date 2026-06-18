@@ -19,6 +19,7 @@
                 <th>{{ 'Email To'|t('simple-form') }}</th>
                 <th>{{ 'Date Created'|t('simple-form') }}</th>
                 <th></th>
+                <th></th>
             </tr>
         </thead>
         <tbody>
@@ -32,6 +33,12 @@
                     <td>{{ form.handle }}</td>
                     <td>{{ form.emailTo }}</td>
                     <td>{{ form.dateCreated|date('short') }}</td>
+                    <td class="thin">
+                        <a class="btn small"
+                           href="{{ cpUrl('simple-form/forms/' ~ form.id ~ '/integrations') }}">
+                            {{ 'Integrations'|t('simple-form') }}
+                        </a>
+                    </td>
                     <td class="thin">
                         <a class="delete icon"
                            title="{{ 'Delete'|t('simple-form') }}"

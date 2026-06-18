@@ -70,9 +70,60 @@
             {% endfor %}
         </tbody>
     </table>
+
+    {% if integrationLogs is defined and integrationLogs %}
+        <hr>
+        <h3>{{ 'Integration Dispatches'|t('simple-form') }}</h3>
+        <table class="data fullwidth">
+            <thead>
+                <tr>
+                    <th>{{ 'Integration'|t('simple-form') }}</th>
+                    <th>{{ 'Status'|t('simple-form') }}</th>
+                    <th>{{ 'Code'|t('simple-form') }}</th>
+                    <th>{{ 'Attempt'|t('simple-form') }}</th>
+                    <th>{{ 'When'|t('simple-form') }}</th>
+                    {% if canManageIntegrations %}<th></th>{% endif %}
+                </tr>
+            </thead>
+            <tbody>
+                {% for log in integrationLogs %}
+                    <tr>
+                        <td>{{ integrationNames[log.integrationId] ?? ('#' ~ log.integrationId) }}</td>
+                        <td><span class="status-label status-{{ log.status }}">{{ log.status|upper }}</span></td>
+                        <td>{{ log.responseCode ?? '—' }}</td>
+                        <td>{{ log.attempts }}</td>
+                        <td>{{ log.dateCreated }}</td>
+                        {% if canManageIntegrations %}
+                            <td class="thin">
+                                <form method="post" style="display:inline">
+                                    {{ csrfInput() }}
+                                    <input type="hidden" name="action" value="simple-form/integrations/resend">
+                                    {{ redirectInput('simple-form/submissions/' ~ submission.id) }}
+                                    <input type="hidden" name="integrationId" value="{{ log.integrationId }}">
+                                    <input type="hidden" name="submissionId" value="{{ submission.id }}">
+                                    <button type="submit" class="btn small">{{ 'Resend'|t('simple-form') }}</button>
+                                </form>
+                            </td>
+                        {% endif %}
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    {% endif %}
 </div>
 
 <style>
+    .status-label {
+        display: inline-block;
+        padding: 2px 8px;
+        border-radius: 3px;
+        font-size: 11px;
+        font-weight: bold;
+    }
+    .status-success { background: #27ae60; color: #fff; }
+    .status-failed { background: #d0021b; color: #fff; }
+    .status-pending { background: #f5a623; color: #fff; }
+
     .buttons {
         margin-bottom: 20px;
     }

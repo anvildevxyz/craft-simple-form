@@ -1,0 +1,69 @@
+{% extends '_layouts/cp.twig' %}
+{% import '_includes/forms.twig' as forms %}
+
+{% set title = 'Integration'|t('simple-form') ~ ' — ' ~ (form.title ?: form.name) %}
+{% set selectedSubnavItem = 'forms' %}
+
+{% block content %}
+<div class="buttons">
+    <a class="btn" href="{{ cpUrl('simple-form/forms/' ~ form.id ~ '/integrations') }}">← {{ 'Back'|t('simple-form') }}</a>
+</div>
+
+{% if availableTypes is not null %}
+    {# Type picker for a brand-new integration #}
+    <h2>{{ 'Choose an integration type'|t('simple-form') }}</h2>
+    <ul>
+        {% for handle, name in availableTypes %}
+            <li>
+                <a class="btn" href="{{ cpUrl('simple-form/forms/' ~ form.id ~ '/integrations/new', { type: handle }) }}">
+                    {{ name }}
+                </a>
+            </li>
+        {% else %}
+            <li>{{ 'No integration types are available.'|t('simple-form') }}</li>
+        {% endfor %}
+    </ul>
+{% else %}
+    <form method="post" accept-charset="UTF-8">
+        {{ csrfInput() }}
+        <input type="hidden" name="action" value="simple-form/integrations/save">
+        <input type="hidden" name="formId" value="{{ form.id }}">
+        {% if integration.id %}<input type="hidden" name="integrationId" value="{{ integration.id }}">{% endif %}
+        <input type="hidden" name="type" value="{{ integration.type }}">
+
+        {{ forms.textField({
+            label: 'Name'|t('simple-form'),
+            id: 'name',
+            name: 'name',
+            value: integration.name,
+            required: true,
+        }) }}
+
+        {{ forms.lightswitchField({
+            label: 'Enabled'|t('simple-form'),
+            id: 'enabled',
+            name: 'enabled',
+            on: integration.enabled,
+        }) }}
+
+        <hr>
+        <h2>{{ type.displayName() }} {{ 'settings'|t('simple-form') }}</h2>
+
+        {% if errors is not empty %}
+            <ul class="errors">
+                {% for attr, attrErrors in errors %}
+                    {% for err in attrErrors %}<li>{{ err }}</li>{% endfor %}
+                {% endfor %}
+            </ul>
+        {% endif %}
+
+        {% namespace 'settings' %}
+            {{ type.settingsHtml(integration.settings)|raw }}
+        {% endnamespace %}
+
+        <div class="buttons">
+            <button type="submit" class="btn submit">{{ 'Save'|t('simple-form') }}</button>
+        </div>
+    </form>
+{% endif %}
+{% endblock %}

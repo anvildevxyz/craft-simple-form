@@ -121,6 +121,43 @@ class IntegrationsServiceTest extends SimpleFormTestCase
         $this->assertSame(DispatchStatus::PENDING, $row['status']);
     }
 
+    public function testValidateSettingsRejectsMissingWebhookUrl(): void
+    {
+        $this->requireCraft();
+        $type = Plugin::getInstance()->getIntegrationTypeRegistry()->getType('webhook');
+        $this->assertNotNull($type);
+
+        $errors = Plugin::getInstance()->getIntegrations()->validateSettings($type, ['method' => 'POST']);
+        $this->assertArrayHasKey('url', $errors);
+    }
+
+    public function testValidateSettingsAcceptsValidWebhook(): void
+    {
+        $this->requireCraft();
+        $type = Plugin::getInstance()->getIntegrationTypeRegistry()->getType('webhook');
+        $this->assertNotNull($type);
+
+        $errors = Plugin::getInstance()->getIntegrations()->validateSettings($type, [
+            'url' => 'https://example.test/hook',
+            'method' => 'POST',
+            'format' => 'json',
+        ]);
+        $this->assertSame([], $errors);
+    }
+
+    public function testValidateSettingsRejectsBadMethod(): void
+    {
+        $this->requireCraft();
+        $type = Plugin::getInstance()->getIntegrationTypeRegistry()->getType('webhook');
+        $this->assertNotNull($type);
+
+        $errors = Plugin::getInstance()->getIntegrations()->validateSettings($type, [
+            'url' => 'https://example.test/hook',
+            'method' => 'DELETE',
+        ]);
+        $this->assertArrayHasKey('method', $errors);
+    }
+
     public function testDeletingFormCascadesIntegrations(): void
     {
         $this->requireCraft();

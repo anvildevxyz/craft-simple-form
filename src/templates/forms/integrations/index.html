@@ -1,0 +1,82 @@
+{% extends '_layouts/cp.twig' %}
+
+{% set title = 'Integrations'|t('simple-form') ~ ' — ' ~ (form.title ?: form.name) %}
+{% set selectedSubnavItem = 'forms' %}
+
+{% block content %}
+<div class="buttons">
+    <a class="btn" href="{{ cpUrl('simple-form/forms/edit/' ~ form.id) }}">← {{ 'Back to form'|t('simple-form') }}</a>
+    <a class="btn submit add icon" href="{{ cpUrl('simple-form/forms/' ~ form.id ~ '/integrations/new') }}">
+        {{ 'New integration'|t('simple-form') }}
+    </a>
+</div>
+
+{% if integrations %}
+    <table class="data fullwidth collapsible">
+        <thead>
+            <tr>
+                <th>{{ 'Name'|t('simple-form') }}</th>
+                <th>{{ 'Type'|t('simple-form') }}</th>
+                <th>{{ 'Enabled'|t('simple-form') }}</th>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for integration in integrations %}
+                <tr data-id="{{ integration.id }}">
+                    <td>
+                        <a href="{{ cpUrl('simple-form/forms/' ~ form.id ~ '/integrations/' ~ integration.id) }}">
+                            {{ integration.name }}
+                        </a>
+                    </td>
+                    <td>{{ typeNames[integration.type] ?? integration.type }}</td>
+                    <td>
+                        <button type="button" class="status-toggle btn small{{ integration.enabled ? ' active' : '' }}"
+                                data-id="{{ integration.id }}">
+                            <span class="status {{ integration.enabled ? 'on' : 'off' }}"></span>
+                            {{ integration.enabled ? 'Enabled'|t('simple-form') : 'Disabled'|t('simple-form') }}
+                        </button>
+                    </td>
+                    <td class="thin">
+                        <a class="delete icon" title="{{ 'Delete'|t('simple-form') }}"
+                           role="button"
+                           data-id="{{ integration.id }}"></a>
+                    </td>
+                </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+{% else %}
+    <p>{{ 'No integrations yet. Add one to push submissions to a webhook or other service.'|t('simple-form') }}</p>
+{% endif %}
+
+<script>
+(function () {
+    var csrf = Craft.csrfTokenValue;
+    function post(url, body, cb) {
+        var xhr = new XMLHttpRequest();
+        xhr.open('POST', url, true);
+        xhr.setRequestHeader('X-Requested-With', 'XMLHttpRequest');
+        xhr.setRequestHeader('X-CSRF-Token', csrf);
+        xhr.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded');
+        xhr.onload = function () { if (xhr.status === 200) cb(JSON.parse(xhr.responseText)); };
+        xhr.send(body);
+    }
+    document.querySelectorAll('.status-toggle').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+            post('{{ cpUrl("simple-form/integrations/toggle") }}', 'integrationId=' + btn.dataset.id, function (r) {
+                if (r.success) location.reload();
+            });
+        });
+    });
+    document.querySelectorAll('.delete[data-id]').forEach(function (el) {
+        el.addEventListener('click', function () {
+            if (!confirm('{{ "Delete this integration?"|t("simple-form")|e("js") }}')) return;
+            post('{{ cpUrl("simple-form/integrations/delete") }}', 'integrationId=' + el.dataset.id, function (r) {
+                if (r.success) location.reload();
+            });
+        });
+    });
+})();
+</script>
+{% endblock %}

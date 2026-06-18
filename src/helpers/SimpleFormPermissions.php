@@ -7,6 +7,7 @@ class SimpleFormPermissions
     public const MANAGE_FORMS = 'simple-form:manageForms';
     public const VIEW_SUBMISSIONS = 'simple-form:viewSubmissions';
     public const MANAGE_SUBMISSIONS = 'simple-form:manageSubmissions';
+    public const MANAGE_INTEGRATIONS = 'simple-form:manageIntegrations';
     public const MANAGE_SETTINGS = 'simple-form:manageSettings';
 
     /**
@@ -17,7 +18,12 @@ class SimpleFormPermissions
         return [
             'heading' => 'Simple Form',
             'permissions' => [
-                self::MANAGE_FORMS => ['label' => 'Manage forms and fields'],
+                self::MANAGE_FORMS => [
+                    'label' => 'Manage forms and fields',
+                    'nested' => [
+                        self::MANAGE_INTEGRATIONS => ['label' => 'Manage form integrations'],
+                    ],
+                ],
                 self::VIEW_SUBMISSIONS => [
                     'label' => 'View submissions',
                     'nested' => [

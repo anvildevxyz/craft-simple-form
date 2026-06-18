@@ -285,6 +285,15 @@ class Plugin extends BasePlugin
         $event->rules['simple-form/forms/edit/<formId:\d+>'] = 'simple-form/forms/edit';
         $event->rules['simple-form/forms/save'] = 'simple-form/forms/save';
         $event->rules['simple-form/forms/delete/<formId:\d+>'] = 'simple-form/forms/delete';
+        // Per-form integrations management
+        $event->rules['simple-form/forms/<formId:\d+>/integrations'] = 'simple-form/integrations/index';
+        $event->rules['simple-form/forms/<formId:\d+>/integrations/new'] = 'simple-form/integrations/edit';
+        $event->rules['simple-form/forms/<formId:\d+>/integrations/<integrationId:\d+>'] = 'simple-form/integrations/edit';
+        $event->rules['simple-form/integrations/save'] = 'simple-form/integrations/save';
+        $event->rules['simple-form/integrations/delete'] = 'simple-form/integrations/delete';
+        $event->rules['simple-form/integrations/toggle'] = 'simple-form/integrations/toggle';
+        $event->rules['simple-form/integrations/resend'] = 'simple-form/integrations/resend';
+
         $event->rules['simple-form/submissions'] = 'simple-form/submissions/index';
         $event->rules['simple-form/submissions/<submissionId:\d+>'] = 'simple-form/submissions/view';
         $event->rules['simple-form/submissions/toggle-status'] = 'simple-form/submissions/toggle-status';

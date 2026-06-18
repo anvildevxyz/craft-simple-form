@@ -35,6 +35,16 @@ class SimpleFormPermissionsTest extends TestCase
         $this->assertArrayHasKey(SimpleFormPermissions::MANAGE_SETTINGS, $permissions);
     }
 
+    public function testManageIntegrationsIsNestedUnderManageForms(): void
+    {
+        $defs = SimpleFormPermissions::definitions();
+        $manageForms = $defs['permissions'][SimpleFormPermissions::MANAGE_FORMS];
+
+        $this->assertSame('simple-form:manageIntegrations', SimpleFormPermissions::MANAGE_INTEGRATIONS);
+        $this->assertArrayHasKey('nested', $manageForms);
+        $this->assertArrayHasKey(SimpleFormPermissions::MANAGE_INTEGRATIONS, $manageForms['nested']);
+    }
+
     public function testManageSubmissionsIsNestedUnderViewSubmissions(): void
     {
         $defs = SimpleFormPermissions::definitions();

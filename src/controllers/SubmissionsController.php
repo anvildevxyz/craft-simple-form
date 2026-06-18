@@ -8,6 +8,7 @@ use fabianhaef\simpleform\elements\Form;
 use fabianhaef\simpleform\elements\Submission;
 use fabianhaef\simpleform\elements\SubmissionStatus;
 use fabianhaef\simpleform\helpers\SimpleFormPermissions;
+use fabianhaef\simpleform\Plugin;
 use yii\web\Response;
 
 class SubmissionsController extends Controller
@@ -139,10 +140,22 @@ class SubmissionsController extends Controller
         // $submission->data is stored as a decoded array (json column).
         $data = is_array($submission->data) ? $submission->data : [];
 
+        // Integration dispatch history for this submission, latest per integration.
+        $integrationsService = Plugin::getInstance()->getIntegrations();
+        $logs = $integrationsService->getLogsForSubmission((int) $submission->id);
+        $integrations = $form ? $integrationsService->getIntegrationsForForm((int) $form->id) : [];
+        $integrationNames = [];
+        foreach ($integrations as $integration) {
+            $integrationNames[(int) $integration->id] = $integration->name;
+        }
+
         return $this->renderTemplate('simple-form/submissions/view', [
             'submission' => $submission,
             'form' => $form,
             'data' => $data,
+            'integrationLogs' => $logs,
+            'integrationNames' => $integrationNames,
+            'canManageIntegrations' => Craft::$app->getUser()->checkPermission(SimpleFormPermissions::MANAGE_INTEGRATIONS),
         ]);
     }
 

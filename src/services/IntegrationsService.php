@@ -166,6 +166,41 @@ class IntegrationsService extends Component
         return $result;
     }
 
+    /**
+     * Validate a settings array against a connector's own rules.
+     *
+     * @param array<string, mixed> $settings
+     * @return array<string, array<int, string>> attribute => errors (empty if valid)
+     */
+    public function validateSettings(\fabianhaef\simpleform\integrations\IntegrationTypeInterface $type, array $settings): array
+    {
+        $rules = $type->defineSettingsRules();
+
+        // DynamicModel must know every attribute referenced by a rule.
+        $attributes = $settings;
+        foreach ($rules as $rule) {
+            foreach ((array) ($rule[0] ?? []) as $attr) {
+                if (!array_key_exists($attr, $attributes)) {
+                    $attributes[$attr] = null;
+                }
+            }
+        }
+
+        $model = new \yii\base\DynamicModel($attributes);
+        foreach ($rules as $rule) {
+            $validator = $rule[1] ?? 'safe';
+            $options = [];
+            foreach ($rule as $key => $value) {
+                if (!is_int($key)) {
+                    $options[$key] = $value;
+                }
+            }
+            $model->addRule((array) ($rule[0] ?? []), $validator, $options);
+        }
+
+        return $model->validate() ? [] : $model->getErrors();
+    }
+
     public function deleteIntegration(int $id): bool
     {
         $count = Craft::$app->getDb()->createCommand()
