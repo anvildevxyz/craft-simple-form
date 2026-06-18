@@ -110,4 +110,8 @@ return [
     'Token Management' => 'Token Management',
     'Issue and revoke the bearer tokens MCP clients authenticate with.' => 'Issue and revoke the bearer tokens MCP clients authenticate with.',
     'The sender address is required; the sender name is optional.' => 'The sender address is required; the sender name is optional.',
+    'Create your first form to start collecting submissions.' => 'Create your first form to start collecting submissions.',
+    'Submissions appear here once your forms are filled out.' => 'Submissions appear here once your forms are filled out.',
+    'No submissions match your filters.' => 'No submissions match your filters.',
+    'Enable the MCP server above to issue and manage access tokens.' => 'Enable the MCP server above to issue and manage access tokens.',
 ];

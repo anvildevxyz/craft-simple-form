@@ -36,6 +36,10 @@
 <hr>
 
 <h3>{{ 'Token Management'|t('simple-form') }}</h3>
+{% if not (settings.enableMcp ?? false) %}
+    {# Tokens are only useful once the endpoint is live, so gate the UI (#102). #}
+    <p class="light">{{ 'Enable the MCP server above to issue and manage access tokens.'|t('simple-form') }}</p>
+{% else %}
 <p class="light">{{ 'Issue and revoke the bearer tokens MCP clients authenticate with.'|t('simple-form') }}</p>
 
 {# One-time secret display, immediately after creation. #}
@@ -127,3 +131,4 @@
         <button type="submit" class="btn submit">{{ 'Create token'|t('simple-form') }}</button>
     </div>
 </form>
+{% endif %}

@@ -5,7 +5,10 @@
 {% do craft.app.view.registerAssetBundle('fabianhaef\\simpleform\\web\\assets\\cp\\SimpleFormCpAsset') %}
 
 {% block content %}
-{% if stats is defined %}
+{# On a true first run (no submissions at all) the stats + filter bar are
+   noise, so they only appear once at least one submission exists (#102). #}
+{% set hasAnySubmissions = (stats.total ?? 0) > 0 %}
+{% if hasAnySubmissions %}
     {# Stats summary, ported from the old list.html. Each card is a status
        filter link; the card matching the active status is highlighted. #}
     <div class="submission-stats">
@@ -25,6 +28,7 @@
         {% endfor %}
     </div>
 {% endif %}
+{% if hasAnySubmissions %}
 <div class="buttons">
     <input type="text" class="text" id="search-input" placeholder="{{ 'Search submissions…'|t('simple-form') }}" value="{{ search ?? '' }}">
     <select id="form-filter">
@@ -51,6 +55,7 @@
            dateTo: dateTo,
        }) }}">{{ 'Export CSV'|t('simple-form') }}</a>
 </div>
+{% endif %}
 
 {% if submissions %}
     <table class="data fullwidth">
@@ -115,7 +120,15 @@
         </nav>
     {% endif %}
 {% else %}
-    <p>{{ 'No submissions yet.'|t('simple-form') }}</p>
+    <div class="zilch sf-empty-state">
+        {% if hasAnySubmissions %}
+            {# Has submissions, but the active filter matched none. #}
+            <p>{{ 'No submissions match your filters.'|t('simple-form') }}</p>
+        {% else %}
+            <p class="sf-empty-heading">{{ 'No submissions yet.'|t('simple-form') }}</p>
+            <p class="light">{{ 'Submissions appear here once your forms are filled out.'|t('simple-form') }}</p>
+        {% endif %}
+    </div>
 {% endif %}
 
 {% endblock %}

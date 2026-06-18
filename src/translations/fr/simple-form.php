@@ -116,4 +116,8 @@ return [
     'Token Management' => 'Gestion des jetons',
     'Issue and revoke the bearer tokens MCP clients authenticate with.' => 'Émettez et révoquez les jetons Bearer avec lesquels les clients MCP s’authentifient.',
     'The sender address is required; the sender name is optional.' => 'L’adresse de l’expéditeur est obligatoire ; le nom est facultatif.',
+    'Create your first form to start collecting submissions.' => 'Créez votre premier formulaire pour commencer à collecter des soumissions.',
+    'Submissions appear here once your forms are filled out.' => 'Les soumissions apparaîtront ici une fois vos formulaires remplis.',
+    'No submissions match your filters.' => 'Aucune soumission ne correspond à vos filtres.',
+    'Enable the MCP server above to issue and manage access tokens.' => 'Activez le serveur MCP ci-dessus pour émettre et gérer les jetons d’accès.',
 ];

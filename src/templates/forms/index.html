@@ -56,6 +56,10 @@
         </tbody>
     </table>
 {% else %}
-    <p>{{ 'No forms yet.'|t('simple-form') }}</p>
+    <div class="zilch sf-empty-state">
+        <p class="sf-empty-heading">{{ 'No forms yet.'|t('simple-form') }}</p>
+        <p class="light">{{ 'Create your first form to start collecting submissions.'|t('simple-form') }}</p>
+        <a class="btn submit add icon" href="{{ cpUrl('simple-form/forms/new') }}">{{ 'New Form'|t('simple-form') }}</a>
+    </div>
 {% endif %}
 {% endblock %}

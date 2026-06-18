@@ -116,4 +116,8 @@ return [
     'Token Management' => 'Gestione dei token',
     'Issue and revoke the bearer tokens MCP clients authenticate with.' => 'Emetti e revoca i token Bearer con cui si autenticano i client MCP.',
     'The sender address is required; the sender name is optional.' => 'L’indirizzo del mittente è obbligatorio; il nome è facoltativo.',
+    'Create your first form to start collecting submissions.' => 'Crea il tuo primo modulo per iniziare a raccogliere invii.',
+    'Submissions appear here once your forms are filled out.' => 'Gli invii appariranno qui una volta compilati i moduli.',
+    'No submissions match your filters.' => 'Nessun invio corrisponde ai tuoi filtri.',
+    'Enable the MCP server above to issue and manage access tokens.' => 'Abilita il server MCP qui sopra per emettere e gestire i token di accesso.',
 ];

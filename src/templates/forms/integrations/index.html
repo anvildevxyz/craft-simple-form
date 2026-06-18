@@ -61,7 +61,10 @@
         </tbody>
     </table>
 {% else %}
-    <p>{{ 'No integrations yet. Add one to push submissions to a webhook or other service.'|t('simple-form') }}</p>
+    <div class="zilch sf-empty-state">
+        <p>{{ 'No integrations yet. Add one to push submissions to a webhook or other service.'|t('simple-form') }}</p>
+        <a class="btn submit add icon" href="{{ cpUrl('simple-form/forms/' ~ form.id ~ '/integrations/new') }}">{{ 'New integration'|t('simple-form') }}</a>
+    </div>
 {% endif %}
 </div>
 {% endblock %}

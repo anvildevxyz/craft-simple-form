@@ -110,6 +110,21 @@
 }
 .sf-log-message.is-error { color: #d0021b; }
 
+/* ---------- Empty / first-run states ---------- */
+.sf-empty-state {
+    padding: 40px 20px;
+    text-align: center;
+}
+.sf-empty-state .sf-empty-heading {
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--text-color, #3f4d5a);
+    margin-bottom: 6px;
+}
+.sf-empty-state .btn {
+    margin-top: 14px;
+}
+
 /* ---------- Forms index: delete control ---------- */
 .delete {
     cursor: pointer;
