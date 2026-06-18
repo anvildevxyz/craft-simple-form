@@ -152,6 +152,60 @@
         rerun(); // set initial visibility before first paint of interaction
     }
 
+    // ---- multi-step navigation -------------------------------------------
+    // Reveals one .simple-form-step at a time with next/back. Each step is
+    // validated (native HTML5 validity) before advancing; conditionally-hidden
+    // inputs are disabled by initConditions, so they're skipped here. The server
+    // still validates the whole submission, so this is UX only.
+
+    function initSteps(form) {
+        var nav = form.querySelector(".simple-form-step-nav");
+        if (!nav) { return; }
+        var steps = Array.prototype.slice.call(form.querySelectorAll(".simple-form-step"));
+        if (steps.length < 2) { return; }
+
+        var backBtn = nav.querySelector(".simple-form-step-back");
+        var nextBtn = nav.querySelector(".simple-form-step-next");
+        var submitBtn = nav.querySelector(".simple-form-submit-btn");
+        var progress = nav.querySelector(".simple-form-step-progress");
+        var current = 0;
+
+        function render() {
+            steps.forEach(function (s, i) { s.hidden = i !== current; });
+            var last = current === steps.length - 1;
+            if (backBtn) { backBtn.hidden = current === 0; }
+            if (nextBtn) { nextBtn.hidden = last; }
+            if (submitBtn) { submitBtn.hidden = !last; }
+            if (progress) { progress.textContent = "Step " + (current + 1) + " of " + steps.length; }
+        }
+
+        function currentStepValid() {
+            var controls = steps[current].querySelectorAll("input, select, textarea");
+            for (var i = 0; i < controls.length; i++) {
+                var c = controls[i];
+                if (c.disabled) { continue; }
+                if (typeof c.checkValidity === "function" && !c.checkValidity()) {
+                    if (typeof c.reportValidity === "function") { c.reportValidity(); }
+                    return false;
+                }
+            }
+            return true;
+        }
+
+        if (nextBtn) {
+            nextBtn.addEventListener("click", function () {
+                if (currentStepValid() && current < steps.length - 1) { current++; render(); }
+            });
+        }
+        if (backBtn) {
+            backBtn.addEventListener("click", function () {
+                if (current > 0) { current--; render(); }
+            });
+        }
+
+        render();
+    }
+
     // ---- submit ----------------------------------------------------------
 
     function initForm(form) {
@@ -161,6 +215,7 @@
         form.dataset.simpleFormBound = "1";
 
         initConditions(form);
+        initSteps(form);
 
         form.addEventListener("submit", function (e) {
             e.preventDefault();

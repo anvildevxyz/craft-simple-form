@@ -423,6 +423,13 @@
         errRow._input.appendChild(errHint);
         inspector.appendChild(errRow);
 
+        inspector.appendChild(numberRow('Step / Page', (f.config && f.config.page) || '', function(v) {
+            f.config = f.config || {};
+            var n = parseInt(v, 10);
+            if (v === '' || v == null || isNaN(n) || n < 1) { delete f.config.page; } else { f.config.page = n; }
+            serialize();
+        }));
+
         renderTypeConfig(f);
         inspector.appendChild(conditionsSection(f));
     }

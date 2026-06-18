@@ -55,6 +55,10 @@ class FormFieldType extends SimpleFormObjectType
                 'type' => Type::int(),
                 'description' => 'Display order within the form (ascending).',
             ],
+            'page' => [
+                'type' => Type::nonNull(Type::int()),
+                'description' => 'The 1-based step/page this field belongs to (1 for single-page forms).',
+            ],
             'placeholder' => [
                 'type' => Type::string(),
                 'description' => 'Placeholder text, when configured.',

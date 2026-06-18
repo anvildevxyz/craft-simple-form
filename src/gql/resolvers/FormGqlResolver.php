@@ -81,6 +81,7 @@ final class FormGqlResolver
             'helpText' => ($row['helpText'] ?? '') !== '' ? $row['helpText'] : null,
             'required' => $required,
             'sortOrder' => isset($row['sortOrder']) ? (int) $row['sortOrder'] : null,
+            'page' => self::pageOf($config),
             'placeholder' => self::stringOrNull($config['placeholder'] ?? null),
             'options' => self::mapOptions($config['options'] ?? null),
             'validation' => self::mapValidation($config, $required),
@@ -178,6 +179,17 @@ final class FormGqlResolver
             'max' => self::floatOrNull($config['max'] ?? null),
             'pattern' => self::stringOrNull($config['pattern'] ?? null),
         ];
+    }
+
+    /**
+     * The 1-based step/page for a field (defaults to 1).
+     *
+     * @param array<string, mixed> $config
+     */
+    private static function pageOf(array $config): int
+    {
+        $page = $config['page'] ?? 1;
+        return (is_numeric($page) && (int) $page >= 1) ? (int) $page : 1;
     }
 
     private static function stringOrNull(mixed $value): ?string

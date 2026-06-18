@@ -8,6 +8,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- Multi-step / multi-page forms: assign each field a step via its “Step / Page”
+  number in the builder; the rendered form shows one step at a time with
+  next/back navigation, a progress indicator, and per-step client validation. The
+  final submit still creates a single submission, and conditionally-hidden fields
+  are skipped during step validation. Single-page forms are unchanged. The step is
+  exposed on `SimpleFormField.page` (GraphQL) and in the MCP field config.
 - File-upload field type: visitors can attach files, saved as Craft Assets in a
   configurable volume, with server-enforced extension allowlist, max size, and
   single/multiple limits. Uploaded files are linked in the notification email and
