@@ -209,13 +209,21 @@ class SubmissionService extends Component
             return ['submission' => null, 'errors' => ['submission' => ['Failed to save submission']]];
         }
 
-        // (8) Fire the after-save event.
+        // (8) If the form collects payment, create the pending order now (before
+        // the after-save dispatch) so integrations + email are withheld until the
+        // payment completes. Skipped for spam.
+        $awaitingPayment = !$isSpam
+            && Plugin::getInstance()->getPayments()->prepare($form, $submission, $data);
+
+        // (9) Fire the after-save event. The integration dispatch listener
+        // self-skips while a submission is awaiting payment.
         $afterEvent = new SubmissionEvent($submission, $form, $data, true);
         Plugin::getInstance()->trigger(Plugin::EVENT_AFTER_SUBMISSION_SAVE, $afterEvent);
 
-        // (9) Send the notification email when a recipient is configured —
-        // skipped for spam-flagged submissions.
-        if ($form->emailTo && !$isSpam) {
+        // (10) Send notifications (notification rows or the legacy email columns;
+        // EmailService no-ops when neither is configured). Skipped for spam and
+        // while awaiting payment — the email fires once the order completes.
+        if (!$isSpam && !$awaitingPayment) {
             Plugin::getInstance()->getEmailService()->sendSubmissionEmail($form, $submission, $data);
         }
 

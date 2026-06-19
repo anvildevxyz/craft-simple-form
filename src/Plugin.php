@@ -46,6 +46,7 @@ use fabianhaef\simpleform\services\FormStructureService;
 use fabianhaef\simpleform\services\IntegrationsService;
 use fabianhaef\simpleform\services\IntegrationTypeRegistry;
 use fabianhaef\simpleform\services\NotificationsService;
+use fabianhaef\simpleform\services\PaymentsService;
 use fabianhaef\simpleform\services\ReportsService;
 use fabianhaef\simpleform\services\RetentionService;
 use fabianhaef\simpleform\services\SubmissionService;
@@ -77,7 +78,7 @@ class Plugin extends BasePlugin
     /** The plugin's single commercial edition. */
     public const EDITION_PRO = 'pro';
 
-    public string $schemaVersion = '2.8.0';
+    public string $schemaVersion = '2.9.0';
     public bool $hasCpSection = true;
     public bool $hasCpSettings = false;
     public bool $hasCpPermissions = true;
@@ -117,6 +118,7 @@ class Plugin extends BasePlugin
             'reports' => ReportsService::class,
             'notifications' => NotificationsService::class,
             'audit' => AuditService::class,
+            'payments' => PaymentsService::class,
         ]);
 
         Craft::$app->getI18n()->translations['simple-form'] ??= [
@@ -203,6 +205,21 @@ class Plugin extends BasePlugin
                 $this->getIntegrations()->dispatchForSubmission($e->submission);
             }
         );
+
+        // When a linked Commerce order completes, mark the submission paid and
+        // release its withheld notifications/integrations. Soft dependency: only
+        // wired when Commerce is installed.
+        if (class_exists(\craft\commerce\elements\Order::class)) {
+            Event::on(
+                \craft\commerce\elements\Order::class,
+                \craft\commerce\elements\Order::EVENT_AFTER_COMPLETE_ORDER,
+                function(Event $e): void {
+                    /** @var \craft\commerce\elements\Order $order */
+                    $order = $e->sender;
+                    $this->getPayments()->handleOrderCompleted((int) $order->id);
+                }
+            );
+        }
     }
 
     /**
@@ -373,6 +390,13 @@ class Plugin extends BasePlugin
     {
         /** @var AuditService $service */
         $service = $this->get('audit');
+        return $service;
+    }
+
+    public function getPayments(): PaymentsService
+    {
+        /** @var PaymentsService $service */
+        $service = $this->get('payments');
         return $service;
     }
 

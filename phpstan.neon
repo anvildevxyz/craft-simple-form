@@ -27,4 +27,13 @@ parameters:
         -
             message: '#Parameter \#3 \$type of method yii\\db\\Migration::addColumn\(\) expects string, yii\\db\\ColumnSchemaBuilder given#'
             path: src/migrations/
+        # Craft Commerce is a SOFT dependency (#116): the Payment field + order
+        # flow are guarded by class_exists() and only run when Commerce is
+        # installed, which the plugin's standalone vendor does not include. Ignore
+        # the resulting unknown-class noise on the guarded paths.
+        -
+            message: '#unknown class craft\\commerce\\#'
+            paths:
+                - src/Plugin.php
+                - src/services/PaymentsService.php
     reportUnmatchedIgnoredErrors: false

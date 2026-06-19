@@ -8,6 +8,7 @@ use fabianhaef\simpleform\fields\EmailFieldType;
 use fabianhaef\simpleform\fields\FieldType;
 use fabianhaef\simpleform\fields\FileFieldType;
 use fabianhaef\simpleform\fields\NumberFieldType;
+use fabianhaef\simpleform\fields\PaymentFieldType;
 use fabianhaef\simpleform\fields\RadioFieldType;
 use fabianhaef\simpleform\fields\SelectFieldType;
 use fabianhaef\simpleform\fields\TextareaFieldType;
@@ -41,6 +42,7 @@ class FieldTypeRegistry extends Component
         $this->registerFieldType(DateFieldType::class);
         $this->registerFieldType(NumberFieldType::class);
         $this->registerFieldType(FileFieldType::class);
+        $this->registerFieldType(PaymentFieldType::class);
     }
 
     /**

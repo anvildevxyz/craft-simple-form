@@ -182,6 +182,12 @@ class IntegrationsService extends Component
      */
     public function dispatchForSubmission(Submission $submission): void
     {
+        // Withhold dispatch while the submission is awaiting payment; it fires
+        // again from PaymentsService::markPaid() once the order completes.
+        if (Plugin::getInstance()->getPayments()->isAwaitingPayment($submission)) {
+            return;
+        }
+
         $integrations = $this->getEnabledIntegrationsForForm((int) $submission->formId);
         if ($integrations === []) {
             return;

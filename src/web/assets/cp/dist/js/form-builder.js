@@ -12,7 +12,8 @@
 
     var TYPE_LABELS = {
         text: 'Text', email: 'Email', textarea: 'Textarea', select: 'Select',
-        checkbox: 'Checkbox', radio: 'Radio', date: 'Date', number: 'Number', file: 'File Upload'
+        checkbox: 'Checkbox', radio: 'Radio', date: 'Date', number: 'Number', file: 'File Upload',
+        payment: 'Payment'
     };
     var OPTION_TYPES = ['select', 'checkbox', 'radio'];
 
@@ -67,6 +68,9 @@
     function defaultConfig(type) {
         if (OPTION_TYPES.indexOf(type) !== -1) {
             return { options: [{ label: 'Option 1', value: 'option1' }] };
+        }
+        if (type === 'payment') {
+            return { amountType: 'fixed', currency: 'USD' };
         }
         return {};
     }
@@ -337,6 +341,28 @@
             cb.addEventListener('change', function() { c.multiple = cb.checked; serialize(); });
             multRow._input.appendChild(cb);
             inspector.appendChild(multRow);
+        } else if (f.type === 'payment') {
+            var atRow = row('Amount Type');
+            atRow._input.appendChild(selectEl(
+                [{ value: 'fixed', label: 'Fixed amount' }, { value: 'field', label: 'From a field' }],
+                c.amountType || 'fixed',
+                function(v) { c.amountType = v; serialize(); }
+            ));
+            inspector.appendChild(atRow);
+
+            inspector.appendChild(numberRow('Fixed Amount', c.amount, function(v) { setNum(c, 'amount', v); }));
+
+            var afRow = row('Amount Field Handle');
+            afRow._input.appendChild(textInput(c.amountField || '', function(v) {
+                if (v.trim() === '') { delete c.amountField; } else { c.amountField = v.trim(); } serialize();
+            }));
+            inspector.appendChild(afRow);
+
+            var curRow = row('Currency');
+            curRow._input.appendChild(textInput(c.currency || 'USD', function(v) {
+                c.currency = v.trim().toUpperCase(); serialize();
+            }));
+            inspector.appendChild(curRow);
         }
     }
 

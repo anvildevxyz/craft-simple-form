@@ -13,6 +13,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   (see LICENSE.md).
 
 ### Added
+- **Payment field** (requires Craft Commerce): add a Payment field to a form to
+  collect a fixed or field-driven amount. On submit a pending Commerce order is
+  created (a Donation line item for the amount) and the submission records its
+  order id + payment status; notifications and integrations are held until the
+  order is paid, then released automatically. Commerce is an optional/soft
+  dependency — without it the field is inert.
 - Japanese, Dutch and Portuguese translation catalogs (now 8 locales: en/de/es/fr/it/ja/nl/pt).
 - Audit log (Settings → Audit Log): an append-only trail of form, integration,
   notification and submission-status changes (actor, action, target, summary),

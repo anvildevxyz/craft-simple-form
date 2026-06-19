@@ -19,6 +19,10 @@ class Submission extends Element
     public ?array $data = null;
     public ?int $userId = null;
     public string $readStatus = SubmissionStatus::NEW;
+    /** null = no payment; 'pending' = awaiting payment; 'paid' = complete. */
+    public ?string $paymentStatus = null;
+    public ?string $paymentAmount = null;
+    public ?int $orderId = null;
 
     public static function displayName(): string
     {
@@ -123,6 +127,9 @@ class Submission extends Element
             'data' => $this->data,
             'userId' => $this->userId,
             'readStatus' => $this->readStatus,
+            'paymentStatus' => $this->paymentStatus,
+            'paymentAmount' => $this->paymentAmount,
+            'orderId' => $this->orderId,
             'dateUpdated' => $now,
         ];
 

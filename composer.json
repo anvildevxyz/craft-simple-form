@@ -18,7 +18,8 @@
     "codeception/module-yii2": "^1.1"
   },
   "suggest": {
-    "stimmt/craft-mcp": "Exposes Simple Form's read-only integration tools (plus form/submission tools) over the Model Context Protocol so AI agents can introspect forms and integration dispatch health."
+    "stimmt/craft-mcp": "Exposes Simple Form's read-only integration tools (plus form/submission tools) over the Model Context Protocol so AI agents can introspect forms and integration dispatch health.",
+    "craftcms/commerce": "Enables the Payment field — collect a payment on submit via a Commerce order; notifications/integrations are held until the order is paid."
   },
   "autoload": {
     "psr-4": {
