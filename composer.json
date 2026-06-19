@@ -2,7 +2,7 @@
   "name": "fabianhaef/craft-simple-form",
   "description": "A lightweight, translatable form builder for Craft CMS",
   "type": "craft-plugin",
-  "license": "MIT",
+  "license": "proprietary",
   "keywords": ["craft", "cms", "craftcms", "forms", "form-builder", "translatable"],
   "require": {
     "php": "^8.2",

@@ -74,10 +74,23 @@ class Plugin extends BasePlugin
      */
     public const EVENT_REGISTER_CAPTCHA_PROVIDERS = 'registerCaptchaProviders';
 
+    /** The plugin's single commercial edition. */
+    public const EDITION_PRO = 'pro';
+
     public string $schemaVersion = '2.8.0';
     public bool $hasCpSection = true;
     public bool $hasCpSettings = false;
     public bool $hasCpPermissions = true;
+
+    /**
+     * @return array<int, string>
+     */
+    public static function editions(): array
+    {
+        return [
+            self::EDITION_PRO,
+        ];
+    }
 
     public static function getInstance(): Plugin
     {

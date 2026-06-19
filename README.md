@@ -78,4 +78,5 @@ development roadmap and feature details.
 
 ## License
 
-MIT
+This is commercial software. Simple Form ships a single **Pro** edition; see
+[LICENSE.md](LICENSE.md) for the terms.

@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- Simple Form is now commercial software with a single **Pro** edition
+  (`Plugin::editions()`); the license changed from MIT to proprietary
+  (see LICENSE.md).
+
 ### Added
 - Japanese, Dutch and Portuguese translation catalogs (now 8 locales: en/de/es/fr/it/ja/nl/pt).
 - Audit log (Settings → Audit Log): an append-only trail of form, integration,
