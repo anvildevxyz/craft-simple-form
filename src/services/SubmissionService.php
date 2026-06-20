@@ -53,6 +53,12 @@ class SubmissionService extends Component
         $pendingUploads = [];
         $fileErrors = [];
         foreach ($formModel->getFields() as $fieldId => $field) {
+            // Presentational/layout blocks (heading, divider, html) capture no
+            // value: never collect a posted value for them, so a crafted
+            // field_<id> POST against a layout block is ignored.
+            if (!$field->isInputType()) {
+                continue;
+            }
             if ($field->getType() === FileFieldType::getType()) {
                 $files = UploadedFile::getInstancesByName('field_' . $fieldId);
                 $config = $field->getConfig();
@@ -178,6 +184,9 @@ class SubmissionService extends Component
         // snapshot (a field's visibility may depend on any other field).
         $valuesByHandle = [];
         foreach ($formModel->getFields() as $fieldId => $field) {
+            if (!$field->isInputType()) {
+                continue;
+            }
             $valuesByHandle[$field->getName()] = $this->valueForField($values, (int) $fieldId);
         }
 
@@ -190,6 +199,13 @@ class SubmissionService extends Component
         $errors = [];
 
         foreach ($formModel->getFields() as $fieldId => $field) {
+            // Layout blocks are never validated and never written to
+            // submission.data — no phantom field_<id> entry, no column, no
+            // validation error even if a `required` config is forged.
+            if (!$field->isInputType()) {
+                continue;
+            }
+
             if (!$field->isVisible($valuesByHandle)) {
                 continue;
             }

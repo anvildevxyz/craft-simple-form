@@ -4,9 +4,12 @@ namespace fabianhaef\simpleform\services;
 
 use fabianhaef\simpleform\fields\CheckboxFieldType;
 use fabianhaef\simpleform\fields\DateFieldType;
+use fabianhaef\simpleform\fields\DividerFieldType;
 use fabianhaef\simpleform\fields\EmailFieldType;
 use fabianhaef\simpleform\fields\FieldType;
 use fabianhaef\simpleform\fields\FileFieldType;
+use fabianhaef\simpleform\fields\HeadingFieldType;
+use fabianhaef\simpleform\fields\HtmlFieldType;
 use fabianhaef\simpleform\fields\NumberFieldType;
 use fabianhaef\simpleform\fields\PaymentFieldType;
 use fabianhaef\simpleform\fields\RadioFieldType;
@@ -43,6 +46,28 @@ class FieldTypeRegistry extends Component
         $this->registerFieldType(NumberFieldType::class);
         $this->registerFieldType(FileFieldType::class);
         $this->registerFieldType(PaymentFieldType::class);
+
+        // Presentational/layout blocks (value-less; isInput() === false).
+        $this->registerFieldType(HeadingFieldType::class);
+        $this->registerFieldType(DividerFieldType::class);
+        $this->registerFieldType(HtmlFieldType::class);
+    }
+
+    /**
+     * The registered non-input (presentational/layout) field-type handles —
+     * heading, divider, html. Skipped by validation, storage, and export.
+     *
+     * @return list<string>
+     */
+    public function layoutTypeHandles(): array
+    {
+        $handles = [];
+        foreach ($this->fieldTypes as $type => $class) {
+            if (!(new $class())->isInput()) {
+                $handles[] = $type;
+            }
+        }
+        return $handles;
     }
 
     /**

@@ -61,6 +61,22 @@ class FieldModel extends Model
     }
 
     /**
+     * Whether this field collects a submission value.
+     *
+     * Resolves the field type via the registry and delegates to
+     * {@see \fabianhaef\simpleform\fields\FieldType::isInput()}, mirroring how
+     * {@see self::isVisible()}/{@see self::isRequired()} delegate. Presentational
+     * layout blocks (heading, divider, html) return false: they render but are
+     * never validated, stored, or exported. An unknown type is treated as an
+     * input so a typo can never silently drop a value.
+     */
+    public function isInputType(): bool
+    {
+        $fieldType = Plugin::getInstance()->getFieldTypeRegistry()->getFieldType($this->type, $this->config);
+        return $fieldType === null || $fieldType->isInput();
+    }
+
+    /**
      * Is this field visible given the full set of submitted values?
      *
      * Fields with no conditional logic are always visible, so this is a no-op

@@ -22,6 +22,20 @@ abstract class FieldType
     abstract public static function getLabel(): string;
 
     /**
+     * Whether this field collects a submission value.
+     *
+     * Presentational/layout blocks (heading, divider, html) return false: they
+     * render on the public form but are never validated, stored, or exported.
+     * The rest of the pipeline keys off this one seam, so a non-input field
+     * never lands in {@see \fabianhaef\simpleform\elements\Submission::$data},
+     * never produces a column, and can never block submission.
+     */
+    public function isInput(): bool
+    {
+        return true;
+    }
+
+    /**
      * @return array<string, mixed>
      */
     public function getConfig(): array
