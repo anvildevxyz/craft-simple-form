@@ -36,6 +36,11 @@ class SettingsController extends Controller
             'enableAkismet',
             'akismetApiKey',
             'akismetMode',
+            'enableDenylists',
+            'denylistMode',
+            'blockedKeywords',
+            'blockedEmails',
+            'blockedIps',
             'submitRateLimitPerMinute',
             'allowGraphqlCaptchaBypass',
         ],
@@ -45,7 +50,7 @@ class SettingsController extends Controller
         'mcp' => ['enableMcp'],
     ];
 
-    private const BOOL_FIELDS = ['enableHoneypot', 'enableCaptcha', 'enableMcp', 'enableAkismet', 'anonymizeInsteadOfDelete', 'allowGraphqlCaptchaBypass'];
+    private const BOOL_FIELDS = ['enableHoneypot', 'enableCaptcha', 'enableMcp', 'enableAkismet', 'enableDenylists', 'anonymizeInsteadOfDelete', 'allowGraphqlCaptchaBypass'];
     private const FLOAT_FIELDS = ['recaptchaV3MinScore'];
     private const INT_FIELDS = ['retainSubmissionsDays', 'retainIntegrationLogsDays', 'retainAuditLogDays', 'submitRateLimitPerMinute'];
 

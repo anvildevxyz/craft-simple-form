@@ -71,6 +71,18 @@ class SettingsTabsRenderTest extends SimpleFormTestCase
         $this->assertStringContainsString('allowGraphqlCaptchaBypass', $html);
     }
 
+    public function testSpamTabRendersDenylistControls(): void
+    {
+        $this->requireCraft();
+        $html = $this->render('spam', new Settings());
+
+        $this->assertStringContainsString('name="enableDenylists"', $html);
+        $this->assertStringContainsString('name="denylistMode"', $html);
+        $this->assertStringContainsString('name="blockedKeywords"', $html);
+        $this->assertStringContainsString('name="blockedEmails"', $html);
+        $this->assertStringContainsString('name="blockedIps"', $html);
+    }
+
     public function testMcpTokenUiGatedOnEnableFlag(): void
     {
         $this->requireCraft();

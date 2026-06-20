@@ -23,11 +23,31 @@ class Form extends Element
      */
     public const SUPPORTED_PROPAGATION_METHODS = ['none', 'siteGroup', 'language', 'all'];
 
+    /** Duplicate-dedupe key: the first email field's value. */
+    public const DUPLICATE_KEY_EMAIL = 'email';
+    /** Duplicate-dedupe key: a hash of the persisted data payload. */
+    public const DUPLICATE_KEY_CONTENT = 'content';
+    /** Duplicate-dedupe key: the submitter's source IP. */
+    public const DUPLICATE_KEY_IP = 'ip';
+
+    /**
+     * Every valid {@see self::$duplicateKey} value.
+     *
+     * @var list<string>
+     */
+    public const DUPLICATE_KEYS = [self::DUPLICATE_KEY_EMAIL, self::DUPLICATE_KEY_CONTENT, self::DUPLICATE_KEY_IP];
+
     // Shared across sites
     public ?string $name = null;
     public ?string $handle = null;
     /** Per-form opt-in for save-&-resume drafts (shared, not translatable). */
     public bool $allowSaveResume = false;
+    /** Per-form duplicate-submission prevention (#140; shared, not translatable). */
+    public bool $preventDuplicates = false;
+    /** Lookback window for duplicate detection, in minutes; 0 = "ever". */
+    public int $duplicateWindowMinutes = 0;
+    /** What makes two submissions duplicates: {@see self::DUPLICATE_KEYS}. */
+    public string $duplicateKey = self::DUPLICATE_KEY_EMAIL;
 
     // Per-site (translatable). title is stored in elements_sites via hasTitles().
     public ?string $title = null;
@@ -186,7 +206,9 @@ class Form extends Element
         $rules[] = [['title', 'description'], 'string'];
         $rules[] = [['emailTo', 'emailSubject', 'emailReplyTo'], 'string', 'max' => 255];
         $rules[] = [['emailBody'], 'string'];
-        $rules[] = [['allowSaveResume'], 'boolean'];
+        $rules[] = [['allowSaveResume', 'preventDuplicates'], 'boolean'];
+        $rules[] = [['duplicateWindowMinutes'], 'integer', 'min' => 0];
+        $rules[] = [['duplicateKey'], 'in', 'range' => self::DUPLICATE_KEYS];
 
         // handle is shared across sites, so it must be globally unique
         $rules[] = [['handle'], 'validateHandleUnique'];
@@ -228,6 +250,9 @@ class Form extends Element
             'name' => $this->name,
             'propagationMethod' => $this->propagationMethod->value,
             'allowSaveResume' => $this->allowSaveResume,
+            'preventDuplicates' => $this->preventDuplicates,
+            'duplicateWindowMinutes' => $this->duplicateWindowMinutes,
+            'duplicateKey' => $this->duplicateKey,
             'dateUpdated' => $now,
         ];
 

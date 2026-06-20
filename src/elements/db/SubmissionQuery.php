@@ -62,6 +62,7 @@ class SubmissionQuery extends ElementQuery
             'simpleform_submissions.userId',
             'simpleform_submissions.readStatus',
             'simpleform_submissions.spamReason',
+            'simpleform_submissions.sourceIp',
             'simpleform_submissions.paymentStatus',
             'simpleform_submissions.paymentAmount',
             'simpleform_submissions.orderId',

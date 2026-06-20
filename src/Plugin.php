@@ -40,6 +40,7 @@ use fabianhaef\simpleform\services\AssetUploadService;
 use fabianhaef\simpleform\services\AuditService;
 use fabianhaef\simpleform\services\CaptchaProviderRegistry;
 use fabianhaef\simpleform\services\CaptchaService;
+use fabianhaef\simpleform\services\DenylistService;
 use fabianhaef\simpleform\services\DraftService;
 use fabianhaef\simpleform\services\EmailService;
 use fabianhaef\simpleform\services\FieldTypeRegistry;
@@ -111,6 +112,7 @@ class Plugin extends BasePlugin
             'captchaService' => CaptchaService::class,
             'captchaProviderRegistry' => CaptchaProviderRegistry::class,
             'akismetService' => AkismetService::class,
+            'denylistService' => DenylistService::class,
             'assetUploadService' => AssetUploadService::class,
             'formStructure' => FormStructureService::class,
             'mcpTokenManager' => TokenManager::class,
@@ -308,6 +310,13 @@ class Plugin extends BasePlugin
     {
         /** @var AkismetService $service */
         $service = $this->get('akismetService');
+        return $service;
+    }
+
+    public function getDenylistService(): DenylistService
+    {
+        /** @var DenylistService $service */
+        $service = $this->get('denylistService');
         return $service;
     }
 

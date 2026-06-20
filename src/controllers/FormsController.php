@@ -107,6 +107,9 @@ class FormsController extends Controller
         $form->emailReplyTo = $request->getBodyParam('emailReplyTo');
         $form->emailBody = $request->getBodyParam('emailBody');
         $form->allowSaveResume = (bool) $request->getBodyParam('allowSaveResume');
+        $form->preventDuplicates = (bool) $request->getBodyParam('preventDuplicates');
+        $form->duplicateWindowMinutes = (int) $request->getBodyParam('duplicateWindowMinutes', 0);
+        $form->duplicateKey = (string) $request->getBodyParam('duplicateKey', Form::DUPLICATE_KEY_EMAIL);
         $form->propagationMethod = PropagationMethod::tryFrom(
             (string)$request->getBodyParam('propagationMethod', 'none')
         ) ?? PropagationMethod::None;
