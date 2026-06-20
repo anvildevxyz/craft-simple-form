@@ -254,10 +254,25 @@ class TwigExtension extends AbstractExtension
             }
         }
 
-        $css = @file_get_contents(FormAsset::distPath('css/simple-form.css')) ?: '';
-        $js = @file_get_contents(FormAsset::distPath('js/simple-form.js')) ?: '';
+        $css = $this->readInlineAsset(FormAsset::distPath('css/simple-form.css'));
+        $js = $this->readInlineAsset(FormAsset::distPath('js/simple-form.js'));
 
         return '<style>' . $css . '</style>' . '<script>' . $js . '</script>';
+    }
+
+    /**
+     * Read a bundled build artifact for inline embedding. A missing file means a
+     * broken/incomplete build, so log a warning instead of silently emitting an
+     * empty asset block.
+     */
+    private function readInlineAsset(string $path): string
+    {
+        if (!is_file($path)) {
+            Craft::warning('Inline form asset missing (build artifact not found): ' . $path, 'simple-form');
+            return '';
+        }
+
+        return file_get_contents($path) ?: '';
     }
 
     /**
