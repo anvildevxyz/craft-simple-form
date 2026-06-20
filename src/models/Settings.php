@@ -50,6 +50,15 @@ class Settings extends Model
     public const AKISMET_FLAG = 'flag';
     public const AKISMET_BLOCK = 'block';
 
+    /**
+     * Max public form submissions accepted per visitor IP per minute, an abuse
+     * throttle shared by the front-end submit endpoint and the GraphQL submit
+     * mutation. The limit is per IP across all forms (not per form). 0 disables
+     * it. Default 0 so existing installs are unchanged; a small value (e.g. 10)
+     * is recommended for public forms.
+     */
+    public int $submitRateLimitPerMinute = 0;
+
     /** Content spam scoring via Akismet (complements captcha). */
     public bool $enableAkismet = false;
     public ?string $akismetApiKey = null;
@@ -170,7 +179,7 @@ class Settings extends Model
                 'when' => fn(): bool => !$this->isEnvReference($this->defaultEmailSender),
             ],
             [['enableHoneypot', 'enableCaptcha', 'cacheFormStructure', 'inlineFormAssets', 'enableMcp', 'dispatchIntegrationsSynchronously', 'enableAkismet', 'anonymizeInsteadOfDelete', 'allowGraphqlCaptchaBypass'], 'boolean'],
-            [['retainSubmissionsDays', 'retainIntegrationLogsDays', 'retainAuditLogDays'], 'integer', 'min' => 0],
+            [['retainSubmissionsDays', 'retainIntegrationLogsDays', 'retainAuditLogDays', 'submitRateLimitPerMinute'], 'integer', 'min' => 0],
             [['akismetMode'], 'in', 'range' => [self::AKISMET_FLAG, self::AKISMET_BLOCK]],
             [['akismetApiKey'], 'required', 'when' => fn(): bool => $this->enableAkismet],
             [['mcpTokens'], 'safe'],

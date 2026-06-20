@@ -61,7 +61,12 @@ class TwigExtension extends AbstractExtension
         }
         $enctype = $hasFileField ? ' enctype="multipart/form-data"' : '';
 
-        $html = '<form class="simple-form" method="POST"' . $enctype . ' action="' . Craft::$app->getUrlManager()->createUrl('simple-form/submit') . '">';
+        // Expose the configured (localized) error message so the JS submit
+        // handler can show it if the request fails with a non-JSON response.
+        $errorMessage = (string) (Plugin::getInstance()->getSettings()->errorMessage ?? '');
+        $errorAttr = $errorMessage !== '' ? ' data-sf-error="' . htmlspecialchars($errorMessage, ENT_QUOTES) . '"' : '';
+
+        $html = '<form class="simple-form" method="POST"' . $enctype . $errorAttr . ' action="' . Craft::$app->getUrlManager()->createUrl('simple-form/submit') . '">';
         $html .= Craft::$app->getView()->renderString('{{ csrfInput() }}');
         $html .= '<input type="hidden" name="formHandle" value="' . htmlspecialchars($handle) . '">';
 

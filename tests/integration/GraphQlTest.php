@@ -368,6 +368,44 @@ class GraphQlTest extends SimpleFormTestCase
         }
     }
 
+    public function testSubmitMutationIsRateLimited(): void
+    {
+        $this->requireCraft();
+
+        $siteId = Craft::$app->getSites()->getPrimarySite()->id;
+        $form = $this->createForm('RL', 'gqlRateLimitForm', 'RL', $siteId);
+        $nameId = $this->createField($form->id, 'text', 'fullName', 'Full Name', true);
+
+        $document = <<<'GQL'
+        mutation ($handle: String!, $siteId: Int, $values: [SimpleFormFieldValueInput!]!) {
+            submitForm(handle: $handle, siteId: $siteId, values: $values) {
+                success
+                errors { key messages }
+            }
+        }
+        GQL;
+        $vars = ['handle' => 'gqlRateLimitForm', 'siteId' => $siteId, 'values' => [['fieldId' => $nameId, 'value' => 'Ada']]];
+
+        $settings = Plugin::getInstance()->getSettings();
+        $original = $settings->submitRateLimitPerMinute;
+        $settings->submitRateLimitPerMinute = 2;
+        Craft::$app->getCache()->flush();
+        $_SERVER['REMOTE_ADDR'] = '198.51.100.22';
+
+        try {
+            // The GraphQL path shares the front-end throttle (audit follow-up):
+            // two succeed, the third is rejected.
+            $this->assertTrue($this->execute($document, ['simpleFormSubmissions:create'], $vars)['data']['submitForm']['success']);
+            $this->assertTrue($this->execute($document, ['simpleFormSubmissions:create'], $vars)['data']['submitForm']['success']);
+            $blocked = $this->execute($document, ['simpleFormSubmissions:create'], $vars)['data']['submitForm'];
+            $this->assertFalse($blocked['success'], 'third GraphQL submit should be rate limited');
+            $this->assertSame('form', $blocked['errors'][0]['key']);
+        } finally {
+            $settings->submitRateLimitPerMinute = $original;
+            Craft::$app->getCache()->flush();
+        }
+    }
+
     public function testSubmitMutationInvalidInputReturnsErrorsAndStoresNothing(): void
     {
         $this->requireCraft();

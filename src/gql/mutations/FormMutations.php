@@ -93,6 +93,14 @@ class FormMutations extends BaseMutation
             return self::errorPayload([['key' => 'form', 'messages' => ['Form not found.']]]);
         }
 
+        // Abuse throttle, shared with the front-end submit path so GraphQL can't
+        // be used to sidestep the per-IP limit (audit follow-up).
+        /** @var \craft\web\Request $request */
+        $request = Craft::$app->getRequest();
+        if (Plugin::getInstance()->getSubmissionService()->isRateLimited($request->getUserIP())) {
+            return self::errorPayload([['key' => 'form', 'messages' => ['Too many submissions. Please wait a moment and try again.']]]);
+        }
+
         // Build the field-id => value map from the input list.
         $values = [];
         $inputValues = is_array($args['values'] ?? null) ? $args['values'] : [];

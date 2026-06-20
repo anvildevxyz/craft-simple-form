@@ -10,6 +10,7 @@ use fabianhaef\simpleform\elements\Submission;
 use fabianhaef\simpleform\elements\SubmissionStatus;
 use fabianhaef\simpleform\events\SubmissionEvent;
 use fabianhaef\simpleform\fields\FileFieldType;
+use fabianhaef\simpleform\helpers\RateLimiter;
 use fabianhaef\simpleform\models\FormModel;
 use fabianhaef\simpleform\models\Settings;
 use fabianhaef\simpleform\Plugin;
@@ -96,6 +97,34 @@ class SubmissionService extends Component
         }
 
         return $result;
+    }
+
+    /**
+     * Per-visitor-IP abuse throttle, shared by every public submit transport
+     * (the front-end controller and the GraphQL mutation) so neither can be used
+     * to sidestep the other. Returns true when the caller is already over the
+     * configured per-minute limit and the submission should be rejected;
+     * otherwise records a hit and returns false.
+     *
+     * A null/empty IP (e.g. unresolvable behind a proxy) is never throttled —
+     * collapsing every such visitor into one shared bucket would let unrelated
+     * users lock each other out. Resolve real client IPs via Craft's
+     * `trustedHosts`/proxy config so the limit is per-visitor in production.
+     */
+    public function isRateLimited(?string $ip): bool
+    {
+        $limit = (int) Plugin::getInstance()->getSettings()->submitRateLimitPerMinute;
+        if ($limit <= 0 || $ip === null || $ip === '') {
+            return false;
+        }
+
+        $key = 'submit:' . $ip;
+        if (RateLimiter::isLimited($key, $limit)) {
+            return true;
+        }
+
+        RateLimiter::hit($key, 60);
+        return false;
     }
 
     /**

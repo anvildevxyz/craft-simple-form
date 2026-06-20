@@ -38,6 +38,18 @@ class SubmitController extends Controller
 
         $settings = Plugin::getInstance()->getSettings();
 
+        // Abuse throttle (shared with the GraphQL submit path). Over the limit
+        // returns 429 with the standard error envelope; 0 disables it.
+        if (Plugin::getInstance()->getSubmissionService()->isRateLimited($request->getUserIP())) {
+            $message = Craft::t('simple-form', 'Too many submissions. Please wait a moment and try again.');
+            $this->response->setStatusCode(429);
+            return $this->asJson([
+                'success' => false,
+                'message' => $message,
+                'errors' => ['form' => [$message]],
+            ]);
+        }
+
         $form = Form::find()
             ->handle($formHandle)
             ->siteId(Craft::$app->getSites()->getCurrentSite()->id)

@@ -61,6 +61,16 @@ class SettingsTabsRenderTest extends SimpleFormTestCase
         $this->assertStringContainsString('max="1"', $html);
     }
 
+    public function testSpamTabRendersRateLimitAndGraphqlBypassControls(): void
+    {
+        $this->requireCraft();
+        $html = $this->render('spam', new Settings());
+
+        // Rate-limit number input + the GraphQL captcha-bypass toggle are present.
+        $this->assertStringContainsString('name="submitRateLimitPerMinute"', $html);
+        $this->assertStringContainsString('allowGraphqlCaptchaBypass', $html);
+    }
+
     public function testMcpTokenUiGatedOnEnableFlag(): void
     {
         $this->requireCraft();

@@ -177,3 +177,30 @@
     }) }}
 </div>
 
+<hr>
+
+<h3>{{ 'Rate limiting'|t('simple-form') }}</h3>
+<p class="light">{{ 'Throttle how often a single visitor can submit, independent of CAPTCHA/honeypot.'|t('simple-form') }}</p>
+
+{{ forms.textField({
+    label: 'Submissions per minute'|t('simple-form'),
+    name: 'submitRateLimitPerMinute',
+    type: 'number',
+    value: settings.submitRateLimitPerMinute ?? 0,
+    min: 0,
+    step: 1,
+    instructions: 'Max front-end submissions allowed per visitor IP per minute. 0 disables the limit; 10 is a sensible starting point for public forms.'|t('simple-form'),
+    errors: settings.getErrors('submitRateLimitPerMinute') ?? [],
+}) }}
+
+<hr>
+
+<h3>{{ 'GraphQL'|t('simple-form') }}</h3>
+
+{{ forms.lightswitchField({
+    label: 'Bypass CAPTCHA for GraphQL submissions'|t('simple-form'),
+    name: 'allowGraphqlCaptchaBypass',
+    on: settings.allowGraphqlCaptchaBypass ?? false,
+    instructions: 'Off (recommended): GraphQL submitForm mutations must pass a captchaToken when CAPTCHA is enabled. Turn on only for trusted server-to-server callers that cannot obtain a browser CAPTCHA token.'|t('simple-form'),
+}) }}
+

@@ -4,6 +4,7 @@ namespace fabianhaef\simpleform\controllers;
 
 use Craft;
 use craft\web\Controller;
+use fabianhaef\simpleform\helpers\RateLimiter;
 use fabianhaef\simpleform\mcp\McpServer;
 use fabianhaef\simpleform\mcp\McpToken;
 use fabianhaef\simpleform\mcp\TokenManager;
@@ -87,10 +88,8 @@ class McpController extends Controller
         // 3. RATE LIMIT (F13, CWE-307): throttle brute-force / unauthenticated
         //    floods per IP. Once too many recent attempts have failed, short-
         //    circuit with 429 before doing any token work.
-        $ip = $request->getUserIP() ?? 'unknown';
-        $failKey = 'simple-form:mcp-auth-fail:' . $ip;
-        $cache = Craft::$app->getCache();
-        if ((int) $cache->get($failKey) >= self::AUTH_FAIL_MAX) {
+        $failKey = 'mcp-auth-fail:' . ($request->getUserIP() ?? 'unknown');
+        if (RateLimiter::isLimited($failKey, self::AUTH_FAIL_MAX)) {
             $response->setStatusCode(429);
             $response->data = $this->jsonRpcError(null, -32000, 'Too many requests.');
             return $response;
@@ -101,7 +100,7 @@ class McpController extends Controller
         //    or simply unknown (avoids oracles).
         $token = $this->authenticate($request);
         if ($token === null) {
-            $cache->set($failKey, (int) $cache->get($failKey) + 1, self::AUTH_FAIL_WINDOW);
+            RateLimiter::hit($failKey, self::AUTH_FAIL_WINDOW);
             $response->getHeaders()->set('WWW-Authenticate', 'Bearer');
             $response->setStatusCode(401);
             $response->data = $this->jsonRpcError(null, -32000, 'Unauthorized.');

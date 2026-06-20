@@ -389,6 +389,49 @@ class IntegrationsService extends Component
     }
 
     /**
+     * One-time backfill (migration m260620_000001): encrypt any integration
+     * secret still stored as plaintext from before encryption-at-rest (F4)
+     * existed. Idempotent — already-encrypted values, env references and empty
+     * values are skipped, and a row is only rewritten when something changed.
+     * Returns the number of rows updated.
+     */
+    public function encryptStoredSecrets(): int
+    {
+        $db = Craft::$app->getDb();
+        $updated = 0;
+
+        foreach ((new \craft\db\Query())->select(['id', 'settings'])->from(self::TABLE)->all() as $row) {
+            $settings = $this->normalizeSettings($row['settings'] ?? null);
+            $encrypted = $this->encryptSettings($settings);
+            if ($encrypted !== $settings) {
+                $db->createCommand()->update(self::TABLE, ['settings' => $encrypted], ['id' => $row['id']])->execute();
+                $updated++;
+            }
+        }
+
+        return $updated;
+    }
+
+    /**
+     * Normalise a raw `settings` column value into an array. Craft's json column
+     * returns a JSON string on MySQL/MariaDB and may return an already-decoded
+     * array on Postgres; both (and empty/null) collapse to an array here.
+     *
+     * @return array<string, mixed>
+     */
+    private function normalizeSettings(mixed $raw): array
+    {
+        if (is_array($raw)) {
+            return $raw;
+        }
+        if (is_string($raw) && $raw !== '') {
+            $decoded = Json::decodeIfJson($raw);
+            return is_array($decoded) ? $decoded : [];
+        }
+        return [];
+    }
+
+    /**
      * Inverse of {@see encryptSettings()}. Marked values are decrypted; legacy
      * plaintext values (no marker) pass through unchanged for backward
      * compatibility. A value that cannot be decrypted (e.g. after a key change)
@@ -513,18 +556,7 @@ class IntegrationsService extends Component
         $model->type = (string) $row['type'];
         $model->name = (string) $row['name'];
         $model->enabled = (bool) $row['enabled'];
-        // The json column comes back as a string (MySQL) or already decoded
-        // (Postgres / some drivers); normalise to an array either way.
-        $settings = $row['settings'] ?? null;
-        if (is_array($settings)) {
-            $model->settings = $settings;
-        } elseif (is_string($settings) && $settings !== '') {
-            $decoded = Json::decodeIfJson($settings);
-            $model->settings = is_array($decoded) ? $decoded : [];
-        } else {
-            $model->settings = [];
-        }
-        $model->settings = $this->decryptSettings($model->settings);
+        $model->settings = $this->decryptSettings($this->normalizeSettings($row['settings'] ?? null));
         $model->sortOrder = $row['sortOrder'] !== null ? (int) $row['sortOrder'] : null;
         $model->uid = $row['uid'] ?? null;
         return $model;

@@ -227,6 +227,27 @@
             });
         }
 
+        // Build an error container. Messages are added as text nodes (never
+        // innerHTML) so server-supplied strings can't inject markup.
+        function makeErrorDiv(messages, extraClass) {
+            var div = document.createElement("div");
+            div.className = "form-error" + (extraClass ? " " + extraClass : "");
+            div.setAttribute("role", "alert");
+            messages.forEach(function (msg, i) {
+                if (i > 0) { div.appendChild(document.createElement("br")); }
+                div.appendChild(document.createTextNode(String(msg)));
+            });
+            return div;
+        }
+
+        // Insert a focusable form-level error banner at the top of the form.
+        function showGeneralError(messages) {
+            var general = makeErrorDiv(messages, "form-error--general");
+            general.setAttribute("tabindex", "-1");
+            form.insertBefore(general, form.firstChild);
+            general.focus();
+        }
+
         form.addEventListener("submit", function (e) {
             e.preventDefault();
             var formData = new FormData(form); // disabled (hidden) inputs are excluded
@@ -244,29 +265,43 @@
                         alert(data.message || "Form submitted successfully!");
                         form.reset();
                     } else if (data.errors) {
+                        var generalErrors = [];
                         Object.keys(data.errors).forEach(function (fieldKey) {
                             var errorMessages = data.errors[fieldKey];
                             var fieldElement = form.querySelector("[name=\"" + fieldKey + "\"]")
                                 || form.querySelector("[name=\"" + fieldKey + "[]\"]");
                             if (fieldElement) {
                                 var errorId = "sf-error-" + (fieldElement.id || fieldKey).replace(/[^\w-]/g, "-");
-                                var errorDiv = document.createElement("div");
-                                errorDiv.className = "form-error";
+                                var errorDiv = makeErrorDiv(errorMessages);
                                 errorDiv.id = errorId;
-                                errorDiv.setAttribute("role", "alert");
-                                errorDiv.innerHTML = errorMessages.join("<br>");
                                 // Tie the message to the control for assistive tech.
                                 fieldElement.setAttribute("aria-invalid", "true");
                                 fieldElement.setAttribute("aria-describedby", errorId);
                                 fieldElement.parentNode.appendChild(errorDiv);
+                            } else {
+                                // No matching field (e.g. a form-level or rate-limit
+                                // error): surface it in a banner instead of dropping it.
+                                generalErrors = generalErrors.concat(errorMessages);
                             }
                         });
-                        // Move focus to the first field that needs attention.
+                        // Move focus to the first field that needs attention, else
+                        // the general banner.
                         var firstInvalid = form.querySelector("[aria-invalid=\"true\"]");
-                        if (firstInvalid) { firstInvalid.focus(); }
+                        if (firstInvalid) {
+                            firstInvalid.focus();
+                            if (generalErrors.length) { showGeneralError(generalErrors); firstInvalid.focus(); }
+                        } else if (generalErrors.length) {
+                            showGeneralError(generalErrors);
+                        }
                     }
                 })
-                .catch(function (error) { console.error("Form submission error:", error); });
+                .catch(function (error) {
+                    // Non-JSON / network failure: the .then above never ran, so the
+                    // user has no feedback. Show the configured (localized) error.
+                    console.error("Form submission error:", error);
+                    clearErrors();
+                    showGeneralError([form.getAttribute("data-sf-error") || "Something went wrong. Please try again."]);
+                });
         });
     }
 
