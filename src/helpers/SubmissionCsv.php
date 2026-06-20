@@ -21,14 +21,7 @@ final class SubmissionCsv
 
         // First-seen order of field columns, keyed by the stored data key
         // (field_<id>) so values align even when forms differ across the set.
-        $fieldCols = [];
-        foreach ($submissions as $submission) {
-            foreach (($submission->data ?? []) as $key => $entry) {
-                if (!isset($fieldCols[$key])) {
-                    $fieldCols[$key] = is_array($entry) ? (string) ($entry['label'] ?? $key) : (string) $key;
-                }
-            }
-        }
+        $fieldCols = self::fieldColumns($submissions);
 
         $handle = fopen('php://temp', 'r+');
         if ($handle === false) {
@@ -74,14 +67,7 @@ final class SubmissionCsv
      */
     public static function toRows(array $submissions): array
     {
-        $fieldCols = [];
-        foreach ($submissions as $submission) {
-            foreach (($submission->data ?? []) as $key => $entry) {
-                if (!isset($fieldCols[$key])) {
-                    $fieldCols[$key] = is_array($entry) ? (string) ($entry['label'] ?? $key) : (string) $key;
-                }
-            }
-        }
+        $fieldCols = self::fieldColumns($submissions);
 
         $rows = [];
         foreach ($submissions as $submission) {
@@ -104,6 +90,29 @@ final class SubmissionCsv
         }
 
         return $rows;
+    }
+
+    /**
+     * Union of field columns across the result set, in first-seen order, keyed
+     * by the stored data key (field_<id>) with the field's label as the value
+     * (falling back to the key when none). Shared by {@see fromSubmissions()}
+     * and {@see toRows()} so both project the same columns.
+     *
+     * @param array<int, Submission> $submissions
+     * @return array<string, string>
+     */
+    private static function fieldColumns(array $submissions): array
+    {
+        $fieldCols = [];
+        foreach ($submissions as $submission) {
+            foreach (($submission->data ?? []) as $key => $entry) {
+                if (!isset($fieldCols[$key])) {
+                    $fieldCols[$key] = is_array($entry) ? (string) ($entry['label'] ?? $key) : (string) $key;
+                }
+            }
+        }
+
+        return $fieldCols;
     }
 
     private static function scalar(mixed $value): string

@@ -4,7 +4,6 @@ namespace fabianhaef\simpleform\controllers;
 
 use Craft;
 use craft\web\Controller;
-use fabianhaef\simpleform\elements\Form;
 use fabianhaef\simpleform\elements\Submission;
 use fabianhaef\simpleform\helpers\SimpleFormPermissions;
 use fabianhaef\simpleform\jobs\SendIntegrationJob;
@@ -23,15 +22,6 @@ class IntegrationsController extends Controller
 
     protected const PERMISSION = SimpleFormPermissions::MANAGE_INTEGRATIONS;
 
-    private function getFormOrFail(int $formId): Form
-    {
-        $form = Form::find()->siteId('*')->id($formId)->status(null)->one();
-        if (!$form) {
-            throw new NotFoundHttpException('Form not found');
-        }
-        return $form;
-    }
-
     /**
      * Global integration management, rendered as the Settings → Integrations tab.
      */
@@ -45,15 +35,6 @@ class IntegrationsController extends Controller
             'typeNames' => Plugin::getInstance()->getIntegrationTypeRegistry()->getAllTypes(),
             'failedDispatchCount' => $service->countFailedDispatches(),
         ]);
-    }
-
-    /**
-     * Legacy `/simple-form/integrations` entry point — integrations now live
-     * under Settings.
-     */
-    public function actionGlobalIndex(): Response
-    {
-        return $this->redirect('simple-form/settings/integrations');
     }
 
     /**
