@@ -153,6 +153,37 @@ For each `type` in [webhook, slack, discord, mailchimp, activecampaign, hubspot,
 
 ---
 
+## I. Rating & Opinion Scale fields (#128)
+
+### S13 — Build a Rating + Opinion scale form ⬜
+1. EXECUTE (UI): edit the S0 form → from the palette drag **Rating** onto the canvas → in the inspector set Label = "How was your experience?", Maximum = 5, Icon Style = Stars.
+2. EXECUTE (UI): drag **Opinion Scale** onto the canvas → set Label = "How likely are you to recommend us?", Minimum = 0, Maximum = 10, Left Label = "Not likely", Right Label = "Very likely" → Save.
+3. VERIFY (DB): `SELECT type,config FROM simpleform_fields WHERE formId={id} AND type IN ('rating','opinion');` → two rows; rating config has `max:5`,`iconStyle:"star"`; opinion config has `min:0`,`max:10` + both anchor labels.
+4. VERIFY (UI): re-open the builder → the inspector for each field shows the saved values (no drift).
+
+### S14 — Public render: stars + 0–10 strip ⬜
+1. EXECUTE (UI): render the public S0 form.
+2. VERIFY (UI): the Rating field is a radio group of **5** `input.sf-rating-input` (unique ids, each with a `<label for>`); the group is wrapped in `role="group"` + `aria-labelledby`.
+3. VERIFY (UI): the Opinion field renders **11** `input.sf-opinion-input` (0–10) with the **left** anchor "Not likely" before the strip and the **right** anchor "Very likely" after it.
+4. EXECUTE (UI, keyboard): Tab into the Rating group → arrow keys move between stars (native radio behaviour); select the 4th star.
+5. EXECUTE (UI, mouse): click the "9" on the Opinion strip.
+6. VERIFY (no-JS): with JS disabled the radios are still directly clickable and submit.
+
+### S15 — Submit + detail shows integers; forged value rejected ⬜
+1. EXECUTE (UI): submit the form with Rating = 4 and Opinion = 9.
+2. VERIFY (DB): `SELECT data FROM simpleform_submissions WHERE id={sid};` → the rating value is the integer `4` and the opinion value is `9` (JSON numbers, not quoted strings).
+3. VERIFY (UI): the submission detail page shows `4` and `9` as plain numbers.
+4. EXECUTE (rejection): forge a POST with `field_<ratingId>=6` (outside 1–5) → VERIFY (UI) a "Please select a valid option." field error, VERIFY (DB) no new submission row.
+
+### S16 — Analytics average + distribution; CSV integers ⬜
+1. SETUP: at least 3 submissions with varied Rating values (e.g. 5, 5, 3).
+2. EXECUTE (UI): Submissions → Analytics with the Form filter set to the S0 form.
+3. VERIFY (UI): a **Ratings & scales** section lists the Rating field with an **Average** (e.g. 4.3) and a per-value **distribution** table/bar.
+4. EXECUTE (UI): export the form's submissions to CSV.
+5. VERIFY (content): the Rating/Opinion columns hold plain integers (e.g. `4`, `9`) under the field label headers — no quoting, ready for a spreadsheet.
+
+---
+
 ## Runner index (execute individually later)
 ```
 /craft-smoke-test plugin:simple-form S1: add a Webhook integration to a form and verify the row + DB
@@ -164,6 +195,10 @@ For each `type` in [webhook, slack, discord, mailchimp, activecampaign, hubspot,
 /craft-smoke-test plugin:simple-form S10: assign fields to 2 steps, verify step nav + single submission
 /craft-smoke-test plugin:simple-form S11: export submissions CSV and verify headers/rows
 /craft-smoke-test plugin:simple-form S12: add the count + recent dashboard widgets and verify against the DB
+/craft-smoke-test plugin:simple-form S13: build a Rating + Opinion scale form and verify saved config round-trips
+/craft-smoke-test plugin:simple-form S14: render the public form and verify the star radios + 0–10 anchored strip (keyboard + no-JS)
+/craft-smoke-test plugin:simple-form S15: submit rating/opinion, verify integer storage + detail, reject a forged out-of-range value
+/craft-smoke-test plugin:simple-form S16: verify analytics average/distribution and CSV integer columns for scale fields
 ```
 
 ## Coverage notes / known limits

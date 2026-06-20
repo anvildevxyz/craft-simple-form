@@ -120,4 +120,13 @@ return [
     'Submissions appear here once your forms are filled out.' => 'Los envíos aparecerán aquí cuando se rellenen sus formularios.',
     'No submissions match your filters.' => 'Ningún envío coincide con sus filtros.',
     'Enable the MCP server above to issue and manage access tokens.' => 'Active el servidor MCP arriba para emitir y gestionar tokens de acceso.',
+    'Rating' => 'Valoración',
+    'Opinion Scale' => 'Escala de opinión',
+    '{n} of {max}' => '{n} de {max}',
+    'Ratings & scales' => 'Valoraciones y escalas',
+    'Average' => 'Promedio',
+    '{n} responses' => '{n} respuestas',
+    'Value' => 'Valor',
+    'Responses' => 'Respuestas',
+    'No responses yet.' => 'Aún no hay respuestas.',
 ];

@@ -65,3 +65,110 @@
 .simple-form-resume-link p { margin: 0 0 .5em; }
 .simple-form-resume-row { display: flex; gap: .5em; }
 .simple-form-resume-url { flex: 1; }
+
+/* Rating (#128) — a native radio group styled into star/heart/number controls.
+   The radios stay in the DOM (no-JS fallback + screen-reader semantics); only
+   their visual box is replaced by the label's icon/pill. */
+.sf-rating {
+    display: inline-flex;
+    flex-direction: row;
+    gap: .25em;
+}
+.sf-rating-input {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    opacity: 0;
+}
+.sf-rating-label {
+    display: inline-flex;
+    align-items: center;
+    cursor: pointer;
+    font-weight: normal;
+}
+.sf-rating-text {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
+}
+.sf-rating-icon {
+    font-size: 1.8em;
+    line-height: 1;
+    color: #cbd5e1;
+    transition: color .1s ease;
+}
+.sf-rating[data-icon-style="star"] .sf-rating-icon::before { content: "\2605"; }
+.sf-rating[data-icon-style="heart"] .sf-rating-icon::before { content: "\2665"; }
+.sf-rating[data-icon-style="number"] .sf-rating-label {
+    width: 2em;
+    height: 2em;
+    justify-content: center;
+    border: 1px solid #cbd5e1;
+    border-radius: 50%;
+    margin-right: .15em;
+}
+.sf-rating[data-icon-style="number"] .sf-rating-icon { display: none; }
+.sf-rating[data-icon-style="number"] .sf-rating-text {
+    position: static;
+    width: auto;
+    height: auto;
+    clip: auto;
+}
+/* Selected / hover fill. The number style fills its pill instead of a glyph. */
+.sf-rating-input:checked + .sf-rating-label .sf-rating-icon { color: #f59e0b; }
+.sf-rating[data-icon-style="heart"] .sf-rating-input:checked + .sf-rating-label .sf-rating-icon { color: #e11d48; }
+.sf-rating[data-icon-style="number"] .sf-rating-input:checked + .sf-rating-label {
+    background: #0b69a3;
+    border-color: #0b69a3;
+    color: #fff;
+}
+.sf-rating-input:focus-visible + .sf-rating-label {
+    outline: 2px solid #0b69a3;
+    outline-offset: 2px;
+}
+
+/* Opinion / NPS scale (#128) — a labelled horizontal strip of numbered radios. */
+.sf-opinion {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: .5em;
+}
+.sf-opinion-anchor {
+    font-size: .9em;
+    color: #475569;
+}
+.sf-opinion-scale {
+    display: inline-flex;
+    gap: .25em;
+}
+.sf-opinion-input {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    opacity: 0;
+}
+.sf-opinion-label {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 2.2em;
+    height: 2.2em;
+    padding: 0 .4em;
+    border: 1px solid #cbd5e1;
+    border-radius: 4px;
+    cursor: pointer;
+    font-weight: normal;
+}
+.sf-opinion-input:checked + .sf-opinion-label {
+    background: #0b69a3;
+    border-color: #0b69a3;
+    color: #fff;
+}
+.sf-opinion-input:focus-visible + .sf-opinion-label {
+    outline: 2px solid #0b69a3;
+    outline-offset: 2px;
+}

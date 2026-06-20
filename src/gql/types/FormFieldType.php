@@ -16,9 +16,9 @@ class FormFieldType extends SimpleFormObjectType
     {
         return 'A single field in a Simple Form schema. All field variants share '
             . 'this shape; the `type` discriminator (`text`, `email`, `textarea`, '
-            . '`select`, `checkbox`, `radio`, `date`, `number`) tells a client how '
-            . 'to render it, and `options`/`validation` carry the variant-specific '
-            . 'detail.';
+            . '`select`, `checkbox`, `radio`, `date`, `number`, `rating`, '
+            . '`opinion`) tells a client how to render it, and `options`/`validation` '
+            . 'carry the variant-specific detail.';
     }
 
     /** @return GqlFieldDefinitionMap */
@@ -36,7 +36,7 @@ class FormFieldType extends SimpleFormObjectType
             'type' => [
                 'type' => Type::nonNull(Type::string()),
                 'description' => 'The field-type discriminator: one of text, email, '
-                    . 'textarea, select, checkbox, radio, date, number.',
+                    . 'textarea, select, checkbox, radio, date, number, rating, opinion.',
             ],
             'label' => [
                 'type' => Type::nonNull(Type::string()),

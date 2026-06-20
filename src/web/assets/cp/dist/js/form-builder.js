@@ -13,7 +13,7 @@
     var TYPE_LABELS = {
         text: 'Text', email: 'Email', textarea: 'Textarea', select: 'Select',
         checkbox: 'Checkbox', radio: 'Radio', date: 'Date', number: 'Number', file: 'File Upload',
-        payment: 'Payment'
+        payment: 'Payment', rating: 'Rating', opinion: 'Opinion Scale'
     };
     var OPTION_TYPES = ['select', 'checkbox', 'radio'];
 
@@ -71,6 +71,12 @@
         }
         if (type === 'payment') {
             return { amountType: 'fixed', currency: 'USD' };
+        }
+        if (type === 'rating') {
+            return { max: 5, iconStyle: 'star' };
+        }
+        if (type === 'opinion') {
+            return { min: 0, max: 10 };
         }
         return {};
     }
@@ -363,6 +369,40 @@
                 c.currency = v.trim().toUpperCase(); serialize();
             }));
             inspector.appendChild(curRow);
+        } else if (f.type === 'rating') {
+            inspector.appendChild(numberRow('Maximum (1–10)', c.max != null ? c.max : 5, function(v) {
+                var n = parseInt(v, 10);
+                if (isNaN(n)) { delete c.max; } else { c.max = Math.max(1, Math.min(10, n)); }
+                serialize();
+            }));
+            var styleRow = row('Icon Style');
+            styleRow._input.appendChild(selectEl(
+                [{ value: 'star', label: 'Stars' }, { value: 'heart', label: 'Hearts' }, { value: 'number', label: 'Numbers' }],
+                c.iconStyle || 'star',
+                function(v) { c.iconStyle = v; serialize(); }
+            ));
+            inspector.appendChild(styleRow);
+        } else if (f.type === 'opinion') {
+            inspector.appendChild(numberRow('Minimum', c.min != null ? c.min : 0, function(v) {
+                var n = parseInt(v, 10);
+                if (v === '' || isNaN(n)) { delete c.min; } else { c.min = n; }
+                serialize();
+            }));
+            inspector.appendChild(numberRow('Maximum', c.max != null ? c.max : 10, function(v) {
+                var n = parseInt(v, 10);
+                if (v === '' || isNaN(n)) { delete c.max; } else { c.max = n; }
+                serialize();
+            }));
+            var leftRow = row('Left Label');
+            leftRow._input.appendChild(textInput(c.leftLabel || '', function(v) {
+                if (v.trim() === '') { delete c.leftLabel; } else { c.leftLabel = v; } serialize();
+            }));
+            inspector.appendChild(leftRow);
+            var rightRow = row('Right Label');
+            rightRow._input.appendChild(textInput(c.rightLabel || '', function(v) {
+                if (v.trim() === '') { delete c.rightLabel; } else { c.rightLabel = v; } serialize();
+            }));
+            inspector.appendChild(rightRow);
         }
     }
 

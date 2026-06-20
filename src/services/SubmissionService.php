@@ -204,7 +204,10 @@ class SubmissionService extends Component
             $data['field_' . $fieldId] = [
                 'label' => $field->getLabel() ?? $field->getName(),
                 'type' => $field->getType(),
-                'value' => $value,
+                // Coerce to the field type's canonical storage form (e.g. an int
+                // for rating/opinion) so analytics and the exporter treat the
+                // column numerically rather than as a string.
+                'value' => $field->normalizeValue($value),
             ];
         }
 

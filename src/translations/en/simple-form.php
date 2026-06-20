@@ -114,4 +114,13 @@ return [
     'Submissions appear here once your forms are filled out.' => 'Submissions appear here once your forms are filled out.',
     'No submissions match your filters.' => 'No submissions match your filters.',
     'Enable the MCP server above to issue and manage access tokens.' => 'Enable the MCP server above to issue and manage access tokens.',
+    'Rating' => 'Rating',
+    'Opinion Scale' => 'Opinion Scale',
+    '{n} of {max}' => '{n} of {max}',
+    'Ratings & scales' => 'Ratings & scales',
+    'Average' => 'Average',
+    '{n} responses' => '{n} responses',
+    'Value' => 'Value',
+    'Responses' => 'Responses',
+    'No responses yet.' => 'No responses yet.',
 ];

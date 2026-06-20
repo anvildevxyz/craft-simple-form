@@ -114,4 +114,13 @@ return [
     'Submissions appear here once your forms are filled out.' => 'フォームが入力されると、ここに送信内容が表示されます。',
     'No submissions match your filters.' => 'フィルターに一致する送信内容はありません。',
     'Enable the MCP server above to issue and manage access tokens.' => '上で MCP サーバーを有効にすると、アクセストークンを発行・管理できます。',
+    'Rating' => '評価',
+    'Opinion Scale' => '評価スケール',
+    '{n} of {max}' => '{max} 中 {n}',
+    'Ratings & scales' => '評価とスケール',
+    'Average' => '平均',
+    '{n} responses' => '{n} 件の回答',
+    'Value' => '値',
+    'Responses' => '回答',
+    'No responses yet.' => 'まだ回答がありません。',
 ];

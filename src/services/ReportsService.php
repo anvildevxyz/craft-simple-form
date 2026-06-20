@@ -7,6 +7,7 @@ use craft\helpers\Db;
 use fabianhaef\simpleform\elements\Form;
 use fabianhaef\simpleform\elements\Submission;
 use fabianhaef\simpleform\elements\SubmissionStatus;
+use fabianhaef\simpleform\Plugin;
 use yii\base\Component;
 
 /**
@@ -109,6 +110,84 @@ class ReportsService extends Component
 
         usort($totals, static fn(array $a, array $b): int => $b['count'] <=> $a['count']);
         return $totals;
+    }
+
+    /**
+     * Per-field numeric stats for every rating/opinion scale field on a form:
+     * the response count, average (rounded to one decimal), and a per-value
+     * distribution (count keyed by the integer scale point, in ascending order).
+     *
+     * Submission values are stored as ints (see {@see \fabianhaef\simpleform\fields\FieldType::normalizeValue()}),
+     * so they aggregate numerically. A non-numeric or out-of-set stored value is
+     * skipped defensively.
+     *
+     * @return list<array{key: string, label: string, type: string, count: int, average: float, distribution: array<int, int>}>
+     */
+    public function scaleBreakdown(int $siteId, int $formId): array
+    {
+        $fields = Plugin::getInstance()->getFormStructure()->getFieldSet($formId, $siteId);
+        $scaleFields = [];
+        foreach ($fields as $field) {
+            $type = (string) ($field['type'] ?? '');
+            if (in_array($type, FieldTypeRegistry::SCALE_TYPES, true)) {
+                $key = 'field_' . (int) $field['id'];
+                $scaleFields[$key] = [
+                    'label' => (string) ($field['label'] ?? $field['name'] ?? $key),
+                    'type' => $type,
+                ];
+            }
+        }
+
+        if ($scaleFields === []) {
+            return [];
+        }
+
+        // Accumulate sum + per-value counts per field across the form's
+        // non-spam submissions, reading each field's stored integer value.
+        $sums = [];
+        $counts = [];
+        $dist = [];
+        foreach (array_keys($scaleFields) as $key) {
+            $sums[$key] = 0;
+            $counts[$key] = 0;
+            $dist[$key] = [];
+        }
+
+        $submissions = Submission::find()
+            ->siteId($siteId)
+            ->formId($formId)
+            ->status(null)
+            ->all();
+
+        foreach ($submissions as $submission) {
+            $data = $submission->data ?? [];
+            foreach ($scaleFields as $key => $meta) {
+                $entry = $data[$key] ?? null;
+                $value = is_array($entry) ? ($entry['value'] ?? null) : null;
+                if (!is_int($value) && !(is_string($value) && $value !== '' && (string) (int) $value === $value)) {
+                    continue;
+                }
+                $value = (int) $value;
+                $sums[$key] += $value;
+                $counts[$key]++;
+                $dist[$key][$value] = ($dist[$key][$value] ?? 0) + 1;
+            }
+        }
+
+        $result = [];
+        foreach ($scaleFields as $key => $meta) {
+            ksort($dist[$key]);
+            $result[] = [
+                'key' => $key,
+                'label' => $meta['label'],
+                'type' => $meta['type'],
+                'count' => $counts[$key],
+                'average' => $counts[$key] > 0 ? round($sums[$key] / $counts[$key], 1) : 0.0,
+                'distribution' => $dist[$key],
+            ];
+        }
+
+        return $result;
     }
 
     /**

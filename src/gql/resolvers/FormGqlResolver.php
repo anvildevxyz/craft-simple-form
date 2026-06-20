@@ -3,6 +3,8 @@
 namespace fabianhaef\simpleform\gql\resolvers;
 
 use fabianhaef\simpleform\elements\Form;
+use fabianhaef\simpleform\fields\OpinionScaleFieldType;
+use fabianhaef\simpleform\fields\RatingFieldType;
 use fabianhaef\simpleform\helpers\ConditionalEvaluator;
 use fabianhaef\simpleform\helpers\FieldQueryHelper;
 use fabianhaef\simpleform\Plugin;
@@ -85,7 +87,7 @@ final class FormGqlResolver
             'page' => self::pageOf($config),
             'placeholder' => self::stringOrNull($config['placeholder'] ?? null),
             'options' => self::mapOptions($config['options'] ?? null),
-            'validation' => self::mapValidation($config, $required),
+            'validation' => self::mapValidation($config, $required, (string) $row['type']),
             'conditional' => self::mapConditional($config['conditional'] ?? null),
         ];
     }
@@ -170,16 +172,37 @@ final class FormGqlResolver
      * @param array<string, mixed> $config
      * @return array<string, mixed>
      */
-    private static function mapValidation(array $config, bool $required): array
+    private static function mapValidation(array $config, bool $required, string $type): array
     {
-        return [
+        $validation = [
             'required' => $required,
             'minLength' => self::intOrNull($config['minLength'] ?? null),
             'maxLength' => self::intOrNull($config['maxLength'] ?? null),
             'min' => self::floatOrNull($config['min'] ?? null),
             'max' => self::floatOrNull($config['max'] ?? null),
             'pattern' => self::stringOrNull($config['pattern'] ?? null),
+            'iconStyle' => null,
+            'leftLabel' => null,
+            'rightLabel' => null,
         ];
+
+        // For the scale field types, expose the effective (clamped) bounds plus
+        // the render hints a headless client needs, sourced from the field type
+        // itself so the schema matches what the server validates.
+        if ($type === RatingFieldType::getType()) {
+            $field = new RatingFieldType($config);
+            $validation['min'] = 1.0;
+            $validation['max'] = (float) $field->max();
+            $validation['iconStyle'] = $field->iconStyle();
+        } elseif ($type === OpinionScaleFieldType::getType()) {
+            $field = new OpinionScaleFieldType($config);
+            $validation['min'] = (float) $field->min();
+            $validation['max'] = (float) $field->max();
+            $validation['leftLabel'] = self::stringOrNull($field->leftLabel());
+            $validation['rightLabel'] = self::stringOrNull($field->rightLabel());
+        }
+
+        return $validation;
     }
 
     /**

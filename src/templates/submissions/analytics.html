@@ -94,6 +94,46 @@
         <p class="light">{{ 'No forms yet.'|t('simple-form') }}</p>
     {% endif %}
 
+    {# Rating / opinion-scale numeric stats (single-form view only) #}
+    {% if scales|length %}
+        <h2>{{ 'Ratings & scales'|t('simple-form') }}</h2>
+        {% for scale in scales %}
+            <div class="sf-scale-stat">
+                <h3>{{ scale.label }}</h3>
+                {% if scale.count %}
+                    <p class="light">
+                        {{ 'Average'|t('simple-form') }}:
+                        <strong>{{ scale.average }}</strong>
+                        ({{ '{n} responses'|t('simple-form', { n: scale.count }) }})
+                    </p>
+                    {% set maxBar = 1 %}
+                    {% for c in scale.distribution %}{% set maxBar = max(maxBar, c) %}{% endfor %}
+                    <table class="data fullwidth">
+                        <thead>
+                            <tr>
+                                <th>{{ 'Value'|t('simple-form') }}</th>
+                                <th>{{ 'Responses'|t('simple-form') }}</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for value, count in scale.distribution %}
+                                <tr>
+                                    <td>{{ value }}</td>
+                                    <td>
+                                        <span class="sf-dist-bar" style="display:inline-block;height:.9em;background:#0b69a3;width:{{ (count / maxBar * 100)|round }}%;min-width:2px;vertical-align:middle"></span>
+                                        {{ count }}
+                                    </td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                {% else %}
+                    <p class="light">{{ 'No responses yet.'|t('simple-form') }}</p>
+                {% endif %}
+            </div>
+        {% endfor %}
+    {% endif %}
+
     {# Integration dispatch health #}
     {% if (dispatch.success + dispatch.failed + dispatch.pending) > 0 %}
         <h2>{{ 'Integration dispatches'|t('simple-form') }}</h2>

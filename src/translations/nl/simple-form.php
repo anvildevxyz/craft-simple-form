@@ -114,4 +114,13 @@ return [
     'Submissions appear here once your forms are filled out.' => 'Inzendingen verschijnen hier zodra je formulieren zijn ingevuld.',
     'No submissions match your filters.' => 'Geen inzendingen komen overeen met je filters.',
     'Enable the MCP server above to issue and manage access tokens.' => 'Schakel de MCP-server hierboven in om toegangstokens uit te geven en te beheren.',
+    'Rating' => 'Beoordeling',
+    'Opinion Scale' => 'Meningsschaal',
+    '{n} of {max}' => '{n} van {max}',
+    'Ratings & scales' => 'Beoordelingen en schalen',
+    'Average' => 'Gemiddelde',
+    '{n} responses' => '{n} reacties',
+    'Value' => 'Waarde',
+    'Responses' => 'Reacties',
+    'No responses yet.' => 'Nog geen reacties.',
 ];
