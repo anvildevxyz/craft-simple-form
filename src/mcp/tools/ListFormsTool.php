@@ -8,9 +8,8 @@ use fabianhaef\simpleform\mcp\Scopes;
 /**
  * MCP tool: list the plugin's forms (id, handle, name, field count).
  *
- * This is the foundation's single proof-of-path tool. It deliberately routes
- * through the existing {@see Form} element layer (the same query the CP and
- * GraphQL use) rather than introducing new business logic, and it exposes only
+ * Routes through the existing {@see Form} element layer (the same query the CP
+ * and GraphQL use) rather than introducing new business logic, and exposes only
  * form *structure* metadata — never any submission data.
  */
 class ListFormsTool implements ToolInterface
