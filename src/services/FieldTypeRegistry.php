@@ -10,6 +10,7 @@ use fabianhaef\simpleform\fields\FileFieldType;
 use fabianhaef\simpleform\fields\NumberFieldType;
 use fabianhaef\simpleform\fields\PaymentFieldType;
 use fabianhaef\simpleform\fields\RadioFieldType;
+use fabianhaef\simpleform\fields\RepeaterFieldType;
 use fabianhaef\simpleform\fields\SelectFieldType;
 use fabianhaef\simpleform\fields\TextareaFieldType;
 use fabianhaef\simpleform\fields\TextFieldType;
@@ -43,6 +44,7 @@ class FieldTypeRegistry extends Component
         $this->registerFieldType(NumberFieldType::class);
         $this->registerFieldType(FileFieldType::class);
         $this->registerFieldType(PaymentFieldType::class);
+        $this->registerFieldType(RepeaterFieldType::class);
     }
 
     /**

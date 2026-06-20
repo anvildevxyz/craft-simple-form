@@ -76,6 +76,29 @@
                             {% else %}
                                 —
                             {% endfor %}
+                        {% elseif fieldData.type == 'repeater' %}
+                            {% set rows = fieldData.value is iterable ? fieldData.value : [] %}
+                            {% if rows is empty %}
+                                {{ 'No rows'|t('simple-form') }}
+                            {% else %}
+                                {# Column order = the inner handles seen across the rows. #}
+                                {% set cols = [] %}
+                                {% for row in rows %}
+                                    {% for handle in row|keys %}
+                                        {% if handle not in cols %}{% set cols = cols|merge([handle]) %}{% endif %}
+                                    {% endfor %}
+                                {% endfor %}
+                                <table class="data">
+                                    <thead>
+                                        <tr>{% for handle in cols %}<th>{{ handle }}</th>{% endfor %}</tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for row in rows %}
+                                            <tr>{% for handle in cols %}<td>{{ row[handle] ?? '—' }}</td>{% endfor %}</tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            {% endif %}
                         {% elseif fieldData.value is iterable and fieldData.value is not string %}
                             {{ fieldData.value|join(', ') }}
                         {% else %}

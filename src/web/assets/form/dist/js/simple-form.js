@@ -152,6 +152,64 @@
         rerun(); // set initial visibility before first paint of interaction
     }
 
+    // ---- repeater rows ----------------------------------------------------
+    // Add/remove repeatable rows on the public form. The server re-keys row
+    // indices on submit, so cloned rows keep the prototype's __INDEX__ token
+    // replaced with a monotonic counter (uniqueness, not density, matters). Add
+    // disables at maxRows, Remove at minRows. With JS off the server-rendered
+    // rows still submit.
+
+    var SF_INDEX_TOKEN = "__INDEX__";
+
+    function initRepeaters(form) {
+        var repeaters = form.querySelectorAll("[data-sf-repeater]");
+        if (!repeaters.length) { return; }
+
+        Array.prototype.forEach.call(repeaters, function (rep) {
+            var rows = rep.querySelector("[data-sf-repeater-rows]");
+            var template = rep.querySelector("[data-sf-repeater-template]");
+            var addBtn = rep.querySelector("[data-sf-repeater-add]");
+            if (!rows || !template || !addBtn) { return; }
+
+            var min = parseInt(rep.getAttribute("data-sf-min"), 10) || 0;
+            var max = parseInt(rep.getAttribute("data-sf-max"), 10) || 0;
+            // Seed the counter past the server-rendered rows so cloned indices
+            // never collide with the initial set.
+            var next = rows.querySelectorAll("[data-sf-repeater-row]").length;
+
+            function currentRows() { return rows.querySelectorAll("[data-sf-repeater-row]"); }
+
+            function refresh() {
+                var count = currentRows().length;
+                addBtn.disabled = max > 0 && count >= max;
+                Array.prototype.forEach.call(rep.querySelectorAll("[data-sf-repeater-remove]"), function (btn) {
+                    btn.disabled = count <= Math.max(min, 1) || count <= min;
+                });
+            }
+
+            addBtn.addEventListener("click", function () {
+                var count = currentRows().length;
+                if (max > 0 && count >= max) { return; }
+                // template.content (a DocumentFragment) holds the prototype row.
+                var html = (template.innerHTML || "").split(SF_INDEX_TOKEN).join(String(next++));
+                var holder = document.createElement("div");
+                holder.innerHTML = html;
+                var row = holder.firstElementChild;
+                if (row) { rows.appendChild(row); refresh(); }
+            });
+
+            rep.addEventListener("click", function (e) {
+                var removeBtn = e.target.closest && e.target.closest("[data-sf-repeater-remove]");
+                if (!removeBtn) { return; }
+                if (currentRows().length <= min) { return; }
+                var row = removeBtn.closest("[data-sf-repeater-row]");
+                if (row) { row.remove(); refresh(); }
+            });
+
+            refresh();
+        });
+    }
+
     // ---- multi-step navigation -------------------------------------------
     // Reveals one .simple-form-step at a time with next/back. Each step is
     // validated (native HTML5 validity) before advancing; conditionally-hidden
@@ -290,6 +348,7 @@
         form.dataset.simpleFormBound = "1";
 
         initConditions(form);
+        initRepeaters(form);
         initSteps(form);
         initSaveResume(form);
 

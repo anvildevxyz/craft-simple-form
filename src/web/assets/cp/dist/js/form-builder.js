@@ -13,9 +13,12 @@
     var TYPE_LABELS = {
         text: 'Text', email: 'Email', textarea: 'Textarea', select: 'Select',
         checkbox: 'Checkbox', radio: 'Radio', date: 'Date', number: 'Number', file: 'File Upload',
-        payment: 'Payment'
+        payment: 'Payment', repeater: 'Repeater'
     };
     var OPTION_TYPES = ['select', 'checkbox', 'radio'];
+    // Inner field types a repeater may contain (mirrors
+    // RepeaterFieldType::ALLOWED_INNER_TYPES — keep in lockstep).
+    var REPEATER_INNER_TYPES = ['text', 'email', 'number', 'select'];
 
     var canvas = document.getElementById('sf-canvas');
     var palette = document.getElementById('sf-palette');
@@ -71,6 +74,12 @@
         }
         if (type === 'payment') {
             return { amountType: 'fixed', currency: 'USD' };
+        }
+        if (type === 'repeater') {
+            return {
+                minRows: 1, maxRows: 0, addButtonLabel: '',
+                fields: [{ handle: 'item', type: 'text', label: 'Item', required: false }]
+            };
         }
         return {};
     }
@@ -363,7 +372,145 @@
                 c.currency = v.trim().toUpperCase(); serialize();
             }));
             inspector.appendChild(curRow);
+        } else if (f.type === 'repeater') {
+            inspector.appendChild(numberRow('Minimum Rows', c.minRows, function(v) {
+                var n = parseInt(v, 10); c.minRows = (isNaN(n) || n < 0) ? 0 : n; serialize();
+            }));
+            inspector.appendChild(numberRow('Maximum Rows (0 = unlimited)', c.maxRows, function(v) {
+                var n = parseInt(v, 10); c.maxRows = (isNaN(n) || n < 0) ? 0 : n; serialize();
+            }));
+            var addLabelRow = row('Add Button Label');
+            var addLabelInput = textInput(c.addButtonLabel || '', function(v) { c.addButtonLabel = v; serialize(); });
+            addLabelInput.placeholder = 'Add another';
+            addLabelRow._input.appendChild(addLabelInput);
+            inspector.appendChild(addLabelRow);
+
+            inspector.appendChild(innerFieldsEditor(f));
         }
+    }
+
+    // ---- repeater inner-field editor -------------------------------------
+
+    // A mini field editor for a repeater's inner sub-fields: add/remove, with a
+    // type picker limited to REPEATER_INNER_TYPES, a handle, a label, a required
+    // toggle, and the type's own settings (select options, number min/max).
+    function innerFieldsEditor(f) {
+        var c = f.config || (f.config = {});
+        if (!Array.isArray(c.fields)) { c.fields = []; }
+
+        var wrap = document.createElement('div'); wrap.className = 'field sf-repeater-fields';
+        var heading = document.createElement('div'); heading.className = 'heading';
+        var lab = document.createElement('label'); lab.textContent = 'Inner Fields';
+        heading.appendChild(lab); wrap.appendChild(heading);
+
+        var hint = document.createElement('div'); hint.className = 'instructions';
+        var hp = document.createElement('p');
+        hp.textContent = 'The sub-fields a visitor fills in per row. Allowed types: text, email, number, select.';
+        hint.appendChild(hp); wrap.appendChild(hint);
+
+        var list = document.createElement('div'); list.className = 'sf-repeater-list';
+        wrap.appendChild(list);
+
+        function redraw() {
+            list.innerHTML = '';
+            c.fields.forEach(function(inner, idx) { list.appendChild(innerRow(inner, idx)); });
+        }
+
+        function innerRow(inner, idx) {
+            var r = document.createElement('div'); r.className = 'sf-repeater-row';
+
+            var li = document.createElement('input'); li.type = 'text'; li.className = 'text'; li.placeholder = 'Label';
+            li.value = inner.label || '';
+            li.addEventListener('input', function() { inner.label = li.value; serialize(); });
+
+            var hi = document.createElement('input'); hi.type = 'text'; hi.className = 'text'; hi.placeholder = 'Handle';
+            hi.value = inner.handle || '';
+            hi.addEventListener('input', function() { inner.handle = slug(hi.value); serialize(); });
+
+            var typeSel = selectEl(REPEATER_INNER_TYPES.map(function(t) {
+                return { value: t, label: TYPE_LABELS[t] || t };
+            }), inner.type || 'text', function(v) {
+                inner.type = v;
+                if (v === 'select' && !Array.isArray(inner.options)) {
+                    inner.options = [{ label: 'Option 1', value: 'option1' }];
+                }
+                serialize(); redraw();
+            });
+
+            var reqWrap = document.createElement('label'); reqWrap.className = 'sf-repeater-req';
+            var cb = document.createElement('input'); cb.type = 'checkbox'; cb.checked = !!inner.required;
+            cb.addEventListener('change', function() { inner.required = cb.checked; serialize(); });
+            reqWrap.appendChild(cb);
+            reqWrap.appendChild(document.createTextNode(' required'));
+
+            var del = document.createElement('button'); del.type = 'button'; del.className = 'btn sf-repeater-del'; del.textContent = '×';
+            del.addEventListener('click', function() { c.fields.splice(idx, 1); redraw(); serialize(); });
+
+            r.appendChild(li); r.appendChild(hi); r.appendChild(typeSel); r.appendChild(reqWrap); r.appendChild(del);
+
+            // Per-type extra settings.
+            if (inner.type === 'select') {
+                r.appendChild(innerOptionsEditor(inner));
+            } else if (inner.type === 'number') {
+                var nWrap = document.createElement('div'); nWrap.className = 'sf-repeater-subsettings';
+                nWrap.appendChild(miniNumber('Min', inner.min, function(v) { setNum(inner, 'min', v); }));
+                nWrap.appendChild(miniNumber('Max', inner.max, function(v) { setNum(inner, 'max', v); }));
+                r.appendChild(nWrap);
+            }
+
+            return r;
+        }
+
+        function miniNumber(labelText, value, oninput) {
+            var l = document.createElement('label'); l.className = 'sf-repeater-mini';
+            l.appendChild(document.createTextNode(labelText + ' '));
+            l.appendChild(textInput(value, oninput, 'number'));
+            return l;
+        }
+
+        redraw();
+
+        var add = document.createElement('button'); add.type = 'button'; add.className = 'btn sf-repeater-add'; add.textContent = 'Add Inner Field';
+        add.addEventListener('click', function() {
+            c.fields.push({ handle: uniqueInnerHandle(c.fields, 'field'), type: 'text', label: '', required: false });
+            redraw(); serialize();
+        });
+        wrap.appendChild(add);
+        return wrap;
+    }
+
+    function uniqueInnerHandle(innerFields, base) {
+        var taken = {};
+        innerFields.forEach(function(i) { if (i.handle) { taken[i.handle.toLowerCase()] = true; } });
+        if (!taken[base]) { return base; }
+        var n = 2;
+        while (taken[(base + n).toLowerCase()]) { n++; }
+        return base + n;
+    }
+
+    function innerOptionsEditor(inner) {
+        if (!Array.isArray(inner.options)) { inner.options = []; }
+        var wrap = document.createElement('div'); wrap.className = 'sf-repeater-options';
+
+        function redraw() {
+            wrap.innerHTML = '';
+            inner.options.forEach(function(opt, idx) {
+                var r = document.createElement('div'); r.className = 'sf-option-row';
+                var li = document.createElement('input'); li.type = 'text'; li.className = 'text'; li.placeholder = 'Label'; li.value = opt.label || '';
+                var vi = document.createElement('input'); vi.type = 'text'; vi.className = 'text'; vi.placeholder = 'Value'; vi.value = opt.value || '';
+                li.addEventListener('input', function() { opt.label = li.value; serialize(); });
+                vi.addEventListener('input', function() { opt.value = vi.value; serialize(); });
+                var del = document.createElement('button'); del.type = 'button'; del.className = 'btn sf-option-del'; del.textContent = '×';
+                del.addEventListener('click', function() { inner.options.splice(idx, 1); redraw(); serialize(); });
+                r.appendChild(li); r.appendChild(vi); r.appendChild(del);
+                wrap.appendChild(r);
+            });
+            var add = document.createElement('button'); add.type = 'button'; add.className = 'btn sf-option-add'; add.textContent = 'Add Option';
+            add.addEventListener('click', function() { inner.options.push({ label: '', value: '' }); redraw(); serialize(); });
+            wrap.appendChild(add);
+        }
+        redraw();
+        return wrap;
     }
 
     function setNum(c, key, v) {
@@ -699,6 +846,30 @@
             if (OPTION_TYPES.indexOf(f.type) !== -1) {
                 var opts = (f.config && f.config.options) || [];
                 if (!opts.length) { errs.push('Field "' + name + '": needs at least one option.'); }
+            }
+            if (f.type === 'repeater') {
+                var inner = (f.config && f.config.fields) || [];
+                if (!inner.length) { errs.push('Field "' + name + '": needs at least one inner field.'); }
+                var min = parseInt((f.config && f.config.minRows), 10) || 0;
+                var max = parseInt((f.config && f.config.maxRows), 10) || 0;
+                if (max > 0 && min > max) { errs.push('Field "' + name + '": minimum rows cannot exceed maximum rows.'); }
+                var innerSeen = {};
+                inner.forEach(function(inf, j) {
+                    var iname = inf.handle || ('#' + (j + 1));
+                    if (!inf.handle || !/^[a-zA-Z_][a-zA-Z0-9_]*$/.test(inf.handle)) {
+                        errs.push('Field "' + name + '": inner field "' + iname + '" has an invalid handle.');
+                    } else {
+                        var ik = inf.handle.toLowerCase();
+                        if (innerSeen[ik]) { errs.push('Field "' + name + '": duplicate inner handle "' + inf.handle + '".'); }
+                        innerSeen[ik] = true;
+                    }
+                    if (REPEATER_INNER_TYPES.indexOf(inf.type) === -1) {
+                        errs.push('Field "' + name + '": inner field "' + iname + '" has an unsupported type.');
+                    }
+                    if (inf.type === 'select' && !((inf.options || []).length)) {
+                        errs.push('Field "' + name + '": inner select "' + iname + '" needs at least one option.');
+                    }
+                });
             }
         });
         return errs;
