@@ -4,6 +4,7 @@ namespace fabianhaef\simpleform;
 
 use Craft;
 use fabianhaef\simpleform\elements\Form;
+use fabianhaef\simpleform\elements\Submission;
 use fabianhaef\simpleform\helpers\FieldQueryHelper;
 use fabianhaef\simpleform\helpers\FormSteps;
 use fabianhaef\simpleform\models\Settings;
@@ -149,6 +150,76 @@ class TwigExtension extends AbstractExtension
 
         // Form CSS/JS: registered as a cache-bustable asset bundle by default
         // (no asset weight on form-less pages), with an inline escape hatch.
+        $html .= $this->renderAssets($settings);
+
+        return $html;
+    }
+
+    /**
+     * Render an editable, pre-filled copy of a form for an existing submission
+     * (#144). Each field is primed with the submission's stored value, conditional
+     * logic evaluates against those values on first render, and the form posts to
+     * the `simple-form/submissions/update` action with the submission id and a
+     * CSRF-protected hidden edit token. Server-side authorization (allowEditing +
+     * window + token/owner) is re-checked on submit — this only renders the UI.
+     *
+     * @param Submission $submission the submission to edit (must belong to an editable form)
+     * @param array<string, mixed> $options `token` (string) for the anonymous path; `submitText`
+     */
+    public function renderEditForm(Submission $submission, array $options = []): string
+    {
+        $form = $submission->getForm();
+        if (!$form instanceof Form || !$form->allowEditing) {
+            return '<!-- Editing is not enabled for this form -->';
+        }
+
+        $fieldTypeRegistry = Plugin::getInstance()->getFieldTypeRegistry();
+        $fields = Plugin::getInstance()->getFormStructure()->getFieldSet((int) $form->id, (int) $submission->siteId);
+
+        // Map the submission's stored data (field_<id> => [..., value]) into the
+        // prefill shape renderFieldGroup expects (field_<id> => value).
+        $prefill = [];
+        foreach (($submission->data ?? []) as $key => $entry) {
+            if (is_string($key) && is_array($entry) && array_key_exists('value', $entry)) {
+                $prefill[$key] = $entry['value'];
+            }
+        }
+
+        $hasFileField = false;
+        foreach ($fields as $field) {
+            if (($field['type'] ?? null) === 'file') {
+                $hasFileField = true;
+                break;
+            }
+        }
+        $enctype = $hasFileField ? ' enctype="multipart/form-data"' : '';
+
+        $settings = Plugin::getInstance()->getSettings();
+        $errorMessage = (string) ($settings->errorMessage ?? '');
+        $errorAttr = $errorMessage !== '' ? ' data-sf-error="' . htmlspecialchars($errorMessage, ENT_QUOTES) . '"' : '';
+        $submitText = (string) ($options['submitText'] ?? Craft::t('simple-form', 'Save changes'));
+        $token = isset($options['token']) ? (string) $options['token'] : '';
+
+        $action = Craft::$app->getUrlManager()->createUrl('simple-form/submission-edit/update');
+        $html = '<form class="simple-form simple-form-edit" method="POST"' . $enctype . $errorAttr . ' action="' . htmlspecialchars($action, ENT_QUOTES) . '">';
+        $html .= Craft::$app->getView()->renderString('{{ csrfInput() }}');
+        $html .= '<input type="hidden" name="submissionId" value="' . (int) $submission->id . '">';
+        if ($token !== '') {
+            $html .= '<input type="hidden" name="t" value="' . htmlspecialchars($token, ENT_QUOTES) . '">';
+        }
+
+        if ($settings->enableHoneypot) {
+            $html .= '<input type="hidden" name="__honeypot" value="" style="display:none;" aria-hidden="true" autocomplete="off">';
+        }
+
+        foreach ($fields as $field) {
+            $html .= $this->renderFieldGroup($field, $fieldTypeRegistry, $prefill);
+        }
+
+        $html .= $this->renderCaptcha($settings);
+        $html .= '<button type="submit" class="simple-form-submit-btn">' . htmlspecialchars($submitText) . '</button>';
+        $html .= '</form>';
+
         $html .= $this->renderAssets($settings);
 
         return $html;

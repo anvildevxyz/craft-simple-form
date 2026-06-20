@@ -107,6 +107,8 @@ class FormsController extends Controller
         $form->emailReplyTo = $request->getBodyParam('emailReplyTo');
         $form->emailBody = $request->getBodyParam('emailBody');
         $form->allowSaveResume = (bool) $request->getBodyParam('allowSaveResume');
+        $form->allowEditing = (bool) $request->getBodyParam('allowEditing');
+        $form->editWindowMinutes = max(0, (int) $request->getBodyParam('editWindowMinutes', 0));
         $form->propagationMethod = PropagationMethod::tryFrom(
             (string)$request->getBodyParam('propagationMethod', 'none')
         ) ?? PropagationMethod::None;

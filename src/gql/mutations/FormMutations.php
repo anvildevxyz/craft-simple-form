@@ -6,6 +6,7 @@ use Craft;
 use craft\gql\base\Mutation as BaseMutation;
 use craft\helpers\Gql as GqlHelper;
 use fabianhaef\simpleform\elements\Form;
+use fabianhaef\simpleform\elements\Submission;
 use fabianhaef\simpleform\gql\types\FieldValueInputType;
 use fabianhaef\simpleform\gql\types\SubmitFormPayloadType;
 use fabianhaef\simpleform\Plugin;
@@ -36,20 +37,21 @@ class FormMutations extends BaseMutation
      */
     public static function getMutations(bool $checkToken = true): array
     {
-        if ($checkToken && !GqlHelper::canSchema('simpleFormSubmissions', 'create')) {
-            return [];
-        }
+        $mutations = [];
 
-        return [
-            'submitForm' => [
+        if (!$checkToken || GqlHelper::canSchema('simpleFormSubmissions', 'edit')) {
+            $mutations['updateSubmission'] = [
                 'type' => Type::nonNull(SubmitFormPayloadType::getType()),
                 'args' => [
-                    'handle' => ['type' => Type::string(), 'description' => 'The handle of the form to submit to.'],
-                    'id' => ['type' => Type::int(), 'description' => 'The id of the form to submit to (alternative to handle).'],
-                    'siteId' => ['type' => Type::int(), 'description' => 'Site to submit against. Defaults to the form\'s/primary site.'],
+                    'id' => ['type' => Type::nonNull(Type::int()), 'description' => 'The id of the submission to edit.'],
+                    'token' => [
+                        'type' => Type::string(),
+                        'description' => 'The secure edit token for the submission. Required unless the request '
+                            . 'is an authenticated user who owns the submission.',
+                    ],
                     'values' => [
                         'type' => Type::nonNull(Type::listOf(Type::nonNull(FieldValueInputType::getType()))),
-                        'description' => 'The submitted field values.',
+                        'description' => 'The edited field values.',
                     ],
                     'honeypot' => [
                         'type' => Type::string(),
@@ -57,15 +59,47 @@ class FormMutations extends BaseMutation
                     ],
                     'captchaToken' => [
                         'type' => Type::string(),
-                        'description' => 'Captcha token to verify when captcha is enabled. Required for headless '
-                            . 'clients unless the operator has enabled the GraphQL captcha bypass.',
+                        'description' => 'Captcha token to verify when captcha is enabled, unless the operator '
+                            . 'has enabled the GraphQL captcha bypass.',
                     ],
                 ],
-                'description' => 'Submits a form. Returns a payload with success/errors; '
-                    . 'invalid input is reported via the errors list, not a hard failure.',
-                'resolve' => [self::class, 'resolveSubmit'],
+                'description' => 'Edits an existing submission, re-validated through the same path as a create. '
+                    . 'Authorized by a valid edit token or by an authenticated owner; gated by the '
+                    . 'simpleFormSubmissions:edit schema component.',
+                'resolve' => [self::class, 'resolveUpdate'],
+            ];
+        }
+
+        if ($checkToken && !GqlHelper::canSchema('simpleFormSubmissions', 'create')) {
+            return $mutations;
+        }
+
+        $mutations['submitForm'] = [
+            'type' => Type::nonNull(SubmitFormPayloadType::getType()),
+            'args' => [
+                'handle' => ['type' => Type::string(), 'description' => 'The handle of the form to submit to.'],
+                'id' => ['type' => Type::int(), 'description' => 'The id of the form to submit to (alternative to handle).'],
+                'siteId' => ['type' => Type::int(), 'description' => 'Site to submit against. Defaults to the form\'s/primary site.'],
+                'values' => [
+                    'type' => Type::nonNull(Type::listOf(Type::nonNull(FieldValueInputType::getType()))),
+                    'description' => 'The submitted field values.',
+                ],
+                'honeypot' => [
+                    'type' => Type::string(),
+                    'description' => 'Honeypot value; leave empty. A non-empty value is treated as spam and silently dropped.',
+                ],
+                'captchaToken' => [
+                    'type' => Type::string(),
+                    'description' => 'Captcha token to verify when captcha is enabled. Required for headless '
+                        . 'clients unless the operator has enabled the GraphQL captcha bypass.',
+                ],
             ],
+            'description' => 'Submits a form. Returns a payload with success/errors; '
+                . 'invalid input is reported via the errors list, not a hard failure.',
+            'resolve' => [self::class, 'resolveSubmit'],
         ];
+
+        return $mutations;
     }
 
     /**
@@ -144,6 +178,91 @@ class FormMutations extends BaseMutation
                 'submissionId' => null,
                 'errors' => [],
             ];
+        }
+
+        if (!empty($result['errors'])) {
+            return self::errorPayload(self::formatErrors($result['errors']));
+        }
+
+        return [
+            'success' => true,
+            'submissionId' => $result['submission']?->id !== null ? (int) $result['submission']->id : null,
+            'errors' => [],
+        ];
+    }
+
+    /**
+     * Resolve the `updateSubmission` mutation (#144). Re-checks token/owner
+     * authorization and routes the edit through the same shared save core as a
+     * create, so validation, conditional logic, and spam protection behave
+     * identically. Never leaks the token or secret in the payload.
+     *
+     * @param mixed $source
+     * @param array<string, mixed> $args
+     * @return array<string, mixed>
+     */
+    public static function resolveUpdate(mixed $source, array $args): array
+    {
+        $id = (int) ($args['id'] ?? 0);
+        if ($id <= 0) {
+            return self::errorPayload([['key' => 'submission', 'messages' => ['A submission id is required.']]]);
+        }
+
+        $submission = Submission::find()->id($id)->siteId('*')->one();
+        if (!$submission instanceof Submission) {
+            return self::errorPayload([['key' => 'submission', 'messages' => ['Submission not found.']]]);
+        }
+
+        // Shared per-IP abuse throttle (also guards the create path).
+        /** @var \craft\web\Request $request */
+        $request = Craft::$app->getRequest();
+        if (Plugin::getInstance()->getSubmissionService()->isRateLimited($request->getUserIP())) {
+            return self::errorPayload([['key' => 'form', 'messages' => ['Too many submissions. Please wait a moment and try again.']]]);
+        }
+
+        // Authorize: a valid token, or an authenticated owner — plus allowEditing
+        // and the edit window, all enforced server-side.
+        $token = isset($args['token']) ? (string) $args['token'] : null;
+        $userId = Craft::$app->getUser()->getId();
+        $actor = Plugin::getInstance()->getSubmissionService()->authorizeEdit(
+            $submission,
+            $token,
+            $userId !== null ? (int) $userId : null,
+        );
+        if ($actor === null) {
+            return self::errorPayload([['key' => 'auth', 'messages' => ['You are not authorized to edit this submission.']]]);
+        }
+
+        // Build the field-id => value map from the input list.
+        $values = [];
+        $inputValues = is_array($args['values'] ?? null) ? $args['values'] : [];
+        foreach ($inputValues as $entry) {
+            if (!is_array($entry)) {
+                continue;
+            }
+            $fieldId = (int) ($entry['fieldId'] ?? 0);
+            if ($fieldId <= 0) {
+                continue;
+            }
+            if (isset($entry['values']) && is_array($entry['values'])) {
+                $values[$fieldId] = $entry['values'];
+            } else {
+                $values[$fieldId] = $entry['value'] ?? null;
+            }
+        }
+
+        $captchaToken = isset($args['captchaToken']) ? (string) $args['captchaToken'] : null;
+        $skipCaptcha = Plugin::getInstance()->getSettings()->allowGraphqlCaptchaBypass;
+
+        $result = Plugin::getInstance()->getSubmissionService()->update($submission, $values, [
+            'honeypot' => (string) ($args['honeypot'] ?? ''),
+            'captchaToken' => $captchaToken,
+            'skipCaptcha' => $skipCaptcha,
+            'actor' => $actor,
+        ]);
+
+        if ($result['submission'] === null && $result['errors'] === null) {
+            return ['success' => true, 'submissionId' => null, 'errors' => []];
         }
 
         if (!empty($result['errors'])) {

@@ -55,6 +55,8 @@ class FormQuery extends ElementQuery
             'simpleform_forms.handle',
             'simpleform_forms.propagationMethod',
             'simpleform_forms.allowSaveResume',
+            'simpleform_forms.allowEditing',
+            'simpleform_forms.editWindowMinutes',
             'simpleform_forms_sites.description',
             'simpleform_forms_sites.emailTo',
             'simpleform_forms_sites.emailSubject',
