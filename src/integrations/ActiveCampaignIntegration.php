@@ -46,11 +46,6 @@ class ActiveCampaignIntegration extends AbstractMarketingIntegration
             return IntegrationResult::failure(null, 'ActiveCampaign API URL and key are required');
         }
 
-        // SSRF guard (F3).
-        if (!SafeUrl::isPublicHttpUrl($apiUrl)) {
-            return IntegrationResult::failure(null, 'Blocked request to a non-public address');
-        }
-
         $email = $this->resolveEmail($submission, $settings);
         if ($email === null) {
             return IntegrationResult::failure(null, 'No email address found in submission');
@@ -59,14 +54,14 @@ class ActiveCampaignIntegration extends AbstractMarketingIntegration
         $contact = ['email' => $email] + $this->mappedFields($submission, $settings, 'fieldMap');
         $headers = ['Api-Token' => $apiKey];
 
-        try {
-            $sync = $this->httpClient()->request('POST', "$apiUrl/api/3/contact/sync", [
-                'headers' => $headers,
-                'json' => ['contact' => $contact],
-                'http_errors' => false,
-            ]);
-        } catch (\Throwable $e) {
-            return IntegrationResult::failure(null, $e->getMessage());
+        // First call needs the response body to resolve the contact id, so use
+        // rawRequest(); the SSRF guard and exception trap still apply.
+        $sync = $this->rawRequest('POST', "$apiUrl/api/3/contact/sync", [
+            'headers' => $headers,
+            'json' => ['contact' => $contact],
+        ]);
+        if ($sync instanceof IntegrationResult) {
+            return $sync; // blocked URL or transport failure
         }
 
         $result = $this->resultFromResponse($sync);
@@ -86,17 +81,10 @@ class ActiveCampaignIntegration extends AbstractMarketingIntegration
             return $result; // contact synced; can't resolve id for list add
         }
 
-        try {
-            $listResp = $this->httpClient()->request('POST', "$apiUrl/api/3/contactLists", [
-                'headers' => $headers,
-                'json' => ['contactList' => ['list' => $listId, 'contact' => $contactId, 'status' => 1]],
-                'http_errors' => false,
-            ]);
-        } catch (\Throwable $e) {
-            return IntegrationResult::failure(null, $e->getMessage());
-        }
-
-        return $this->resultFromResponse($listResp);
+        return $this->request('POST', "$apiUrl/api/3/contactLists", [
+            'headers' => $headers,
+            'json' => ['contactList' => ['list' => $listId, 'contact' => $contactId, 'status' => 1]],
+        ]);
     }
 
     public function settingsHtml(array $settings): string

@@ -7,13 +7,14 @@ use craft\helpers\Cp;
 use craft\helpers\Json;
 use fabianhaef\simpleform\elements\Submission;
 use fabianhaef\simpleform\helpers\SafeUrl;
+use fabianhaef\simpleform\integrations\support\ApiConnector;
 use fabianhaef\simpleform\integrations\support\SubmissionValues;
-use GuzzleHttp\Client;
 
 /**
  * Generic outbound webhook — POST/PUT a JSON or form-encoded payload to a target
  * URL, optionally HMAC-signed. The reference connector for the integrations
- * framework; covers Zapier/Make/n8n and any custom endpoint.
+ * framework; covers Zapier/Make/n8n and any custom endpoint. The HTTP/SSRF
+ * plumbing comes from {@see ApiConnector}.
  *
  * Settings: `url` (env-aware), `method` (POST|PUT), `format` (json|form),
  * `secret` (env-aware; enables signing), `fieldMapping` (optional
@@ -21,6 +22,8 @@ use GuzzleHttp\Client;
  */
 class WebhookIntegration implements IntegrationTypeInterface
 {
+    use ApiConnector;
+
     public const SIGNATURE_HEADER = 'X-SimpleForm-Signature';
 
     public static function handle(): string
@@ -118,37 +121,22 @@ class WebhookIntegration implements IntegrationTypeInterface
 
     /**
      * The HTTP transport, isolated so it can be exercised with a mocked client.
+     * The SSRF guard, transport-exception trap, and response mapping come from
+     * {@see ApiConnector::request()}.
      *
      * @internal
      */
     public function requestWebhook(string $method, string $url, string $body, string $contentType, ?string $secret): IntegrationResult
     {
-        // SSRF guard (F3): the resolved URL must point at a public address.
-        if (!SafeUrl::isPublicHttpUrl($url)) {
-            return IntegrationResult::failure(null, 'Blocked request to a non-public address');
-        }
-
         $headers = ['Content-Type' => $contentType];
         if ($secret !== null) {
             $headers[self::SIGNATURE_HEADER] = self::signBody($body, $secret);
         }
 
-        try {
-            $response = $this->httpClient()->request($method, $url, [
-                'headers' => $headers,
-                'body' => $body,
-                'http_errors' => false,
-            ]);
-        } catch (\Throwable $e) {
-            return IntegrationResult::failure(null, $e->getMessage());
-        }
-
-        $code = $response->getStatusCode();
-        if ($code >= 200 && $code < 300) {
-            return IntegrationResult::success($code, 'OK');
-        }
-
-        return IntegrationResult::failure($code, substr((string) $response->getBody(), 0, 500));
+        return $this->request($method, $url, [
+            'headers' => $headers,
+            'body' => $body,
+        ]);
     }
 
     /** HMAC-SHA256 of the raw body, formatted `sha256=<hex>`. */
@@ -192,16 +180,5 @@ class WebhookIntegration implements IntegrationTypeInterface
             'dateCreated' => $submission->dateCreated?->format(\DateTimeInterface::ATOM),
             'data' => $values,
         ];
-    }
-
-    protected function httpClient(): Client
-    {
-        return Craft::createGuzzleClient([
-            'timeout' => 10,
-            'connect_timeout' => 5,
-            // Don't follow redirects: a public URL could 30x to an internal
-            // host and defeat the SSRF guard (F3).
-            'allow_redirects' => false,
-        ]);
     }
 }

@@ -77,4 +77,32 @@ class ChatIntegrationTest extends TestCase
         $this->assertNull($result->responseCode);
         $this->assertStringContainsString('refused', $result->message);
     }
+
+    /**
+     * SSRF guard (F3): a loopback/private URL must be blocked by the consolidated
+     * {@see \fabianhaef\simpleform\integrations\support\ApiConnector::request()}
+     * path before any HTTP call is made. The mock has no queued response, so a
+     * request reaching the client would throw — proving the guard short-circuits.
+     *
+     * @dataProvider blockedUrlProvider
+     */
+    public function testSsrfBlockedUrlIsRejectedWithoutCall(string $url): void
+    {
+        $slack = new MockSlackIntegration(new MockHandler([])); // no responses queued
+        $result = $slack->postPublic($url, ['text' => 'hi']);
+
+        $this->assertFalse($result->success);
+        $this->assertNull($result->responseCode);
+        $this->assertSame('Blocked request to a non-public address', $result->message);
+    }
+
+    /** @return iterable<string, array{string}> */
+    public static function blockedUrlProvider(): iterable
+    {
+        yield 'loopback' => ['http://127.0.0.1/hook'];
+        yield 'localhost' => ['http://localhost/hook'];
+        yield 'private rfc1918' => ['https://10.0.0.5/hook'];
+        yield 'link-local metadata' => ['http://169.254.169.254/latest/meta-data/'];
+        yield 'non-http scheme' => ['file:///etc/passwd'];
+    }
 }

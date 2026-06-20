@@ -67,18 +67,11 @@ class MailchimpIntegration extends AbstractMarketingIntegration
             $body['merge_fields'] = $merge;
         }
 
-        try {
-            $response = $this->httpClient()->request('PUT', $url, [
-                // Mailchimp accepts HTTP basic auth with any username + the API key.
-                'auth' => ['simple-form', $apiKey],
-                'json' => $body,
-                'http_errors' => false,
-            ]);
-        } catch (\Throwable $e) {
-            return IntegrationResult::failure(null, $e->getMessage());
-        }
-
-        return $this->resultFromResponse($response);
+        return $this->request('PUT', $url, [
+            // Mailchimp accepts HTTP basic auth with any username + the API key.
+            'auth' => ['simple-form', $apiKey],
+            'json' => $body,
+        ]);
     }
 
     /** The datacenter suffix of a Mailchimp API key (`...-us5` → `us5`). */

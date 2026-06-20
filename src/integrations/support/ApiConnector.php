@@ -4,6 +4,7 @@ namespace fabianhaef\simpleform\integrations\support;
 
 use Craft;
 use fabianhaef\simpleform\elements\Submission;
+use fabianhaef\simpleform\helpers\SafeUrl;
 use fabianhaef\simpleform\integrations\IntegrationResult;
 use GuzzleHttp\Client;
 use Psr\Http\Message\ResponseInterface;
@@ -62,6 +63,54 @@ trait ApiConnector
             }
         }
         return $out;
+    }
+
+    /**
+     * Dispatch a single HTTP request through the SSRF guard and map the outcome
+     * to an {@see IntegrationResult}. This is the one place the security-relevant
+     * policy lives: the public-address check (F3), the redirect/timeout policy
+     * (via {@see httpClient()}), the transport-exception trap, and the
+     * 2xx/non-2xx → result mapping. Connectors build the per-provider `$options`
+     * (auth + body + headers) and delegate here.
+     *
+     * @param array<string, mixed> $options Guzzle request options; `http_errors`
+     *                                       is always forced off so non-2xx
+     *                                       responses map to a failure result
+     *                                       rather than throwing.
+     */
+    protected function request(string $method, string $url, array $options = []): IntegrationResult
+    {
+        $response = $this->rawRequest($method, $url, $options);
+        if ($response instanceof IntegrationResult) {
+            return $response;
+        }
+        return $this->resultFromResponse($response);
+    }
+
+    /**
+     * Like {@see request()} but returns the raw response so a connector that
+     * needs the response body (e.g. to chain a follow-up call) can read it. The
+     * SSRF guard and transport-exception trap still apply; on a blocked URL or
+     * transport failure a failure {@see IntegrationResult} is returned instead of
+     * a response.
+     *
+     * @param array<string, mixed> $options
+     * @return ResponseInterface|IntegrationResult The response on a completed
+     *                                             request, or a failure result
+     *                                             when blocked or unreachable.
+     */
+    protected function rawRequest(string $method, string $url, array $options = []): ResponseInterface|IntegrationResult
+    {
+        // SSRF guard (F3): only dispatch to a public address.
+        if (!SafeUrl::isPublicHttpUrl($url)) {
+            return IntegrationResult::failure(null, 'Blocked request to a non-public address');
+        }
+
+        try {
+            return $this->httpClient()->request($method, $url, ['http_errors' => false] + $options);
+        } catch (\Throwable $e) {
+            return IntegrationResult::failure(null, $e->getMessage());
+        }
     }
 
     protected function resultFromResponse(ResponseInterface $response): IntegrationResult
