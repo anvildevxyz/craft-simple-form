@@ -153,6 +153,38 @@ For each `type` in [webhook, slack, discord, mailchimp, activecampaign, hubspot,
 
 ---
 
+## I. Agree / Consent field (GDPR) (#125)
+
+### S13 — Required consent blocks submit + records the agreement ⬜
+1. SETUP: edit the S0 form → from the palette add **Agree / Consent**. In the inspector confirm **Required** is on by default; set **Consent Text** to `I agree to the [privacy policy](https://example.com/privacy)` (or click **Add link**) → Save. Capture the consent field id.
+2. VERIFY (UI render): `{{ simpleForm('smokeForm') }}` on a test page → the consent group renders a single `<input type="checkbox" id="field_{cid}" name="field_{cid}" value="1" required>` followed by a `<label for="field_{cid}">` whose text contains `<a href="https://example.com/privacy" target="_blank" rel="noopener noreferrer">privacy policy</a>`. There is exactly **one** label for the box (no duplicate group label).
+3. EXECUTE (UI, negative): fill the other required fields, leave the consent box **unticked**, submit.
+4. VERIFY (UI): the form re-renders with the consent error (default `You must agree before submitting.`, or the German `Sie müssen zustimmen, bevor Sie absenden.`).
+5. VERIFY (DB): `SELECT COUNT(*) FROM simpleform_submissions WHERE formId={id};` is unchanged — **no** row was created.
+6. EXECUTE (UI, positive): submit again with the box **ticked**.
+7. VERIFY (DB): a new row exists; `SELECT data FROM simpleform_submissions WHERE id={sid};` → `field_{cid}.value` is a JSON object `{consented:true, consentedAt:"…", textVersion:"I agree to the privacy policy (https://example.com/privacy)", textHash:"sha256:…"}`. `consentedAt` is a server time within seconds of now (not client-supplied).
+8. VERIFY (UI detail): `/admin/simple-form/submissions/{sid}` shows the consent row as **Consented: Yes — {date} — Text: I agree to the privacy policy (…)** (not a bare `1`).
+9. VERIFY (Logs): no errors.
+
+### S14 — Per-site translated consent label + localized snapshot ⬜
+1. SETUP: switch the builder to a second (e.g. French) site and translate the consent field's text (or confirm the per-site label), then publish.
+2. EXECUTE (UI): render the form on the second site → VERIFY the consent label shows the localized text and the link still renders safely.
+3. EXECUTE (UI): submit with the box ticked on the second site.
+4. VERIFY (DB): the stored `field_{cid}.value.textVersion` reflects the **localized** text shown for that site.
+
+### S15 — Export shows a human-readable consent column ⬜
+1. SETUP: at least one ticked-consent submission from S13.
+2. EXECUTE (UI): submissions index → filter to the S0 form → **Export CSV**.
+3. VERIFY (content): the consent column header is the field label (e.g. `Consent`) and its cell reads `Yes (YYYY-MM-DD HH:MM)` (or `No`), **not** the raw JSON record.
+
+### S16 — Conditionally-required consent (XSS-safe) ⬜
+1. SETUP: edit the S0 form → on the consent field open **Conditions** → require it only when another field matches (e.g. a "Subscribe" checkbox is ticked) → Save.
+2. EXECUTE (UI): submit with the trigger **unmet** and consent **unticked** → VERIFY the submission succeeds (consent not required) and no consent record marks `consented:true`.
+3. EXECUTE (UI): submit with the trigger **met** and consent **unticked** → VERIFY the server blocks it with the consent error (the conditional-required rule is enforced server-side).
+4. VERIFY (XSS): set the consent text to `Click [x](javascript:alert(1)) and <script>alert(2)</script>` → render → VERIFY no `<a>` with a `javascript:` href and no live `<script>` (the script text is HTML-escaped). The box is still required.
+
+---
+
 ## Runner index (execute individually later)
 ```
 /craft-smoke-test plugin:simple-form S1: add a Webhook integration to a form and verify the row + DB
@@ -164,6 +196,10 @@ For each `type` in [webhook, slack, discord, mailchimp, activecampaign, hubspot,
 /craft-smoke-test plugin:simple-form S10: assign fields to 2 steps, verify step nav + single submission
 /craft-smoke-test plugin:simple-form S11: export submissions CSV and verify headers/rows
 /craft-smoke-test plugin:simple-form S12: add the count + recent dashboard widgets and verify against the DB
+/craft-smoke-test plugin:simple-form S13: add a required Consent field, block an unticked submit, then verify the stored consent record + CP detail
+/craft-smoke-test plugin:simple-form S14: translate the consent label on a second site and verify the stored textVersion is localized
+/craft-smoke-test plugin:simple-form S15: export submissions and verify the consent column reads Yes (date) / No
+/craft-smoke-test plugin:simple-form S16: make consent conditionally required and verify server-side enforcement + XSS-safe rich label
 ```
 
 ## Coverage notes / known limits

@@ -120,4 +120,9 @@ return [
     'Submissions appear here once your forms are filled out.' => 'Gli invii appariranno qui una volta compilati i moduli.',
     'No submissions match your filters.' => 'Nessun invio corrisponde ai tuoi filtri.',
     'Enable the MCP server above to issue and manage access tokens.' => 'Abilita il server MCP qui sopra per emettere e gestire i token di accesso.',
+    'Agree / Consent' => 'Accetta / Consenso',
+    'You must agree before submitting.' => 'Devi accettare prima di inviare.',
+    'Consented: Yes' => 'Consenso: Sì',
+    'Consented: No' => 'Consenso: No',
+    'Text:' => 'Testo:',
 ];

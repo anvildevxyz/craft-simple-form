@@ -114,4 +114,9 @@ return [
     'Submissions appear here once your forms are filled out.' => 'フォームが入力されると、ここに送信内容が表示されます。',
     'No submissions match your filters.' => 'フィルターに一致する送信内容はありません。',
     'Enable the MCP server above to issue and manage access tokens.' => '上で MCP サーバーを有効にすると、アクセストークンを発行・管理できます。',
+    'Agree / Consent' => '同意 / 承諾',
+    'You must agree before submitting.' => '送信する前に同意する必要があります。',
+    'Consented: Yes' => '同意: はい',
+    'Consented: No' => '同意: いいえ',
+    'Text:' => 'テキスト:',
 ];

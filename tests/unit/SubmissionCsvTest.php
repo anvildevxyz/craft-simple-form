@@ -7,9 +7,12 @@ use PHPUnit\Framework\TestCase;
 
 /**
  * Guards the CSV formula-injection neutralisation (audit finding F1, CWE-1236).
+ * The Consent record's human-readable scalar flattening (#125) is covered in the
+ * integration export suite, which boots Craft to build real Submission elements.
  */
 class SubmissionCsvTest extends TestCase
 {
+
     /**
      * @return array<string, array{0: string, 1: string}>
      */
