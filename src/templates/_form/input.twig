@@ -1,0 +1,12 @@
+{#
+  Default Simple Form theme — the field control (#137).
+
+  The seam where a theme can wrap or replace the control. The control markup
+  itself is produced by the field type's PHP renderInput() and exposed here as
+  `field.input` (Markup, already carrying any resume prefill value).
+
+  Variables:
+    field   the resolved field row (field.input is the rendered control)
+    values  resume prefill map (already applied to field.input)
+-#}
+{{- field.input -}}

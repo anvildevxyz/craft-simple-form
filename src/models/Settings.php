@@ -66,6 +66,15 @@ class Settings extends Model
     public ?string $akismetApiKey = null;
     /** What to do with a spam verdict: flag (save as spam) or block (drop). */
     public string $akismetMode = self::AKISMET_FLAG;
+    /**
+     * Global default render-template path (#137): a site-templates directory of
+     * Twig partials (e.g. `_simple-form`) overriding the plugin's built-in form
+     * markup for every form. A per-form {@see \fabianhaef\simpleform\elements\Form::$templatePath}
+     * takes precedence; an empty value (the default) uses the plugin's built-in
+     * partials. Resolution is per partial — a theme may ship only `field.twig`
+     * and fall through to the built-in `form.twig`.
+     */
+    public ?string $templatePath = null;
     public string $storageLocation = 'database';
     public string $submitMessage = 'Thank you! Your submission has been received.';
     public string $errorMessage = 'There was an error submitting your form. Please try again.';
@@ -195,6 +204,7 @@ class Settings extends Model
             [['captchaType'], 'in', 'range' => [self::CAPTCHA_V3, self::CAPTCHA_V2]],
             [['selectedCaptchaProvider'], 'string'],
             [['storageLocation'], 'in', 'range' => ['database']],
+            [['templatePath'], 'string'],
             [['recaptchaV3MinScore'], 'number', 'min' => 0, 'max' => 1],
             [
                 ['recaptchaV3SiteKey', 'recaptchaV3SecretKey'],

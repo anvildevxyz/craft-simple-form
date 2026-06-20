@@ -10,6 +10,7 @@ use craft\events\RegisterGqlMutationsEvent;
 use craft\events\RegisterGqlQueriesEvent;
 use craft\events\RegisterGqlSchemaComponentsEvent;
 use craft\events\RegisterGqlTypesEvent;
+use craft\events\RegisterTemplateRootsEvent;
 use craft\events\RegisterUrlRulesEvent;
 use craft\events\RegisterUserPermissionsEvent;
 use craft\services\Dashboard;
@@ -19,6 +20,7 @@ use craft\services\Gql;
 use craft\services\UserPermissions;
 use craft\web\twig\variables\CraftVariable;
 use craft\web\UrlManager;
+use craft\web\View;
 use fabianhaef\simpleform\events\SubmissionEvent;
 use fabianhaef\simpleform\fields\FormField;
 use fabianhaef\simpleform\gql\mutations\FormMutations;
@@ -43,6 +45,7 @@ use fabianhaef\simpleform\services\CaptchaService;
 use fabianhaef\simpleform\services\DraftService;
 use fabianhaef\simpleform\services\EmailService;
 use fabianhaef\simpleform\services\FieldTypeRegistry;
+use fabianhaef\simpleform\services\FormRenderService;
 use fabianhaef\simpleform\services\FormStructureService;
 use fabianhaef\simpleform\services\IntegrationsService;
 use fabianhaef\simpleform\services\IntegrationTypeRegistry;
@@ -79,7 +82,7 @@ class Plugin extends BasePlugin
     /** The plugin's single commercial edition. */
     public const EDITION_PRO = 'pro';
 
-    public string $schemaVersion = '2.10.0';
+    public string $schemaVersion = '2.11.0';
     public bool $hasCpSection = true;
     public bool $hasCpSettings = false;
     public bool $hasCpPermissions = true;
@@ -113,6 +116,7 @@ class Plugin extends BasePlugin
             'akismetService' => AkismetService::class,
             'assetUploadService' => AssetUploadService::class,
             'formStructure' => FormStructureService::class,
+            'formRender' => FormRenderService::class,
             'mcpTokenManager' => TokenManager::class,
             'integrationTypeRegistry' => IntegrationTypeRegistry::class,
             'integrations' => IntegrationsService::class,
@@ -135,6 +139,17 @@ class Plugin extends BasePlugin
         if (!Craft::$app->getRequest()->getIsConsoleRequest()) {
             Craft::$app->getView()->registerTwigExtension(new TwigExtension());
         }
+
+        // Register the plugin's built-in form partials as a SITE template root so
+        // the front-end render path can address them (e.g. `simple-form/form`) and
+        // so a site theme's own `templates/<path>/*.twig` overrides win first (#137).
+        Event::on(
+            View::class,
+            View::EVENT_REGISTER_SITE_TEMPLATE_ROOTS,
+            static function(RegisterTemplateRootsEvent $event): void {
+                $event->roots['simple-form'] = __DIR__ . '/templates/_form';
+            }
+        );
 
         // craft.simpleForm.* template API (complements the simpleForm() function).
         Event::on(
@@ -350,6 +365,13 @@ class Plugin extends BasePlugin
     {
         /** @var FormStructureService $service */
         $service = $this->get('formStructure');
+        return $service;
+    }
+
+    public function getFormRender(): FormRenderService
+    {
+        /** @var FormRenderService $service */
+        $service = $this->get('formRender');
         return $service;
     }
 

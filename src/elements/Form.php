@@ -28,6 +28,13 @@ class Form extends Element
     public ?string $handle = null;
     /** Per-form opt-in for save-&-resume drafts (shared, not translatable). */
     public bool $allowSaveResume = false;
+    /**
+     * Per-form custom render-template path (#137), a site-templates directory of
+     * Twig partials (e.g. `_simple-form/landing`) that override the plugin's
+     * built-in form markup. Overrides {@see Settings::$templatePath}. Shared
+     * across sites (structural, not translatable). Null = use the global/built-in.
+     */
+    public ?string $templatePath = null;
 
     // Per-site (translatable). title is stored in elements_sites via hasTitles().
     public ?string $title = null;
@@ -187,6 +194,7 @@ class Form extends Element
         $rules[] = [['emailTo', 'emailSubject', 'emailReplyTo'], 'string', 'max' => 255];
         $rules[] = [['emailBody'], 'string'];
         $rules[] = [['allowSaveResume'], 'boolean'];
+        $rules[] = [['templatePath'], 'string', 'max' => 255];
 
         // handle is shared across sites, so it must be globally unique
         $rules[] = [['handle'], 'validateHandleUnique'];
@@ -228,6 +236,7 @@ class Form extends Element
             'name' => $this->name,
             'propagationMethod' => $this->propagationMethod->value,
             'allowSaveResume' => $this->allowSaveResume,
+            'templatePath' => $this->templatePath,
             'dateUpdated' => $now,
         ];
 

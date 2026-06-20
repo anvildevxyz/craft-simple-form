@@ -107,13 +107,16 @@ class SettingsTest extends TestCase
         $this->assertStringContainsString('getCaptchaService()->verify(', $code);
     }
 
-    public function testTwigExtensionGatesHoneypotAndRendersCaptcha(): void
+    public function testFormRenderServiceGatesHoneypotAndRendersCaptcha(): void
     {
-        $code = $this->source('TwigExtension.php');
+        // The render path moved out of TwigExtension into FormRenderService (#137);
+        // the Twig extension is now a thin delegator. Honeypot gating + captcha
+        // delegation live in the service.
+        $code = $this->source('services/FormRenderService.php');
 
         $this->assertStringContainsString('enableHoneypot', $code);
-        $this->assertStringContainsString('renderCaptcha', $code);
-        // The widget markup now lives in the provider; the Twig extension delegates.
+        $this->assertStringContainsString('_captcha', $code);
+        // The widget markup lives in the provider; the service delegates.
         $this->assertStringContainsString('getCaptchaService()->renderWidget()', $code);
     }
 
