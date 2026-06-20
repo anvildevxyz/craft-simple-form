@@ -4,8 +4,10 @@ namespace fabianhaef\simpleform\elements;
 
 use Craft;
 use craft\base\Element;
+use craft\helpers\DateTimeHelper;
 use craft\helpers\Db;
 use craft\helpers\StringHelper;
+use DateTime;
 use fabianhaef\simpleform\elements\db\FormQuery;
 use fabianhaef\simpleform\Plugin;
 use fabianhaef\simpleform\traits\HasPropagation;
@@ -23,11 +25,28 @@ class Form extends Element
      */
     public const SUPPORTED_PROPAGATION_METHODS = ['none', 'siteGroup', 'language', 'all'];
 
+    /** {@see getClosedReason()}: the open date has not arrived yet. */
+    public const CLOSED_NOT_YET = 'not_yet';
+
+    /** {@see getClosedReason()}: the close date has passed. */
+    public const CLOSED_ENDED = 'ended';
+
+    /** {@see getClosedReason()}: the submission limit has been reached. */
+    public const CLOSED_FULL = 'full';
+
     // Shared across sites
     public ?string $name = null;
     public ?string $handle = null;
     /** Per-form opt-in for save-&-resume drafts (shared, not translatable). */
     public bool $allowSaveResume = false;
+
+    /**
+     * Scheduling window + quota (shared, not translatable). All optional:
+     * an unset bound is open-ended, a null limit is unlimited.
+     */
+    public ?DateTime $openDate = null;
+    public ?DateTime $closeDate = null;
+    public ?int $submissionLimit = null;
 
     // Per-site (translatable). title is stored in elements_sites via hasTitles().
     public ?string $title = null;
@@ -36,6 +55,8 @@ class Form extends Element
     public ?string $emailSubject = null;
     public ?string $emailReplyTo = null;
     public ?string $emailBody = null;
+    /** Per-site message shown in place of the form when it is closed/full. */
+    public ?string $closedMessage = null;
 
     public static function displayName(): string
     {
@@ -75,9 +96,112 @@ class Form extends Element
      */
     private ?array $eagerFields = null;
 
+    /**
+     * Request-scoped cache of the non-spam submission count, so repeated
+     * availability checks within one request (render + submit guard) issue at
+     * most one count query. Reset on save via {@see self::afterSave()}.
+     */
+    private ?int $submissionCount = null;
+
     public function __toString(): string
     {
         return $this->title ?? $this->name ?? '';
+    }
+
+    /**
+     * @return list<string>
+     */
+    public function datetimeAttributes(): array
+    {
+        return [...parent::datetimeAttributes(), 'openDate', 'closeDate'];
+    }
+
+    /**
+     * Whether the form currently accepts submissions, independent of the
+     * visitor. False before the open date, after the close date, and once the
+     * submission limit is reached.
+     */
+    public function isAcceptingSubmissions(): bool
+    {
+        return $this->getClosedReason() === null;
+    }
+
+    /**
+     * Why the form is closed, or null when it is open. Returns one of
+     * {@see self::CLOSED_NOT_YET}, {@see self::CLOSED_ENDED}, or
+     * {@see self::CLOSED_FULL} — checked in that order so the most relevant
+     * reason wins (a not-yet-open form is reported as such even if its limit is
+     * coincidentally 0-of-N).
+     */
+    public function getClosedReason(): ?string
+    {
+        $now = DateTimeHelper::now();
+
+        if ($this->openDate && $now < $this->openDate) {
+            return self::CLOSED_NOT_YET;
+        }
+
+        if ($this->closeDate && $now > $this->closeDate) {
+            return self::CLOSED_ENDED;
+        }
+
+        // The limit is the maximum number of accepted submissions: the form
+        // closes once the count reaches it (count >= limit), so the Nth
+        // submission is accepted and the (N+1)th is rejected.
+        if ($this->submissionLimit !== null && $this->getSubmissionCount() >= $this->submissionLimit) {
+            return self::CLOSED_FULL;
+        }
+
+        return null;
+    }
+
+    /**
+     * Cheap, count-only tally of this form's submissions across every site,
+     * excluding spam (a spam row must not burn a seat). Trashed submissions are
+     * excluded by the element query's default status filter. Cached for the
+     * duration of the request.
+     *
+     * Race-safety: this count → save is not atomic, so under concurrent submits
+     * a form may slightly exceed its limit (two requests can both read N-1 then
+     * both save). The cap is a soft business limit, not a hard inventory lock,
+     * so a small over-count is accepted for v1. A DB-level guard keyed on formId
+     * is the documented follow-up if a hard cap is ever required.
+     */
+    public function getSubmissionCount(): int
+    {
+        if ($this->submissionCount !== null) {
+            return $this->submissionCount;
+        }
+
+        if (!$this->id) {
+            return $this->submissionCount = 0;
+        }
+
+        return $this->submissionCount = (int)Submission::find()
+            ->formId((int)$this->id)
+            ->siteId('*')
+            ->status(null)
+            ->andWhere(['not', ['simpleform_submissions.readStatus' => SubmissionStatus::SPAM]])
+            ->count();
+    }
+
+    /**
+     * The message to show in place of the form when it is closed: this site's
+     * configured {@see self::$closedMessage}, or a translatable default when
+     * blank. The default is keyed to the {@see self::getClosedReason()} so a
+     * not-yet-open form reads differently from a full one.
+     */
+    public function getResolvedClosedMessage(): string
+    {
+        if ($this->closedMessage !== null && trim($this->closedMessage) !== '') {
+            return $this->closedMessage;
+        }
+
+        return match ($this->getClosedReason()) {
+            self::CLOSED_NOT_YET => Craft::t('simple-form', 'This form is not open for submissions yet.'),
+            self::CLOSED_FULL => Craft::t('simple-form', 'This form has reached its submission limit.'),
+            default => Craft::t('simple-form', 'This form is no longer accepting submissions.'),
+        };
     }
 
     /**
@@ -188,10 +312,30 @@ class Form extends Element
         $rules[] = [['emailBody'], 'string'];
         $rules[] = [['allowSaveResume'], 'boolean'];
 
+        // Scheduling + quota. The date properties are typed ?DateTime, so PHP
+        // enforces the type on assignment and DateTimeHelper normalises CP POST
+        // data — no `datetime` string-validator is needed (and Yii's would
+        // reject the DateTime object Craft hydrates here).
+        $rules[] = [['submissionLimit'], 'integer', 'min' => 1];
+        $rules[] = [['closedMessage'], 'string'];
+        // Custom rather than `compare`: Yii's CompareValidator stringifies its
+        // operands, which throws on the DateTime objects Craft hydrates here.
+        $rules[] = [['closeDate'], 'validateWindow'];
+
         // handle is shared across sites, so it must be globally unique
         $rules[] = [['handle'], 'validateHandleUnique'];
 
         return $rules;
+    }
+
+    /**
+     * Ensure the close date is on or after the open date when both are set.
+     */
+    public function validateWindow(string $attribute): void
+    {
+        if ($this->openDate !== null && $this->closeDate !== null && $this->closeDate < $this->openDate) {
+            $this->addError($attribute, Craft::t('simple-form', 'The close date must be on or after the open date.'));
+        }
     }
 
     public function validateHandleUnique(string $attribute): void
@@ -228,6 +372,9 @@ class Form extends Element
             'name' => $this->name,
             'propagationMethod' => $this->propagationMethod->value,
             'allowSaveResume' => $this->allowSaveResume,
+            'openDate' => Db::prepareDateForDb($this->openDate),
+            'closeDate' => Db::prepareDateForDb($this->closeDate),
+            'submissionLimit' => $this->submissionLimit,
             'dateUpdated' => $now,
         ];
 
@@ -258,6 +405,7 @@ class Form extends Element
             'emailSubject' => $this->emailSubject,
             'emailReplyTo' => $this->emailReplyTo,
             'emailBody' => $this->emailBody,
+            'closedMessage' => $this->closedMessage,
         ];
 
         $rowExists = (new \craft\db\Query())
@@ -279,6 +427,10 @@ class Form extends Element
                 'dateUpdated' => $now,
             ], ['formId' => $this->id, 'siteId' => $this->siteId])->execute();
         }
+
+        // A save may change the window/limit (or add a submission via the
+        // element save path), so drop the request-scoped count cache.
+        $this->submissionCount = null;
 
         // Per-site label/option/config edits also flow through a form save, so
         // invalidating here covers every structural change for all sites.

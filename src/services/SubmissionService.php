@@ -163,6 +163,17 @@ class SubmissionService extends Component
             return ['submission' => null, 'errors' => null];
         }
 
+        // (1b) Scheduling window + quota — enforced here so the AJAX path, the
+        // no-JS POST path, and the GraphQL mutation are all rejected by one
+        // check (a crafted POST or a stale cached page cannot sneak past the
+        // rendered form). Placed after the honeypot so bots still get no signal,
+        // but before captcha/validation so a closed form does no extra work.
+        // The cap is a soft business limit; see Form::getSubmissionCount() for
+        // the documented race-safety note.
+        if (!$form->isAcceptingSubmissions()) {
+            return ['submission' => null, 'errors' => ['form' => [$form->getResolvedClosedMessage()]]];
+        }
+
         // (2) Captcha — skippable only for explicitly trusted channels.
         if (empty($context['skipCaptcha'])) {
             $token = $context['captchaToken'] ?? null;

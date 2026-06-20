@@ -4,6 +4,7 @@ namespace fabianhaef\simpleform\controllers;
 
 use Craft;
 use craft\enums\PropagationMethod;
+use craft\helpers\DateTimeHelper;
 use craft\models\Site;
 use craft\web\Controller;
 use fabianhaef\simpleform\elements\Form;
@@ -107,6 +108,20 @@ class FormsController extends Controller
         $form->emailReplyTo = $request->getBodyParam('emailReplyTo');
         $form->emailBody = $request->getBodyParam('emailBody');
         $form->allowSaveResume = (bool) $request->getBodyParam('allowSaveResume');
+
+        // Scheduling window + quota. Empty inputs clear the bound (open-ended /
+        // unlimited). forms.dateTimeField posts a {date, time, timezone} array,
+        // which DateTimeHelper::toDateTime normalises (returns false when blank).
+        $openDate = DateTimeHelper::toDateTime($request->getBodyParam('openDate')) ?: null;
+        $closeDate = DateTimeHelper::toDateTime($request->getBodyParam('closeDate')) ?: null;
+        $form->openDate = $openDate instanceof \DateTime ? $openDate : null;
+        $form->closeDate = $closeDate instanceof \DateTime ? $closeDate : null;
+        $submissionLimit = $request->getBodyParam('submissionLimit');
+        $form->submissionLimit = is_numeric($submissionLimit) && (int) $submissionLimit > 0
+            ? (int) $submissionLimit
+            : null;
+        $form->closedMessage = $request->getBodyParam('closedMessage') ?: null;
+
         $form->propagationMethod = PropagationMethod::tryFrom(
             (string)$request->getBodyParam('propagationMethod', 'none')
         ) ?? PropagationMethod::None;

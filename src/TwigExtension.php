@@ -42,6 +42,15 @@ class TwigExtension extends AbstractExtension
             return sprintf('<!-- Form "%s" not found -->', htmlspecialchars($handle));
         }
 
+        // Scheduling/quota: when the form is closed (out of window or over
+        // quota) show its per-site closed message instead of the form. A page
+        // cached before the close date still posts, but the server-side guard in
+        // SubmissionService rejects it — both paths stay correct.
+        if (!$form->isAcceptingSubmissions()) {
+            return '<div class="simple-form simple-form--closed" role="status">'
+                . htmlspecialchars($form->getResolvedClosedMessage()) . '</div>';
+        }
+
         $fieldTypeRegistry = Plugin::getInstance()->getFieldTypeRegistry();
 
         // Resolved field set (decoded config + per-site label/helpText), served
