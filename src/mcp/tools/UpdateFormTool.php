@@ -69,18 +69,9 @@ class UpdateFormTool implements ToolInterface
      */
     public function call(array $arguments): array
     {
-        $query = Form::find()->siteId('*')->status(null)->unique();
-        if (isset($arguments['id'])) {
-            $query->id((int)$arguments['id']);
-        } elseif (isset($arguments['handle']) && is_string($arguments['handle'])) {
-            $query->handle($arguments['handle']);
-        } else {
-            return ['isError' => true, 'error' => 'Provide either "id" or "handle".'];
-        }
-
-        $form = $query->one();
-        if (!$form instanceof Form) {
-            return ['isError' => true, 'error' => 'Form not found.'];
+        $form = FormPresenter::resolveByIdOrHandle($arguments);
+        if (is_array($form)) {
+            return $form;
         }
 
         // Re-load on the requested site so per-site content updates land there.

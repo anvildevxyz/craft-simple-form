@@ -2,8 +2,8 @@
 
 namespace fabianhaef\simpleform\mcp\tools;
 
-use fabianhaef\simpleform\elements\Form;
 use fabianhaef\simpleform\mcp\Scopes;
+use fabianhaef\simpleform\mcp\tools\support\FormPresenter;
 use fabianhaef\simpleform\Plugin;
 
 /**
@@ -32,10 +32,7 @@ class ListIntegrationsTool implements ToolInterface
     {
         return [
             'type' => 'object',
-            'properties' => [
-                'id' => ['type' => 'integer', 'description' => 'The form id. Provide id OR handle.'],
-                'handle' => ['type' => 'string', 'description' => 'The form handle. Provide id OR handle.'],
-            ],
+            'properties' => FormPresenter::idOrHandleProperties(),
             'additionalProperties' => false,
         ];
     }
@@ -52,19 +49,9 @@ class ListIntegrationsTool implements ToolInterface
      */
     public function call(array $arguments): array
     {
-        $query = Form::find()->siteId('*')->status(null)->unique();
-
-        if (isset($arguments['id'])) {
-            $query->id((int) $arguments['id']);
-        } elseif (isset($arguments['handle']) && is_string($arguments['handle'])) {
-            $query->handle($arguments['handle']);
-        } else {
-            return ['isError' => true, 'error' => 'Provide either "id" or "handle".'];
-        }
-
-        $form = $query->one();
-        if (!$form instanceof Form) {
-            return ['isError' => true, 'error' => 'Form not found.'];
+        $form = FormPresenter::resolveByIdOrHandle($arguments);
+        if (is_array($form)) {
+            return $form;
         }
 
         $service = Plugin::getInstance()->getIntegrations();
