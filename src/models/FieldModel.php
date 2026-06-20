@@ -89,18 +89,16 @@ class FieldModel extends Model
     }
 
     /**
-     * Validate a single field value.
+     * Validate a single field value against the full submitted snapshot.
      *
-     * When `$formData` (the full submitted snapshot, keyed by bare field id) is
-     * supplied, conditional logic is honored: a field hidden by its conditions
-     * is never validated, and its effective required-ness is the OR of the
-     * static flag and any conditional-required rule. With no `$formData` (the
-     * legacy call shape) behaviour is unchanged.
+     * Conditional logic is honored: a field hidden by its conditions is never
+     * validated, and its effective required-ness is the OR of the static flag
+     * and any conditional-required rule.
      *
      * @param array<string, mixed> $formData posted values keyed by field handle
      * @return string[]
      */
-    public function validateValue(mixed $value, array $formData = []): array
+    public function validateValue(mixed $value, array $formData): array
     {
         // Hidden fields are never validated — their value is moot.
         if (!$this->isVisible($formData)) {

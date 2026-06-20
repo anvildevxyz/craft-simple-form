@@ -164,7 +164,7 @@ class NotificationsService extends Component
             return $email !== '' && filter_var($email, FILTER_VALIDATE_EMAIL) ? [$email] : [];
         }
 
-        // Fixed: split on comma/semicolon/whitespace, keep valid addresses.
+        // Static recipient list: split on comma/semicolon/whitespace, keep valid addresses.
         $parts = preg_split('/[\s,;]+/', $notification->recipient) ?: [];
         $addresses = [];
         foreach ($parts as $part) {

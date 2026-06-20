@@ -3,6 +3,7 @@
 namespace fabianhaef\simpleform\gql\resolvers;
 
 use fabianhaef\simpleform\elements\Form;
+use fabianhaef\simpleform\helpers\ConditionalEvaluator;
 use fabianhaef\simpleform\helpers\FieldQueryHelper;
 use fabianhaef\simpleform\Plugin;
 
@@ -106,10 +107,10 @@ final class FormGqlResolver
         $hasRequired = $required !== null && !empty($required['enabled']);
 
         return [
-            'action' => ($conditional['action'] ?? 'show') === 'hide' ? 'hide' : 'show',
-            'match' => ($conditional['match'] ?? 'all') === 'any' ? 'any' : 'all',
+            'action' => ($conditional['action'] ?? ConditionalEvaluator::ACTION_SHOW) === ConditionalEvaluator::ACTION_HIDE ? ConditionalEvaluator::ACTION_HIDE : ConditionalEvaluator::ACTION_SHOW,
+            'match' => ConditionalEvaluator::normalizeMatch($conditional['match'] ?? null),
             'rules' => self::mapRules($conditional['rules'] ?? null),
-            'requiredMatch' => $hasRequired ? (($required['match'] ?? 'all') === 'any' ? 'any' : 'all') : null,
+            'requiredMatch' => $hasRequired ? ConditionalEvaluator::normalizeMatch($required['match'] ?? null) : null,
             'requiredRules' => $hasRequired ? self::mapRules($required['rules'] ?? null) : [],
         ];
     }

@@ -2,17 +2,13 @@
 
 namespace fabianhaef\simpleform\captcha;
 
-use Craft;
-use craft\helpers\App;
 use fabianhaef\simpleform\models\Settings;
-use GuzzleHttp\Client;
-use GuzzleHttp\Exception\GuzzleException;
 
 /**
  * hCaptcha provider. The widget injects its own `h-captcha-response` field;
  * verification posts to hCaptcha's siteverify.
  */
-class HcaptchaProvider implements CaptchaProviderInterface
+class HcaptchaProvider extends AbstractSiteverifyProvider
 {
     public const VERIFY_URL = 'https://hcaptcha.com/siteverify';
     public const TOKEN_PARAM = 'h-captcha-response';
@@ -32,66 +28,28 @@ class HcaptchaProvider implements CaptchaProviderInterface
         return self::TOKEN_PARAM;
     }
 
-    public function verify(?string $token, Settings $settings): bool
+    protected function verifyUrl(): string
     {
-        $secret = $this->parse($settings->hcaptchaSecretKey);
-        if ($secret === null) {
-            Craft::warning('hCaptcha is enabled but no secret key is configured.', 'simple-form');
-            return false;
-        }
-
-        /** @var \craft\web\Request $request */
-        $request = Craft::$app->getRequest();
-
-        if ($token === null) {
-            $token = (string) $request->getBodyParam(self::TOKEN_PARAM, '');
-        }
-        if ($token === '') {
-            return false;
-        }
-
-        try {
-            $response = $this->httpClient()->post(self::VERIFY_URL, [
-                'form_params' => [
-                    'secret' => $secret,
-                    'response' => $token,
-                    'remoteip' => $request->getUserIP(),
-                ],
-            ]);
-            $result = json_decode((string) $response->getBody(), true);
-        } catch (GuzzleException $e) {
-            Craft::warning('hCaptcha verification request failed: ' . $e->getMessage(), 'simple-form');
-            return false;
-        }
-
-        return is_array($result) && !empty($result['success']);
+        return self::VERIFY_URL;
     }
 
-    public function renderWidget(Settings $settings): string
+    protected function secretKey(Settings $settings): ?string
     {
-        $siteKey = $this->parse($settings->hcaptchaSiteKey);
-        if ($siteKey === null) {
-            return '';
-        }
-        $siteKey = htmlspecialchars($siteKey, ENT_QUOTES);
-
-        return '<div class="simple-form-group">'
-            . '<div class="h-captcha" data-sitekey="' . $siteKey . '"></div>'
-            . '</div>'
-            . '<script src="https://js.hcaptcha.com/1/api.js" async defer></script>';
+        return $settings->hcaptchaSecretKey;
     }
 
-    private function parse(?string $value): ?string
+    protected function siteKey(Settings $settings): ?string
     {
-        if ($value === null || $value === '') {
-            return null;
-        }
-        $parsed = App::parseEnv($value);
-        return (is_string($parsed) && $parsed !== '') ? $parsed : null;
+        return $settings->hcaptchaSiteKey;
     }
 
-    protected function httpClient(): Client
+    protected function widgetClass(): string
     {
-        return Craft::createGuzzleClient();
+        return 'h-captcha';
+    }
+
+    protected function scriptUrl(): string
+    {
+        return 'https://js.hcaptcha.com/1/api.js';
     }
 }

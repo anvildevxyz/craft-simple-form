@@ -161,8 +161,8 @@ class NotificationsController extends Controller
 
         return [
             'enabled' => true,
-            'match' => 'all',
-            'action' => 'show',
+            'match' => ConditionalEvaluator::MATCH_ALL,
+            'action' => ConditionalEvaluator::ACTION_SHOW,
             'rules' => [[
                 'field' => $field,
                 // F19 (CWE-20): only persist a known operator.

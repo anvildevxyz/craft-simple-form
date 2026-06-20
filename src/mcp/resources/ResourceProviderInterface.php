@@ -16,6 +16,9 @@ namespace fabianhaef\simpleform\mcp\resources;
  *
  * Resource contents reuse the same presenters/serialisation as the tool layer
  * so a resource and the equivalent tool never disagree about the schema.
+ *
+ * @phpstan-import-type McpError from \fabianhaef\simpleform\mcp\tools\ToolInterface
+ * @phpstan-type McpResourceContents array{contents:list<array<string, mixed>>}
  */
 interface ResourceProviderInterface
 {
@@ -45,7 +48,7 @@ interface ResourceProviderInterface
      * URI can't be resolved. Only called when the caller holds the required
      * scope (the dispatcher has already authorised the read).
      *
-     * @return array{contents:list<array<string, mixed>>}|array{isError:true,error:string}
+     * @return McpResourceContents|McpError
      */
     public function read(string $uri): array;
 }

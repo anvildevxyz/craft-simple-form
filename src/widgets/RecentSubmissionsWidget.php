@@ -6,9 +6,7 @@ use Craft;
 use craft\base\Widget;
 use craft\helpers\Cp;
 use craft\helpers\UrlHelper;
-use fabianhaef\simpleform\elements\Form;
 use fabianhaef\simpleform\elements\Submission;
-use fabianhaef\simpleform\helpers\SimpleFormPermissions;
 
 /**
  * Dashboard widget: the most recent submissions for the current site, linking to
@@ -16,6 +14,8 @@ use fabianhaef\simpleform\helpers\SimpleFormPermissions;
  */
 class RecentSubmissionsWidget extends Widget
 {
+    use SubmissionWidgetTrait;
+
     public int $limit = 5;
     public ?int $formId = null;
 
@@ -36,8 +36,8 @@ class RecentSubmissionsWidget extends Widget
 
     public function getBodyHtml(): ?string
     {
-        if (!Craft::$app->getUser()->checkPermission(SimpleFormPermissions::VIEW_SUBMISSIONS)) {
-            return Craft::t('simple-form', 'You don’t have permission to view submissions.');
+        if (($denied = $this->submissionsPermissionError()) !== null) {
+            return $denied;
         }
 
         $query = Submission::find()
@@ -74,10 +74,7 @@ class RecentSubmissionsWidget extends Widget
 
     public function getSettingsHtml(): ?string
     {
-        $formOptions = [['label' => Craft::t('simple-form', 'All forms'), 'value' => '']];
-        foreach (Form::find()->siteId(Craft::$app->getSites()->getCurrentSite()->id)->all() as $form) {
-            $formOptions[] = ['label' => (string) ($form->title ?? $form->name), 'value' => (string) $form->id];
-        }
+        $formOptions = $this->formScopeOptions();
 
         return Cp::textFieldHtml([
             'label' => Craft::t('simple-form', 'How many to show'),

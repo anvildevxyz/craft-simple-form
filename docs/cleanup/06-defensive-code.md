@@ -126,3 +126,42 @@ Nothing in this concern is safe to remove blindly. The candidates below are MEDI
 - [ ] **L-3 (optional):** replace `@file_get_contents` + `?:` in `TwigExtension:131-132` with an `is_file()` check that logs when the bundled asset is missing.
 
 All other sites: **KEEP** (recorded above so they aren't re-flagged).
+
+---
+
+## Refresh — 2026-06-20 re-audit against current tree
+
+Re-ran the full sweep. The codebase has grown since the original pass: there are now
+**30 `catch` blocks** (was 14) and **2 `@` suppressions** across `src/`. Line numbers in
+the findings above have drifted (e.g. the `FieldModel` validate catch is now at `:126`,
+the `FieldsController` DB catches at `:87/:149/:174/:246`, `EmailService` send catch at
+`:102`, `TwigExtension` asset catch at `:217`, `SafeUrl` DNS suppression at `:119`). The
+original findings still map cleanly and the **verdict is unchanged: 0 HIGH-confidence
+purposeless constructs.**
+
+Newly-present catches not in the original report — all **KEEP**:
+- **Integration connectors** — `WebhookIntegration.php:142`, `AbstractChatIntegration.php:74`,
+  `ActiveCampaignIntegration.php:68`&`:95`, `PipedriveIntegration.php:73`,
+  `HubSpotIntegration.php:67`, `MailchimpIntegration.php:77`: each catches a Guzzle transport
+  exception and returns `IntegrationResult::failure(null, $e->getMessage())`. Textbook
+  low-level→domain-result conversion on a third-party API boundary. KEEP.
+- **`IntegrationsService.php:240`** — wraps `$type->send()`, logs a FAILED dispatch row
+  (secrets scrubbed), returns domain failure. Dispatch boundary. KEEP.
+- **`IntegrationsService.php:462`** — secret-decrypt; logs + degrades to empty string so a
+  rotated/corrupt cipher doesn't 500 every dispatch. KEEP.
+- **`PaymentsService.php:189`** — `createOrder`, guarded by `commerceAvailable()` first;
+  Commerce is a genuine soft dependency. Returns null + warns. KEEP.
+- **`AkismetService.php:66`** — external spam-check HTTP; fail-open (`false` = not spam),
+  logged. Optional anti-spam check. KEEP.
+- **`AuditService.php:37`** — audit-log write must never break the audited op; logged. KEEP.
+- **`EmailService.php:138`** — notification-body Twig render falls back to default template
+  on render error, logged. KEEP.
+- **`FileFieldType.php:134`** — `catch (\Throwable)` around `FileHelper::getMimeType`; a
+  transient finfo error is treated as non-executable, with the extension allowlist + Craft
+  asset validation still in force. Defensible security default. KEEP.
+- **`TwigExtension.php:217`** / **`SafeUrl.php:119`** — see KEEP list (best-effort asset /
+  best-effort DNS in an SSRF guard that errs toward blocking). KEEP.
+
+No new FLAG items. The two open MEDIUM decisions (M-7 FieldModel validate catch at the new
+`:126`; M-9 FieldsController missing transaction) remain the only items worth a human
+decision; everything else is KEEP.

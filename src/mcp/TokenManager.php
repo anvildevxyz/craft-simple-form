@@ -37,6 +37,8 @@ use fabianhaef\simpleform\Plugin;
  *
  * All comparisons use {@see hash_equals()} (constant time). We never log,
  * echo, or store the plaintext after creation.
+ *
+ * @phpstan-import-type TokenArray from McpToken
  */
 class TokenManager
 {
@@ -176,7 +178,7 @@ class TokenManager
         $tokens = [];
         foreach ($raw as $entry) {
             if (is_array($entry)) {
-                /** @var array{id?:string,label?:string,hash?:string,scopes?:list<string>,dateCreated?:?string,lastUsed?:?string} $entry */
+                /** @var TokenArray $entry */
                 $tokens[] = McpToken::fromArray($entry);
             }
         }

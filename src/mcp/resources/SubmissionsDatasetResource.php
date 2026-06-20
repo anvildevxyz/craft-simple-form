@@ -15,6 +15,9 @@ use fabianhaef\simpleform\mcp\tools\support\SubmissionQueryBuilder;
  * {@code resources/read} them; the dispatcher enforces both. Contents reuse the
  * same {@see SubmissionQueryBuilder} presentation as the submission tools so the
  * dataset matches query_submissions.
+ *
+ * @phpstan-import-type McpError from \fabianhaef\simpleform\mcp\tools\ToolInterface
+ * @phpstan-import-type McpResourceContents from ResourceProviderInterface
  */
 final class SubmissionsDatasetResource implements ResourceProviderInterface
 {
@@ -63,7 +66,7 @@ final class SubmissionsDatasetResource implements ResourceProviderInterface
     }
 
     /**
-     * @return array{contents:list<array<string, mixed>>}|array{isError:true,error:string}
+     * @return McpResourceContents|McpError
      */
     public function read(string $uri): array
     {

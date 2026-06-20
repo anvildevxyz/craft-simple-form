@@ -29,6 +29,8 @@ use fabianhaef\simpleform\mcp\tools\support\SubmissionQueryBuilder;
  * It returns flagged candidates (with the matched signals) for the client to
  * review/act on — it never deletes or mutates anything. Gated behind
  * submissions:read.
+ *
+ * @phpstan-import-type McpError from ToolInterface
  */
 class DetectSpamPatternsTool implements ToolInterface
 {
@@ -79,7 +81,7 @@ class DetectSpamPatternsTool implements ToolInterface
 
     /**
      * @param array<string, mixed> $arguments
-     * @return array{scanned:int, flaggedCount:int, linkThreshold:int, signals:list<string>, flagged:list<array{id:int, dateCreated:?string, signals:list<string>, linkCount:int, text:string}>}|array{isError:true, error:string}
+     * @return array{scanned:int, flaggedCount:int, linkThreshold:int, signals:list<string>, flagged:list<array{id:int, dateCreated:?string, signals:list<string>, linkCount:int, text:string}>}|McpError
      */
     public function call(array $arguments): array
     {

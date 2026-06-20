@@ -205,7 +205,8 @@ class ConditionalEvaluator
         }
     }
 
-    private static function normalizeMatch(mixed $match): string
+    /** Clamp a posted/stored match mode to the supported set, defaulting to MATCH_ALL. */
+    public static function normalizeMatch(mixed $match): string
     {
         return $match === self::MATCH_ANY ? self::MATCH_ANY : self::MATCH_ALL;
     }

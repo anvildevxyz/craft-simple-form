@@ -20,8 +20,8 @@ use yii\base\Component;
  */
 class PaymentsService extends Component
 {
-    public const STATUS_PENDING = 'pending';
-    public const STATUS_PAID = 'paid';
+    public const STATUS_PENDING = Submission::PAYMENT_PENDING;
+    public const STATUS_PAID = Submission::PAYMENT_PAID;
 
     public function commerceAvailable(): bool
     {
@@ -81,7 +81,7 @@ class PaymentsService extends Component
 
     public function isAwaitingPayment(Submission $submission): bool
     {
-        return $submission->paymentStatus === self::STATUS_PENDING;
+        return $submission->isAwaitingPayment();
     }
 
     /**
@@ -136,7 +136,8 @@ class PaymentsService extends Component
             return;
         }
 
-        // Now that payment cleared, fire the dispatch + email that were withheld.
+        // Integration dispatch and the notification email are withheld until
+        // payment clears (see IntegrationsService/NotificationsService gating).
         Plugin::getInstance()->getIntegrations()->dispatchForSubmission($submission);
         Plugin::getInstance()->getEmailService()->sendSubmissionEmail($form, $submission, $submission->data ?? []);
     }

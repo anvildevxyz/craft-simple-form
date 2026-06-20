@@ -8,6 +8,11 @@ namespace fabianhaef\simpleform\mcp\tools;
  * A tool is the unit of capability exposed over the MCP transport. Each tool
  * declares the one scope it requires; the dispatcher ({@see \fabianhaef\simpleform\mcp\McpServer})
  * enforces that scope (deny-by-default) before ever invoking {@see self::call()}.
+ *
+ * The in-band error envelope tools and resources return on failure (the
+ * dispatcher surfaces it to the client rather than throwing):
+ *
+ * @phpstan-type McpError array{isError:true, error:string}
  */
 interface ToolInterface
 {

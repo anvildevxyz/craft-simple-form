@@ -13,12 +13,14 @@ use fabianhaef\simpleform\elements\Submission;
  *
  * Routes through the existing {@see Submission} element query — submissions are
  * read here, never written.
+ *
+ * @phpstan-import-type McpError from \fabianhaef\simpleform\mcp\tools\ToolInterface
  */
 final class SubmissionQueryBuilder
 {
     /**
      * @param array<string, mixed> $args
-     * @return SubmissionQuery|array{isError:true,error:string} the query, or an
+     * @return SubmissionQuery|McpError the query, or an
      *   error payload when a referenced form can't be resolved.
      */
     public static function build(array $args): SubmissionQuery|array

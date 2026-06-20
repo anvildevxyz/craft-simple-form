@@ -6,9 +6,7 @@ use Craft;
 use craft\base\Widget;
 use craft\helpers\Cp;
 use craft\helpers\Db;
-use fabianhaef\simpleform\elements\Form;
 use fabianhaef\simpleform\elements\Submission;
-use fabianhaef\simpleform\helpers\SimpleFormPermissions;
 
 /**
  * Dashboard widget: a submission count for the current site over a selectable
@@ -16,6 +14,8 @@ use fabianhaef\simpleform\helpers\SimpleFormPermissions;
  */
 class SubmissionCountWidget extends Widget
 {
+    use SubmissionWidgetTrait;
+
     public const RANGES = ['today', '7d', '30d', 'all'];
 
     public string $range = '30d';
@@ -52,8 +52,8 @@ class SubmissionCountWidget extends Widget
 
     public function getBodyHtml(): ?string
     {
-        if (!Craft::$app->getUser()->checkPermission(SimpleFormPermissions::VIEW_SUBMISSIONS)) {
-            return Craft::t('simple-form', 'You don’t have permission to view submissions.');
+        if (($denied = $this->submissionsPermissionError()) !== null) {
+            return $denied;
         }
 
         $count = $this->count();
@@ -74,10 +74,7 @@ class SubmissionCountWidget extends Widget
 
     public function getSettingsHtml(): ?string
     {
-        $formOptions = [['label' => Craft::t('simple-form', 'All forms'), 'value' => '']];
-        foreach (Form::find()->siteId(Craft::$app->getSites()->getCurrentSite()->id)->all() as $form) {
-            $formOptions[] = ['label' => (string) ($form->title ?? $form->name), 'value' => (string) $form->id];
-        }
+        $formOptions = $this->formScopeOptions();
 
         return Cp::selectFieldHtml([
             'label' => Craft::t('simple-form', 'Range'),

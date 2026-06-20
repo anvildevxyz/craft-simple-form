@@ -14,6 +14,11 @@ use fabianhaef\simpleform\elements\exporters\SubmissionExporter;
 
 class Submission extends Element
 {
+    /** Payment is required but not yet settled. */
+    public const PAYMENT_PENDING = 'pending';
+    /** Payment has settled. */
+    public const PAYMENT_PAID = 'paid';
+
     public ?int $formId = null;
     /** @var array<string, mixed>|null */
     public ?array $data = null;
@@ -21,7 +26,7 @@ class Submission extends Element
     public string $readStatus = SubmissionStatus::NEW;
     /** Why this submission is flagged spam: 'akismet', 'manual', or null. */
     public ?string $spamReason = null;
-    /** null = no payment; 'pending' = awaiting payment; 'paid' = complete. */
+    /** null = no payment; self::PAYMENT_PENDING = awaiting; self::PAYMENT_PAID = complete. */
     public ?string $paymentStatus = null;
     public ?string $paymentAmount = null;
     public ?int $orderId = null;
@@ -29,6 +34,12 @@ class Submission extends Element
     public static function displayName(): string
     {
         return 'Submission';
+    }
+
+    /** Whether this submission has a required payment that hasn't settled yet. */
+    public function isAwaitingPayment(): bool
+    {
+        return $this->paymentStatus === self::PAYMENT_PENDING;
     }
 
     public static function tableName(): string

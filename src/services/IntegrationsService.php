@@ -190,7 +190,7 @@ class IntegrationsService extends Component
     {
         // Withhold dispatch while the submission is awaiting payment; it fires
         // again from PaymentsService::markPaid() once the order completes.
-        if (Plugin::getInstance()->getPayments()->isAwaitingPayment($submission)) {
+        if ($submission->isAwaitingPayment()) {
             return;
         }
 

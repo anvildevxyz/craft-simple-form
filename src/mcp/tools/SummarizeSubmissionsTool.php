@@ -16,6 +16,8 @@ use fabianhaef\simpleform\mcp\tools\support\SubmissionQueryBuilder;
  * submission, restricted to the form's free-text fields when the schema is
  * known) so the client can produce the summary. Thin adapter over the shared
  * {@see SubmissionQueryBuilder}; gated behind submissions:read.
+ *
+ * @phpstan-import-type McpError from ToolInterface
  */
 class SummarizeSubmissionsTool implements ToolInterface
 {
@@ -60,7 +62,7 @@ class SummarizeSubmissionsTool implements ToolInterface
 
     /**
      * @param array<string, mixed> $arguments
-     * @return array{count:int, totalMatched:int, fields:list<string>, wordCount:int, corpus:list<array{id:int, dateCreated:?string, fields:array<string, string>, text:string}>}|array{isError:true, error:string}
+     * @return array{count:int, totalMatched:int, fields:list<string>, wordCount:int, corpus:list<array{id:int, dateCreated:?string, fields:array<string, string>, text:string}>}|McpError
      */
     public function call(array $arguments): array
     {

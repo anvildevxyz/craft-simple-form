@@ -13,6 +13,9 @@ use fabianhaef\simpleform\mcp\tools\support\FormPresenter;
  * Follows the forms:manage scope, matching how the form-management tools are
  * gated. Contents reuse {@see FormPresenter} so the resource and {@code get_form}
  * never disagree about the schema.
+ *
+ * @phpstan-import-type McpError from \fabianhaef\simpleform\mcp\tools\ToolInterface
+ * @phpstan-import-type McpResourceContents from ResourceProviderInterface
  */
 final class FormSchemaResource implements ResourceProviderInterface
 {
@@ -58,7 +61,7 @@ final class FormSchemaResource implements ResourceProviderInterface
     }
 
     /**
-     * @return array{contents:list<array<string, mixed>>}|array{isError:true,error:string}
+     * @return McpResourceContents|McpError
      */
     public function read(string $uri): array
     {

@@ -13,6 +13,8 @@ use craft\helpers\App;
  * values support env-variable references (e.g. `$RECAPTCHA_SECRET`) so they can
  * live in `.env` rather than as plaintext in project config; use the parsed
  * getters when consuming them.
+ *
+ * @phpstan-import-type TokenArray from \fabianhaef\simpleform\mcp\McpToken
  */
 class Settings extends Model
 {
@@ -142,7 +144,7 @@ class Settings extends Model
      * stored here — only its keyed hash. Shape per entry:
      * {id, label, hash, scopes[], dateCreated, lastUsed}.
      *
-     * @var array<int, array{id?:string,label?:string,hash?:string,scopes?:list<string>,dateCreated?:?string,lastUsed?:?string}>
+     * @var array<int, TokenArray>
      */
     public array $mcpTokens = [];
 

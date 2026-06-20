@@ -18,6 +18,8 @@ use fabianhaef\simpleform\services\FieldTypeRegistry;
  * auto-detected) it groups submissions by that field's value and reports
  * frequency counts. The heavy clustering of free text is left to the client
  * model. Thin adapter over the shared query path; gated behind submissions:read.
+ *
+ * @phpstan-import-type McpError from ToolInterface
  */
 class CategorizeSubmissionsTool implements ToolInterface
 {
@@ -60,7 +62,7 @@ class CategorizeSubmissionsTool implements ToolInterface
 
     /**
      * @param array<string, mixed> $arguments
-     * @return array{count:int, groupBy:?string, textFields:list<string>, groups:list<array{value:string, count:int, submissionIds:list<int>}>, corpus:list<array{id:int, dateCreated:?string, fields:array<string, string>}>}|array{isError:true, error:string}
+     * @return array{count:int, groupBy:?string, textFields:list<string>, groups:list<array{value:string, count:int, submissionIds:list<int>}>, corpus:list<array{id:int, dateCreated:?string, fields:array<string, string>}>}|McpError
      */
     public function call(array $arguments): array
     {
