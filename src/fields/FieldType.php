@@ -51,6 +51,40 @@ abstract class FieldType
     }
 
     /**
+     * Transform a posted value into the shape that is persisted in the
+     * submission `data` payload. Most field types store the value verbatim, so
+     * the base is a passthrough; types that normalize (e.g. Phone, which stores
+     * a `{raw, e164, country}` map) override this. Runs in
+     * {@see \fabianhaef\simpleform\services\SubmissionService::submit()} after
+     * validation passes, so both the AJAX and GraphQL paths persist the same
+     * normalized shape.
+     */
+    public function normalizeStoredValue(mixed $value): mixed
+    {
+        return $value;
+    }
+
+    /**
+     * Render a stored value to a single scalar for CSV/element exports. The base
+     * passes scalars through and pipe-joins lists; types with a structured
+     * stored value (e.g. Phone) override this to pick the export-friendly form.
+     */
+    public function exportValue(mixed $value): string
+    {
+        if ($value === null || $value === false) {
+            return '';
+        }
+        if ($value === true) {
+            return '1';
+        }
+        if (is_array($value)) {
+            return implode('|', array_map(fn(mixed $v): string => $this->exportValue($v), $value));
+        }
+
+        return (string) $value;
+    }
+
+    /**
      * Minimum/maximum length check shared by the text-based field types.
      *
      * @return string[]

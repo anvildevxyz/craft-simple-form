@@ -66,6 +66,8 @@ return [
     'Must be at least {min}.' => 'Moet minstens {min} zijn.',
     'Must be no more than {max}.' => 'Mag niet meer dan {max} zijn.',
     'Please enter a valid date.' => 'Voer een geldige datum in.',
+    'Enter a valid phone number.' => 'Voer een geldig telefoonnummer in.',
+    'Please select a valid country.' => 'Selecteer een geldig land.',
     'Manage forms (read & write form definitions and fields)' => 'Formulieren beheren (formulierdefinities en velden lezen en schrijven)',
     'Read submissions (query, view, stats)' => 'Inzendingen lezen (opvragen, bekijken, statistieken)',
     'Export submissions (CSV / JSON)' => 'Inzendingen exporteren (CSV / JSON)',

@@ -15,11 +15,14 @@ Generated: 2026-06-18 | Plugin schemaVersion: 2.4.0
 - Simple Form → Submissions (index + view + **Export CSV**)
 - Simple Form → Settings (General / Email / Spam Protection / MCP Server)
 
-## Field Types (9, via FieldTypeRegistry)
-text, email, textarea, select, checkbox, radio, date, number, **file** (asset upload).
+## Field Types (11, via FieldTypeRegistry)
+text, email, textarea, select, checkbox, radio, date, number, **phone** (#123),
+**file** (asset upload), **payment**.
 Per-field config can include: `required`, `placeholder`, length/min/max, `options`,
-`conditional` (#68), **`page`** (multi-step), and file config (`volume`,
-`allowedExtensions`, `maxSize`, `multiple`).
+`conditional` (#68), **`page`** (multi-step), file config (`volume`,
+`allowedExtensions`, `maxSize`, `multiple`), and phone config (`showCountrySelector`,
+`defaultCountry`, `allowedCountries`, `pattern`, `minDigits`, `maxDigits`).
+Phone stores a normalized `{raw, e164, country}` map (no new table).
 
 ## Controllers & Actions
 - `simple-form/forms/index|edit|save|delete` — forms CRUD (MANAGE_FORMS)

@@ -176,6 +176,7 @@
 <div class="sf-builder"
      data-source-site="{{ (isSourceSite ?? true) ? '1' : '' }}"
      data-volumes="{{ (volumes ?? [])|json_encode|e('html_attr') }}"
+     data-phone-countries="{{ (phoneCountries ?? [])|json_encode|e('html_attr') }}"
      data-initial-fields="{{ (builderData ?? '[]')|e('html_attr') }}">
     <div class="sf-canvas-col">
         <div id="sf-canvas" class="sf-canvas">
@@ -195,6 +196,7 @@
                 { type: 'radio', label: 'Radio Buttons'|t('simple-form') },
                 { type: 'date', label: 'Date'|t('simple-form') },
                 { type: 'number', label: 'Number'|t('simple-form') },
+                { type: 'phone', label: 'Phone'|t('simple-form') },
                 { type: 'file', label: 'File Upload'|t('simple-form') },
                 { type: 'payment', label: 'Payment'|t('simple-form') },
             ] %}

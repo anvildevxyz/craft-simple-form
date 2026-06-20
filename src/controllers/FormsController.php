@@ -7,6 +7,7 @@ use craft\enums\PropagationMethod;
 use craft\models\Site;
 use craft\web\Controller;
 use fabianhaef\simpleform\elements\Form;
+use fabianhaef\simpleform\helpers\DialCodes;
 use fabianhaef\simpleform\helpers\FieldQueryHelper;
 use fabianhaef\simpleform\helpers\SimpleFormPermissions;
 use fabianhaef\simpleform\helpers\SiteHelper;
@@ -178,12 +179,25 @@ class FormsController extends Controller
             Craft::$app->getVolumes()->getAllVolumes(),
         );
 
+        // Curated dial-code list for the Phone field's inspector controls,
+        // localized per site. Structural config (not content), so it ships to
+        // the builder as a flat list rather than through the translation path.
+        $phoneCountries = [];
+        foreach (DialCodes::all() as $iso => $meta) {
+            $phoneCountries[] = [
+                'iso' => $iso,
+                'dial' => $meta['dial'],
+                'label' => DialCodes::label($iso),
+            ];
+        }
+
         return $this->renderTemplate('simple-form/forms/edit', [
             'form' => $form,
             'currentSite' => $site,
             'supportedSites' => $supportedSites,
             'builderData' => $builderDataJson,
             'volumes' => array_values($volumes),
+            'phoneCountries' => $phoneCountries,
             // The source site authors canonical option labels; other sites only
             // translate them. Single-site forms are always their own source.
             'isSourceSite' => count($supportedSites) <= 1

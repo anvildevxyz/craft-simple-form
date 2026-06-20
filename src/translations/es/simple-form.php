@@ -72,6 +72,8 @@ return [
     'Must be at least {min}.' => 'Debe ser al menos {min}.',
     'Must be no more than {max}.' => 'No debe superar {max}.',
     'Please enter a valid date.' => 'Introduzca una fecha válida.',
+    'Enter a valid phone number.' => 'Introduzca un número de teléfono válido.',
+    'Please select a valid country.' => 'Seleccione un país válido.',
     'Manage forms (read & write form definitions and fields)' => 'Gestionar formularios (leer y escribir definiciones y campos)',
     'Read submissions (query, view, stats)' => 'Leer envíos (consultar, ver, estadísticas)',
     'Export submissions (CSV / JSON)' => 'Exportar envíos (CSV / JSON)',

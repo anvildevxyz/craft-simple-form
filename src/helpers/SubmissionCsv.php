@@ -3,6 +3,7 @@
 namespace fabianhaef\simpleform\helpers;
 
 use fabianhaef\simpleform\elements\Submission;
+use fabianhaef\simpleform\Plugin;
 
 /**
  * Renders submissions to a human-friendly CSV for the Control Panel export:
@@ -48,9 +49,7 @@ final class SubmissionCsv
 
             $data = $submission->data ?? [];
             foreach (array_keys($fieldCols) as $key) {
-                $entry = $data[$key] ?? null;
-                $value = is_array($entry) ? ($entry['value'] ?? '') : $entry;
-                $line[] = self::scalar($value);
+                $line[] = self::cell($data[$key] ?? null);
             }
 
             fputcsv($handle, $line);
@@ -95,15 +94,38 @@ final class SubmissionCsv
 
             $data = $submission->data ?? [];
             foreach ($fieldCols as $key => $label) {
-                $entry = $data[$key] ?? null;
-                $value = is_array($entry) ? ($entry['value'] ?? '') : $entry;
-                $row[$label] = self::scalar($value);
+                $row[$label] = self::cell($data[$key] ?? null);
             }
 
             $rows[] = $row;
         }
 
         return $rows;
+    }
+
+    /**
+     * Render a stored data entry (`{label, type, value}`) to a single CSV cell.
+     * Field types with a structured stored value (e.g. Phone's
+     * `{raw, e164, country}`) decide their own export shape via
+     * {@see \fabianhaef\simpleform\fields\FieldType::exportValue()}; everything
+     * else falls back to the generic scalar/pipe-join. The cell is always passed
+     * through formula neutralization.
+     *
+     * @param mixed $entry a stored data entry, or a bare value for legacy rows
+     */
+    private static function cell(mixed $entry): string
+    {
+        $value = is_array($entry) ? ($entry['value'] ?? '') : $entry;
+        $type = is_array($entry) ? (string) ($entry['type'] ?? '') : '';
+
+        if ($type !== '') {
+            $fieldType = Plugin::getInstance()->getFieldTypeRegistry()->getFieldType($type);
+            if ($fieldType !== null) {
+                return self::neutralizeFormula($fieldType->exportValue($value));
+            }
+        }
+
+        return self::scalar($value);
     }
 
     private static function scalar(mixed $value): string

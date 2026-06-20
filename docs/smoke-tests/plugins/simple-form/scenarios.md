@@ -153,6 +153,60 @@ For each `type` in [webhook, slack, discord, mailchimp, activecampaign, hubspot,
 
 ---
 
+## I. Phone field type (#123)
+
+**Not yet executed** (authored 2026-06-20 with the feature; DDEV/Playwright run pending).
+Covered by unit (`PhoneFieldTypeTest`, `DialCodesTest`) + integration
+(`PhoneSubmissionTest`, GraphQl phone mutations); these scenarios add the CP-builder
+and front-end UX checks.
+
+### S13 — Build a form with a Phone field (country selector) ⬜
+1. SETUP: `/admin/simple-form/forms/new` → name “Phone Smoke”, handle `phoneSmoke`,
+   emailTo `ops@example.test` → Save. Capture the form id.
+2. EXECUTE (UI): in the builder, click **Phone** in the field-type palette (right column).
+3. EXECUTE (UI): select the new field → in the inspector set Label “Mobile”, tick
+   **Required field** and **Show Country Selector**, set Default Country = “Switzerland (+41)”,
+   tick Allowed Countries = Switzerland + Germany → Save the form.
+4. VERIFY (DB): the field persisted with the right type + config —
+   `SELECT type, config FROM simpleform_fields WHERE formId={id} AND name='mobile';`
+   → `phone` and a JSON config containing `"showCountrySelector":true`,
+   `"defaultCountry":"CH"`, `"allowedCountries":["CH","DE"]`.
+5. VERIFY (Logs): no new errors in `web-$(date +%F).log`.
+
+### S14 — Front-end render + valid submit normalizes to E.164 ⬜
+1. SETUP: S13 form exists; render it on a front-end template
+   (`{{ simpleForm('phoneSmoke') }}`) or use the dev render route.
+2. VERIFY (UI): the field renders a `<select name="field_{fid}[country]">` limited to
+   **Switzerland (+41)** and **Germany (+49)** (no other countries), followed by an
+   `<input type="tel" name="field_{fid}[number]">`.
+3. EXECUTE (UI): pick Switzerland, type `079 123 45 67`, submit (solve captcha if on).
+4. VERIFY (UI): success state (no field error, thank-you/redirect).
+5. VERIFY (DB): the stored value is the normalized map —
+   `SELECT data FROM simpleform_submissions WHERE formId={id} ORDER BY id DESC LIMIT 1;`
+   → `field_{fid}.value.e164` = `+41791234567`, `.country` = `CH`, `.raw` = `079 123 45 67`.
+
+### S15 — Invalid number re-renders with the translated error, no row ⬜
+1. SETUP: S13 form; capture `SELECT COUNT(*) FROM simpleform_submissions WHERE formId={id};`.
+2. EXECUTE (UI): submit with the number `abc` (or `12`).
+3. VERIFY (UI): the form re-renders showing **“Enter a valid phone number.”**
+   (localized per the active site language).
+4. VERIFY (DB): the submission count is unchanged — no row was written.
+
+### S16 — Selector hidden → flat string normalizes against defaultCountry ⬜
+1. SETUP: edit the Phone field, untick **Show Country Selector**, set Default Country
+   = “Germany (+49)” → Save.
+2. VERIFY (UI): only the `<input type="tel" name="field_{fid}">` renders (no `<select>`).
+3. EXECUTE (UI): submit `030 1234567`.
+4. VERIFY (DB): `field_{fid}.value.e164` = `+49301234567`, `.country` = `DE`.
+
+### S17 — CSV export shows the normalized number ⬜
+1. SETUP: S14 produced at least one phone submission.
+2. EXECUTE (UI): submissions index → **Export** (CSV).
+3. VERIFY (file): the “Mobile” column cell is `+41791234567` (the clean E.164 string,
+   not the `{raw|e164|CH}` map).
+
+---
+
 ## Runner index (execute individually later)
 ```
 /craft-smoke-test plugin:simple-form S1: add a Webhook integration to a form and verify the row + DB
@@ -164,6 +218,11 @@ For each `type` in [webhook, slack, discord, mailchimp, activecampaign, hubspot,
 /craft-smoke-test plugin:simple-form S10: assign fields to 2 steps, verify step nav + single submission
 /craft-smoke-test plugin:simple-form S11: export submissions CSV and verify headers/rows
 /craft-smoke-test plugin:simple-form S12: add the count + recent dashboard widgets and verify against the DB
+/craft-smoke-test plugin:simple-form S13: build a form with a Phone field + country selector and verify the persisted config
+/craft-smoke-test plugin:simple-form S14: submit a Swiss national number and verify the stored value.e164 is +41791234567
+/craft-smoke-test plugin:simple-form S15: submit an invalid phone number and verify the translated error + no row written
+/craft-smoke-test plugin:simple-form S16: hide the selector and verify a flat string normalizes against defaultCountry
+/craft-smoke-test plugin:simple-form S17: export submissions CSV and verify the phone column shows the normalized E.164 number
 ```
 
 ## Coverage notes / known limits

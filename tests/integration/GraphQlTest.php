@@ -316,6 +316,80 @@ class GraphQlTest extends SimpleFormTestCase
         $this->assertSame('New signup', $message->getSubject());
     }
 
+    public function testSubmitMutationNormalizesPhoneNumber(): void
+    {
+        $this->requireCraft();
+
+        $siteId = Craft::$app->getSites()->getPrimarySite()->id;
+        $form = $this->createForm('Phone', 'gqlPhoneForm', 'Phone', $siteId);
+        // Headless clients send a flat string value; the field normalizes it
+        // against defaultCountry, identically to the AJAX path.
+        $phoneId = $this->createField($form->id, 'phone', 'phone', 'Phone', true, [
+            'showCountrySelector' => true,
+            'defaultCountry' => 'CH',
+        ]);
+
+        $document = <<<'GQL'
+        mutation ($handle: String!, $siteId: Int, $values: [SimpleFormFieldValueInput!]!) {
+            submitForm(handle: $handle, siteId: $siteId, values: $values) {
+                success
+                submissionId
+                errors { key messages }
+            }
+        }
+        GQL;
+
+        $variables = [
+            'handle' => 'gqlPhoneForm',
+            'siteId' => $siteId,
+            'values' => [['fieldId' => $phoneId, 'value' => '079 123 45 67']],
+        ];
+
+        $result = $this->execute($document, ['simpleFormSubmissions:create'], $variables);
+
+        $this->assertArrayNotHasKey('errors', $result, json_encode($result['errors'] ?? null));
+        $payload = $result['data']['submitForm'];
+        $this->assertTrue($payload['success']);
+
+        $submission = Submission::find()->id($payload['submissionId'])->one();
+        $this->assertSame('+41791234567', $submission->data['field_' . $phoneId]['value']['e164']);
+        $this->assertSame('CH', $submission->data['field_' . $phoneId]['value']['country']);
+    }
+
+    public function testSubmitMutationRejectsInvalidPhoneNumber(): void
+    {
+        $this->requireCraft();
+
+        $siteId = Craft::$app->getSites()->getPrimarySite()->id;
+        $form = $this->createForm('PhoneBad', 'gqlPhoneBadForm', 'PhoneBad', $siteId);
+        $phoneId = $this->createField($form->id, 'phone', 'phone', 'Phone', true, [
+            'defaultCountry' => 'CH',
+        ]);
+
+        $document = <<<'GQL'
+        mutation ($handle: String!, $siteId: Int, $values: [SimpleFormFieldValueInput!]!) {
+            submitForm(handle: $handle, siteId: $siteId, values: $values) {
+                success
+                errors { key messages }
+            }
+        }
+        GQL;
+
+        $variables = [
+            'handle' => 'gqlPhoneBadForm',
+            'siteId' => $siteId,
+            'values' => [['fieldId' => $phoneId, 'value' => 'abc']],
+        ];
+
+        $result = $this->execute($document, ['simpleFormSubmissions:create'], $variables);
+        $payload = $result['data']['submitForm'];
+
+        $this->assertFalse($payload['success']);
+        $this->assertSame('field_' . $phoneId, $payload['errors'][0]['key']);
+        $this->assertSame(['Enter a valid phone number.'], $payload['errors'][0]['messages']);
+        $this->assertSame(0, Submission::find()->formId($form->id)->count());
+    }
+
     public function testSubmitMutationEnforcesCaptchaUnlessBypassEnabled(): void
     {
         $this->requireCraft();

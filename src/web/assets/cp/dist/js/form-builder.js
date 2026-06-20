@@ -9,10 +9,12 @@
     // on .sf-builder so this file can ship as a static, cache-bustable asset.
     var SF_SOURCE_SITE = sfData.sourceSite === '1';
     var SF_VOLUMES = JSON.parse(sfData.volumes || '[]');
+    var SF_PHONE_COUNTRIES = JSON.parse(sfData.phoneCountries || '[]');
 
     var TYPE_LABELS = {
         text: 'Text', email: 'Email', textarea: 'Textarea', select: 'Select',
-        checkbox: 'Checkbox', radio: 'Radio', date: 'Date', number: 'Number', file: 'File Upload',
+        checkbox: 'Checkbox', radio: 'Radio', date: 'Date', number: 'Number',
+        phone: 'Phone', file: 'File Upload',
         payment: 'Payment'
     };
     var OPTION_TYPES = ['select', 'checkbox', 'radio'];
@@ -307,6 +309,66 @@
         } else if (f.type === 'number') {
             inspector.appendChild(numberRow('Minimum Value', c.min, function(v) { setNum(c, 'min', v); }));
             inspector.appendChild(numberRow('Maximum Value', c.max, function(v) { setNum(c, 'max', v); }));
+        } else if (f.type === 'phone') {
+            var phRow = row('Placeholder');
+            phRow._input.appendChild(textInput(c.placeholder || '', function(v) {
+                if (v.trim() === '') { delete c.placeholder; } else { c.placeholder = v; } serialize();
+            }));
+            inspector.appendChild(phRow);
+
+            var selRow = row('Show Country Selector');
+            var selCb = document.createElement('input'); selCb.type = 'checkbox'; selCb.checked = !!c.showCountrySelector;
+            selCb.addEventListener('change', function() { c.showCountrySelector = selCb.checked; serialize(); });
+            selRow._input.appendChild(selCb);
+            inspector.appendChild(selRow);
+
+            var countryOpts = (SF_PHONE_COUNTRIES || []).map(function(co) {
+                return { value: co.iso, label: co.label + ' (' + co.dial + ')' };
+            });
+
+            var dcRow = row('Default Country');
+            dcRow._input.appendChild(selectEl(countryOpts, c.defaultCountry || 'CH', function(v) {
+                c.defaultCountry = v; serialize();
+            }));
+            inspector.appendChild(dcRow);
+
+            var allowedSelected = Array.isArray(c.allowedCountries) ? c.allowedCountries : [];
+            var acRow = row('Allowed Countries');
+            var acHint = document.createElement('div'); acHint.className = 'instructions';
+            var acHintP = document.createElement('p');
+            acHintP.textContent = 'Leave all unchecked to allow every country.';
+            acHint.appendChild(acHintP); acRow._input.appendChild(acHint);
+            (SF_PHONE_COUNTRIES || []).forEach(function(co) {
+                var w = document.createElement('div'); w.className = 'checkbox-wrapper';
+                var cbx = document.createElement('input'); cbx.type = 'checkbox'; cbx.className = 'checkbox';
+                cbx.id = 'sf-ac-' + f.clientId + '-' + co.iso;
+                cbx.checked = allowedSelected.indexOf(co.iso) !== -1;
+                cbx.addEventListener('change', function() {
+                    var list = Array.isArray(c.allowedCountries) ? c.allowedCountries : [];
+                    var i = list.indexOf(co.iso);
+                    if (cbx.checked && i === -1) { list.push(co.iso); }
+                    else if (!cbx.checked && i !== -1) { list.splice(i, 1); }
+                    if (list.length === 0) { delete c.allowedCountries; } else { c.allowedCountries = list; }
+                    serialize();
+                });
+                var lbl = document.createElement('label'); lbl.setAttribute('for', cbx.id);
+                lbl.textContent = co.label + ' (' + co.dial + ')';
+                w.appendChild(cbx); w.appendChild(lbl); acRow._input.appendChild(w);
+            });
+            inspector.appendChild(acRow);
+
+            inspector.appendChild(numberRow('Minimum Digits', c.minDigits, function(v) { setNum(c, 'minDigits', v); }));
+            inspector.appendChild(numberRow('Maximum Digits', c.maxDigits, function(v) { setNum(c, 'maxDigits', v); }));
+
+            var patRow = row('Custom Pattern');
+            patRow._input.appendChild(textInput(c.pattern || '', function(v) {
+                if (v.trim() === '') { delete c.pattern; } else { c.pattern = v; } serialize();
+            }));
+            var patHint = document.createElement('div'); patHint.className = 'instructions';
+            var patHintP = document.createElement('p');
+            patHintP.textContent = 'Optional regex applied to the number’s digits. Leave blank for the default check.';
+            patHint.appendChild(patHintP); patRow._input.appendChild(patHint);
+            inspector.appendChild(patRow);
         } else if (f.type === 'date') {
             var fmtRow = row('Date Format');
             var sel = document.createElement('div'); sel.className = 'select';

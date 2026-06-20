@@ -66,6 +66,8 @@ return [
     'Must be at least {min}.' => 'Must be at least {min}.',
     'Must be no more than {max}.' => 'Must be no more than {max}.',
     'Please enter a valid date.' => 'Please enter a valid date.',
+    'Enter a valid phone number.' => 'Enter a valid phone number.',
+    'Please select a valid country.' => 'Please select a valid country.',
     'Manage forms (read & write form definitions and fields)' => 'Manage forms (read & write form definitions and fields)',
     'Read submissions (query, view, stats)' => 'Read submissions (query, view, stats)',
     'Export submissions (CSV / JSON)' => 'Export submissions (CSV / JSON)',

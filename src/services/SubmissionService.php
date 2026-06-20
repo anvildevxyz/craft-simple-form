@@ -11,6 +11,7 @@ use fabianhaef\simpleform\elements\SubmissionStatus;
 use fabianhaef\simpleform\events\SubmissionEvent;
 use fabianhaef\simpleform\fields\FileFieldType;
 use fabianhaef\simpleform\helpers\RateLimiter;
+use fabianhaef\simpleform\models\FieldModel;
 use fabianhaef\simpleform\models\FormModel;
 use fabianhaef\simpleform\models\Settings;
 use fabianhaef\simpleform\Plugin;
@@ -201,10 +202,15 @@ class SubmissionService extends Component
                 $errors['field_' . $fieldId] = $fieldErrors;
             }
 
+            // Persist the field type's normalized shape (a passthrough for most
+            // types; e.g. Phone stores a {raw, e164, country} map) so exports and
+            // integrations get the canonical value on both transports.
+            $storedValue = $this->normalizedValueForField($field, $value);
+
             $data['field_' . $fieldId] = [
                 'label' => $field->getLabel() ?? $field->getName(),
                 'type' => $field->getType(),
-                'value' => $value,
+                'value' => $storedValue,
             ];
         }
 
@@ -328,5 +334,24 @@ class SubmissionService extends Component
         }
 
         return $values['field_' . $fieldId] ?? null;
+    }
+
+    /**
+     * Resolve a field's persisted value through its field type's
+     * {@see \fabianhaef\simpleform\fields\FieldType::normalizeStoredValue()}
+     * hook (a passthrough for most types). Falls back to the raw value if the
+     * type is unknown so an unregistered type never drops the submitted value.
+     */
+    private function normalizedValueForField(FieldModel $field, mixed $value): mixed
+    {
+        $fieldType = Plugin::getInstance()
+            ->getFieldTypeRegistry()
+            ->getFieldType($field->getType(), $field->getConfig());
+
+        if ($fieldType === null) {
+            return $value;
+        }
+
+        return $fieldType->normalizeStoredValue($value);
     }
 }
