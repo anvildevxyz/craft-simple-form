@@ -49,6 +49,13 @@
     <a class="btn" href="{{ cpUrl('simple-form/forms/' ~ form.id ~ '/notifications') }}">
         {{ 'Notifications'|t('simple-form') }}
     </a>
+    {# Duplicate this form into a fresh copy and jump to its edit screen. Posts
+       outside the field builder's serialise step, so it copies the SAVED form. #}
+    <a class="btn formsubmit"
+       data-action="simple-form/forms/duplicate"
+       data-params="{{ { formId: form.id }|json_encode }}">
+        {{ 'Save as a new form'|t('simple-form') }}
+    </a>
 </div>
 {% endif %}
 

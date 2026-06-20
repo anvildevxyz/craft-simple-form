@@ -6,6 +6,7 @@ use Craft;
 use craft\base\Element;
 use craft\helpers\Db;
 use craft\helpers\StringHelper;
+use fabianhaef\simpleform\elements\actions\DuplicateForm;
 use fabianhaef\simpleform\elements\db\FormQuery;
 use fabianhaef\simpleform\Plugin;
 use fabianhaef\simpleform\traits\HasPropagation;
@@ -130,6 +131,16 @@ class Form extends Element
                 $form->eagerFields = $sets[(int)$form->siteId][(int)$form->id] ?? [];
             }
         }
+    }
+
+    /**
+     * @return array<int,\craft\base\ElementActionInterface|string|array<string,mixed>>
+     */
+    protected static function defineActions(string $source): array
+    {
+        return [
+            DuplicateForm::class,
+        ];
     }
 
     /**

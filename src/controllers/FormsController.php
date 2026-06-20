@@ -36,9 +36,19 @@ class FormsController extends Controller
         // any per-form field access in the listing stays N+1-free.
         Form::eagerLoadFields($forms);
 
+        $stencils = array_map(
+            static fn($stencil): array => [
+                'handle' => $stencil->handle,
+                'name' => $stencil->name,
+                'description' => $stencil->description,
+            ],
+            array_values(Plugin::getInstance()->getStencilLibrary()->getAll()),
+        );
+
         return $this->renderTemplate('simple-form/forms/index', [
             'forms' => $forms,
             'currentSite' => $site,
+            'stencils' => $stencils,
         ]);
     }
 
@@ -140,6 +150,69 @@ class FormsController extends Controller
 
         Craft::$app->getSession()->setNotice(Craft::t('simple-form', 'Form saved successfully'));
         return $this->redirect("simple-form/forms/edit/{$form->id}?site={$site->handle}");
+    }
+
+    /**
+     * Deep-copy an existing form (the edit screen's "Save as a new form" button)
+     * and redirect to the copy's edit screen.
+     *
+     * @throws NotFoundHttpException if the source form does not exist
+     * @throws \Throwable if the copy cannot be saved
+     */
+    public function actionDuplicate(): Response
+    {
+        $this->requirePostRequest();
+        /** @var \craft\web\Request $request */
+        $request = Craft::$app->getRequest();
+        $formId = $request->getRequiredBodyParam('formId');
+
+        // Duplication is element-wide (all sites), so load from any site.
+        $source = Form::find()->siteId('*')->id($formId)->status(null)->one();
+        if (!$source) {
+            throw new NotFoundHttpException('Form not found');
+        }
+
+        try {
+            $copy = Plugin::getInstance()->getFormClone()->duplicate($source);
+        } catch (\Throwable $e) {
+            Craft::warning('Form duplicate failed: ' . $e->getMessage(), 'simple-form');
+            Craft::$app->getSession()->setError(Craft::t('simple-form', 'Couldn’t duplicate the form.'));
+            return $this->redirect("simple-form/forms/edit/{$formId}");
+        }
+
+        Craft::$app->getSession()->setNotice(Craft::t('simple-form', 'Form duplicated.'));
+        return $this->redirect("simple-form/forms/edit/{$copy->id}");
+    }
+
+    /**
+     * Create a new form pre-populated from a built-in stencil and redirect to its
+     * edit screen.
+     *
+     * @throws NotFoundHttpException if the stencil handle is unknown
+     * @throws \Throwable if the form cannot be saved
+     */
+    public function actionNewFromStencil(): Response
+    {
+        $this->requirePostRequest();
+        /** @var \craft\web\Request $request */
+        $request = Craft::$app->getRequest();
+        $handle = (string) $request->getRequiredBodyParam('stencil');
+
+        $stencil = Plugin::getInstance()->getStencilLibrary()->getByHandle($handle);
+        if ($stencil === null) {
+            throw new NotFoundHttpException('Stencil not found');
+        }
+
+        try {
+            $form = Plugin::getInstance()->getFormClone()->createFromStencil($stencil);
+        } catch (\Throwable $e) {
+            Craft::warning('Stencil create failed: ' . $e->getMessage(), 'simple-form');
+            Craft::$app->getSession()->setError(Craft::t('simple-form', 'Couldn’t create the form from the stencil.'));
+            return $this->redirect('simple-form/forms');
+        }
+
+        Craft::$app->getSession()->setNotice(Craft::t('simple-form', 'Form created.'));
+        return $this->redirect("simple-form/forms/edit/{$form->id}");
     }
 
     public function actionDelete(): Response
