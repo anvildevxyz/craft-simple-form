@@ -113,6 +113,7 @@
                     <th>{{ 'Code'|t('simple-form') }}</th>
                     <th>{{ 'Attempt'|t('simple-form') }}</th>
                     <th>{{ 'When'|t('simple-form') }}</th>
+                    <th>{{ 'Created'|t('simple-form') }}</th>
                     <th>{{ 'Message'|t('simple-form') }}</th>
                     {% if canManageIntegrations %}<th></th>{% endif %}
                 </tr>
@@ -125,6 +126,14 @@
                         <td>{{ log.responseCode ?? '—' }}</td>
                         <td>{{ log.attempts }}</td>
                         <td>{{ log.dateCreated }}</td>
+                        <td>
+                            {%- set link = elementLinks[log.id] ?? null -%}
+                            {%- if link -%}
+                                <a href="{{ link.url }}">{{ link.label }}</a>
+                            {%- else -%}
+                                —
+                            {%- endif -%}
+                        </td>
                         <td class="sf-log-message{{ log.status == 'failed' ? ' is-error' : '' }}">{{ log.message ?: '—' }}</td>
                         {% if canManageIntegrations %}
                             <td class="thin">
