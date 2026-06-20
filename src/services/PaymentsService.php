@@ -37,8 +37,8 @@ class PaymentsService extends Component
     {
         $fields = Plugin::getInstance()->getFormStructure()->getFieldSet((int) $form->id, (int) $form->siteId);
         foreach ($fields as $field) {
-            if (($field['type'] ?? null) === 'payment') {
-                return is_array($field['config'] ?? null) ? $field['config'] : [];
+            if ($field['type'] === 'payment') {
+                return $field['config'];
             }
         }
 
@@ -202,7 +202,7 @@ class PaymentsService extends Component
     {
         $fields = Plugin::getInstance()->getFormStructure()->getFieldSet((int) $form->id, (int) $form->siteId);
         foreach ($fields as $field) {
-            if (($field['type'] ?? null) === 'email') {
+            if ($field['type'] === 'email') {
                 $entry = $data['field_' . $field['id']] ?? null;
                 $value = is_array($entry) ? ($entry['value'] ?? null) : $entry;
                 if (is_string($value) && filter_var($value, FILTER_VALIDATE_EMAIL)) {

@@ -54,7 +54,7 @@ class TwigExtension extends AbstractExtension
         // (the JS fetch+FormData submit is already multipart).
         $hasFileField = false;
         foreach ($fields as $field) {
-            if (($field['type'] ?? null) === 'file') {
+            if ($field['type'] === 'file') {
                 $hasFileField = true;
                 break;
             }

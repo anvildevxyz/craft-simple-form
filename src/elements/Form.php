@@ -7,9 +7,13 @@ use craft\base\Element;
 use craft\helpers\Db;
 use craft\helpers\StringHelper;
 use fabianhaef\simpleform\elements\db\FormQuery;
+use fabianhaef\simpleform\helpers\FieldQueryHelper;
 use fabianhaef\simpleform\Plugin;
 use fabianhaef\simpleform\traits\HasPropagation;
 
+/**
+ * @phpstan-import-type ResolvedFieldRow from FieldQueryHelper
+ */
 class Form extends Element
 {
     use HasPropagation;
@@ -71,7 +75,7 @@ class Form extends Element
      * Pre-resolved field set for this form/site, primed by
      * {@see self::eagerLoadFields()} so a forms listing avoids an N+1.
      *
-     * @var array<int,array<string,mixed>>|null
+     * @var list<ResolvedFieldRow>|null
      */
     private ?array $eagerFields = null;
 
@@ -85,7 +89,7 @@ class Form extends Element
      * text), served from the structure cache. When pre-loaded via
      * {@see self::eagerLoadFields()} the primed set is returned with no query.
      *
-     * @return array<int,array<string,mixed>>
+     * @return list<ResolvedFieldRow>
      */
     public function getFields(): array
     {

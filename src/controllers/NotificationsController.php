@@ -179,7 +179,7 @@ class NotificationsController extends Controller
         $fields = Plugin::getInstance()->getFormStructure()->getFieldSet((int) $form->id, (int) $form->siteId);
         $options = [];
         foreach ($fields as $field) {
-            $options[(string) $field['name']] = (string) ($field['label'] ?? $field['name']);
+            $options[(string) $field['name']] = (string) $field['label'];
         }
         return $options;
     }
