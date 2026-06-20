@@ -105,26 +105,28 @@ class FieldModel extends Model
             return [];
         }
 
-        try {
-            $fieldTypeRegistry = Plugin::getInstance()->getFieldTypeRegistry();
+        $fieldTypeRegistry = Plugin::getInstance()->getFieldTypeRegistry();
 
-            // Resolve effective required-ness (static OR conditional) and let the
-            // field type enforce it, so there is a single required code path.
-            $config = $this->config;
-            $config['required'] = $this->isRequired($formData);
+        // Resolve effective required-ness (static OR conditional) and let the
+        // field type enforce it, so there is a single required code path.
+        $config = $this->config;
+        $config['required'] = $this->isRequired($formData);
 
-            $fieldType = $fieldTypeRegistry->getFieldType($this->type, $config);
+        $fieldType = $fieldTypeRegistry->getFieldType($this->type, $config);
 
-            if (!$fieldType) {
-                Craft::warning(sprintf('Unknown field type: %s', $this->type), 'simple-form');
-                return ['Unknown field type: ' . $this->type];
-            }
-
-            return self::applyOverride($fieldType->validate($value), $this->errorMessage);
-        } catch (\Throwable $e) {
-            Craft::warning(sprintf('Field validation error: %s', $e->getMessage()), 'simple-form');
-            return ['Validation error occurred'];
+        // An unregistered type is a recoverable data state (e.g. a field whose
+        // type was removed from the plugin), so it degrades to a validation
+        // error rather than a thrown exception. A genuine programmer/data
+        // defect (a malformed stored config tripping a TypeError, say) is
+        // deliberately left to propagate to the controller/Twig boundary, just
+        // as it already does on the render path in TwigExtension — surfacing the
+        // real bug instead of papering over it with a vague message.
+        if (!$fieldType) {
+            Craft::warning(sprintf('Unknown field type: %s', $this->type), 'simple-form');
+            return ['Unknown field type: ' . $this->type];
         }
+
+        return self::applyOverride($fieldType->validate($value), $this->errorMessage);
     }
 
     /**

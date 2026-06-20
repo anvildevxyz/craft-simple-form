@@ -85,12 +85,11 @@ class Submission extends Element
             return $eager instanceof Form ? $eager : null;
         }
 
-        try {
-            return Form::find()->id($this->formId)->one();
-        } catch (\Throwable $e) {
-            Craft::warning(sprintf('Error loading form %d: %s', $this->formId, $e->getMessage()), 'simple-form');
-            return null;
-        }
+        // An absent form already yields null from `->one()` without throwing, so
+        // there is no try/catch here: a genuine query/infrastructure failure is
+        // left to propagate as a clear DB error instead of being masked as a
+        // confusing "form not found" state.
+        return Form::find()->id($this->formId)->one();
     }
 
     /**
