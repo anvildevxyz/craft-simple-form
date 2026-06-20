@@ -66,7 +66,38 @@ class TwigExtension extends AbstractExtension
         $errorMessage = (string) (Plugin::getInstance()->getSettings()->errorMessage ?? '');
         $errorAttr = $errorMessage !== '' ? ' data-sf-error="' . htmlspecialchars($errorMessage, ENT_QUOTES) . '"' : '';
 
-        $html = '<form class="simple-form" method="POST"' . $enctype . $errorAttr . ' action="' . Craft::$app->getUrlManager()->createUrl('simple-form/submit') . '">';
+        $steps = FormSteps::group($fields);
+        $submitText = $options['submitText'] ?? 'Submit';
+
+        // Save-&-resume: only on multi-step forms that opted in. When the page is
+        // loaded with a valid ?sfresume=<token>, prefill the saved values and keep
+        // the token so re-saving updates the same draft.
+        $resumeEnabled = $form->allowSaveResume && count($steps) > 1;
+        $resumeValues = [];
+        $resumeToken = '';
+        if ($form->allowSaveResume) {
+            /** @var \craft\web\Request $request */
+            $request = Craft::$app->getRequest();
+            $token = (string) $request->getParam('sfresume', '');
+            if ($token !== '') {
+                $saved = Plugin::getInstance()->getDrafts()->getData($token, (int) $form->id);
+                if ($saved !== null) {
+                    $resumeValues = $saved;
+                    $resumeToken = $token;
+                }
+            }
+        }
+
+        $resumeAttr = '';
+        if ($resumeEnabled) {
+            $resumeAttr = ' data-sf-resume="' . htmlspecialchars(Craft::$app->getUrlManager()->createUrl('simple-form/submit/save-draft'), ENT_QUOTES) . '"'
+                . ' data-sf-resume-label="' . htmlspecialchars(Craft::t('simple-form', 'Saved. Use this link to continue later:'), ENT_QUOTES) . '"'
+                . ' data-sf-resume-copy="' . htmlspecialchars(Craft::t('simple-form', 'Copy'), ENT_QUOTES) . '"'
+                . ' data-sf-resume-copied="' . htmlspecialchars(Craft::t('simple-form', 'Copied'), ENT_QUOTES) . '"'
+                . ($resumeToken !== '' ? ' data-sf-resume-token="' . htmlspecialchars($resumeToken, ENT_QUOTES) . '"' : '');
+        }
+
+        $html = '<form class="simple-form" method="POST"' . $enctype . $errorAttr . $resumeAttr . ' action="' . Craft::$app->getUrlManager()->createUrl('simple-form/submit') . '">';
         $html .= Craft::$app->getView()->renderString('{{ csrfInput() }}');
         $html .= '<input type="hidden" name="formHandle" value="' . htmlspecialchars($handle) . '">';
 
@@ -76,13 +107,10 @@ class TwigExtension extends AbstractExtension
             $html .= '<input type="hidden" name="__honeypot" value="" style="display:none;" aria-hidden="true" autocomplete="off">';
         }
 
-        $steps = FormSteps::group($fields);
-        $submitText = $options['submitText'] ?? 'Submit';
-
         if (count($steps) <= 1) {
             // Single page — unchanged markup.
             foreach ($fields as $field) {
-                $html .= $this->renderFieldGroup($field, $fieldTypeRegistry);
+                $html .= $this->renderFieldGroup($field, $fieldTypeRegistry, $resumeValues);
             }
             $html .= $this->renderCaptcha($settings);
             $html .= '<button type="submit" class="simple-form-submit-btn">' . htmlspecialchars($submitText) . '</button>';
@@ -95,7 +123,7 @@ class TwigExtension extends AbstractExtension
                 $hidden = $i === 0 ? '' : ' hidden';
                 $html .= '<div class="simple-form-step" data-sf-step="' . $i . '"' . $hidden . '>';
                 foreach ($stepFields as $field) {
-                    $html .= $this->renderFieldGroup($field, $fieldTypeRegistry);
+                    $html .= $this->renderFieldGroup($field, $fieldTypeRegistry, $resumeValues);
                 }
                 if ($i === $lastIndex) {
                     $html .= $this->renderCaptcha($settings);
@@ -109,6 +137,10 @@ class TwigExtension extends AbstractExtension
             $html .= '<button type="button" class="simple-form-step-next">'
                 . htmlspecialchars(Craft::t('simple-form', 'Next')) . '</button>';
             $html .= '<button type="submit" class="simple-form-submit-btn" hidden>' . htmlspecialchars($submitText) . '</button>';
+            if ($resumeEnabled) {
+                $html .= '<button type="button" class="simple-form-save-resume">'
+                    . htmlspecialchars(Craft::t('simple-form', 'Save & continue later')) . '</button>';
+            }
             $html .= '<span class="simple-form-step-progress" role="status" aria-live="polite"></span>';
             $html .= '</div>';
         }
@@ -127,8 +159,9 @@ class TwigExtension extends AbstractExtension
      * conditional-logic data attributes the front-end evaluator reads.
      *
      * @param array<string, mixed> $field a resolved field row
+     * @param array<string, mixed> $values prefill values (field_<id> => value), for resume
      */
-    private function renderFieldGroup(array $field, \fabianhaef\simpleform\services\FieldTypeRegistry $fieldTypeRegistry): string
+    private function renderFieldGroup(array $field, \fabianhaef\simpleform\services\FieldTypeRegistry $fieldTypeRegistry, array $values = []): string
     {
         // already decoded, with "required" merged in; overlay this site's
         // per-site option labels (value stays canonical, label localized).
@@ -190,7 +223,7 @@ class TwigExtension extends AbstractExtension
         } else {
             $html .= '<div class="input-wrapper">';
         }
-        $html .= $fieldType->renderInput($fieldName);
+        $html .= $fieldType->renderInput($fieldName, $values[$fieldName] ?? null);
         $html .= '</div>';
         $html .= '</div>';
 

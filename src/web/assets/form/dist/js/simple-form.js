@@ -208,6 +208,81 @@
 
     // ---- submit ----------------------------------------------------------
 
+    // ---- save & resume ---------------------------------------------------
+    // The "Save & continue later" button posts the current values to the
+    // save-draft endpoint and shows a resume link the visitor can return to.
+    function showResumeLink(form, url) {
+        var existing = form.querySelector(".simple-form-resume-link");
+        if (existing) { existing.remove(); }
+
+        var wrap = document.createElement("div");
+        wrap.className = "simple-form-resume-link";
+        wrap.setAttribute("role", "status");
+        wrap.setAttribute("tabindex", "-1");
+
+        var label = document.createElement("p");
+        label.textContent = form.getAttribute("data-sf-resume-label") || "Saved. Use this link to continue later:";
+        wrap.appendChild(label);
+
+        var row = document.createElement("div");
+        row.className = "simple-form-resume-row";
+
+        var input = document.createElement("input");
+        input.type = "text";
+        input.readOnly = true;
+        input.value = url;
+        input.className = "simple-form-resume-url";
+        row.appendChild(input);
+
+        var copy = document.createElement("button");
+        copy.type = "button";
+        copy.className = "simple-form-resume-copy";
+        var copyLabel = form.getAttribute("data-sf-resume-copy") || "Copy";
+        copy.textContent = copyLabel;
+        copy.addEventListener("click", function () {
+            input.select();
+            if (navigator.clipboard) { navigator.clipboard.writeText(url); }
+            else { try { document.execCommand("copy"); } catch (e) {} }
+            copy.textContent = form.getAttribute("data-sf-resume-copied") || "Copied";
+            setTimeout(function () { copy.textContent = copyLabel; }, 2000);
+        });
+        row.appendChild(copy);
+        wrap.appendChild(row);
+
+        var nav = form.querySelector(".simple-form-step-nav");
+        if (nav && nav.parentNode) { nav.parentNode.insertBefore(wrap, nav.nextSibling); }
+        else { form.appendChild(wrap); }
+        wrap.focus();
+    }
+
+    function initSaveResume(form) {
+        var btn = form.querySelector(".simple-form-save-resume");
+        var url = form.getAttribute("data-sf-resume");
+        if (!btn || !url) { return; }
+
+        btn.addEventListener("click", function () {
+            var formData = new FormData(form);
+            var token = form.getAttribute("data-sf-resume-token");
+            if (token) { formData.set("sfresume", token); }
+            btn.disabled = true;
+            fetch(url, {
+                method: "POST",
+                body: formData,
+                headers: { "X-Requested-With": "XMLHttpRequest" }
+            })
+                .then(function (r) { return r.json(); })
+                .then(function (data) {
+                    btn.disabled = false;
+                    if (!data || !data.success || !data.token) { return; }
+                    // Reuse the same draft on the next save.
+                    form.setAttribute("data-sf-resume-token", data.token);
+                    var resumeUrl = location.origin + location.pathname + "?sfresume=" + encodeURIComponent(data.token);
+                    showResumeLink(form, resumeUrl);
+                })
+                .catch(function () { btn.disabled = false; });
+        });
+    }
+
     function initForm(form) {
         if (form.dataset.simpleFormBound === "1") {
             return;
@@ -216,6 +291,7 @@
 
         initConditions(form);
         initSteps(form);
+        initSaveResume(form);
 
         // Remove any prior error state so re-submits don't stack duplicate
         // messages and resolved fields lose their invalid wiring (a11y, #105).

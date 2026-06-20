@@ -40,6 +40,7 @@ use fabianhaef\simpleform\services\AssetUploadService;
 use fabianhaef\simpleform\services\AuditService;
 use fabianhaef\simpleform\services\CaptchaProviderRegistry;
 use fabianhaef\simpleform\services\CaptchaService;
+use fabianhaef\simpleform\services\DraftService;
 use fabianhaef\simpleform\services\EmailService;
 use fabianhaef\simpleform\services\FieldTypeRegistry;
 use fabianhaef\simpleform\services\FormStructureService;
@@ -78,7 +79,7 @@ class Plugin extends BasePlugin
     /** The plugin's single commercial edition. */
     public const EDITION_PRO = 'pro';
 
-    public string $schemaVersion = '2.9.0';
+    public string $schemaVersion = '2.10.0';
     public bool $hasCpSection = true;
     public bool $hasCpSettings = false;
     public bool $hasCpPermissions = true;
@@ -106,6 +107,7 @@ class Plugin extends BasePlugin
             'fieldTypeRegistry' => FieldTypeRegistry::class,
             'emailService' => EmailService::class,
             'submissionService' => SubmissionService::class,
+            'drafts' => DraftService::class,
             'captchaService' => CaptchaService::class,
             'captchaProviderRegistry' => CaptchaProviderRegistry::class,
             'akismetService' => AkismetService::class,
@@ -327,6 +329,13 @@ class Plugin extends BasePlugin
     {
         /** @var SubmissionService $service */
         $service = $this->get('submissionService');
+        return $service;
+    }
+
+    public function getDrafts(): DraftService
+    {
+        /** @var DraftService $service */
+        $service = $this->get('drafts');
         return $service;
     }
 

@@ -90,4 +90,44 @@ class SubmitController extends Controller
             'message' => $settings->submitMessage,
         ]);
     }
+
+    /**
+     * Save a partial submission (save-&-resume) and return a resume token. Only
+     * works for forms that opted into drafts. File fields are not drafted; every
+     * other `field_*` value entered so far is stored. Passing an existing token
+     * updates that draft in place so the resume URL stays stable.
+     */
+    public function actionSaveDraft(): Response
+    {
+        $this->requirePostRequest();
+        /** @var \craft\web\Request $request */
+        $request = Craft::$app->getRequest();
+
+        $formHandle = (string) $request->getBodyParam('formHandle', '');
+        $form = Form::find()
+            ->handle($formHandle)
+            ->siteId(Craft::$app->getSites()->getCurrentSite()->id)
+            ->one();
+
+        if (!$form instanceof Form || !$form->allowSaveResume) {
+            return $this->asJson(['success' => false]);
+        }
+
+        $values = [];
+        foreach ($request->getBodyParams() as $key => $value) {
+            if (is_string($key) && str_starts_with($key, 'field_')) {
+                $values[$key] = $value;
+            }
+        }
+
+        $existingToken = (string) $request->getBodyParam('sfresume', '');
+        $token = Plugin::getInstance()->getDrafts()->save(
+            (int) $form->id,
+            Craft::$app->getSites()->getCurrentSite()->id,
+            $values,
+            $existingToken !== '' ? $existingToken : null,
+        );
+
+        return $this->asJson(['success' => true, 'token' => $token]);
+    }
 }

@@ -125,6 +125,12 @@ class Settings extends Model
     public int $retainAuditLogDays = 365;
 
     /**
+     * How long an unfinished save-&-resume draft is kept before garbage
+     * collection. Each save refreshes the expiry. Must be > 0.
+     */
+    public int $draftRetentionDays = 30;
+
+    /**
      * When pruning submissions, scrub their data + user reference in place instead
      * of deleting the row, so aggregate counts/stats survive while PII does not.
      */
@@ -180,6 +186,7 @@ class Settings extends Model
             ],
             [['enableHoneypot', 'enableCaptcha', 'cacheFormStructure', 'inlineFormAssets', 'enableMcp', 'dispatchIntegrationsSynchronously', 'enableAkismet', 'anonymizeInsteadOfDelete', 'allowGraphqlCaptchaBypass'], 'boolean'],
             [['retainSubmissionsDays', 'retainIntegrationLogsDays', 'retainAuditLogDays', 'submitRateLimitPerMinute'], 'integer', 'min' => 0],
+            [['draftRetentionDays'], 'integer', 'min' => 1],
             [['akismetMode'], 'in', 'range' => [self::AKISMET_FLAG, self::AKISMET_BLOCK]],
             [['akismetApiKey'], 'required', 'when' => fn(): bool => $this->enableAkismet],
             [['mcpTokens'], 'safe'],

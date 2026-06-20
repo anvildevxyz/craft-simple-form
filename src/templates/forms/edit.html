@@ -160,6 +160,16 @@
 
 <hr>
 
+{{ forms.lightswitchField({
+    label: 'Allow save & resume'|t('simple-form'),
+    id: 'allowSaveResume',
+    name: 'allowSaveResume',
+    on: form.allowSaveResume ?? false,
+    instructions: 'Add a “Save & continue later” button to this form so visitors can save their progress and return via a link. Applies to multi-step forms.'|t('simple-form'),
+}) }}
+
+<hr>
+
 <h2>{{ 'Form Fields'|t('simple-form') }}</h2>
 <p class="light">{{ 'Drag a field type from the right onto the form, or click it to add. Click a field to edit its properties. Changes are saved when you save the form.'|t('simple-form') }}</p>
 

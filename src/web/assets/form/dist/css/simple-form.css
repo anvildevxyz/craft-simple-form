@@ -52,3 +52,16 @@
     font-size: 0.9em;
     margin-top: 5px;
 }
+
+/* Save & resume */
+.simple-form-save-resume { margin-left: .5em; }
+.simple-form-resume-link {
+    margin-top: 1em;
+    padding: .75em 1em;
+    border: 1px solid #cbd5e1;
+    border-radius: 4px;
+    background: #f8fafc;
+}
+.simple-form-resume-link p { margin: 0 0 .5em; }
+.simple-form-resume-row { display: flex; gap: .5em; }
+.simple-form-resume-url { flex: 1; }

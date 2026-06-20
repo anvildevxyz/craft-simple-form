@@ -39,6 +39,7 @@ class RetentionService extends Component
             'auditLog' => Plugin::getInstance()->getAudit()->prune(
                 Plugin::getInstance()->getSettings()->retainAuditLogDays,
             ),
+            'drafts' => Plugin::getInstance()->getDrafts()->gcExpired(),
         ];
     }
 

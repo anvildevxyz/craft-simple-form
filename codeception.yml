@@ -46,6 +46,10 @@ modules:
         # Its logic is covered directly by IntegrationExposureTest instead.
         - class: fabianhaef\simpleform\migrations\m260620_000002_submission_spam_reason
           params: {}
+        - class: fabianhaef\simpleform\migrations\m260620_000003_form_allow_save_resume
+          params: {}
+        - class: fabianhaef\simpleform\migrations\m260620_000004_form_drafts
+          params: {}
       plugins:
         - handle: simple-form
           class: fabianhaef\simpleform\Plugin

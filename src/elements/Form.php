@@ -26,6 +26,8 @@ class Form extends Element
     // Shared across sites
     public ?string $name = null;
     public ?string $handle = null;
+    /** Per-form opt-in for save-&-resume drafts (shared, not translatable). */
+    public bool $allowSaveResume = false;
 
     // Per-site (translatable). title is stored in elements_sites via hasTitles().
     public ?string $title = null;
@@ -184,6 +186,7 @@ class Form extends Element
         $rules[] = [['title', 'description'], 'string'];
         $rules[] = [['emailTo', 'emailSubject', 'emailReplyTo'], 'string', 'max' => 255];
         $rules[] = [['emailBody'], 'string'];
+        $rules[] = [['allowSaveResume'], 'boolean'];
 
         // handle is shared across sites, so it must be globally unique
         $rules[] = [['handle'], 'validateHandleUnique'];
@@ -224,6 +227,7 @@ class Form extends Element
             'handle' => $this->handle,
             'name' => $this->name,
             'propagationMethod' => $this->propagationMethod->value,
+            'allowSaveResume' => $this->allowSaveResume,
             'dateUpdated' => $now,
         ];
 
