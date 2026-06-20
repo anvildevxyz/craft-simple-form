@@ -451,7 +451,6 @@ class Plugin extends BasePlugin
         $event->rules['simple-form/forms/save'] = 'simple-form/forms/save';
         $event->rules['simple-form/forms/delete/<formId:\d+>'] = 'simple-form/forms/delete';
         // Integrations: global definitions managed under Settings, enabled per form.
-        $event->rules['simple-form/integrations'] = 'simple-form/integrations/global-index';
         $event->rules['simple-form/integrations/save'] = 'simple-form/integrations/save';
         $event->rules['simple-form/integrations/delete'] = 'simple-form/integrations/delete';
         $event->rules['simple-form/integrations/toggle'] = 'simple-form/integrations/toggle';
