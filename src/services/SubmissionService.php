@@ -10,7 +10,9 @@ use fabianhaef\simpleform\elements\Submission;
 use fabianhaef\simpleform\elements\SubmissionStatus;
 use fabianhaef\simpleform\events\SubmissionEvent;
 use fabianhaef\simpleform\fields\FileFieldType;
+use fabianhaef\simpleform\fields\SignatureFieldType;
 use fabianhaef\simpleform\helpers\RateLimiter;
+use fabianhaef\simpleform\helpers\SignaturePng;
 use fabianhaef\simpleform\models\FormModel;
 use fabianhaef\simpleform\models\Settings;
 use fabianhaef\simpleform\Plugin;
@@ -47,28 +49,43 @@ class SubmissionService extends Component
         $formModel = new FormModel($formElement);
 
         // Pull each field's posted value (field_<id>) out of the request body.
-        // File fields are special: their uploads are validated here and turned
-        // into Asset ids, which become the field's value.
+        // File and Signature fields are special: their uploads / decoded PNG data
+        // URLs are validated here and turned into Asset ids, which become the
+        // field's value.
         $values = [];
         $pendingUploads = [];
+        $pendingSignatures = [];
+        $tempFiles = [];
         $fileErrors = [];
         foreach ($formModel->getFields() as $fieldId => $field) {
+            $config = $field->getConfig();
+            $config['required'] = $field->isRequired();
+
             if ($field->getType() === FileFieldType::getType()) {
                 $files = UploadedFile::getInstancesByName('field_' . $fieldId);
-                $config = $field->getConfig();
-                $config['required'] = $field->isRequired();
                 $errors = (new FileFieldType($config))->validateUpload($files);
                 if ($errors !== []) {
                     $fileErrors['field_' . $fieldId] = $errors;
                 }
                 $pendingUploads[$fieldId] = ['files' => $files, 'config' => $config];
                 $values[$fieldId] = [];
+            } elseif ($field->getType() === SignatureFieldType::getType()) {
+                // The signature posts as a PNG data URL string. Validate it here
+                // (required + decodable PNG) before any temp file is written.
+                $dataUrl = $request->getBodyParam('field_' . $fieldId);
+                $errors = (new SignatureFieldType($config))->validate($dataUrl);
+                if ($errors !== []) {
+                    $fileErrors['field_' . $fieldId] = $errors;
+                }
+                $pendingSignatures[$fieldId] = ['dataUrl' => $dataUrl, 'config' => $config];
+                $values[$fieldId] = [];
             } else {
                 $values[$fieldId] = $request->getBodyParam('field_' . $fieldId);
             }
         }
 
-        // Reject before creating any asset if a file failed validation.
+        // Reject before creating any asset if a file/signature failed validation.
+        // No temp files exist yet (signatures are decoded only past this gate).
         if ($fileErrors !== []) {
             return ['submission' => null, 'errors' => $fileErrors];
         }
@@ -82,6 +99,27 @@ class SubmissionService extends Component
             $createdAssetIds = array_merge($createdAssetIds, $ids);
         }
 
+        // Signatures: decode each validated data URL to a temp PNG, then save it
+        // through the same asset pipeline so the id list becomes the field value.
+        foreach ($pendingSignatures as $fieldId => $info) {
+            $bytes = SignaturePng::decode($info['dataUrl']);
+            if ($bytes === null) {
+                // Empty/optional signature → no asset, empty value.
+                continue;
+            }
+            $tempPath = $this->writeSignatureTempFile($bytes);
+            if ($tempPath === null) {
+                continue;
+            }
+            $tempFiles[] = $tempPath;
+            $ids = $uploadService->saveTempFiles(
+                [['path' => $tempPath, 'filename' => 'signature-' . $fieldId . '-' . time() . '.png']],
+                $info['config'],
+            );
+            $values[$fieldId] = $ids;
+            $createdAssetIds = array_merge($createdAssetIds, $ids);
+        }
+
         $userId = Craft::$app->getUser()->getId();
 
         $result = $this->submit($formElement, $values, [
@@ -90,6 +128,10 @@ class SubmissionService extends Component
             'userId' => $userId !== null ? (int) $userId : null,
         ]);
 
+        // Temp PNGs are copied into the volume by saveTempFiles(); remove the
+        // staging files regardless of outcome.
+        $this->cleanupTempFiles($tempFiles);
+
         // No row persisted (validation error, honeypot/captcha/spam drop) → don't
         // leave orphaned assets behind.
         if ($result['submission'] === null && $createdAssetIds !== []) {
@@ -97,6 +139,37 @@ class SubmissionService extends Component
         }
 
         return $result;
+    }
+
+    /**
+     * Write decoded signature PNG bytes to a uniquely named temp file, returning
+     * its path or null if the file can't be written.
+     */
+    private function writeSignatureTempFile(string $bytes): ?string
+    {
+        $path = tempnam(sys_get_temp_dir(), 'sfsig');
+        if ($path === false) {
+            return null;
+        }
+        if (file_put_contents($path, $bytes) === false) {
+            @unlink($path);
+            return null;
+        }
+        return $path;
+    }
+
+    /**
+     * Remove the staging temp files written for signature decoding.
+     *
+     * @param list<string> $paths
+     */
+    private function cleanupTempFiles(array $paths): void
+    {
+        foreach ($paths as $path) {
+            if ($path !== '' && is_file($path)) {
+                @unlink($path);
+            }
+        }
     }
 
     /**

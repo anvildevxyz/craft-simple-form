@@ -56,6 +56,52 @@ class AssetUploadService extends Component
         return $ids;
     }
 
+    /**
+     * Save pre-staged temp files (already written to disk, not posted via a
+     * multipart upload) as Assets in the field's target volume, returning the
+     * created asset ids. Used by the Signature field (#129), whose value arrives
+     * as a base64 PNG decoded into a temp file rather than an UploadedFile, but
+     * still has to land in the same managed volume with the same tooling.
+     *
+     * @param array<int, array{path: string, filename: string}> $files
+     * @param array<string, mixed> $fieldConfig
+     * @return list<int>
+     */
+    public function saveTempFiles(array $files, array $fieldConfig): array
+    {
+        $files = array_values(array_filter(
+            $files,
+            static fn(array $f): bool => $f['path'] !== '' && is_file($f['path']),
+        ));
+        if ($files === []) {
+            return [];
+        }
+
+        $folderId = $this->resolveFolderId($fieldConfig['volume'] ?? null);
+        if ($folderId === null) {
+            Craft::warning('No asset volume available for a Simple Form signature.', 'simple-form');
+            return [];
+        }
+
+        $ids = [];
+        foreach ($files as $file) {
+            $asset = new Asset();
+            $asset->tempFilePath = $file['path'];
+            $asset->setFilename($file['filename']);
+            $asset->newFolderId = $folderId;
+            $asset->setScenario(Asset::SCENARIO_CREATE);
+            $asset->avoidFilenameConflicts = true;
+
+            if (Craft::$app->getElements()->saveElement($asset)) {
+                $ids[] = (int) $asset->id;
+            } else {
+                Craft::warning('Failed to save signature asset: ' . implode(', ', $asset->getFirstErrors()), 'simple-form');
+            }
+        }
+
+        return $ids;
+    }
+
     /** Delete assets created during a submission that ultimately failed. */
     public function deleteAssets(int ...$ids): void
     {

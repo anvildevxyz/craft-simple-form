@@ -11,6 +11,7 @@ use fabianhaef\simpleform\fields\NumberFieldType;
 use fabianhaef\simpleform\fields\PaymentFieldType;
 use fabianhaef\simpleform\fields\RadioFieldType;
 use fabianhaef\simpleform\fields\SelectFieldType;
+use fabianhaef\simpleform\fields\SignatureFieldType;
 use fabianhaef\simpleform\fields\TextareaFieldType;
 use fabianhaef\simpleform\fields\TextFieldType;
 use yii\base\Component;
@@ -42,6 +43,7 @@ class FieldTypeRegistry extends Component
         $this->registerFieldType(DateFieldType::class);
         $this->registerFieldType(NumberFieldType::class);
         $this->registerFieldType(FileFieldType::class);
+        $this->registerFieldType(SignatureFieldType::class);
         $this->registerFieldType(PaymentFieldType::class);
     }
 

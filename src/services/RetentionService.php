@@ -100,6 +100,11 @@ class RetentionService extends Component
      */
     private function anonymize(array $ids): int
     {
+        // A signature/file is PII held in an asset volume, not just the JSON row.
+        // Delete those assets before nulling the data so anonymization scrubs the
+        // image too, not only the reference (#129).
+        $this->deleteSubmissionAssets($ids);
+
         // Null the JSON data + user reference in place; the element row, count and
         // readStatus survive so stats stay meaningful.
         return (int) Craft::$app->getDb()->createCommand()
@@ -112,6 +117,10 @@ class RetentionService extends Component
      */
     private function hardDelete(array $ids): int
     {
+        // Remove asset-bearing field values (file + signature) so no orphaned
+        // image survives the submission it belonged to (#129).
+        $this->deleteSubmissionAssets($ids);
+
         $elements = Craft::$app->getElements();
         $db = Craft::$app->getDb();
         $deleted = 0;
@@ -127,6 +136,44 @@ class RetentionService extends Component
         }
 
         return $deleted;
+    }
+
+    /**
+     * Collect the asset ids stored by file/signature fields across the given
+     * submissions and delete them via the shared asset-cleanup path, so removing
+     * or anonymizing a submission never leaves its asset behind.
+     *
+     * @param list<int> $ids
+     */
+    private function deleteSubmissionAssets(array $ids): void
+    {
+        $rows = (new Query())
+            ->select(['data'])
+            ->from(self::SUBMISSIONS)
+            ->where(['id' => $ids])
+            ->column();
+
+        $assetIds = [];
+        foreach ($rows as $raw) {
+            $data = is_array($raw) ? $raw : json_decode((string) $raw, true);
+            if (!is_array($data)) {
+                continue;
+            }
+            foreach ($data as $entry) {
+                if (!is_array($entry) || !in_array($entry['type'] ?? null, ['file', 'signature'], true)) {
+                    continue;
+                }
+                foreach ((array) ($entry['value'] ?? []) as $assetId) {
+                    if (is_numeric($assetId)) {
+                        $assetIds[] = (int) $assetId;
+                    }
+                }
+            }
+        }
+
+        if ($assetIds !== []) {
+            Plugin::getInstance()->getAssetUploadService()->deleteAssets(...array_values(array_unique($assetIds)));
+        }
     }
 
     private function cutoff(int $days): \DateTime

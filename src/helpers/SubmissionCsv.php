@@ -2,6 +2,8 @@
 
 namespace fabianhaef\simpleform\helpers;
 
+use Craft;
+use craft\elements\Asset;
 use fabianhaef\simpleform\elements\Submission;
 
 /**
@@ -9,9 +11,21 @@ use fabianhaef\simpleform\elements\Submission;
  * metadata columns followed by one column per distinct field (header = the
  * field's label), with each cell the submitted value (multi-value fields
  * pipe-joined). Columns are the union across the result set so every row aligns.
+ *
+ * Asset-bearing fields (file, signature) store asset ids; their cells are
+ * rendered as the asset URL (or an `Asset #id` reference when no public URL
+ * exists), never raw base64 (#129).
  */
 final class SubmissionCsv
 {
+    /**
+     * Field types whose stored value is a list of asset ids that should export
+     * as asset URLs/references rather than raw ids.
+     *
+     * @var list<string>
+     */
+    private const ASSET_TYPES = ['file', 'signature'];
+
     /**
      * @param array<int, Submission> $submissions
      */
@@ -48,9 +62,7 @@ final class SubmissionCsv
 
             $data = $submission->data ?? [];
             foreach (array_keys($fieldCols) as $key) {
-                $entry = $data[$key] ?? null;
-                $value = is_array($entry) ? ($entry['value'] ?? '') : $entry;
-                $line[] = self::scalar($value);
+                $line[] = self::scalar(self::valueForExport($data[$key] ?? null));
             }
 
             fputcsv($handle, $line);
@@ -95,15 +107,54 @@ final class SubmissionCsv
 
             $data = $submission->data ?? [];
             foreach ($fieldCols as $key => $label) {
-                $entry = $data[$key] ?? null;
-                $value = is_array($entry) ? ($entry['value'] ?? '') : $entry;
-                $row[$label] = self::scalar($value);
+                $row[$label] = self::scalar(self::valueForExport($data[$key] ?? null));
             }
 
             $rows[] = $row;
         }
 
         return $rows;
+    }
+
+    /**
+     * Resolve a stored field entry to its exportable value. Asset-bearing fields
+     * (file, signature) carry a list of asset ids; those become asset URLs (or an
+     * `Asset #id` reference when the volume has no public URL) so the export is a
+     * link, never raw base64 or an opaque id. Other fields export their value
+     * verbatim.
+     */
+    private static function valueForExport(mixed $entry): mixed
+    {
+        if (!is_array($entry)) {
+            return $entry;
+        }
+
+        $value = $entry['value'] ?? '';
+        if (!in_array($entry['type'] ?? null, self::ASSET_TYPES, true)) {
+            return $value;
+        }
+
+        $refs = [];
+        foreach ((array) $value as $assetId) {
+            if (!is_numeric($assetId)) {
+                continue;
+            }
+            $refs[] = self::assetReference((int) $assetId);
+        }
+        return $refs;
+    }
+
+    /** The public URL for an asset, or an `Asset #id` reference as a fallback. */
+    private static function assetReference(int $assetId): string
+    {
+        $asset = Asset::find()->id($assetId)->one();
+        if ($asset instanceof Asset) {
+            $url = $asset->getUrl();
+            if (is_string($url) && $url !== '') {
+                return $url;
+            }
+        }
+        return 'Asset #' . $assetId;
     }
 
     private static function scalar(mixed $value): string
