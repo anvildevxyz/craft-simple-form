@@ -5,6 +5,7 @@ namespace fabianhaef\simpleform;
 use Craft;
 use fabianhaef\simpleform\elements\Form;
 use fabianhaef\simpleform\helpers\FieldQueryHelper;
+use fabianhaef\simpleform\helpers\FormRows;
 use fabianhaef\simpleform\helpers\FormSteps;
 use fabianhaef\simpleform\models\Settings;
 use fabianhaef\simpleform\web\assets\form\FormAsset;
@@ -108,10 +109,8 @@ class TwigExtension extends AbstractExtension
         }
 
         if (count($steps) <= 1) {
-            // Single page — unchanged markup.
-            foreach ($fields as $field) {
-                $html .= $this->renderFieldGroup($field, $fieldTypeRegistry, $resumeValues);
-            }
+            // Single page — single-column fields keep today's exact markup.
+            $html .= $this->renderFieldRows($fields, $fieldTypeRegistry, $resumeValues);
             $html .= $this->renderCaptcha($settings);
             $html .= '<button type="submit" class="simple-form-submit-btn">' . htmlspecialchars($submitText) . '</button>';
         } else {
@@ -122,9 +121,7 @@ class TwigExtension extends AbstractExtension
             foreach ($steps as $i => $stepFields) {
                 $hidden = $i === 0 ? '' : ' hidden';
                 $html .= '<div class="simple-form-step" data-sf-step="' . $i . '"' . $hidden . '>';
-                foreach ($stepFields as $field) {
-                    $html .= $this->renderFieldGroup($field, $fieldTypeRegistry, $resumeValues);
-                }
+                $html .= $this->renderFieldRows($stepFields, $fieldTypeRegistry, $resumeValues);
                 if ($i === $lastIndex) {
                     $html .= $this->renderCaptcha($settings);
                 }
@@ -150,6 +147,36 @@ class TwigExtension extends AbstractExtension
         // Form CSS/JS: registered as a cache-bustable asset bundle by default
         // (no asset weight on form-less pages), with an inline escape hatch.
         $html .= $this->renderAssets($settings);
+
+        return $html;
+    }
+
+    /**
+     * Render a step's fields, wrapping multi-field rows (grouped by
+     * {@see FormRows::group()}) in a responsive CSS-grid container. A field that
+     * is alone on its row emits exactly today's markup (no wrapper), so existing
+     * single-column forms render byte-for-byte as before.
+     *
+     * @param array<int, array<string, mixed>> $fields the step's fields, in order
+     * @param array<string, mixed> $resumeValues prefill values (field_<id> => value), for resume
+     */
+    private function renderFieldRows(array $fields, \fabianhaef\simpleform\services\FieldTypeRegistry $fieldTypeRegistry, array $resumeValues): string
+    {
+        $html = '';
+        foreach (FormRows::group($fields) as $row) {
+            if (count($row) <= 1) {
+                $html .= $this->renderFieldGroup($row[0], $fieldTypeRegistry, $resumeValues);
+                continue;
+            }
+
+            $html .= '<div class="simple-form-row" data-cols="' . count($row) . '">';
+            foreach ($row as $field) {
+                $html .= '<div class="simple-form-col">'
+                    . $this->renderFieldGroup($field, $fieldTypeRegistry, $resumeValues)
+                    . '</div>';
+            }
+            $html .= '</div>';
+        }
 
         return $html;
     }
