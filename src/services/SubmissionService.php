@@ -10,6 +10,7 @@ use fabianhaef\simpleform\elements\Submission;
 use fabianhaef\simpleform\elements\SubmissionStatus;
 use fabianhaef\simpleform\events\SubmissionEvent;
 use fabianhaef\simpleform\fields\FileFieldType;
+use fabianhaef\simpleform\fields\HiddenFieldType;
 use fabianhaef\simpleform\helpers\RateLimiter;
 use fabianhaef\simpleform\models\FormModel;
 use fabianhaef\simpleform\models\Settings;
@@ -195,6 +196,15 @@ class SubmissionService extends Component
             }
 
             $value = $valuesByHandle[$field->getName()];
+
+            // Hidden fields (#124) are captured from a configured source, not
+            // typed by the visitor. Re-resolve server-side: `user` sources
+            // ignore the posted value entirely (anti-spoofing), and
+            // static/query/cookie values are sanitized to bounded plain text.
+            if ($field->getType() === HiddenFieldType::getType()) {
+                $value = (new HiddenFieldType($field->getConfig()))
+                    ->resolveForSubmit($value, ['userId' => $context['userId'] ?? null]);
+            }
 
             $fieldErrors = $field->validateValue($value, $valuesByHandle);
             if (!empty($fieldErrors)) {

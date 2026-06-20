@@ -153,6 +153,31 @@ For each `type` in [webhook, slack, discord, mailchimp, activecampaign, hubspot,
 
 ---
 
+## I. Hidden field — dynamic default capture (#124)
+
+### S13 — Query-sourced Hidden field captures a URL param ⬜
+1. SETUP: S0 form exists (id captured).
+2. EXECUTE (UI): edit the S0 form → from the **Field Types** palette add a **Hidden** field → in the inspector set **Label** = “UTM Source”, **Handle** = `utmSource`, **Source** = “URL query parameter”, **Query Parameter** = `utm_source` → Save.
+3. VERIFY (UI): the field card shows the **Hidden** type pill (titled “Hidden — captured silently”); the inspector shows **no** Required / Help Text / Error Message rows.
+4. VERIFY (DB): `SELECT type,config FROM simpleform_fields WHERE formId={id} AND name='utmSource';` → type `hidden`, config JSON has `"source":"query","queryParam":"utm_source"`.
+5. EXECUTE (UI): visit the rendered form at `…?utm_source=spring-sale`. VERIFY (DOM): the form contains `<input type="hidden" name="field_{hid}" value="spring-sale">` and **no** visible label/group for it.
+6. EXECUTE (UI): fill the visible Name/Email fields → Submit.
+7. VERIFY (DB): `SELECT data FROM simpleform_submissions WHERE formId={id} ORDER BY id DESC LIMIT 1;` → `data.field_{hid}` is `{ "label":"UTM Source", "type":"hidden", "value":"spring-sale" }`.
+8. VERIFY (UI): the CP submission detail lists **UTM Source = spring-sale**.
+9. VERIFY (export): Export CSV → a **UTM Source** column holds `spring-sale` for that row.
+
+### S14 — User-sourced Hidden field ignores a spoofed value ⬜
+1. SETUP: be logged in to the front end as a known user (note their email); S0 form has a **Hidden** field “Member Email”, Source = “Logged-in user”, User Attribute = “Email”.
+2. EXECUTE (DevTools): on the rendered form, edit the hidden input’s value to `attacker@evil.test` before submitting → Submit.
+3. VERIFY (DB): the stored `data.field_{hid}.value` is the **real** logged-in user’s email, **not** `attacker@evil.test`.
+4. VERIFY (Logs): no errors.
+
+### S15 — Hidden field renders with no visible label ⬜
+1. EXECUTE (UI): render any form carrying a Hidden field.
+2. VERIFY (DOM): there is exactly one `<input type="hidden" name="field_{hid}">` and **no** `<label for="field_{hid}">`, no `.simple-form-group` wrapper, no help text for it.
+
+---
+
 ## Runner index (execute individually later)
 ```
 /craft-smoke-test plugin:simple-form S1: add a Webhook integration to a form and verify the row + DB
@@ -164,6 +189,9 @@ For each `type` in [webhook, slack, discord, mailchimp, activecampaign, hubspot,
 /craft-smoke-test plugin:simple-form S10: assign fields to 2 steps, verify step nav + single submission
 /craft-smoke-test plugin:simple-form S11: export submissions CSV and verify headers/rows
 /craft-smoke-test plugin:simple-form S12: add the count + recent dashboard widgets and verify against the DB
+/craft-smoke-test plugin:simple-form S13: add a query-sourced Hidden field, submit with ?utm_source=spring-sale, verify capture in DB + detail + CSV
+/craft-smoke-test plugin:simple-form S14: user-sourced Hidden field, spoof the hidden input, verify the stored value is the real logged-in email
+/craft-smoke-test plugin:simple-form S15: verify a Hidden field renders with no visible label/wrapper
 ```
 
 ## Coverage notes / known limits
