@@ -107,6 +107,12 @@ class FormsController extends Controller
         $form->emailReplyTo = $request->getBodyParam('emailReplyTo');
         $form->emailBody = $request->getBodyParam('emailBody');
         $form->allowSaveResume = (bool) $request->getBodyParam('allowSaveResume');
+        $form->requireLogin = (bool) $request->getBodyParam('requireLogin');
+        $form->loginRequiredMessage = $request->getBodyParam('loginRequiredMessage');
+        $submissionsPerUser = trim((string) $request->getBodyParam('submissionsPerUser', ''));
+        $form->submissionsPerUser = $submissionsPerUser !== '' ? (int) $submissionsPerUser : null;
+        $form->guestLimitKey = (string) $request->getBodyParam('guestLimitKey', Form::GUEST_LIMIT_NONE);
+        $form->userLimitMessage = $request->getBodyParam('userLimitMessage');
         $form->propagationMethod = PropagationMethod::tryFrom(
             (string)$request->getBodyParam('propagationMethod', 'none')
         ) ?? PropagationMethod::None;

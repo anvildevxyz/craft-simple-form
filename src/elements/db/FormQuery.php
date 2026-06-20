@@ -55,11 +55,16 @@ class FormQuery extends ElementQuery
             'simpleform_forms.handle',
             'simpleform_forms.propagationMethod',
             'simpleform_forms.allowSaveResume',
+            'simpleform_forms.requireLogin',
+            'simpleform_forms.submissionsPerUser',
+            'simpleform_forms.guestLimitKey',
             'simpleform_forms_sites.description',
             'simpleform_forms_sites.emailTo',
             'simpleform_forms_sites.emailSubject',
             'simpleform_forms_sites.emailReplyTo',
             'simpleform_forms_sites.emailBody',
+            'simpleform_forms_sites.loginRequiredMessage',
+            'simpleform_forms_sites.userLimitMessage',
             // title is supplied from elements_sites.title via the element column map
         ]);
 

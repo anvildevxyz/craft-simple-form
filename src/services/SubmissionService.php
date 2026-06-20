@@ -3,12 +3,14 @@
 namespace fabianhaef\simpleform\services;
 
 use Craft;
+use craft\helpers\Db;
 use craft\web\Request;
 use craft\web\UploadedFile;
 use fabianhaef\simpleform\elements\Form;
 use fabianhaef\simpleform\elements\Submission;
 use fabianhaef\simpleform\elements\SubmissionStatus;
 use fabianhaef\simpleform\events\SubmissionEvent;
+use fabianhaef\simpleform\fields\EmailFieldType;
 use fabianhaef\simpleform\fields\FileFieldType;
 use fabianhaef\simpleform\helpers\RateLimiter;
 use fabianhaef\simpleform\models\FormModel;
@@ -163,6 +165,24 @@ class SubmissionService extends Component
             return ['submission' => null, 'errors' => null];
         }
 
+        // (1b) Access gates (#135). Enforced here so every transport (AJAX, no-JS
+        // POST, GraphQL) shares one code path — a crafted POST cannot bypass the
+        // template-level guards in TwigExtension::renderForm. Runs after the
+        // honeypot (bots get no signal) and before captcha/validation.
+        $userId = isset($context['userId']) ? (int) $context['userId'] : null;
+
+        // Require login: reject anonymous submissions outright.
+        if ($form->requireLogin && $userId === null) {
+            return ['submission' => null, 'errors' => ['form' => [$form->getLoginRequiredMessage()]]];
+        }
+
+        // Per-user limit: block a user at/over their cap. Guests are only limited
+        // when the form opts into a guest key (email); spam rows never count.
+        if ($form->submissionsPerUser !== null
+            && $this->userSubmissionCount($form, $userId, $values) >= $form->submissionsPerUser) {
+            return ['submission' => null, 'errors' => ['form' => [$form->getUserLimitMessage()]]];
+        }
+
         // (2) Captcha — skippable only for explicitly trusted channels.
         if (empty($context['skipCaptcha'])) {
             $token = $context['captchaToken'] ?? null;
@@ -227,7 +247,8 @@ class SubmissionService extends Component
         $submission->formId = (int) $form->id;
         $submission->siteId = (int) $siteId;
         $submission->data = $data;
-        $submission->userId = isset($context['userId']) ? (int) $context['userId'] : null;
+        // Always associate the submission with the logged-in user (#135).
+        $submission->userId = $userId;
         $submission->readStatus = $isSpam ? SubmissionStatus::SPAM : SubmissionStatus::NEW;
         $submission->spamReason = $isSpam ? 'akismet' : null;
 
@@ -291,6 +312,94 @@ class SubmissionService extends Component
             Plugin::getInstance()->getAudit()->log('submission.status', 'submission', $submissionId, 'status → ' . $status);
         }
         return $saved;
+    }
+
+    /**
+     * Whether a logged-in user has already hit the form's per-user submission cap.
+     *
+     * Used by the public render (TwigExtension) to show the limit message instead
+     * of the form. Guests are never pre-blocked at render time — there is no
+     * posted value to key on yet — but the server still enforces guest keying on
+     * submit. Returns false when the form has no per-user cap.
+     */
+    public function userHasReachedLimit(Form $form, ?int $userId): bool
+    {
+        if ($form->submissionsPerUser === null || $userId === null) {
+            return false;
+        }
+
+        return $this->userSubmissionCount($form, $userId, []) >= $form->submissionsPerUser;
+    }
+
+    /**
+     * Count prior, non-spam submissions that count toward a submitter's per-user
+     * allowance for the given form.
+     *
+     * Logged-in users key on their stable `userId`. Guests are keyed only when the
+     * form opts in: `email` matches the submitted value of the form's first email
+     * field; `none` (and `ip`, reserved until an IP column exists) never limits a
+     * guest, so the cap simply does not apply.
+     *
+     * @param array<int|string, mixed> $values posted values keyed by field id (or `field_<id>`)
+     */
+    private function userSubmissionCount(Form $form, ?int $userId, array $values): int
+    {
+        // Count every status except spam: a spam row must never burn a user's
+        // allowance. status(null) keeps soft-delete handling; the readStatus
+        // filter then excludes spam.
+        $query = Submission::find()
+            ->formId((int) $form->id)
+            ->siteId('*')
+            ->status(null)
+            ->andWhere(['not', ['[[simpleform_submissions.readStatus]]' => SubmissionStatus::SPAM]]);
+
+        if ($userId !== null) {
+            $query->userId($userId);
+
+            return (int) $query->count();
+        }
+
+        if ($form->guestLimitKey === Form::GUEST_LIMIT_EMAIL) {
+            $email = $this->guestEmailValue($form, $values);
+            if ($email === null) {
+                return 0;
+            }
+
+            // Best-effort guest dedup: count prior submissions whose stored email
+            // field value matches. Documented as advisory, not a security control.
+            return (int) $query
+                ->andWhere(Db::parseParam('simpleform_submissions.userId', ':empty:'))
+                ->andWhere(['like', '[[simpleform_submissions.data]]', $email])
+                ->count();
+        }
+
+        // 'none' (and the reserved 'ip' key) never limit guests.
+        return 0;
+    }
+
+    /**
+     * Resolve the submitted value of the form's first email-type field, used to
+     * key the per-user limit for guests. Returns null when the form has no email
+     * field or the value is blank.
+     *
+     * @param array<int|string, mixed> $values posted values keyed by field id (or `field_<id>`)
+     */
+    private function guestEmailValue(Form $form, array $values): ?string
+    {
+        $formModel = new FormModel($form);
+
+        foreach ($formModel->getFields() as $fieldId => $field) {
+            if ($field->getType() !== EmailFieldType::getType()) {
+                continue;
+            }
+
+            $value = $this->valueForField($values, (int) $fieldId);
+            $value = is_string($value) ? trim($value) : '';
+
+            return $value !== '' ? $value : null;
+        }
+
+        return null;
     }
 
     /**
