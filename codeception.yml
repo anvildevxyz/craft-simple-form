@@ -50,6 +50,8 @@ modules:
           params: {}
         - class: fabianhaef\simpleform\migrations\m260620_000004_form_drafts
           params: {}
+        - class: fabianhaef\simpleform\migrations\m260621_000001_notification_attachments
+          params: {}
       plugins:
         - handle: simple-form
           class: fabianhaef\simpleform\Plugin

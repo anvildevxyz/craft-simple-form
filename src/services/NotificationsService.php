@@ -60,6 +60,8 @@ class NotificationsService extends Component
             'subject' => $notification->subject,
             'replyTo' => $notification->replyTo,
             'body' => $notification->body,
+            'attachPdf' => $notification->attachPdf,
+            'attachUploads' => $notification->attachUploads,
             'conditional' => $notification->conditional,
             'sortOrder' => $notification->sortOrder,
             'dateUpdated' => $now,
@@ -218,6 +220,8 @@ class NotificationsService extends Component
         $model->subject = $row['subject'] !== null ? (string) $row['subject'] : null;
         $model->replyTo = $row['replyTo'] !== null ? (string) $row['replyTo'] : null;
         $model->body = $row['body'] !== null ? (string) $row['body'] : null;
+        $model->attachPdf = (bool) ($row['attachPdf'] ?? false);
+        $model->attachUploads = (bool) ($row['attachUploads'] ?? false);
         $conditional = $row['conditional'] ?? null;
         if (is_array($conditional)) {
             $model->conditional = $conditional;

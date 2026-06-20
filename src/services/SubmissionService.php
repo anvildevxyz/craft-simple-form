@@ -254,7 +254,7 @@ class SubmissionService extends Component
         // EmailService no-ops when neither is configured). Skipped for spam and
         // while awaiting payment — the email fires once the order completes.
         if (!$isSpam && !$awaitingPayment) {
-            Plugin::getInstance()->getEmailService()->sendSubmissionEmail($form, $submission, $data);
+            Plugin::getInstance()->getEmailService()->queueForSubmission($form, $submission, $data);
         }
 
         return ['submission' => $submission, 'errors' => null];

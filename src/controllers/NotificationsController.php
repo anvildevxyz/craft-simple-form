@@ -63,6 +63,7 @@ class NotificationsController extends Controller
             'notification' => $notification,
             'fieldOptions' => $this->fieldOptions($form),
             'operators' => ConditionalEvaluator::OPERATORS,
+            'pdfAvailable' => Plugin::getInstance()->getPdf()->isAvailable(),
             'errors' => [],
         ]);
     }
@@ -97,6 +98,8 @@ class NotificationsController extends Controller
         $notification->subject = $this->nullableString($request->getBodyParam('subject'));
         $notification->replyTo = $this->nullableString($request->getBodyParam('replyTo'));
         $notification->body = $this->nullableString($request->getBodyParam('body'));
+        $notification->attachPdf = (bool) $request->getBodyParam('attachPdf', false);
+        $notification->attachUploads = (bool) $request->getBodyParam('attachUploads', false);
         $notification->conditional = $this->buildConditional($request);
 
         if (!$service->save($notification)) {
@@ -106,6 +109,7 @@ class NotificationsController extends Controller
                 'notification' => $notification,
                 'fieldOptions' => $this->fieldOptions($form),
                 'operators' => ConditionalEvaluator::OPERATORS,
+                'pdfAvailable' => Plugin::getInstance()->getPdf()->isAvailable(),
                 'errors' => $notification->getErrors(),
             ]);
         }

@@ -139,6 +139,22 @@ class Settings extends Model
     public bool $anonymizeInsteadOfDelete = false;
 
     /**
+     * Handle of the volume in which generated submission PDFs are stored (#143).
+     * When set, {@see \fabianhaef\simpleform\services\PdfService::store()} persists
+     * the rendered PDF as an Asset; the CP detail view links to it instead of
+     * re-rendering on demand. Empty = render on demand, never store.
+     */
+    public ?string $pdfStorageVolume = null;
+
+    /**
+     * Total cap (in megabytes) on a notification's combined attachments (#143). A
+     * notification whose PDF + uploaded files exceed this falls back to in-body
+     * download links for the uploads (and logs the skip) to protect deliverability.
+     * 0 disables the cap.
+     */
+    public int $maxAttachmentSizeMb = 10;
+
+    /**
      * Configured MCP access tokens, stored as hash-only arrays (see
      * {@see \fabianhaef\simpleform\mcp\McpToken}). The plaintext secret is NEVER
      * stored here — only its keyed hash. Shape per entry:
@@ -187,7 +203,8 @@ class Settings extends Model
                 'when' => fn(): bool => !$this->isEnvReference($this->defaultEmailSender),
             ],
             [['enableHoneypot', 'enableCaptcha', 'cacheFormStructure', 'inlineFormAssets', 'enableMcp', 'dispatchIntegrationsSynchronously', 'enableAkismet', 'anonymizeInsteadOfDelete', 'allowGraphqlCaptchaBypass'], 'boolean'],
-            [['retainSubmissionsDays', 'retainIntegrationLogsDays', 'retainAuditLogDays', 'submitRateLimitPerMinute'], 'integer', 'min' => 0],
+            [['retainSubmissionsDays', 'retainIntegrationLogsDays', 'retainAuditLogDays', 'submitRateLimitPerMinute', 'maxAttachmentSizeMb'], 'integer', 'min' => 0],
+            [['pdfStorageVolume'], 'string'],
             [['draftRetentionDays'], 'integer', 'min' => 1],
             [['akismetMode'], 'in', 'range' => [self::AKISMET_FLAG, self::AKISMET_BLOCK]],
             [['akismetApiKey'], 'required', 'when' => fn(): bool => $this->enableAkismet],

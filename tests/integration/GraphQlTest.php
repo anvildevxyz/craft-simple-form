@@ -289,10 +289,21 @@ class GraphQlTest extends SimpleFormTestCase
             ],
         ];
 
+        // Notification sending is now queued (#143) so PDF rendering stays off the
+        // submit request. Use the documented sync escape hatch so the email is
+        // composed inline and the test mailer can capture it.
+        $settings = \fabianhaef\simpleform\Plugin::getInstance()->getSettings();
+        $previousSync = $settings->dispatchIntegrationsSynchronously;
+        $settings->dispatchIntegrationsSynchronously = true;
+
         $result = [];
-        $sent = $this->captureSentMessages(function () use ($document, $variables, &$result): void {
-            $result = $this->execute($document, ['simpleFormSubmissions:create'], $variables);
-        });
+        try {
+            $sent = $this->captureSentMessages(function () use ($document, $variables, &$result): void {
+                $result = $this->execute($document, ['simpleFormSubmissions:create'], $variables);
+            });
+        } finally {
+            $settings->dispatchIntegrationsSynchronously = $previousSync;
+        }
 
         $this->assertArrayNotHasKey('errors', $result, 'Mutation should not error: ' . json_encode($result['errors'] ?? null));
 
