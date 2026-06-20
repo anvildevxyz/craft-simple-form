@@ -6,7 +6,10 @@ use Craft;
 use craft\db\Query;
 use craft\helpers\StringHelper;
 use fabianhaef\simpleform\elements\Form;
+use fabianhaef\simpleform\exceptions\FormulaException;
+use fabianhaef\simpleform\fields\CalculationFieldType;
 use fabianhaef\simpleform\helpers\ConditionalEvaluator;
+use fabianhaef\simpleform\helpers\Formula;
 use fabianhaef\simpleform\Plugin;
 use yii\base\Component;
 
@@ -65,7 +68,80 @@ class FieldSyncService extends Component
             }
         }
 
-        return array_merge($errors, self::conditionalSetErrors($items));
+        return array_merge($errors, self::conditionalSetErrors($items), self::calculationSetErrors($items));
+    }
+
+    /**
+     * Validate Calculation field formulas across a full field set (#131): each
+     * formula must parse under the allow-listed grammar, every `{handle}`
+     * reference must resolve to another field in the set, and the calculation
+     * dependency graph must be acyclic (a calculation may reference another
+     * calculation, but not in a cycle). A self-reference is a cycle and rejected.
+     *
+     * Public + static so the MCP single-field write path validates with the same
+     * rules as the CP batch save.
+     *
+     * @param array<int,array<string,mixed>> $items
+     * @return string[]
+     */
+    public static function calculationSetErrors(array $items): array
+    {
+        $errors = [];
+        $present = [];
+        $calcHandles = [];
+        foreach ($items as $item) {
+            $handle = trim((string)($item['handle'] ?? ''));
+            if ($handle !== '') {
+                $present[$handle] = true;
+                if ((string)($item['type'] ?? '') === CalculationFieldType::getType()) {
+                    $calcHandles[$handle] = true;
+                }
+            }
+        }
+
+        $graph = [];
+        foreach ($items as $i => $item) {
+            if ((string)($item['type'] ?? '') !== CalculationFieldType::getType()) {
+                continue;
+            }
+
+            $handle = trim((string)($item['handle'] ?? ''));
+            $label = trim((string)($item['label'] ?? ''));
+            $name = $label !== '' ? $label : ($handle !== '' ? $handle : '#' . ($i + 1));
+            $config = is_array($item['config'] ?? null) ? $item['config'] : [];
+            $formula = trim((string)($config['formula'] ?? ''));
+
+            if ($formula === '') {
+                $errors[] = Craft::t('simple-form', 'Field {name}: a calculation formula is required.', ['name' => $name]);
+                continue;
+            }
+
+            try {
+                $refs = Formula::references($formula);
+            } catch (FormulaException $e) {
+                $errors[] = Craft::t('simple-form', 'Field {name}: the formula is invalid. {detail}', ['name' => $name, 'detail' => $e->getMessage()]);
+                continue;
+            }
+
+            foreach ($refs as $ref) {
+                if (!isset($present[$ref])) {
+                    $errors[] = Craft::t('simple-form', 'Field {name}: the formula references an unknown field “{handle}”.', ['name' => $name, 'handle' => $ref]);
+                }
+            }
+
+            // Only calculation→calculation edges matter for cycle detection;
+            // references to ordinary (leaf) fields never form a cycle.
+            $graph[$handle] = array_values(array_filter(
+                $refs,
+                static fn($ref) => isset($calcHandles[$ref])
+            ));
+        }
+
+        if (self::hasCycle($graph)) {
+            $errors[] = Craft::t('simple-form', 'Calculation formulas form a circular dependency between fields. Remove one of the references.');
+        }
+
+        return $errors;
     }
 
     /**

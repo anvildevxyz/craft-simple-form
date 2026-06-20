@@ -114,4 +114,9 @@ return [
     'Submissions appear here once your forms are filled out.' => 'Submissions appear here once your forms are filled out.',
     'No submissions match your filters.' => 'No submissions match your filters.',
     'Enable the MCP server above to issue and manage access tokens.' => 'Enable the MCP server above to issue and manage access tokens.',
+    'Calculation' => 'Calculation',
+    'Field {name}: a calculation formula is required.' => 'Field {name}: a calculation formula is required.',
+    'Field {name}: the formula is invalid. {detail}' => 'Field {name}: the formula is invalid. {detail}',
+    'Field {name}: the formula references an unknown field “{handle}”.' => 'Field {name}: the formula references an unknown field “{handle}”.',
+    'Calculation formulas form a circular dependency between fields. Remove one of the references.' => 'Calculation formulas form a circular dependency between fields. Remove one of the references.',
 ];

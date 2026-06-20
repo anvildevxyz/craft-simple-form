@@ -120,4 +120,9 @@ return [
     'Submissions appear here once your forms are filled out.' => 'Les soumissions apparaîtront ici une fois vos formulaires remplis.',
     'No submissions match your filters.' => 'Aucune soumission ne correspond à vos filtres.',
     'Enable the MCP server above to issue and manage access tokens.' => 'Activez le serveur MCP ci-dessus pour émettre et gérer les jetons d’accès.',
+    'Calculation' => 'Calcul',
+    'Field {name}: a calculation formula is required.' => 'Champ {name} : une formule de calcul est requise.',
+    'Field {name}: the formula is invalid. {detail}' => 'Champ {name} : la formule est invalide. {detail}',
+    'Field {name}: the formula references an unknown field “{handle}”.' => 'Champ {name} : la formule référence un champ inconnu « {handle} ».',
+    'Calculation formulas form a circular dependency between fields. Remove one of the references.' => 'Les formules de calcul forment une dépendance circulaire entre les champs. Supprimez l’une des références.',
 ];

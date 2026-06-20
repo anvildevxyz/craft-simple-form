@@ -76,6 +76,8 @@
                             {% else %}
                                 —
                             {% endfor %}
+                        {% elseif fieldData.display is defined %}
+                            {{ fieldData.display }}
                         {% elseif fieldData.value is iterable and fieldData.value is not string %}
                             {{ fieldData.value|join(', ') }}
                         {% else %}

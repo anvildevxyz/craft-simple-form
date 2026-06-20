@@ -114,4 +114,9 @@ return [
     'Submissions appear here once your forms are filled out.' => 'フォームが入力されると、ここに送信内容が表示されます。',
     'No submissions match your filters.' => 'フィルターに一致する送信内容はありません。',
     'Enable the MCP server above to issue and manage access tokens.' => '上で MCP サーバーを有効にすると、アクセストークンを発行・管理できます。',
+    'Calculation' => '計算',
+    'Field {name}: a calculation formula is required.' => 'フィールド {name}: 計算式が必要です。',
+    'Field {name}: the formula is invalid. {detail}' => 'フィールド {name}: 計算式が無効です。{detail}',
+    'Field {name}: the formula references an unknown field “{handle}”.' => 'フィールド {name}: 計算式が不明なフィールド「{handle}」を参照しています。',
+    'Calculation formulas form a circular dependency between fields. Remove one of the references.' => '計算式がフィールド間で循環依存を形成しています。参照のいずれかを削除してください。',
 ];

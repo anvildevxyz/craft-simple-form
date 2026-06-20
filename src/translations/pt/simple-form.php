@@ -114,4 +114,9 @@ return [
     'Submissions appear here once your forms are filled out.' => 'Os envios aparecem aqui assim que os seus formulários forem preenchidos.',
     'No submissions match your filters.' => 'Nenhum envio corresponde aos seus filtros.',
     'Enable the MCP server above to issue and manage access tokens.' => 'Ative o servidor MCP acima para emitir e gerir tokens de acesso.',
+    'Calculation' => 'Cálculo',
+    'Field {name}: a calculation formula is required.' => 'Campo {name}: é necessária uma fórmula de cálculo.',
+    'Field {name}: the formula is invalid. {detail}' => 'Campo {name}: a fórmula é inválida. {detail}',
+    'Field {name}: the formula references an unknown field “{handle}”.' => 'Campo {name}: a fórmula referencia um campo desconhecido «{handle}».',
+    'Calculation formulas form a circular dependency between fields. Remove one of the references.' => 'As fórmulas de cálculo formam uma dependência circular entre campos. Remova uma das referências.',
 ];

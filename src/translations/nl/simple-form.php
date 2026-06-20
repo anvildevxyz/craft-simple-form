@@ -114,4 +114,9 @@ return [
     'Submissions appear here once your forms are filled out.' => 'Inzendingen verschijnen hier zodra je formulieren zijn ingevuld.',
     'No submissions match your filters.' => 'Geen inzendingen komen overeen met je filters.',
     'Enable the MCP server above to issue and manage access tokens.' => 'Schakel de MCP-server hierboven in om toegangstokens uit te geven en te beheren.',
+    'Calculation' => 'Berekening',
+    'Field {name}: a calculation formula is required.' => 'Veld {name}: een berekeningsformule is vereist.',
+    'Field {name}: the formula is invalid. {detail}' => 'Veld {name}: de formule is ongeldig. {detail}',
+    'Field {name}: the formula references an unknown field “{handle}”.' => 'Veld {name}: de formule verwijst naar een onbekend veld “{handle}”.',
+    'Calculation formulas form a circular dependency between fields. Remove one of the references.' => 'Berekeningsformules vormen een circulaire afhankelijkheid tussen velden. Verwijder een van de verwijzingen.',
 ];

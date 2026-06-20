@@ -48,9 +48,7 @@ final class SubmissionCsv
 
             $data = $submission->data ?? [];
             foreach (array_keys($fieldCols) as $key) {
-                $entry = $data[$key] ?? null;
-                $value = is_array($entry) ? ($entry['value'] ?? '') : $entry;
-                $line[] = self::scalar($value);
+                $line[] = self::scalar(self::cellValue($data[$key] ?? null));
             }
 
             fputcsv($handle, $line);
@@ -95,15 +93,31 @@ final class SubmissionCsv
 
             $data = $submission->data ?? [];
             foreach ($fieldCols as $key => $label) {
-                $entry = $data[$key] ?? null;
-                $value = is_array($entry) ? ($entry['value'] ?? '') : $entry;
-                $row[$label] = self::scalar($value);
+                $row[$label] = self::scalar(self::cellValue($data[$key] ?? null));
             }
 
             $rows[] = $row;
         }
 
         return $rows;
+    }
+
+    /**
+     * The exportable cell value for a stored field entry. Calculation fields
+     * carry a pre-formatted `display` string (prefix/decimals/suffix) which is
+     * preferred for the human-readable export; everything else exports its raw
+     * `value`.
+     */
+    private static function cellValue(mixed $entry): mixed
+    {
+        if (is_array($entry)) {
+            if (isset($entry['display']) && is_string($entry['display'])) {
+                return $entry['display'];
+            }
+            return $entry['value'] ?? '';
+        }
+
+        return $entry;
     }
 
     private static function scalar(mixed $value): string

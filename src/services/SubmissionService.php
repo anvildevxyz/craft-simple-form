@@ -9,6 +9,7 @@ use fabianhaef\simpleform\elements\Form;
 use fabianhaef\simpleform\elements\Submission;
 use fabianhaef\simpleform\elements\SubmissionStatus;
 use fabianhaef\simpleform\events\SubmissionEvent;
+use fabianhaef\simpleform\fields\CalculationFieldType;
 use fabianhaef\simpleform\fields\FileFieldType;
 use fabianhaef\simpleform\helpers\RateLimiter;
 use fabianhaef\simpleform\models\FormModel;
@@ -210,6 +211,35 @@ class SubmissionService extends Component
 
         if (!empty($errors)) {
             return ['submission' => null, 'errors' => $errors];
+        }
+
+        // (4b) Authoritative server-side recompute of every calculation field
+        // (#131). Runs after ordinary fields are resolved so references are
+        // populated, and re-inserts each result into $valuesByHandle so a later
+        // calculation (or a linked Payment field's amountField) reads the server
+        // truth — never the client-posted value, which is discarded. Fields
+        // hidden by conditional logic are skipped, so they neither compute nor
+        // store, exactly like ordinary fields.
+        $fieldTypeRegistry = Plugin::getInstance()->getFieldTypeRegistry();
+        foreach ($formModel->getFields() as $fieldId => $field) {
+            if ($field->getType() !== CalculationFieldType::getType()) {
+                continue;
+            }
+            if (!$field->isVisible($valuesByHandle)) {
+                continue;
+            }
+
+            /** @var CalculationFieldType $fieldType */
+            $fieldType = $fieldTypeRegistry->getFieldType(CalculationFieldType::getType(), $field->getConfig());
+            $result = $fieldType->compute($valuesByHandle);
+            $valuesByHandle[$field->getName()] = $result;
+
+            $data['field_' . $fieldId] = [
+                'label' => $field->getLabel() ?? $field->getName(),
+                'type' => CalculationFieldType::getType(),
+                'value' => $result,
+                'display' => $fieldType->format($result),
+            ];
         }
 
         // (5) Content spam scoring (Akismet). A spam verdict either drops the
