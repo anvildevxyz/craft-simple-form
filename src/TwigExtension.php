@@ -175,6 +175,14 @@ class TwigExtension extends AbstractExtension
             return '';
         }
 
+        // Presentational/layout blocks (heading, divider, html) render bare:
+        // no <label>, no required marker, no input wrapper. Their per-site
+        // translatable content lives in the label/helpText columns, so thread
+        // it into the config keys the layout field types read.
+        if (!$fieldType->isInput()) {
+            return $this->renderLayoutBlock($field, $fieldConfig, $fieldTypeRegistry);
+        }
+
         $label = $field['label'] ?? $field['name'];
         $helpText = $field['helpText'] ?? '';
         $fieldName = 'field_' . $field['id'];
@@ -228,6 +236,60 @@ class TwigExtension extends AbstractExtension
         $html .= '</div>';
 
         return $html;
+    }
+
+    /**
+     * Render a presentational/layout block (heading, divider, html) bare — no
+     * label, required marker, or input wrapper.
+     *
+     * The per-site translatable content lives in the field's label/helpText
+     * columns (no schema change), so it is threaded into the config keys the
+     * layout field types read: a heading/divider takes its text from `label`;
+     * an html block takes its body from `helpText`. The block still carries its
+     * conditional-logic data attributes, so show/hide works for free.
+     *
+     * @param array<string, mixed> $field a resolved field row
+     * @param array<string, mixed> $fieldConfig the field's decoded config (with `required` merged in)
+     */
+    private function renderLayoutBlock(
+        array $field,
+        array $fieldConfig,
+        \fabianhaef\simpleform\services\FieldTypeRegistry $fieldTypeRegistry,
+    ): string {
+        $type = (string) $field['type'];
+        $label = (string) ($field['label'] ?? '');
+        $helpText = (string) ($field['helpText'] ?? '');
+
+        if ($type === 'heading') {
+            $fieldConfig['text'] = $label;
+        } elseif ($type === 'divider') {
+            // A divider's label falls back to the handle in the field row, which
+            // we do not want to surface as visible copy — only use a label the
+            // editor actually translated for this site.
+            $fieldConfig['label'] = ($label !== '' && $label !== (string) $field['name']) ? $label : '';
+        } elseif ($type === 'html') {
+            $fieldConfig['html'] = $helpText;
+        }
+
+        $fieldType = $fieldTypeRegistry->getFieldType($type, $fieldConfig);
+        if (!$fieldType) {
+            return '';
+        }
+
+        $inner = $fieldType->renderInput('field_' . $field['id']);
+        if ($inner === '') {
+            return '';
+        }
+
+        $groupAttrs = ' data-sf-handle="' . htmlspecialchars((string) $field['name'], ENT_QUOTES) . '"';
+        $conditional = $fieldConfig['conditional'] ?? null;
+        if (is_array($conditional) && !empty($conditional['enabled'])) {
+            $groupAttrs .= ' data-sf-conditional="'
+                . htmlspecialchars((string) json_encode($conditional), ENT_QUOTES) . '"';
+        }
+
+        return '<div class="simple-form-layout simple-form-layout--' . htmlspecialchars($type, ENT_QUOTES) . '"'
+            . $groupAttrs . '>' . $inner . '</div>';
     }
 
     /**

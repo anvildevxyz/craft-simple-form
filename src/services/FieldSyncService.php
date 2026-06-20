@@ -30,14 +30,20 @@ class FieldSyncService extends Component
         $errors = [];
         $seenHandles = [];
 
+        $layoutTypes = Plugin::getInstance()->getFieldTypeRegistry()->layoutTypeHandles();
+
         foreach ($items as $i => $item) {
             $pos = $i + 1;
             $label = trim((string)($item['label'] ?? ''));
             $handle = trim((string)($item['handle'] ?? ''));
             $type = (string)($item['type'] ?? '');
             $name = $label !== '' ? $label : ($handle !== '' ? $handle : "#$pos");
+            $isLayout = in_array($type, $layoutTypes, true);
 
-            if ($label === '') {
+            // Layout blocks (heading/divider/html) carry no user-facing label —
+            // their content is the heading text / divider label / HTML body — so
+            // only input fields require a label.
+            if ($label === '' && !$isLayout) {
                 $errors[] = Craft::t('simple-form', 'Field {name}: label is required.', ['name' => "#$pos"]);
             }
 
@@ -155,6 +161,51 @@ class FieldSyncService extends Component
             }
         }
         $state[$node] = 2;
+
+        return false;
+    }
+
+    /**
+     * Whether the posted set would create or change an HTML layout block's body
+     * for the editing site, requiring the `editHtmlBlocks` permission.
+     *
+     * A user lacking that permission may still reorder or delete an existing
+     * HTML block, and may leave its body untouched — only a new block with a
+     * body, or a changed body, is gated. The body lives in the per-site
+     * `helpText` column (no schema change). The check loads the stored body for
+     * each existing HTML block so an unchanged save is never blocked.
+     *
+     * @param array<int,array<string,mixed>> $items the posted field set
+     */
+    public function htmlBlockBodyChanged(array $items, int $currentSiteId): bool
+    {
+        foreach ($items as $item) {
+            if ((string)($item['type'] ?? '') !== 'html') {
+                continue;
+            }
+
+            $body = trim((string)($item['helpText'] ?? ''));
+            $rawId = $item['id'] ?? null;
+            $id = is_numeric($rawId) ? (int)$rawId : null;
+
+            // New block: only gated when it actually carries a body.
+            if ($id === null) {
+                if ($body !== '') {
+                    return true;
+                }
+                continue;
+            }
+
+            $stored = (new Query())
+                ->select(['helpText'])
+                ->from('{{%simpleform_fields_sites}}')
+                ->where(['fieldId' => $id, 'siteId' => $currentSiteId])
+                ->scalar();
+
+            if (trim((string)$stored) !== $body) {
+                return true;
+            }
+        }
 
         return false;
     }
