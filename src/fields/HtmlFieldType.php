@@ -26,7 +26,7 @@ class HtmlFieldType extends FieldType
      */
     public const ALLOWED_TAGS = 'p,br,hr,h2,h3,h4,h5,h6,strong,b,em,i,u,s,'
         . 'a[href|title|rel|target],ul,ol,li,blockquote,code,pre,span[class],'
-        . 'div[class],img[src|alt|width|height|loading],small';
+        . 'div[class],img[src|alt|width|height],small';
 
     /**
      * URI schemes links/images may use. Excludes `javascript:` and `data:` so
@@ -93,10 +93,9 @@ class HtmlFieldType extends FieldType
         return HtmlPurifier::process($html, static function($config): void {
             $config->set('HTML.Allowed', self::ALLOWED_TAGS);
             $config->set('URI.AllowedSchemes', self::ALLOWED_URI_SCHEMES);
-            // Permit absolute links to other hosts but disable host-relative
-            // disclosure; keep nofollow off so authors control rel themselves.
+            // Allow target="_blank" on links (the allowlist names the attribute);
+            // authors control rel themselves, so nofollow stays off.
             $config->set('Attr.AllowedFrameTargets', ['_blank']);
-            $config->set('HTML.TargetBlank', false);
         });
     }
 }
