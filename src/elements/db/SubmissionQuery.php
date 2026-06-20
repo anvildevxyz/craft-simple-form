@@ -47,7 +47,7 @@ class SubmissionQuery extends ElementQuery
         return $this;
     }
 
-    public function status($value = null): static
+    public function status(array|string|null $value = null): static
     {
         return $this->readStatus(is_array($value) ? ($value[0] ?? null) : $value);
     }

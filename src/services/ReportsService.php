@@ -7,6 +7,7 @@ use craft\helpers\Db;
 use fabianhaef\simpleform\elements\Form;
 use fabianhaef\simpleform\elements\Submission;
 use fabianhaef\simpleform\elements\SubmissionStatus;
+use fabianhaef\simpleform\integrations\DispatchStatus;
 use yii\base\Component;
 
 /**
@@ -124,7 +125,11 @@ class ReportsService extends Component
             ->groupBy(['status'])
             ->all();
 
-        $health = ['success' => 0, 'failed' => 0, 'pending' => 0];
+        $health = [
+            DispatchStatus::SUCCESS => 0,
+            DispatchStatus::FAILED => 0,
+            DispatchStatus::PENDING => 0,
+        ];
         foreach ($rows as $row) {
             $status = (string) $row['status'];
             if (isset($health[$status])) {
