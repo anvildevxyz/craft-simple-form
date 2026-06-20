@@ -42,7 +42,9 @@ use fabianhaef\simpleform\services\CaptchaProviderRegistry;
 use fabianhaef\simpleform\services\CaptchaService;
 use fabianhaef\simpleform\services\DraftService;
 use fabianhaef\simpleform\services\EmailService;
+use fabianhaef\simpleform\services\FieldSyncService;
 use fabianhaef\simpleform\services\FieldTypeRegistry;
+use fabianhaef\simpleform\services\FormPortabilityService;
 use fabianhaef\simpleform\services\FormStructureService;
 use fabianhaef\simpleform\services\IntegrationsService;
 use fabianhaef\simpleform\services\IntegrationTypeRegistry;
@@ -121,6 +123,8 @@ class Plugin extends BasePlugin
             'notifications' => NotificationsService::class,
             'audit' => AuditService::class,
             'payments' => PaymentsService::class,
+            'fieldSync' => FieldSyncService::class,
+            'portability' => FormPortabilityService::class,
         ]);
 
         Craft::$app->getI18n()->translations['simple-form'] ??= [
@@ -409,6 +413,20 @@ class Plugin extends BasePlugin
         return $service;
     }
 
+    public function getFieldSync(): FieldSyncService
+    {
+        /** @var FieldSyncService $service */
+        $service = $this->get('fieldSync');
+        return $service;
+    }
+
+    public function getPortability(): FormPortabilityService
+    {
+        /** @var FormPortabilityService $service */
+        $service = $this->get('portability');
+        return $service;
+    }
+
     public function getName(): string
     {
         return Craft::t('simple-form', 'Simple Form');
@@ -450,6 +468,9 @@ class Plugin extends BasePlugin
         $event->rules['simple-form/forms/edit/<formId:\d+>'] = 'simple-form/forms/edit';
         $event->rules['simple-form/forms/save'] = 'simple-form/forms/save';
         $event->rules['simple-form/forms/delete/<formId:\d+>'] = 'simple-form/forms/delete';
+        // Portable form definition import/export (#139).
+        $event->rules['simple-form/forms/export/<formId:\d+>'] = 'simple-form/forms/export';
+        $event->rules['simple-form/forms/import'] = 'simple-form/forms/import';
         // Integrations: global definitions managed under Settings, enabled per form.
         $event->rules['simple-form/integrations'] = 'simple-form/integrations/global-index';
         $event->rules['simple-form/integrations/save'] = 'simple-form/integrations/save';

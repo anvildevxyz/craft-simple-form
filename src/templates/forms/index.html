@@ -5,9 +5,14 @@
 {% do craft.app.view.registerAssetBundle('fabianhaef\\simpleform\\web\\assets\\cp\\SimpleFormCpAsset') %}
 
 {% block actionButton %}
-    <a class="btn submit add icon" href="{{ cpUrl('simple-form/forms/new') }}">
-        {{ 'New Form'|t('simple-form') }}
-    </a>
+    <div class="btngroup">
+        <button type="button" class="btn" id="sf-import-btn">
+            {{ 'Import a form'|t('simple-form') }}
+        </button>
+        <a class="btn submit add icon" href="{{ cpUrl('simple-form/forms/new') }}">
+            {{ 'New Form'|t('simple-form') }}
+        </a>
+    </div>
 {% endblock %}
 
 {% block content %}
@@ -19,6 +24,7 @@
                 <th>{{ 'Handle'|t('simple-form') }}</th>
                 <th>{{ 'Email To'|t('simple-form') }}</th>
                 <th>{{ 'Date Created'|t('simple-form') }}</th>
+                <th></th>
                 <th></th>
                 <th></th>
             </tr>
@@ -38,6 +44,13 @@
                         <a class="btn small"
                            href="{{ cpUrl('simple-form/forms/' ~ form.id ~ '/integrations') }}">
                             {{ 'Integrations'|t('simple-form') }}
+                        </a>
+                    </td>
+                    <td class="thin">
+                        <a class="btn small icon download"
+                           title="{{ 'Export'|t('simple-form') }}"
+                           href="{{ cpUrl('simple-form/forms/export/' ~ form.id) }}">
+                            {{ 'Export'|t('simple-form') }}
                         </a>
                     </td>
                     <td class="thin">
@@ -62,4 +75,43 @@
         <a class="btn submit add icon" href="{{ cpUrl('simple-form/forms/new') }}">{{ 'New Form'|t('simple-form') }}</a>
     </div>
 {% endif %}
+
+{# =========================================================================
+   Import modal — file upload + conflict mode, posted to forms/import.
+   ========================================================================= #}
+<form id="sf-import-modal"
+      class="modal fitted"
+      method="post"
+      accept-charset="UTF-8"
+      enctype="multipart/form-data"
+      style="display:none;">
+    {{ csrfInput() }}
+    {{ actionInput('simple-form/forms/import') }}
+    <div class="body">
+        <h2>{{ 'Import a form'|t('simple-form') }}</h2>
+        <p class="light">{{ 'Upload a form definition JSON file exported from Simple Form. Secrets are never included and must be re-entered after import.'|t('simple-form') }}</p>
+
+        {{ forms.field({
+            label: 'Form definition (.json)'|t('simple-form'),
+            required: true,
+        }, tag('input', { type: 'file', name: 'file', accept: '.json,application/json' })) }}
+
+        {{ forms.selectField({
+            label: 'If the handle already exists'|t('simple-form'),
+            name: 'mode',
+            options: [
+                { value: 'rename', label: 'Import under a new handle'|t('simple-form') },
+                { value: 'replace', label: 'Replace the existing form (discards its submissions)'|t('simple-form') },
+                { value: 'abort', label: 'Abort the import'|t('simple-form') },
+            ],
+            value: 'rename',
+        }) }}
+    </div>
+    <div class="footer">
+        <div class="buttons right">
+            <button type="button" class="btn" data-sf-import-cancel>{{ 'Cancel'|t('simple-form') }}</button>
+            <button type="submit" class="btn submit">{{ 'Import'|t('simple-form') }}</button>
+        </div>
+    </div>
+</form>
 {% endblock %}

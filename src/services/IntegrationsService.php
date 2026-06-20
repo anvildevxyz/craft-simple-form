@@ -27,8 +27,17 @@ class IntegrationsService extends Component
     private const LOG_TABLE = '{{%simpleform_integration_logs}}';
     private const PIVOT_TABLE = '{{%simpleform_form_integrations}}';
 
-    /** Settings keys holding third-party secrets, encrypted at rest (F4). */
-    private const SECRET_KEYS = ['apiKey', 'apiToken', 'secret', 'token'];
+    /**
+     * Settings keys holding third-party secrets, encrypted at rest (F4) and
+     * redacted on portability export (#139). Public so the portability service
+     * shares this single source of truth rather than re-listing secret keys.
+     *
+     * @var list<string>
+     */
+    public const SECRET_KEYS = ['apiKey', 'apiToken', 'secret', 'token'];
+
+    /** Placeholder written in place of a secret in a portability export (#139). */
+    public const REDACTED = '__REDACTED__';
 
     /** Marks a settings value as ciphertext produced by {@see encryptSettings()}. */
     private const ENC_PREFIX = 'sfenc:';
@@ -622,6 +631,26 @@ class IntegrationsService extends Component
             ->where(['l.id' => $latestIds])
             ->andWhere(['l.status' => DispatchStatus::FAILED])
             ->count();
+    }
+
+    /**
+     * Replace every secret-key value in a settings array with {@see self::REDACTED}
+     * so an integration reference can travel in a portability export (#139) without
+     * carrying any third-party credential. Non-secret keys pass through untouched;
+     * empty secrets are still redacted so their presence/shape never leaks.
+     *
+     * @param array<string, mixed> $settings
+     * @return array<string, mixed>
+     */
+    public static function redactSecrets(array $settings): array
+    {
+        foreach (self::SECRET_KEYS as $secretKey) {
+            if (array_key_exists($secretKey, $settings)) {
+                $settings[$secretKey] = self::REDACTED;
+            }
+        }
+
+        return $settings;
     }
 
     /**

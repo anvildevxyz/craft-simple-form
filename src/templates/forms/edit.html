@@ -49,6 +49,9 @@
     <a class="btn" href="{{ cpUrl('simple-form/forms/' ~ form.id ~ '/notifications') }}">
         {{ 'Notifications'|t('simple-form') }}
     </a>
+    <a class="btn icon download" href="{{ cpUrl('simple-form/forms/export/' ~ form.id) }}">
+        {{ 'Export'|t('simple-form') }}
+    </a>
 </div>
 {% endif %}
 

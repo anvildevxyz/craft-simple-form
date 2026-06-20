@@ -244,4 +244,20 @@
             akismetSettings.style.display = this.checked ? 'block' : 'none';
         });
     }
+
+    // --- Forms index: open the import-a-form modal (#139) ---
+    var importBtn = document.getElementById('sf-import-btn');
+    var importModalEl = document.getElementById('sf-import-modal');
+    if (importBtn && importModalEl && window.Garnish) {
+        var importModal = null;
+        importBtn.addEventListener('click', function () {
+            if (!importModal) {
+                importModal = new Garnish.Modal($(importModalEl), { autoShow: false });
+                importModalEl.querySelectorAll('[data-sf-import-cancel]').forEach(function (btn) {
+                    btn.addEventListener('click', function () { importModal.hide(); });
+                });
+            }
+            importModal.show();
+        });
+    }
 })();

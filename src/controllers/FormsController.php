@@ -12,6 +12,7 @@ use fabianhaef\simpleform\helpers\SimpleFormPermissions;
 use fabianhaef\simpleform\helpers\SiteHelper;
 use fabianhaef\simpleform\Plugin;
 use fabianhaef\simpleform\services\FieldSyncService;
+use fabianhaef\simpleform\services\FormPortabilityService;
 use yii\web\NotFoundHttpException;
 use yii\web\Response;
 
@@ -140,6 +141,67 @@ class FormsController extends Controller
 
         Craft::$app->getSession()->setNotice(Craft::t('simple-form', 'Form saved successfully'));
         return $this->redirect("simple-form/forms/edit/{$form->id}?site={$site->handle}");
+    }
+
+    /**
+     * Stream a form's portable, secret-free definition as a JSON download (#139).
+     */
+    public function actionExport(int $formId): Response
+    {
+        $form = Form::find()->siteId('*')->id($formId)->status(null)->one();
+        if (!$form) {
+            throw new NotFoundHttpException('Form not found');
+        }
+
+        $json = Plugin::getInstance()->getPortability()->exportJson($form);
+        $filename = ($form->handle ?: 'form') . '.json';
+
+        Plugin::getInstance()->getAudit()->log('form.export', 'form', (int) $form->id, (string) ($form->title ?? $form->name));
+
+        /** @var \craft\web\Response $response */
+        $response = Craft::$app->getResponse();
+        return $response->sendContentAsFile(
+            $json,
+            $filename,
+            ['mimeType' => 'application/json'],
+        );
+    }
+
+    /**
+     * Import a form definition from an uploaded JSON file (#139), then redirect to
+     * the new form's edit screen with any warnings surfaced as a notice.
+     */
+    public function actionImport(): Response
+    {
+        $this->requirePostRequest();
+
+        $upload = \yii\web\UploadedFile::getInstanceByName('file');
+        if ($upload === null || $upload->tempName === '') {
+            Craft::$app->getSession()->setError(Craft::t('simple-form', 'Please choose a JSON file to import.'));
+            return $this->redirect('simple-form/forms');
+        }
+
+        /** @var \craft\web\Request $request */
+        $request = Craft::$app->getRequest();
+        $mode = (string) $request->getBodyParam('mode', FormPortabilityService::MODE_RENAME);
+        $json = (string) file_get_contents($upload->tempName);
+
+        try {
+            $result = Plugin::getInstance()->getPortability()->importJson($json, ['mode' => $mode]);
+        } catch (\Throwable $e) {
+            Craft::warning('Form import failed: ' . $e->getMessage(), 'simple-form');
+            Craft::$app->getSession()->setError($e->getMessage());
+            return $this->redirect('simple-form/forms');
+        }
+
+        $form = $result->form;
+        $notice = Craft::t('simple-form', 'Form imported.');
+        if ($result->warnings !== []) {
+            $notice .= ' ' . implode(' ', $result->warnings);
+        }
+        Craft::$app->getSession()->setNotice($notice);
+
+        return $this->redirect("simple-form/forms/edit/{$form?->id}");
     }
 
     public function actionDelete(): Response
