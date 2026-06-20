@@ -2,7 +2,6 @@
 
 namespace fabianhaef\simpleform\mcp\tools;
 
-use fabianhaef\simpleform\elements\db\SubmissionQuery;
 use fabianhaef\simpleform\mcp\Scopes;
 use fabianhaef\simpleform\mcp\tools\support\SubmissionQueryBuilder;
 
@@ -74,15 +73,12 @@ class QuerySubmissionsTool implements ToolInterface
      */
     public function call(array $arguments): array
     {
-        $built = SubmissionQueryBuilder::build($arguments);
-        if (is_array($built)) {
-            return $built; // error payload
+        $query = SubmissionQueryBuilder::buildWithForm($arguments);
+        if (is_array($query)) {
+            return $query; // error payload
         }
-        /** @var SubmissionQuery $query */
-        $query = $built;
-        $query->with(['form']);
 
-        $fieldMatch = is_array($arguments['fieldMatch'] ?? null) ? $arguments['fieldMatch'] : [];
+        $fieldMatch = SubmissionQueryBuilder::fieldMatch($arguments);
         $offset = max(0, (int)($arguments['offset'] ?? 0));
         $limit = (int)($arguments['limit'] ?? 50);
         $limit = max(1, min(200, $limit));
