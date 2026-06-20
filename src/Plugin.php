@@ -448,6 +448,8 @@ class Plugin extends BasePlugin
         $event->rules['simple-form/integrations/toggle'] = 'simple-form/integrations/toggle';
         $event->rules['simple-form/integrations/toggle-form'] = 'simple-form/integrations/toggle-form';
         $event->rules['simple-form/integrations/resend'] = 'simple-form/integrations/resend';
+        $event->rules['simple-form/integrations/failures'] = 'simple-form/integrations/failures';
+        $event->rules['simple-form/integrations/resend-all'] = 'simple-form/integrations/resend-all';
         // Per-form: choose which global integrations are active on a form.
         $event->rules['simple-form/forms/<formId:\d+>/integrations'] = 'simple-form/integrations/index';
 

@@ -1,0 +1,78 @@
+{% extends '_layouts/cp.twig' %}
+
+{% set title = 'Dispatch failures'|t('simple-form') %}
+{% set selectedSubnavItem = 'settings' %}
+{% do craft.app.view.registerAssetBundle('fabianhaef\\simpleform\\web\\assets\\cp\\SimpleFormCpAsset') %}
+
+{% set crumbs = [
+    { label: 'Settings'|t('simple-form'), url: cpUrl('simple-form/settings') },
+    { label: 'Integrations'|t('simple-form'), url: cpUrl('simple-form/settings/integrations') },
+] %}
+
+{% block actionButton %}
+    {% if failures is not empty %}
+        <form method="post" data-sf-confirm="{{ 'Resend all failed dispatches?'|t('simple-form') }}">
+            {{ csrfInput() }}
+            <input type="hidden" name="action" value="simple-form/integrations/resend-all">
+            {{ redirectInput('simple-form/integrations/failures') }}
+            <button type="submit" class="btn submit">{{ 'Resend all'|t('simple-form') }}</button>
+        </form>
+    {% endif %}
+{% endblock %}
+
+{% block content %}
+{% if failures is not empty %}
+    <p class="light">{{ 'Dispatches whose most recent attempt failed. A dispatch leaves this list once a later attempt succeeds.'|t('simple-form') }}</p>
+    <table class="data fullwidth">
+        <thead>
+            <tr>
+                <th>{{ 'Integration'|t('simple-form') }}</th>
+                <th>{{ 'Form'|t('simple-form') }}</th>
+                <th>{{ 'Submission'|t('simple-form') }}</th>
+                <th>{{ 'Attempts'|t('simple-form') }}</th>
+                <th>{{ 'Code'|t('simple-form') }}</th>
+                <th>{{ 'Last error'|t('simple-form') }}</th>
+                <th>{{ 'When'|t('simple-form') }}</th>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for f in failures %}
+                <tr>
+                    <td>
+                        {{ f.integrationName }}
+                        {%- if f.integrationType %} <span class="light">({{ typeNames[f.integrationType] ?? f.integrationType }})</span>{% endif -%}
+                    </td>
+                    <td>{{ f.formName ?? '—' }}</td>
+                    <td>
+                        {% if f.submissionId %}
+                            <a href="{{ cpUrl('simple-form/submissions/' ~ f.submissionId) }}">#{{ f.submissionId }}</a>
+                        {% else %}—{% endif %}
+                    </td>
+                    <td>{{ f.attempts }}</td>
+                    <td>{{ f.responseCode ?? '—' }}</td>
+                    <td class="sf-log-message is-error">{{ f.message ?: '—' }}</td>
+                    <td>{{ f.dateCreated }}</td>
+                    <td class="thin">
+                        {% if f.submissionId %}
+                            <form method="post" class="sf-inline-action" data-sf-confirm="{{ 'Resend this dispatch?'|t('simple-form') }}">
+                                {{ csrfInput() }}
+                                <input type="hidden" name="action" value="simple-form/integrations/resend">
+                                {{ redirectInput('simple-form/integrations/failures') }}
+                                <input type="hidden" name="integrationId" value="{{ f.integrationId }}">
+                                <input type="hidden" name="submissionId" value="{{ f.submissionId }}">
+                                <button type="submit" class="btn small">{{ 'Resend'|t('simple-form') }}</button>
+                            </form>
+                        {% endif %}
+                    </td>
+                </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+{% else %}
+    <div class="zilch sf-empty-state">
+        <p class="sf-empty-heading">{{ 'No failed dispatches.'|t('simple-form') }}</p>
+        <p class="light">{{ 'Outbound integrations are all delivering successfully.'|t('simple-form') }}</p>
+    </div>
+{% endif %}
+{% endblock %}

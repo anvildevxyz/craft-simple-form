@@ -319,3 +319,15 @@
     display: inline-block;
     margin-right: 5px;
 }
+
+/* Failed-dispatch alert banner on the Integrations settings tab. */
+.sf-dispatch-alert {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin: 14px 0;
+    padding: 10px 14px;
+    border-radius: 4px;
+    background: #fdf2f2;
+    border: 1px solid #e3a3a3;
+}

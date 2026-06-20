@@ -43,6 +43,7 @@ class IntegrationsController extends Controller
             'selectedSettingsSubnavItem' => 'integrations',
             'integrations' => $service->getAllIntegrations(),
             'typeNames' => Plugin::getInstance()->getIntegrationTypeRegistry()->getAllTypes(),
+            'failedDispatchCount' => $service->countFailedDispatches(),
         ]);
     }
 
@@ -248,6 +249,43 @@ class IntegrationsController extends Controller
         ]));
 
         Craft::$app->getSession()->setNotice(Craft::t('simple-form', 'Dispatch re-queued.'));
+        return $this->redirectToPostedUrl();
+    }
+
+    /**
+     * Dead-letter view: every dispatch whose most recent attempt failed, so an
+     * operator can see what didn't get delivered and resend it.
+     */
+    public function actionFailures(): Response
+    {
+        return $this->renderTemplate('simple-form/settings/integrations/failures', [
+            'selectedSettingsSubnavItem' => 'integrations',
+            'failures' => Plugin::getInstance()->getIntegrations()->getFailedDispatches(),
+            'typeNames' => Plugin::getInstance()->getIntegrationTypeRegistry()->getAllTypes(),
+        ]);
+    }
+
+    /**
+     * Re-queue every currently-failed dispatch in one go.
+     */
+    public function actionResendAll(): Response
+    {
+        $this->requirePostRequest();
+
+        $queue = Craft::$app->getQueue();
+        $count = 0;
+        foreach (Plugin::getInstance()->getIntegrations()->getFailedDispatches() as $failure) {
+            if ($failure['submissionId'] === null) {
+                continue;
+            }
+            $queue->push(new SendIntegrationJob([
+                'integrationId' => $failure['integrationId'],
+                'submissionId' => $failure['submissionId'],
+            ]));
+            $count++;
+        }
+
+        Craft::$app->getSession()->setNotice(Craft::t('simple-form', '{count} dispatch(es) re-queued.', ['count' => $count]));
         return $this->redirectToPostedUrl();
     }
 }

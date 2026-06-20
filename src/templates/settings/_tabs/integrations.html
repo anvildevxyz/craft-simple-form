@@ -3,6 +3,15 @@
     {{ 'Define outbound integrations once here (webhook, Slack, Mailchimp, …), then enable them per form from each form’s Integrations screen.'|t('simple-form') }}
 </p>
 
+{% if (failedDispatchCount ?? 0) > 0 %}
+    <div class="sf-dispatch-alert">
+        <span class="error">
+            {{ '{n, plural, =1{1 dispatch failed} other{# dispatches failed}}'|t('simple-form', { n: failedDispatchCount }) }}
+        </span>
+        <a class="btn small" href="{{ cpUrl('simple-form/integrations/failures') }}">{{ 'Review failures'|t('simple-form') }}</a>
+    </div>
+{% endif %}
+
 <div id="sf-integrations"
      data-toggle-url="{{ cpUrl('simple-form/integrations/toggle') }}"
      data-delete-url="{{ cpUrl('simple-form/integrations/delete') }}"

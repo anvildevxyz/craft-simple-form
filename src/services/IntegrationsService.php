@@ -547,6 +547,84 @@ class IntegrationsService extends Component
     }
 
     /**
+     * The dead-letter queue: every integration+submission pair whose MOST RECENT
+     * dispatch attempt failed. Self-clearing — a later successful attempt (e.g. a
+     * resend) makes the latest row a success, so the pair drops off the list.
+     * Newest first. Rows are enriched with the integration + form names for
+     * display; a missing integration/submission (deleted, GC'd) is tolerated.
+     *
+     * @return list<array<string, mixed>>
+     */
+    public function getFailedDispatches(int $limit = 200): array
+    {
+        // The latest log id per (integrationId, submissionId).
+        $latestIds = (new \craft\db\Query())
+            ->select(['mid' => 'MAX(id)'])
+            ->from(self::LOG_TABLE)
+            ->groupBy(['integrationId', 'submissionId']);
+
+        $rows = (new \craft\db\Query())
+            ->from(['l' => self::LOG_TABLE])
+            ->where(['l.id' => $latestIds])
+            ->andWhere(['l.status' => DispatchStatus::FAILED])
+            ->orderBy(['l.dateCreated' => SORT_DESC, 'l.id' => SORT_DESC])
+            ->limit($limit)
+            ->all();
+
+        if ($rows === []) {
+            return [];
+        }
+
+        // Resolve integration names once (small set).
+        $integrationNames = (new \craft\db\Query())
+            ->select(['id', 'name', 'type'])
+            ->from(self::TABLE)
+            ->indexBy('id')
+            ->all();
+
+        $out = [];
+        foreach ($rows as $row) {
+            $submission = $row['submissionId'] !== null
+                ? Submission::find()->id((int) $row['submissionId'])->one()
+                : null;
+            $form = $submission?->getForm();
+            $integration = $integrationNames[$row['integrationId']] ?? null;
+
+            $out[] = [
+                'integrationId' => (int) $row['integrationId'],
+                'integrationName' => $integration['name'] ?? Craft::t('simple-form', '(deleted integration)'),
+                'integrationType' => $integration['type'] ?? null,
+                'submissionId' => $row['submissionId'] !== null ? (int) $row['submissionId'] : null,
+                'formName' => $form?->title ?? $form?->name,
+                'attempts' => (int) $row['attempts'],
+                'responseCode' => $row['responseCode'] !== null ? (int) $row['responseCode'] : null,
+                'message' => (string) $row['message'],
+                'dateCreated' => $row['dateCreated'],
+            ];
+        }
+
+        return $out;
+    }
+
+    /**
+     * How many integration+submission pairs currently have a failed latest
+     * dispatch (the dead-letter count). See {@see getFailedDispatches()}.
+     */
+    public function countFailedDispatches(): int
+    {
+        $latestIds = (new \craft\db\Query())
+            ->select(['mid' => 'MAX(id)'])
+            ->from(self::LOG_TABLE)
+            ->groupBy(['integrationId', 'submissionId']);
+
+        return (int) (new \craft\db\Query())
+            ->from(['l' => self::LOG_TABLE])
+            ->where(['l.id' => $latestIds])
+            ->andWhere(['l.status' => DispatchStatus::FAILED])
+            ->count();
+    }
+
+    /**
      * @param array<string, mixed> $row
      */
     private function rowToModel(array $row): IntegrationModel
