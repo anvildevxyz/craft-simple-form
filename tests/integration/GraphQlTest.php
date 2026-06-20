@@ -156,6 +156,103 @@ class GraphQlTest extends SimpleFormTestCase
         );
     }
 
+    public function testQueryExposesElementRelationConfig(): void
+    {
+        $this->requireCraft();
+
+        $group = new \craft\models\CategoryGroup();
+        $group->name = 'GQL Topics';
+        $group->handle = 'gqlRelTopics' . substr(\craft\helpers\StringHelper::UUID(), 0, 6);
+        $siteSettings = [];
+        foreach (Craft::$app->getSites()->getAllSites() as $site) {
+            $settings = new \craft\models\CategoryGroup_SiteSettings();
+            $settings->siteId = $site->id;
+            $settings->hasUrls = false;
+            $siteSettings[$site->id] = $settings;
+        }
+        $group->setSiteSettings($siteSettings);
+        $this->assertTrue(Craft::$app->getCategories()->saveGroup($group), 'Category group should save');
+
+        $category = new \craft\elements\Category();
+        $category->groupId = $group->id;
+        $category->title = 'Billing';
+        $this->assertTrue(Craft::$app->getElements()->saveElement($category), 'Category should save');
+
+        $siteId = Craft::$app->getSites()->getPrimarySite()->id;
+        $form = $this->createForm('Relations', 'gqlRelationsForm', 'Relations', $siteId);
+        $topicId = $this->createField($form->id, 'category', 'topic', 'Topic', false, [
+            'sources' => [$group->handle],
+            'multiple' => true,
+            'limit' => 2,
+        ]);
+
+        $document = <<<'GQL'
+        query ($handle: String!, $siteId: Int) {
+            simpleForm(handle: $handle, siteId: $siteId) {
+                fields {
+                    id
+                    type
+                    relation {
+                        elementType
+                        sources
+                        multiple
+                        limit
+                        options { id title }
+                    }
+                }
+            }
+        }
+        GQL;
+
+        $result = $this->execute($document, ['simpleForms:read'], [
+            'handle' => 'gqlRelationsForm',
+            'siteId' => $siteId,
+        ]);
+
+        $this->assertArrayNotHasKey('errors', $result, json_encode($result['errors'] ?? null));
+
+        $field = $result['data']['simpleForm']['fields'][0];
+        $this->assertSame($topicId, $field['id']);
+        $this->assertSame('category', $field['type']);
+
+        $relation = $field['relation'];
+        $this->assertNotNull($relation);
+        $this->assertSame('category', $relation['elementType']);
+        $this->assertSame([$group->handle], $relation['sources']);
+        $this->assertTrue($relation['multiple']);
+        $this->assertSame(2, $relation['limit']);
+
+        $optionIds = array_column($relation['options'], 'id');
+        $optionTitles = array_column($relation['options'], 'title');
+        $this->assertContains((int) $category->id, $optionIds);
+        $this->assertContains('Billing', $optionTitles);
+    }
+
+    public function testRelationIsNullForNonRelationFields(): void
+    {
+        $this->requireCraft();
+
+        $siteId = Craft::$app->getSites()->getPrimarySite()->id;
+        $form = $this->createForm('NoRel', 'gqlNoRelForm', 'NoRel', $siteId);
+        $this->createField($form->id, 'text', 'fullName', 'Full Name', true);
+
+        $document = <<<'GQL'
+        query ($handle: String!, $siteId: Int) {
+            simpleForm(handle: $handle, siteId: $siteId) {
+                fields { type relation { elementType } }
+            }
+        }
+        GQL;
+
+        $result = $this->execute($document, ['simpleForms:read'], [
+            'handle' => 'gqlNoRelForm',
+            'siteId' => $siteId,
+        ]);
+
+        $this->assertArrayNotHasKey('errors', $result, json_encode($result['errors'] ?? null));
+        $this->assertNull($result['data']['simpleForm']['fields'][0]['relation']);
+    }
+
     public function testQueryLocalizesOptionLabelsPerSite(): void
     {
         $this->requireCraft();

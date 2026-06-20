@@ -3,6 +3,9 @@
 namespace fabianhaef\simpleform\helpers;
 
 use fabianhaef\simpleform\elements\Submission;
+use fabianhaef\simpleform\fields\ElementRelationFieldType;
+use fabianhaef\simpleform\Plugin;
+use fabianhaef\simpleform\services\FieldTypeRegistry;
 
 /**
  * Renders submissions to a human-friendly CSV for the Control Panel export:
@@ -49,8 +52,7 @@ final class SubmissionCsv
             $data = $submission->data ?? [];
             foreach (array_keys($fieldCols) as $key) {
                 $entry = $data[$key] ?? null;
-                $value = is_array($entry) ? ($entry['value'] ?? '') : $entry;
-                $line[] = self::scalar($value);
+                $line[] = self::scalar(self::cellValue($entry));
             }
 
             fputcsv($handle, $line);
@@ -96,14 +98,50 @@ final class SubmissionCsv
             $data = $submission->data ?? [];
             foreach ($fieldCols as $key => $label) {
                 $entry = $data[$key] ?? null;
-                $value = is_array($entry) ? ($entry['value'] ?? '') : $entry;
-                $row[$label] = self::scalar($value);
+                $row[$label] = self::scalar(self::cellValue($entry));
             }
 
             $rows[] = $row;
         }
 
         return $rows;
+    }
+
+    /**
+     * Extract a field's export value from its stored data entry. Element-relation
+     * fields store live element ids; resolve those to the elements' titles
+     * (multi-value cells are pipe-joined by {@see self::scalar()}), surviving
+     * disabled/other-site elements and falling back to `#<id>` for any element
+     * that no longer exists. All other fields export their raw stored value.
+     *
+     * @param mixed $entry a stored data entry ({label, type, value}) or a scalar
+     */
+    private static function cellValue(mixed $entry): mixed
+    {
+        if (!is_array($entry)) {
+            return $entry;
+        }
+
+        $value = $entry['value'] ?? '';
+        $type = $entry['type'] ?? null;
+
+        if (!is_string($type) || !in_array($type, FieldTypeRegistry::RELATION_TYPES, true)) {
+            return $value;
+        }
+
+        $field = Plugin::getInstance()->getFieldTypeRegistry()->getFieldType($type);
+        if (!$field instanceof ElementRelationFieldType) {
+            return $value;
+        }
+
+        $ids = is_array($value) ? $value : ($value === '' ? [] : [$value]);
+        $ids = array_values(array_filter(array_map('intval', $ids), static fn(int $id): bool => $id > 0));
+        if ($ids === []) {
+            return '';
+        }
+
+        // Reuse the field type's read-time resolution (titles, deleted fallback).
+        return array_values($field->labelsForIds($ids));
     }
 
     private static function scalar(mixed $value): string

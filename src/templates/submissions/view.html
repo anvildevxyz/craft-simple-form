@@ -76,6 +76,27 @@
                             {% else %}
                                 —
                             {% endfor %}
+                        {% elseif fieldData.type in ['entry', 'category', 'tag', 'user', 'asset'] %}
+                            {# Relation fields store live element ids: resolve each to its
+                               title and link to the element's edit screen, surviving
+                               disabled/other-site elements (status null, all sites) and
+                               falling back gracefully when an element was deleted. #}
+                            {% set relationIds = fieldData.value is iterable and fieldData.value is not string ? fieldData.value : (fieldData.value ? [fieldData.value] : []) %}
+                            {% for relId in relationIds %}
+                                {% set relElement = craft.app.elements.getElementById(relId, null, null, { siteId: '*', status: null }) %}
+                                {% if relElement %}
+                                    {% set relCpUrl = relElement.cpEditUrl ?? null %}
+                                    {% if relCpUrl %}
+                                        <a href="{{ relCpUrl }}">{{ relElement.title ?? relElement }}</a>
+                                    {% else %}
+                                        {{ relElement.title ?? relElement }}
+                                    {% endif %}{% if not loop.last %}<br>{% endif %}
+                                {% else %}
+                                    <span class="light">{{ '(deleted #{id})'|t('simple-form', { id: relId }) }}</span>{% if not loop.last %}<br>{% endif %}
+                                {% endif %}
+                            {% else %}
+                                —
+                            {% endfor %}
                         {% elseif fieldData.value is iterable and fieldData.value is not string %}
                             {{ fieldData.value|join(', ') }}
                         {% else %}

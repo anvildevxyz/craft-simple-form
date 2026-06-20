@@ -2,17 +2,22 @@
 
 namespace fabianhaef\simpleform\services;
 
+use fabianhaef\simpleform\fields\AssetRelationFieldType;
+use fabianhaef\simpleform\fields\CategoryRelationFieldType;
 use fabianhaef\simpleform\fields\CheckboxFieldType;
 use fabianhaef\simpleform\fields\DateFieldType;
 use fabianhaef\simpleform\fields\EmailFieldType;
+use fabianhaef\simpleform\fields\EntryRelationFieldType;
 use fabianhaef\simpleform\fields\FieldType;
 use fabianhaef\simpleform\fields\FileFieldType;
 use fabianhaef\simpleform\fields\NumberFieldType;
 use fabianhaef\simpleform\fields\PaymentFieldType;
 use fabianhaef\simpleform\fields\RadioFieldType;
 use fabianhaef\simpleform\fields\SelectFieldType;
+use fabianhaef\simpleform\fields\TagRelationFieldType;
 use fabianhaef\simpleform\fields\TextareaFieldType;
 use fabianhaef\simpleform\fields\TextFieldType;
+use fabianhaef\simpleform\fields\UserRelationFieldType;
 use yii\base\Component;
 
 class FieldTypeRegistry extends Component
@@ -25,6 +30,14 @@ class FieldTypeRegistry extends Component
      * @var list<string>
      */
     public const OPTION_TYPES = ['select', 'checkbox', 'radio'];
+
+    /**
+     * Field types that store related Craft element ids in the submission data
+     * and resolve to live elements at read time (submission detail, export).
+     *
+     * @var list<string>
+     */
+    public const RELATION_TYPES = ['entry', 'category', 'tag', 'user', 'asset'];
 
     /** @var array<string, class-string<FieldType>> */
     private array $fieldTypes = [];
@@ -43,6 +56,11 @@ class FieldTypeRegistry extends Component
         $this->registerFieldType(NumberFieldType::class);
         $this->registerFieldType(FileFieldType::class);
         $this->registerFieldType(PaymentFieldType::class);
+        $this->registerFieldType(EntryRelationFieldType::class);
+        $this->registerFieldType(CategoryRelationFieldType::class);
+        $this->registerFieldType(TagRelationFieldType::class);
+        $this->registerFieldType(UserRelationFieldType::class);
+        $this->registerFieldType(AssetRelationFieldType::class);
     }
 
     /**
