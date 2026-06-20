@@ -142,6 +142,7 @@ class FormMutations extends BaseMutation
             return [
                 'success' => true,
                 'submissionId' => null,
+                'redirectUrl' => null,
                 'errors' => [],
             ];
         }
@@ -150,9 +151,18 @@ class FormMutations extends BaseMutation
             return self::errorPayload(self::formatErrors($result['errors']));
         }
 
+        // Resolve the per-form post-submit behavior so headless clients receive
+        // the same templated redirect the front-end JS would follow.
+        $post = Plugin::getInstance()->getSubmissionService()->resolvePostSubmit(
+            $form,
+            $result['submission'],
+            $result['data'] ?? [],
+        );
+
         return [
             'success' => true,
             'submissionId' => $result['submission']?->id !== null ? (int) $result['submission']->id : null,
+            'redirectUrl' => $post['redirectUrl'],
             'errors' => [],
         ];
     }
@@ -182,6 +192,7 @@ class FormMutations extends BaseMutation
         return [
             'success' => false,
             'submissionId' => null,
+            'redirectUrl' => null,
             'errors' => $errors,
         ];
     }

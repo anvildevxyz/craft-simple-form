@@ -47,7 +47,10 @@
   "scripts": {
     "test": "phpunit",
     "test:integration": "codecept run integration",
-    "test:js": "node tests/js/conditional-evaluator.test.js",
+    "test:js": [
+            "node tests/js/conditional-evaluator.test.js",
+            "node tests/js/success-action.test.js"
+        ],
     "test:all": ["@test", "@test:js", "@test:integration"],
     "ecs": "ecs check",
     "ecs-fix": "ecs check --fix",

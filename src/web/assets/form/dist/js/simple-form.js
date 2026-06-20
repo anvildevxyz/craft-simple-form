@@ -81,6 +81,15 @@
             if (!Array.isArray(req.rules) || !req.rules.length) { return false; }
             var match = req.match === "any" ? "any" : "all";
             return SF.rulesMatch(req.rules, match, values);
+        },
+        // Decide the post-submit branch from a success envelope (#133): a
+        // non-empty redirectUrl navigates; otherwise the inline message shows.
+        // Pure so its parity with the PHP resolution can be asserted in node.
+        successAction: function (data) {
+            if (data && data.redirectUrl) {
+                return { action: "redirect", url: String(data.redirectUrl) };
+            }
+            return { action: "message", message: (data && data.message) || "" };
         }
     };
 
@@ -324,6 +333,26 @@
             general.focus();
         }
 
+        // Replace the form with a focusable role="status" success node. The
+        // message is set via textContent (never innerHTML) so a server-supplied
+        // string can't inject markup (a11y parity with the error path, #105).
+        function showSuccess(message) {
+            var existing = form.parentNode
+                ? form.parentNode.querySelector(".simple-form-success") : null;
+            if (existing) { existing.remove(); }
+
+            var node = document.createElement("div");
+            node.className = "simple-form-success";
+            node.setAttribute("role", "status");
+            node.setAttribute("tabindex", "-1");
+            node.textContent = message || "Thank you! Your submission has been received.";
+
+            form.hidden = true;
+            if (form.parentNode) { form.parentNode.insertBefore(node, form.nextSibling); }
+            else { form.appendChild(node); }
+            node.focus();
+        }
+
         form.addEventListener("submit", function (e) {
             e.preventDefault();
             var formData = new FormData(form); // disabled (hidden) inputs are excluded
@@ -338,7 +367,15 @@
                 .then(function (data) {
                     clearErrors();
                     if (data.success) {
-                        alert(data.message || "Form submitted successfully!");
+                        var next = SF.successAction(data);
+                        // A resolved redirect wins: navigate the browser to the
+                        // post-submit URL (thank-you page / entry / external).
+                        if (next.action === "redirect") {
+                            window.location.assign(next.url);
+                            return;
+                        }
+                        // Otherwise replace the form with an inline success node.
+                        showSuccess(next.message);
                         form.reset();
                     } else if (data.errors) {
                         var generalErrors = [];
