@@ -19,6 +19,8 @@ class Submission extends Element
     public ?array $data = null;
     public ?int $userId = null;
     public string $readStatus = SubmissionStatus::NEW;
+    /** Why this submission is flagged spam: 'akismet', 'manual', or null. */
+    public ?string $spamReason = null;
     /** null = no payment; 'pending' = awaiting payment; 'paid' = complete. */
     public ?string $paymentStatus = null;
     public ?string $paymentAmount = null;
@@ -127,6 +129,7 @@ class Submission extends Element
             'data' => $this->data,
             'userId' => $this->userId,
             'readStatus' => $this->readStatus,
+            'spamReason' => $this->spamReason,
             'paymentStatus' => $this->paymentStatus,
             'paymentAmount' => $this->paymentAmount,
             'orderId' => $this->orderId,

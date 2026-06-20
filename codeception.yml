@@ -41,6 +41,11 @@ modules:
           params: {}
         - class: fabianhaef\simpleform\migrations\m260619_000001_submission_payments
           params: {}
+        # m260620_000001 (secret backfill) is intentionally NOT listed: it calls
+        # Plugin::getInstance(), which is null in Codeception's migration runner.
+        # Its logic is covered directly by IntegrationExposureTest instead.
+        - class: fabianhaef\simpleform\migrations\m260620_000002_submission_spam_reason
+          params: {}
       plugins:
         - handle: simple-form
           class: fabianhaef\simpleform\Plugin

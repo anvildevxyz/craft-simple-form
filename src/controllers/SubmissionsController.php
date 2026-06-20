@@ -24,8 +24,8 @@ class SubmissionsController extends Controller
             return false;
         }
 
-        // Additionally require MANAGE_SUBMISSIONS for toggleStatus
-        if ($action->id === 'toggle-status') {
+        // Mutating actions additionally require MANAGE_SUBMISSIONS.
+        if (in_array($action->id, ['toggle-status', 'mark-not-spam', 'delete'], true)) {
             $this->requirePermission(SimpleFormPermissions::MANAGE_SUBMISSIONS);
         }
 
@@ -237,5 +237,47 @@ class SubmissionsController extends Controller
         }
 
         return $this->asJsonSuccess(['status' => $submission->readStatus]);
+    }
+
+    /**
+     * Approve a flagged submission out of the spam queue: set it back to "new"
+     * and clear its spam reason (handled in SubmissionService::updateStatus).
+     */
+    public function actionMarkNotSpam(): Response
+    {
+        $this->requirePostRequest();
+        /** @var \craft\web\Request $request */
+        $request = Craft::$app->getRequest();
+        $submissionId = (int) $request->getRequiredBodyParam('submissionId');
+
+        if (Plugin::getInstance()->getSubmissionService()->updateStatus($submissionId, SubmissionStatus::NEW)) {
+            Craft::$app->getSession()->setNotice(Craft::t('simple-form', 'Submission approved.'));
+        } else {
+            Craft::$app->getSession()->setError(Craft::t('simple-form', 'Couldn’t update the submission.'));
+        }
+
+        return $this->redirectToPostedUrl();
+    }
+
+    /**
+     * Soft-delete a submission from the spam queue (recoverable via the Trashed
+     * source for the retention window).
+     */
+    public function actionDelete(): Response
+    {
+        $this->requirePostRequest();
+        /** @var \craft\web\Request $request */
+        $request = Craft::$app->getRequest();
+        $submissionId = (int) $request->getRequiredBodyParam('submissionId');
+        $siteId = Craft::$app->getSites()->getCurrentSite()->id;
+
+        $submission = Submission::find()->siteId($siteId)->id($submissionId)->one();
+        if ($submission && Craft::$app->getElements()->deleteElement($submission)) {
+            Craft::$app->getSession()->setNotice(Craft::t('simple-form', 'Submission deleted.'));
+        } else {
+            Craft::$app->getSession()->setError(Craft::t('simple-form', 'Couldn’t delete the submission.'));
+        }
+
+        return $this->redirectToPostedUrl();
     }
 }

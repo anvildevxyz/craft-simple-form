@@ -113,6 +113,10 @@ class AkismetTest extends SimpleFormTestCase
 
             $this->assertNotNull($result['submission']);
             $this->assertSame(SubmissionStatus::SPAM, $result['submission']->readStatus);
+            // The spam-review queue shows why it was flagged.
+            $this->assertSame('akismet', $result['submission']->spamReason);
+            $row = (new Query())->from('{{%simpleform_submissions}}')->where(['id' => $result['submission']->id])->one();
+            $this->assertSame('akismet', $row['spamReason']);
         } finally {
             $settings->setAttributes($original, false);
             Plugin::getInstance()->set('akismetService', AkismetService::class);

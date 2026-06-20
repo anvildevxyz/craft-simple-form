@@ -229,6 +229,7 @@ class SubmissionService extends Component
         $submission->data = $data;
         $submission->userId = isset($context['userId']) ? (int) $context['userId'] : null;
         $submission->readStatus = $isSpam ? SubmissionStatus::SPAM : SubmissionStatus::NEW;
+        $submission->spamReason = $isSpam ? 'akismet' : null;
 
         // (7) Fire the before-save event (same as the Twig path).
         $beforeEvent = new SubmissionEvent($submission, $form, $data, true);
@@ -276,6 +277,15 @@ class SubmissionService extends Component
         }
 
         $submission->readStatus = $status;
+        // Keep spamReason in step with the status: marking spam by hand records
+        // 'manual' (unless Akismet already set a reason); moving out of spam
+        // (e.g. "Mark as not spam") clears it.
+        if ($status === SubmissionStatus::SPAM) {
+            $submission->spamReason ??= 'manual';
+        } else {
+            $submission->spamReason = null;
+        }
+
         $saved = Craft::$app->getElements()->saveElement($submission);
         if ($saved) {
             Plugin::getInstance()->getAudit()->log('submission.status', 'submission', $submissionId, 'status → ' . $status);

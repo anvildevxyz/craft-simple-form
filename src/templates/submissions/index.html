@@ -68,6 +68,7 @@
                 <th>{{ 'Date'|t('simple-form') }}</th>
                 <th>{{ 'Form'|t('simple-form') }}</th>
                 <th>{{ 'Status'|t('simple-form') }}</th>
+                {% if status == 'spam' %}<th>{{ 'Reason'|t('simple-form') }}</th>{% endif %}
                 <th>{{ 'User'|t('simple-form') }}</th>
                 <th></th>
             </tr>
@@ -86,6 +87,13 @@
                             {{ submission.readStatus|upper }}
                         </span>
                     </td>
+                    {% if status == 'spam' %}
+                        <td class="light">
+                            {%- if submission.spamReason == 'akismet' -%}{{ 'Akismet'|t('simple-form') }}
+                            {%- elseif submission.spamReason == 'manual' -%}{{ 'Marked manually'|t('simple-form') }}
+                            {%- else -%}—{%- endif -%}
+                        </td>
+                    {% endif %}
                     <td>
                         {% if submission.userId %}
                             {% set user = craft.users.id(submission.userId).one() %}
@@ -95,7 +103,25 @@
                         {% endif %}
                     </td>
                     <td class="thin">
-                        <a href="{{ cpUrl('simple-form/submissions/' ~ submission.id) }}">{{ 'View'|t('simple-form') }}</a>
+                        {% if status == 'spam' %}
+                            {% set backTo = cpUrl('simple-form/submissions', { status: 'spam', formId: formId, search: search }) %}
+                            <form method="post" class="sf-inline-action">
+                                {{ csrfInput() }}
+                                {{ actionInput('simple-form/submissions/mark-not-spam') }}
+                                {{ redirectInput(backTo) }}
+                                <input type="hidden" name="submissionId" value="{{ submission.id }}">
+                                <button type="submit" class="btn small">{{ 'Not spam'|t('simple-form') }}</button>
+                            </form>
+                            <form method="post" class="sf-inline-action" onsubmit="return confirm('{{ 'Delete this submission?'|t('simple-form')|e('js') }}');">
+                                {{ csrfInput() }}
+                                {{ actionInput('simple-form/submissions/delete') }}
+                                {{ redirectInput(backTo) }}
+                                <input type="hidden" name="submissionId" value="{{ submission.id }}">
+                                <button type="submit" class="btn small">{{ 'Delete'|t('simple-form') }}</button>
+                            </form>
+                        {% else %}
+                            <a href="{{ cpUrl('simple-form/submissions/' ~ submission.id) }}">{{ 'View'|t('simple-form') }}</a>
+                        {% endif %}
                     </td>
                 </tr>
             {% endfor %}

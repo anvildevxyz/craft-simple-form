@@ -313,3 +313,9 @@
     background: var(--enabled-color, #3a85ee);
     border-radius: 2px 2px 0 0;
 }
+
+/* Inline approve/delete actions in the spam review queue. */
+.sf-inline-action {
+    display: inline-block;
+    margin-right: 5px;
+}
