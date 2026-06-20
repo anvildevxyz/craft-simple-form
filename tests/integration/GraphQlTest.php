@@ -7,7 +7,17 @@ use craft\models\GqlSchema;
 use craft\test\TestMailer;
 use fabianhaef\simpleform\elements\Submission;
 use fabianhaef\simpleform\Plugin;
+use fabianhaef\simpleform\services\CaptchaService;
 use yii\mail\MessageInterface;
+
+/** Deterministic captcha for F8 tests: only "good-token" verifies. */
+class StubCaptchaService extends CaptchaService
+{
+    public function verify(?string $token = null): bool
+    {
+        return $token === 'good-token';
+    }
+}
 
 /**
  * End-to-end coverage of the GraphQL surface: querying a form's schema, the
@@ -304,6 +314,58 @@ class GraphQlTest extends SimpleFormTestCase
         $message = $sent[0];
         $this->assertArrayHasKey('owner@example.com', $message->getTo());
         $this->assertSame('New signup', $message->getSubject());
+    }
+
+    public function testSubmitMutationEnforcesCaptchaUnlessBypassEnabled(): void
+    {
+        $this->requireCraft();
+
+        $siteId = Craft::$app->getSites()->getPrimarySite()->id;
+        $form = $this->createForm('Captcha', 'gqlCaptchaForm', 'Captcha', $siteId);
+        $nameId = $this->createField($form->id, 'text', 'fullName', 'Full Name', true);
+
+        $document = <<<'GQL'
+        mutation ($handle: String!, $siteId: Int, $values: [SimpleFormFieldValueInput!]!, $captchaToken: String) {
+            submitForm(handle: $handle, siteId: $siteId, values: $values, captchaToken: $captchaToken) {
+                success
+                errors { key messages }
+            }
+        }
+        GQL;
+
+        $baseVars = [
+            'handle' => 'gqlCaptchaForm',
+            'siteId' => $siteId,
+            'values' => [['fieldId' => $nameId, 'value' => 'Ada']],
+        ];
+
+        $plugin = Plugin::getInstance();
+        $originalCaptcha = $plugin->getCaptchaService();
+        $plugin->set('captchaService', new StubCaptchaService());
+        $settings = $plugin->getSettings();
+        $originalBypass = $settings->allowGraphqlCaptchaBypass;
+
+        try {
+            // Bypass OFF (default): no/invalid token → captcha failure, nothing stored.
+            $settings->allowGraphqlCaptchaBypass = false;
+            $result = $this->execute($document, ['simpleFormSubmissions:create'], $baseVars);
+            $payload = $result['data']['submitForm'];
+            $this->assertFalse($payload['success'], 'submit without a captcha token must fail');
+            $this->assertSame('captcha', $payload['errors'][0]['key']);
+            $this->assertSame(0, Submission::find()->formId($form->id)->count());
+
+            // Bypass OFF but a valid captcha token supplied → success.
+            $result = $this->execute($document, ['simpleFormSubmissions:create'], $baseVars + ['captchaToken' => 'good-token']);
+            $this->assertTrue($result['data']['submitForm']['success'], 'valid captcha token should pass');
+
+            // Bypass ON: server-to-server caller with no token → success.
+            $settings->allowGraphqlCaptchaBypass = true;
+            $result = $this->execute($document, ['simpleFormSubmissions:create'], $baseVars);
+            $this->assertTrue($result['data']['submitForm']['success'], 'bypass setting should skip captcha');
+        } finally {
+            $plugin->set('captchaService', $originalCaptcha);
+            $settings->allowGraphqlCaptchaBypass = $originalBypass;
+        }
     }
 
     public function testSubmitMutationInvalidInputReturnsErrorsAndStoresNothing(): void

@@ -52,10 +52,15 @@ class SubmissionsController extends Controller
         if ($search = $request->getQueryParam('search')) {
             $query->search($search);
         }
-        if ($dateFrom = $request->getQueryParam('dateFrom')) {
+        // F17 (CWE-20): only accept well-formed YYYY-MM-DD dates. The value is
+        // already bound as a query parameter (no SQL injection), but validating
+        // the shape avoids malformed date literals producing surprising results.
+        $dateFrom = $request->getQueryParam('dateFrom');
+        if (is_string($dateFrom) && preg_match('/^\d{4}-\d{2}-\d{2}$/', $dateFrom)) {
             $query->andWhere(['>=', 'elements.dateCreated', $dateFrom . ' 00:00:00']);
         }
-        if ($dateTo = $request->getQueryParam('dateTo')) {
+        $dateTo = $request->getQueryParam('dateTo');
+        if (is_string($dateTo) && preg_match('/^\d{4}-\d{2}-\d{2}$/', $dateTo)) {
             $query->andWhere(['<=', 'elements.dateCreated', $dateTo . ' 23:59:59']);
         }
 
@@ -92,9 +97,10 @@ class SubmissionsController extends Controller
         // Store total count before pagination
         $total = $query->count();
 
-        // Pagination
-        $page = (int) ($request->getQueryParam('page') ?? 1);
-        $perPage = $request->getQueryParam('perPage', 50);
+        // Pagination. F6 (CWE-770): clamp perPage so a caller can't request the
+        // entire table (e.g. ?perPage=99999999) and exhaust memory.
+        $page = max(1, (int) ($request->getQueryParam('page') ?? 1));
+        $perPage = max(1, min((int) $request->getQueryParam('perPage', 50), 500));
         $query->offset(($page - 1) * $perPage)
             ->limit($perPage);
 

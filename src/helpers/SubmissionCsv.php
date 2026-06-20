@@ -117,6 +117,21 @@ final class SubmissionCsv
         if (is_array($value)) {
             return implode('|', array_map([self::class, 'scalar'], $value));
         }
-        return (string) $value;
+        return self::neutralizeFormula((string) $value);
+    }
+
+    /**
+     * Neutralise CSV formula injection (CWE-1236). Submission values are
+     * attacker-controlled (any public visitor) and are replayed into a CSV an
+     * admin later opens in Excel/LibreOffice, where a leading =, +, -, @, tab
+     * or carriage return makes the cell an executable formula. Prefixing such a
+     * cell with a single quote forces the spreadsheet to treat it as text.
+     */
+    public static function neutralizeFormula(string $value): string
+    {
+        if ($value !== '' && in_array($value[0], ['=', '+', '-', '@', "\t", "\r"], true)) {
+            return "'" . $value;
+        }
+        return $value;
     }
 }

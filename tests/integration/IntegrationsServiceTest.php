@@ -169,6 +169,34 @@ class IntegrationsServiceTest extends SimpleFormTestCase
         $this->assertSame([], $errors);
     }
 
+    public function testValidateSettingsRejectsPrivateWebhookUrl(): void
+    {
+        $this->requireCraft();
+        $type = Plugin::getInstance()->getIntegrationTypeRegistry()->getType('webhook');
+        $this->assertNotNull($type);
+
+        // SSRF (F3): a URL whose host is an internal/IMDS address is rejected
+        // at save time.
+        $errors = Plugin::getInstance()->getIntegrations()->validateSettings($type, [
+            'url' => 'http://169.254.169.254/latest/meta-data/',
+            'method' => 'POST',
+        ]);
+        $this->assertArrayHasKey('url', $errors);
+    }
+
+    public function testWebhookDispatchToInternalUrlIsBlocked(): void
+    {
+        $this->requireCraft();
+
+        // The guard returns a failure before any HTTP call, so the real
+        // (un-mocked) connector never touches the network.
+        $result = (new \fabianhaef\simpleform\integrations\WebhookIntegration())
+            ->requestWebhook('POST', 'http://127.0.0.1:6379/', '{}', 'application/json', null);
+
+        $this->assertFalse($result->success);
+        $this->assertStringContainsString('non-public', (string) $result->message);
+    }
+
     public function testValidateSettingsRejectsBadMethod(): void
     {
         $this->requireCraft();

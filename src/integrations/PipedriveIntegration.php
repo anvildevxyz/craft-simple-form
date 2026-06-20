@@ -5,11 +5,14 @@ namespace fabianhaef\simpleform\integrations;
 use Craft;
 use craft\helpers\Cp;
 use fabianhaef\simpleform\elements\Submission;
+use fabianhaef\simpleform\helpers\SafeUrl;
 use fabianhaef\simpleform\integrations\support\SubmissionValues;
 
 /**
- * Create a Pipedrive person from a submission via the v1 API (api_token query
- * param). Maps form fields to person fields; a person requires a name.
+ * Create a Pipedrive person from a submission via the v1 API. The API token is
+ * sent in the `x-api-token` header (not the query string, F5) so it never lands
+ * in proxy/access logs. Maps form fields to person fields; a person requires a
+ * name.
  */
 class PipedriveIntegration extends AbstractCrmIntegration
 {
@@ -28,6 +31,11 @@ class PipedriveIntegration extends AbstractCrmIntegration
         return array_merge(parent::defineSettingsRules(), [
             [['apiDomain'], 'required'],
             [['apiDomain', 'nameField', 'emailField'], 'string'],
+            [['apiDomain'], function($attribute, $params, $validator, $value): void {
+                if (is_string($value) && !SafeUrl::isAcceptableSettingUrl($value)) {
+                    $this->addError($attribute, Craft::t('simple-form', 'The URL must be a public http(s) address.'));
+                }
+            }],
         ]);
     }
 
@@ -37,6 +45,11 @@ class PipedriveIntegration extends AbstractCrmIntegration
         $domain = rtrim(trim((string) ($settings['apiDomain'] ?? '')), '/');
         if ($token === '' || $domain === '') {
             return IntegrationResult::failure(null, 'Pipedrive API domain and token are required');
+        }
+
+        // SSRF guard (F3).
+        if (!SafeUrl::isPublicHttpUrl($domain)) {
+            return IntegrationResult::failure(null, 'Blocked request to a non-public address');
         }
 
         $email = $this->resolveEmail($submission, $settings);
@@ -53,7 +66,7 @@ class PipedriveIntegration extends AbstractCrmIntegration
 
         try {
             $response = $this->httpClient()->request('POST', "$domain/v1/persons", [
-                'query' => ['api_token' => $token],
+                'headers' => ['x-api-token' => $token],
                 'json' => $body,
                 'http_errors' => false,
             ]);

@@ -34,7 +34,7 @@ class FieldsController extends Controller
         $handle = $request->getRequiredBodyParam('handle');
         $required = (bool)$request->getBodyParam('required');
         $helpText = $request->getBodyParam('helpText', '');
-        $config = json_decode($request->getBodyParam('config', '{}'), true) ?? [];
+        $config = $this->decodeConfigParam($request);
 
         $errors = $this->validateFieldInput($type, $label, $handle, $config, (int)$formId, null);
         if (!empty($errors)) {
@@ -102,7 +102,7 @@ class FieldsController extends Controller
         $handle = $request->getBodyParam('handle');
         $required = (bool)$request->getBodyParam('required');
         $helpText = $request->getBodyParam('helpText', '');
-        $config = json_decode($request->getBodyParam('config', '{}'), true) ?? [];
+        $config = $this->decodeConfigParam($request);
 
         $db = Craft::$app->getDb();
         // Only formId (cache invalidation) and the immutable type are needed.
@@ -177,6 +177,23 @@ class FieldsController extends Controller
         }
     }
 
+    /**
+     * Decode the posted `config` JSON, bounding its size (F19, CWE-20) so a CP
+     * user cannot store a multi-megabyte blob that bloats form-structure cache
+     * rebuilds. Oversized or invalid input decodes to an empty config.
+     *
+     * @return array<string, mixed>
+     */
+    private function decodeConfigParam(\craft\web\Request $request): array
+    {
+        $raw = (string) $request->getBodyParam('config', '{}');
+        if (strlen($raw) > 65536) {
+            return [];
+        }
+        $decoded = json_decode($raw, true);
+        return is_array($decoded) ? $decoded : [];
+    }
+
     public function actionReorder(): Response
     {
         $this->requirePostRequest();
@@ -191,29 +208,39 @@ class FieldsController extends Controller
         $db = Craft::$app->getDb();
 
         try {
-            $fieldIds = [];
+            $ordered = [];
             foreach ($fields as $index => $field) {
                 if (!isset($field['id'])) {
                     continue;
                 }
-                $fieldIds[] = (int)$field['id'];
-                $db->createCommand()->update('{{%simpleform_fields}}', [
-                    'sortOrder' => $index + 1,
-                    'dateUpdated' => date('Y-m-d H:i:s'),
-                ], ['id' => $field['id']])->execute();
+                $ordered[(int) $field['id']] = $index + 1;
             }
+            $fieldIds = array_keys($ordered);
 
-            // Reorder changes the rendered field order, so invalidate each
-            // affected form's cached structure (one invalidate per distinct form).
+            // F18 (CWE-639): every submitted field must belong to the same form.
+            // Reject mixed/unknown ids so a request can't silently reorder (and
+            // corrupt) fields across forms it didn't intend to touch.
             $formIds = (new Query())
                 ->select(['formId'])
                 ->distinct()
                 ->from('{{%simpleform_fields}}')
                 ->where(['id' => $fieldIds])
                 ->column();
-            foreach ($formIds as $formId) {
-                Plugin::getInstance()->getFormStructure()->invalidate((int)$formId);
+            if ($fieldIds === [] || count($formIds) !== 1) {
+                return $this->asJsonError('All reordered fields must belong to a single form.');
             }
+            $formId = (int) $formIds[0];
+
+            foreach ($ordered as $id => $sortOrder) {
+                $db->createCommand()->update('{{%simpleform_fields}}', [
+                    'sortOrder' => $sortOrder,
+                    'dateUpdated' => date('Y-m-d H:i:s'),
+                ], ['id' => $id, 'formId' => $formId])->execute();
+            }
+
+            // Reorder changes the rendered field order, so invalidate the form's
+            // cached structure.
+            Plugin::getInstance()->getFormStructure()->invalidate($formId);
 
             return $this->asJsonSuccess();
         } catch (\Exception $e) {

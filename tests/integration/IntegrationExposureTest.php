@@ -99,6 +99,56 @@ class IntegrationExposureTest extends SimpleFormTestCase
         $this->assertStringNotContainsString(self::SECRET, json_encode($res) ?: '');
     }
 
+    public function testIntegrationSecretIsEncryptedAtRest(): void
+    {
+        $this->requireCraft();
+
+        // F4 needs a securityKey to encrypt; the test env doesn't configure one.
+        $general = Craft::$app->getConfig()->getGeneral();
+        $original = $general->securityKey;
+        $general->securityKey = str_repeat('k', 32);
+
+        try {
+            $integration = new IntegrationModel();
+            $integration->type = 'webhook';
+            $integration->name = 'Enc hook';
+            $integration->enabled = true;
+            $integration->settings = ['url' => 'https://example.test/hook', 'secret' => self::SECRET];
+            $integrations = Plugin::getInstance()->getIntegrations();
+            $this->assertTrue($integrations->saveIntegration($integration));
+
+            $raw = (new \craft\db\Query())
+                ->select(['settings'])
+                ->from('{{%simpleform_integrations}}')
+                ->where(['id' => $integration->id])
+                ->scalar();
+            $raw = is_string($raw) ? $raw : (string) json_encode($raw);
+            $this->assertStringNotContainsString(self::SECRET, $raw, 'plaintext secret must not be stored');
+            $this->assertStringContainsString('sfenc:', $raw, 'secret should carry the encryption marker');
+
+            // Reading back transparently decrypts.
+            $loaded = $integrations->getIntegrationById((int) $integration->id);
+            $this->assertSame(self::SECRET, $loaded->settings['secret']);
+        } finally {
+            $general->securityKey = $original;
+        }
+    }
+
+    public function testDispatchLogRedactsConnectorSecret(): void
+    {
+        $this->requireCraft();
+
+        // F7: a remote error body echoing our own secret must be redacted before
+        // it is written to the dispatch log.
+        $service = Plugin::getInstance()->getIntegrations();
+        $method = new \ReflectionMethod($service, 'scrubSecrets');
+        $method->setAccessible(true);
+
+        $message = $method->invoke($service, 'rejected token=' . self::SECRET . ' (bad)', ['secret' => self::SECRET]);
+        $this->assertStringNotContainsString(self::SECRET, $message);
+        $this->assertStringContainsString('[redacted]', $message);
+    }
+
     /**
      * Drive the real McpController for a tools/call, mirroring McpFormToolsTest.
      *

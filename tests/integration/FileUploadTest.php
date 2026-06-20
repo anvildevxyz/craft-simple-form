@@ -47,6 +47,16 @@ class FileUploadTest extends SimpleFormTestCase
         $this->assertNotEmpty($errors);
     }
 
+    public function testValidateUploadRejectsExecutableContentDisguisedByExtension(): void
+    {
+        $this->requireCraft();
+        // F10 (CWE-434): a PHP script renamed to .jpg passes the extension check
+        // but must be rejected on its real (sniffed) content type.
+        $field = new FileFieldType(['allowedExtensions' => 'jpg,png']);
+        $errors = $field->validateUpload([$this->tmpFile('photo.jpg', "<?php echo 'pwned'; ?>\n")]);
+        $this->assertNotEmpty($errors, 'PHP content disguised as .jpg must be rejected');
+    }
+
     public function testValidateUploadRejectsOversizeFile(): void
     {
         $this->requireCraft();

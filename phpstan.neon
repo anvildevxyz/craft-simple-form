@@ -36,4 +36,12 @@ parameters:
             paths:
                 - src/Plugin.php
                 - src/services/PaymentsService.php
+        # Yii rebinds an inline-validator Closure's `$this` to the model being
+        # validated (DynamicModel in IntegrationsService::validateSettings), so
+        # `$this->addError()` resolves at runtime even though it is lexically
+        # inside the connector class. PHPStan can't see the rebind. This is the
+        # documented Yii pattern for the SSRF URL save-time check (F3).
+        -
+            message: '#Call to an undefined method fabianhaef\\simpleform\\integrations\\.+::addError\(\)#'
+            path: src/integrations/
     reportUnmatchedIgnoredErrors: false

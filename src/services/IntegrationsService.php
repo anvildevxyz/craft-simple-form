@@ -27,6 +27,12 @@ class IntegrationsService extends Component
     private const LOG_TABLE = '{{%simpleform_integration_logs}}';
     private const PIVOT_TABLE = '{{%simpleform_form_integrations}}';
 
+    /** Settings keys holding third-party secrets, encrypted at rest (F4). */
+    private const SECRET_KEYS = ['apiKey', 'apiToken', 'secret', 'token'];
+
+    /** Marks a settings value as ciphertext produced by {@see encryptSettings()}. */
+    private const ENC_PREFIX = 'sfenc:';
+
     /**
      * Every integration definition (the global Settings index), ordered by
      * sortOrder then id.
@@ -147,8 +153,8 @@ class IntegrationsService extends Component
             'name' => $integration->name,
             'enabled' => $integration->enabled,
             // Craft encodes the array for the json column on write (mirrors how
-            // fields' `config` is stored).
-            'settings' => $integration->settings,
+            // fields' `config` is stored). Secret keys are encrypted at rest (F4).
+            'settings' => $this->encryptSettings($integration->settings),
             'sortOrder' => $integration->sortOrder,
             'dateUpdated' => $now,
         ];
@@ -227,10 +233,12 @@ class IntegrationsService extends Component
             return IntegrationResult::failure(null, $message);
         }
 
+        $settings = $this->parseEnvSettings($integration->settings);
+
         try {
-            $result = $type->send($submission, $this->parseEnvSettings($integration->settings));
+            $result = $type->send($submission, $settings);
         } catch (\Throwable $e) {
-            $this->logDispatch($integrationId, $submissionId, DispatchStatus::FAILED, $attempt, null, $e->getMessage());
+            $this->logDispatch($integrationId, $submissionId, DispatchStatus::FAILED, $attempt, null, $this->scrubSecrets($e->getMessage(), $settings));
             return IntegrationResult::failure(null, $e->getMessage());
         }
 
@@ -240,7 +248,9 @@ class IntegrationsService extends Component
             $result->success ? DispatchStatus::SUCCESS : DispatchStatus::FAILED,
             $attempt,
             $result->responseCode,
-            $result->message,
+            // F7: a remote error body may echo our own secret — redact it before
+            // it is written to the diagnostic log.
+            $this->scrubSecrets($result->message, $settings),
         );
 
         return $result;
@@ -346,6 +356,95 @@ class IntegrationsService extends Component
     }
 
     /**
+     * Encrypt secret settings keys before they are persisted (F4, CWE-312).
+     * Without this, API keys / tokens / signing secrets sit in the database as
+     * cleartext, so any DB read or stray backup hands an attacker every
+     * third-party credential. Values that are empty, environment references
+     * ($VAR), or already encrypted are left untouched. Encryption is skipped
+     * only when no securityKey is configured (in which case behaviour is
+     * unchanged from before — production always has a securityKey).
+     *
+     * @param array<string, mixed> $settings
+     * @return array<string, mixed>
+     */
+    private function encryptSettings(array $settings): array
+    {
+        $key = (string) Craft::$app->getConfig()->getGeneral()->securityKey;
+        if ($key === '') {
+            return $settings;
+        }
+
+        $security = Craft::$app->getSecurity();
+        foreach (self::SECRET_KEYS as $secretKey) {
+            $value = $settings[$secretKey] ?? null;
+            if (!is_string($value) || $value === ''
+                || str_starts_with($value, '$')
+                || str_starts_with($value, self::ENC_PREFIX)) {
+                continue;
+            }
+            $settings[$secretKey] = self::ENC_PREFIX . base64_encode($security->encryptByKey($value, $key));
+        }
+
+        return $settings;
+    }
+
+    /**
+     * Inverse of {@see encryptSettings()}. Marked values are decrypted; legacy
+     * plaintext values (no marker) pass through unchanged for backward
+     * compatibility. A value that cannot be decrypted (e.g. after a key change)
+     * is logged and blanked rather than leaked or fatally thrown.
+     *
+     * @param array<string, mixed> $settings
+     * @return array<string, mixed>
+     */
+    private function decryptSettings(array $settings): array
+    {
+        $key = (string) Craft::$app->getConfig()->getGeneral()->securityKey;
+        $security = Craft::$app->getSecurity();
+
+        foreach (self::SECRET_KEYS as $secretKey) {
+            $value = $settings[$secretKey] ?? null;
+            if (!is_string($value) || !str_starts_with($value, self::ENC_PREFIX)) {
+                continue;
+            }
+
+            $cipher = base64_decode(substr($value, strlen(self::ENC_PREFIX)), true);
+            if ($cipher === false || $key === '') {
+                $settings[$secretKey] = '';
+                continue;
+            }
+
+            try {
+                $settings[$secretKey] = $security->decryptByKey($cipher, $key);
+            } catch (\Throwable $e) {
+                Craft::warning('Failed to decrypt integration secret "' . $secretKey . '": ' . $e->getMessage(), 'simple-form');
+                $settings[$secretKey] = '';
+            }
+        }
+
+        return $settings;
+    }
+
+    /**
+     * Redact the integration's own resolved secret values from a log/error
+     * message (F7, CWE-532) so a remote response that echoes a key/token never
+     * lands in the dispatch log.
+     *
+     * @param array<string, mixed> $settings env-resolved settings
+     */
+    private function scrubSecrets(string $message, array $settings): string
+    {
+        foreach (self::SECRET_KEYS as $key) {
+            $value = $settings[$key] ?? null;
+            if (is_string($value) && strlen($value) >= 6) {
+                $message = str_replace($value, '[redacted]', $message);
+            }
+        }
+
+        return $message;
+    }
+
+    /**
      * Resolve env references (`$VAR`) in string settings so connectors receive
      * usable secrets/URLs without each having to parse. Walks nested arrays.
      *
@@ -425,6 +524,7 @@ class IntegrationsService extends Component
         } else {
             $model->settings = [];
         }
+        $model->settings = $this->decryptSettings($model->settings);
         $model->sortOrder = $row['sortOrder'] !== null ? (int) $row['sortOrder'] : null;
         $model->uid = $row['uid'] ?? null;
         return $model;

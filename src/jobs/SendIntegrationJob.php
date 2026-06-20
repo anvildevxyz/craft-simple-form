@@ -41,8 +41,11 @@ class SendIntegrationJob extends BaseJob implements RetryableJobInterface
 
         $result = $service->runOnce($integration, $submission);
         if (!$result->success) {
-            // Throw so the queue retries; the failed attempt is already logged.
-            throw new \RuntimeException('Integration dispatch failed: ' . $result->message);
+            // Throw so the queue retries; the failed attempt (with the detailed,
+            // secret-scrubbed message) is already logged. The exception that
+            // surfaces in the queue UI stays generic (F16, CWE-209) so a remote
+            // response body can't leak into it.
+            throw new \RuntimeException(Craft::t('simple-form', 'Integration dispatch failed; see the integration log for details.'));
         }
     }
 

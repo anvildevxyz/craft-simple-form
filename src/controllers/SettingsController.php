@@ -79,7 +79,10 @@ class SettingsController extends Controller
             } elseif (in_array($field, self::INT_FIELDS, true)) {
                 $values[$field] = (int) $request->getBodyParam($field, $values[$field] ?? 0);
             } else {
-                $values[$field] = $request->getBodyParam($field, $values[$field] ?? null);
+                $value = $request->getBodyParam($field, $values[$field] ?? null);
+                // F19: trim string settings (API keys, secrets, sender) so a
+                // stray copy-paste space doesn't silently break verification.
+                $values[$field] = is_string($value) ? trim($value) : $value;
             }
         }
 

@@ -6,6 +6,7 @@ use Craft;
 use craft\helpers\Cp;
 use craft\helpers\Json;
 use fabianhaef\simpleform\elements\Submission;
+use fabianhaef\simpleform\helpers\SafeUrl;
 
 /**
  * Upsert a submitter as an ActiveCampaign contact (`contact/sync`) and,
@@ -29,6 +30,11 @@ class ActiveCampaignIntegration extends AbstractMarketingIntegration
         return array_merge(parent::defineSettingsRules(), [
             [['apiUrl'], 'required'],
             [['apiUrl', 'listId', 'emailField'], 'string'],
+            [['apiUrl'], function($attribute, $params, $validator, $value): void {
+                if (is_string($value) && !SafeUrl::isAcceptableSettingUrl($value)) {
+                    $this->addError($attribute, Craft::t('simple-form', 'The URL must be a public http(s) address.'));
+                }
+            }],
         ]);
     }
 
@@ -38,6 +44,11 @@ class ActiveCampaignIntegration extends AbstractMarketingIntegration
         $apiUrl = rtrim(trim((string) ($settings['apiUrl'] ?? '')), '/');
         if ($apiKey === '' || $apiUrl === '') {
             return IntegrationResult::failure(null, 'ActiveCampaign API URL and key are required');
+        }
+
+        // SSRF guard (F3).
+        if (!SafeUrl::isPublicHttpUrl($apiUrl)) {
+            return IntegrationResult::failure(null, 'Blocked request to a non-public address');
         }
 
         $email = $this->resolveEmail($submission, $settings);

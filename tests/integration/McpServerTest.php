@@ -129,6 +129,79 @@ class McpServerTest extends SimpleFormTestCase
         $this->assertNotEmpty($listForms['description']);
     }
 
+    public function testGeneratedTokenSecretIs256BitHex(): void
+    {
+        $this->requireCraft();
+        // F12 (CWE-330): the secret carries a full 256 bits of CSPRNG entropy,
+        // i.e. 64 lowercase hex chars after the prefix.
+        $secret = $this->issueToken([Scopes::FORMS_MANAGE]);
+        $this->assertMatchesRegularExpression('/^sfmcp_[0-9a-f]{64}$/', $secret);
+    }
+
+    public function testToolsListIsScopedToTheToken(): void
+    {
+        $this->requireCraft();
+        $this->enableMcp(true);
+
+        // F14 (CWE-200): a read-only token must not even see the write/delete
+        // tools it cannot call.
+        $token = $this->issueToken([Scopes::SUBMISSIONS_READ]);
+
+        [$status, $res] = $this->dispatch([
+            'jsonrpc' => '2.0',
+            'id' => 7,
+            'method' => 'tools/list',
+        ], $token);
+
+        $this->assertSame(200, $status);
+        $names = array_column($res['result']['tools'], 'name');
+        $this->assertContains('query_submissions', $names, 'read tools should be listed');
+        $this->assertNotContains('delete_form', $names, 'forms:manage tools must be hidden');
+        $this->assertNotContains('create_form', $names);
+    }
+
+    public function testTokenCreationRequiresSecurityKey(): void
+    {
+        $this->requireCraft();
+        // F9 (CWE-321): without a securityKey there is no safe HMAC key, so token
+        // hashing must fail closed rather than fall back to a guessable value.
+        $general = Craft::$app->getConfig()->getGeneral();
+        $original = $general->securityKey;
+        $general->securityKey = '';
+
+        try {
+            $this->expectException(\RuntimeException::class);
+            $this->issueToken([Scopes::FORMS_MANAGE]);
+        } finally {
+            $general->securityKey = $original;
+        }
+    }
+
+    public function testRepeatedAuthFailuresAreRateLimited(): void
+    {
+        $this->requireCraft();
+        $this->enableMcp(true);
+
+        // F13 (CWE-307): after enough failed attempts from one IP, the endpoint
+        // returns 429 before doing further token work.
+        Craft::$app->getCache()->flush();
+        $_SERVER['REMOTE_ADDR'] = '203.0.113.7';
+
+        $payload = ['jsonrpc' => '2.0', 'id' => 9, 'method' => 'tools/list'];
+
+        $sawRateLimit = false;
+        for ($i = 0; $i < 25; $i++) {
+            [$status] = $this->dispatch($payload, 'sfmcp_' . str_repeat('0', 64));
+            if ($status === 429) {
+                $sawRateLimit = true;
+                break;
+            }
+            $this->assertSame(401, $status, "attempt $i should be unauthorized before the limit");
+        }
+
+        $this->assertTrue($sawRateLimit, 'repeated bad-token attempts should eventually be rate limited');
+    }
+
     public function testToolsCallListFormsReturnsForms(): void
     {
         $this->requireCraft();

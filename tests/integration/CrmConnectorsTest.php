@@ -111,7 +111,7 @@ class CrmConnectorsTest extends SimpleFormTestCase
         $this->assertCount(0, $hs->history);
     }
 
-    public function testPipedriveCreatesPersonWithTokenQueryAndName(): void
+    public function testPipedriveCreatesPersonWithTokenHeaderAndName(): void
     {
         $this->requireCraft();
         $sub = $this->submission('pd_ok');
@@ -128,7 +128,9 @@ class CrmConnectorsTest extends SimpleFormTestCase
         $this->assertSame('POST', $request->getMethod());
         $this->assertSame('acme.pipedrive.com', $request->getUri()->getHost());
         $this->assertSame('/v1/persons', $request->getUri()->getPath());
-        $this->assertStringContainsString('api_token=tok', $request->getUri()->getQuery());
+        // F5: the token is sent in a header, never in the URL/query string.
+        $this->assertStringNotContainsString('api_token', $request->getUri()->getQuery());
+        $this->assertSame('tok', $request->getHeaderLine('x-api-token'));
         $body = json_decode((string) $request->getBody(), true);
         $this->assertSame('Ada Lovelace', $body['name']);
         $this->assertSame('ada@example.test', $body['email']);

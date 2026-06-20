@@ -39,6 +39,9 @@ class NotificationModel extends Model
             [['formId', 'name', 'recipient'], 'required'],
             [['formId', 'sortOrder'], 'integer'],
             [['name', 'recipient', 'subject', 'replyTo'], 'string', 'max' => 255],
+            // F11 (CWE-93): validate replyTo as an email so a CRLF/header-
+            // injection value is rejected before it reaches the mailer.
+            [['replyTo'], 'email', 'when' => fn(self $model): bool => $model->replyTo !== null && $model->replyTo !== ''],
             [['enabled'], 'boolean'],
             [['recipientType'], 'in', 'range' => [self::RECIPIENT_FIXED, self::RECIPIENT_FIELD]],
         ];

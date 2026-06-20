@@ -135,7 +135,7 @@ class McpServer
                 return null;
 
             case 'tools/list':
-                return $this->result($id, ['tools' => $this->toolDescriptors()]);
+                return $this->result($id, ['tools' => $this->toolDescriptors($token)]);
 
             case 'tools/call':
                 return $this->handleToolCall($id, $params, $token);
@@ -180,17 +180,21 @@ class McpServer
     }
 
     /**
-     * Tool descriptors for tools/list. We do NOT filter by the caller's scope:
-     * advertising the full surface is fine, and a call to a tool outside the
-     * token's scope is still rejected at tools/call. (A future slice could hide
-     * out-of-scope tools, but visibility is not a security boundary here.)
+     * Tool descriptors for tools/list, filtered to the tools the token may
+     * actually call (F14, CWE-200). tools/call still enforces scope
+     * independently; hiding out-of-scope tools additionally stops capability
+     * discovery — e.g. a read-only token learning the names/schemas of the
+     * delete/write tools, which is useful to an attacker steering an LLM client.
      *
      * @return list<array<string, mixed>>
      */
-    private function toolDescriptors(): array
+    private function toolDescriptors(McpToken $token): array
     {
         $descriptors = [];
         foreach ($this->tools() as $tool) {
+            if (!$token->hasScope($tool->requiredScope())) {
+                continue;
+            }
             $descriptors[] = [
                 'name' => $tool->name(),
                 'description' => $tool->description(),

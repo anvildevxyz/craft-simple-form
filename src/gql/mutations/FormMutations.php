@@ -24,10 +24,10 @@ use GraphQL\Type\Definition\Type;
  * Spam policy for the headless context:
  *  - The honeypot is always honored (a `honeypot` arg, transport-agnostic) —
  *    a non-empty value is silently dropped.
- *  - Captcha is skipped for the GraphQL token because a server-side caller
- *    cannot produce a browser-issued reCAPTCHA token; the schema-component
- *    scope is what authorizes the channel, and the honeypot still applies, so
- *    the mutation is not a blanket spam bypass.
+ *  - Captcha is enforced by default (F8): when captcha is enabled the caller
+ *    must pass a `captchaToken`. The bypass is granted only when the operator
+ *    sets `allowGraphqlCaptchaBypass` for trusted server-to-server callers, so
+ *    a leaked GraphQL token is not a blanket spam bypass.
  */
 class FormMutations extends BaseMutation
 {
@@ -54,6 +54,11 @@ class FormMutations extends BaseMutation
                     'honeypot' => [
                         'type' => Type::string(),
                         'description' => 'Honeypot value; leave empty. A non-empty value is treated as spam and silently dropped.',
+                    ],
+                    'captchaToken' => [
+                        'type' => Type::string(),
+                        'description' => 'Captcha token to verify when captcha is enabled. Required for headless '
+                            . 'clients unless the operator has enabled the GraphQL captcha bypass.',
                     ],
                 ],
                 'description' => 'Submits a form. Returns a payload with success/errors; '
@@ -108,12 +113,17 @@ class FormMutations extends BaseMutation
 
         $userId = Craft::$app->getUser()->getId();
 
+        // F8: captcha is enforced for GraphQL by default. Headless clients pass a
+        // `captchaToken`; the bypass is only granted when the operator has
+        // explicitly opted in for trusted server-to-server callers. The honeypot
+        // is always enforced regardless.
+        $captchaToken = isset($args['captchaToken']) ? (string) $args['captchaToken'] : null;
+        $skipCaptcha = Plugin::getInstance()->getSettings()->allowGraphqlCaptchaBypass;
+
         $result = Plugin::getInstance()->getSubmissionService()->submit($form, $values, [
             'honeypot' => (string) ($args['honeypot'] ?? ''),
-            // A scoped GraphQL token authorizes this channel; a server-side caller
-            // can't carry a browser reCAPTCHA token, so skip captcha but keep the
-            // honeypot enforced above.
-            'skipCaptcha' => true,
+            'captchaToken' => $captchaToken,
+            'skipCaptcha' => $skipCaptcha,
             'siteId' => $siteId,
             'userId' => $userId !== null ? (int) $userId : null,
         ]);

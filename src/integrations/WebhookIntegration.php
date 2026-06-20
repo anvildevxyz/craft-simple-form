@@ -6,6 +6,7 @@ use Craft;
 use craft\helpers\Cp;
 use craft\helpers\Json;
 use fabianhaef\simpleform\elements\Submission;
+use fabianhaef\simpleform\helpers\SafeUrl;
 use fabianhaef\simpleform\integrations\support\SubmissionValues;
 use GuzzleHttp\Client;
 
@@ -78,6 +79,11 @@ class WebhookIntegration implements IntegrationTypeInterface
         return [
             [['url'], 'required'],
             [['url'], 'string'],
+            [['url'], function($attribute, $params, $validator, $value): void {
+                if (is_string($value) && !SafeUrl::isAcceptableSettingUrl($value)) {
+                    $this->addError($attribute, Craft::t('simple-form', 'The URL must be a public http(s) address.'));
+                }
+            }],
             [['method'], 'in', 'range' => ['POST', 'PUT']],
             [['format'], 'in', 'range' => ['json', 'form']],
         ];
@@ -117,6 +123,11 @@ class WebhookIntegration implements IntegrationTypeInterface
      */
     public function requestWebhook(string $method, string $url, string $body, string $contentType, ?string $secret): IntegrationResult
     {
+        // SSRF guard (F3): the resolved URL must point at a public address.
+        if (!SafeUrl::isPublicHttpUrl($url)) {
+            return IntegrationResult::failure(null, 'Blocked request to a non-public address');
+        }
+
         $headers = ['Content-Type' => $contentType];
         if ($secret !== null) {
             $headers[self::SIGNATURE_HEADER] = self::signBody($body, $secret);
@@ -188,6 +199,9 @@ class WebhookIntegration implements IntegrationTypeInterface
         return Craft::createGuzzleClient([
             'timeout' => 10,
             'connect_timeout' => 5,
+            // Don't follow redirects: a public URL could 30x to an internal
+            // host and defeat the SSRF guard (F3).
+            'allow_redirects' => false,
         ]);
     }
 }

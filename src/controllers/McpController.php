@@ -52,6 +52,12 @@ class McpController extends Controller
     /** Token-authenticated API: no browser CSRF token to validate. */
     public $enableCsrfValidation = false;
 
+    /** Failed-auth attempts per IP within {@see AUTH_FAIL_WINDOW} before a 429. */
+    private const AUTH_FAIL_MAX = 20;
+
+    /** Sliding window (seconds) for the failed-auth counter. */
+    private const AUTH_FAIL_WINDOW = 300;
+
     /**
      * The MCP endpoint. Single POST → single JSON-RPC response.
      */
@@ -78,11 +84,24 @@ class McpController extends Controller
             return $response;
         }
 
-        // 3. AUTH: bearer token. A missing/invalid token is a 401 with a generic
+        // 3. RATE LIMIT (F13, CWE-307): throttle brute-force / unauthenticated
+        //    floods per IP. Once too many recent attempts have failed, short-
+        //    circuit with 429 before doing any token work.
+        $ip = $request->getUserIP() ?? 'unknown';
+        $failKey = 'simple-form:mcp-auth-fail:' . $ip;
+        $cache = Craft::$app->getCache();
+        if ((int) $cache->get($failKey) >= self::AUTH_FAIL_MAX) {
+            $response->setStatusCode(429);
+            $response->data = $this->jsonRpcError(null, -32000, 'Too many requests.');
+            return $response;
+        }
+
+        // 4. AUTH: bearer token. A missing/invalid token is a 401 with a generic
         //    message — we never disclose whether the token was absent, malformed,
         //    or simply unknown (avoids oracles).
         $token = $this->authenticate($request);
         if ($token === null) {
+            $cache->set($failKey, (int) $cache->get($failKey) + 1, self::AUTH_FAIL_WINDOW);
             $response->getHeaders()->set('WWW-Authenticate', 'Bearer');
             $response->setStatusCode(401);
             $response->data = $this->jsonRpcError(null, -32000, 'Unauthorized.');
@@ -92,7 +111,7 @@ class McpController extends Controller
         // Best-effort audit/usage tracking. Identity is the label/id, never the secret.
         Plugin::getInstance()->getMcpTokenManager()->touch($token);
 
-        // 4. Parse the JSON-RPC body.
+        // 5. Parse the JSON-RPC body.
         $raw = $request->getRawBody();
         $decoded = json_decode($raw, true);
         if (!is_array($decoded)) {
@@ -100,7 +119,7 @@ class McpController extends Controller
             return $response;
         }
 
-        // 5. Dispatch through the transport-agnostic server.
+        // 6. Dispatch through the transport-agnostic server.
         $server = new McpServer();
         $result = $server->handle($decoded, $token);
 

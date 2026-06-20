@@ -103,6 +103,44 @@ class EmailNotificationTest extends SimpleFormTestCase
         $this->assertStringNotContainsString('New Form Submission', $body);
     }
 
+    /**
+     * F2 / CWE-94 (SSTI): a notification body authored by a non-admin must not
+     * be able to reach craft.app / the database through Twig. The sandbox makes
+     * the render throw, so the service falls back to the default template and
+     * the secret never appears in the email.
+     */
+    public function testMaliciousTemplateCannotReachApplicationAndFallsBackToDefault(): void
+    {
+        $this->requireCraft();
+
+        $form = $this->createForm('Evil', 'evilBodyForm', 'Evil', emailTo: 'owner@example.com');
+        // Reaching craft.app at all is the SSTI vector; the sandbox must block it.
+        $form->emailBody = 'LEAK={{ craft.app.config.general.securityKey }}';
+        Craft::$app->getElements()->saveElement($form);
+        $fieldId = $this->createField($form->id, 'text', 'fullName', 'Full Name', true);
+        $reloaded = \fabianhaef\simpleform\elements\Form::find()->id($form->id)->one();
+
+        $sent = $this->captureSentMessages(function () use ($reloaded, $fieldId): void {
+            $submission = new \fabianhaef\simpleform\elements\Submission();
+            $submission->formId = $reloaded->id;
+            $submission->siteId = Craft::$app->getSites()->getCurrentSite()->id;
+            $submission->readStatus = 'new';
+            $data = ['field_' . $fieldId => ['label' => 'Full Name', 'type' => 'text', 'value' => 'Ada']];
+            $submission->data = $data;
+            Craft::$app->getElements()->saveElement($submission);
+
+            (new EmailService())->sendSubmissionEmail($reloaded, $submission, $data);
+        });
+
+        $this->assertCount(1, $sent);
+        $body = $this->messageBody($sent[0]);
+        // The sandbox throws on craft.app access, so the whole custom body is
+        // discarded — its literal "LEAK=" prefix must not survive...
+        $this->assertStringNotContainsString('LEAK=', $body, 'sandboxed render must be blocked, not partially emitted');
+        // ...and the service falls back to the default template.
+        $this->assertStringContainsString('New Form Submission', $body);
+    }
+
     public function testBlankEmailBodyFallsBackToDefaultTemplate(): void
     {
         $this->requireCraft();

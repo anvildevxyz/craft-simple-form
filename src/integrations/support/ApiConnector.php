@@ -78,6 +78,9 @@ trait ApiConnector
         return Craft::createGuzzleClient([
             'timeout' => 10,
             'connect_timeout' => 5,
+            // Don't follow redirects (F3): prevents a public API URL from
+            // 30x-bouncing the request (and its auth header) to an internal host.
+            'allow_redirects' => false,
         ]);
     }
 }

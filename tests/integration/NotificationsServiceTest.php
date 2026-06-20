@@ -46,6 +46,29 @@ class NotificationsServiceTest extends SimpleFormTestCase
         return $n;
     }
 
+    public function testReplyToMustBeAValidEmail(): void
+    {
+        $this->requireCraft();
+        [$form] = $this->seedForm('replyToValidation');
+
+        // F11 (CWE-93): a CRLF/header-injection replyTo is rejected by validation.
+        $bad = new NotificationModel();
+        $bad->formId = (int) $form->id;
+        $bad->name = 'Bad reply-to';
+        $bad->recipient = 'ops@example.test';
+        $bad->replyTo = "attacker@evil.test\r\nBcc: victim@corp.test";
+        $this->assertFalse($bad->validate(), 'invalid replyTo should fail validation');
+        $this->assertArrayHasKey('replyTo', $bad->getErrors());
+
+        // A normal address still validates, and an empty value is allowed.
+        $good = new NotificationModel();
+        $good->formId = (int) $form->id;
+        $good->name = 'Good reply-to';
+        $good->recipient = 'ops@example.test';
+        $good->replyTo = 'support@example.test';
+        $this->assertTrue($good->validate(), implode(',', $good->getFirstErrors()));
+    }
+
     public function testFixedRecipientResolvesAndSplitsAddresses(): void
     {
         $this->requireCraft();

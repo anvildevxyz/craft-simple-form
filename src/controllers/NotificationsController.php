@@ -165,10 +165,17 @@ class NotificationsController extends Controller
             'action' => 'show',
             'rules' => [[
                 'field' => $field,
-                'operator' => (string) $request->getBodyParam('conditionOperator', 'eq'),
+                // F19 (CWE-20): only persist a known operator.
+                'operator' => $this->normalizeOperator((string) $request->getBodyParam('conditionOperator', 'eq')),
                 'value' => (string) $request->getBodyParam('conditionValue', ''),
             ]],
         ];
+    }
+
+    /** Clamp a posted condition operator to the supported set, defaulting to eq. */
+    private function normalizeOperator(string $operator): string
+    {
+        return in_array($operator, ConditionalEvaluator::OPERATORS, true) ? $operator : 'eq';
     }
 
     /**

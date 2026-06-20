@@ -59,4 +59,28 @@ class CaptchaProviderTest extends SimpleFormTestCase
             $settings->setAttributes($original, false);
         }
     }
+
+    public function testRecaptchaV3SiteKeyIsContextEncoded(): void
+    {
+        $this->requireCraft();
+        $settings = Plugin::getInstance()->getSettings();
+        $original = $settings->getAttributes();
+
+        try {
+            // F15 (CWE-116): a site key with script-breakout characters must be
+            // encoded per output context — never emitted raw into the JS string.
+            $settings->enableCaptcha = true;
+            $settings->selectedCaptchaProvider = 'recaptcha';
+            $settings->captchaType = Settings::CAPTCHA_V3;
+            $settings->recaptchaV3SiteKey = 'k"</script><script>alert(1)</script>';
+
+            $html = (new RecaptchaProvider())->renderWidget($settings);
+
+            // The raw breakout payload must not appear; the closing tag is escaped.
+            $this->assertStringNotContainsString('</script><script>alert(1)', $html);
+            $this->assertStringContainsString('var siteKey = ', $html);
+        } finally {
+            $settings->setAttributes($original, false);
+        }
+    }
 }

@@ -4,6 +4,7 @@ namespace fabianhaef\simpleform\integrations;
 
 use Craft;
 use fabianhaef\simpleform\elements\Submission;
+use fabianhaef\simpleform\helpers\SafeUrl;
 use fabianhaef\simpleform\integrations\support\SubmissionValues;
 use GuzzleHttp\Client;
 
@@ -34,6 +35,11 @@ abstract class AbstractChatIntegration implements IntegrationTypeInterface
         return [
             [['url'], 'required'],
             [['url'], 'string'],
+            [['url'], function($attribute, $params, $validator, $value): void {
+                if (is_string($value) && !SafeUrl::isAcceptableSettingUrl($value)) {
+                    $this->addError($attribute, Craft::t('simple-form', 'The URL must be a public http(s) address.'));
+                }
+            }],
         ];
     }
 
@@ -55,6 +61,11 @@ abstract class AbstractChatIntegration implements IntegrationTypeInterface
      */
     protected function post(string $url, array $payload): IntegrationResult
     {
+        // SSRF guard (F3): only dispatch to a public address.
+        if (!SafeUrl::isPublicHttpUrl($url)) {
+            return IntegrationResult::failure(null, 'Blocked request to a non-public address');
+        }
+
         try {
             $response = $this->httpClient()->request('POST', $url, [
                 'json' => $payload,
@@ -116,6 +127,9 @@ abstract class AbstractChatIntegration implements IntegrationTypeInterface
         return Craft::createGuzzleClient([
             'timeout' => 10,
             'connect_timeout' => 5,
+            // Don't follow redirects (F3): a public URL must not be able to
+            // 30x-bounce the request to an internal host.
+            'allow_redirects' => false,
         ]);
     }
 }

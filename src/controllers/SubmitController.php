@@ -10,6 +10,16 @@ use yii\web\Response;
 
 class SubmitController extends Controller
 {
+    /**
+     * Public form submissions come from anonymous site visitors, so the action
+     * must be reachable without a logged-in user. Without this the framework's
+     * default (ALLOW_ANONYMOUS_NEVER) returns 403 to every guest. CSRF is still
+     * enforced below, so this is not an open door.
+     *
+     * @var array<string, int>|bool|int
+     */
+    protected array|bool|int $allowAnonymous = self::ALLOW_ANONYMOUS_LIVE;
+
     public $enableCsrfValidation = true;
 
     public function actionIndex(): Response

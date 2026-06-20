@@ -38,6 +38,15 @@ class Settings extends Model
     public ?string $hcaptchaSiteKey = null;
     public ?string $hcaptchaSecretKey = null;
 
+    /**
+     * Whether GraphQL `submitForm` mutations bypass captcha (F8). Off by default
+     * so a leaked/public GraphQL token cannot submit at machine speed when
+     * captcha is enabled — headless clients should pass a `captchaToken` arg
+     * instead. Turn on only for trusted server-to-server callers that cannot
+     * obtain a browser captcha token (ideally paired with a scoped token).
+     */
+    public bool $allowGraphqlCaptchaBypass = false;
+
     public const AKISMET_FLAG = 'flag';
     public const AKISMET_BLOCK = 'block';
 
@@ -160,7 +169,7 @@ class Settings extends Model
                 'email',
                 'when' => fn(): bool => !$this->isEnvReference($this->defaultEmailSender),
             ],
-            [['enableHoneypot', 'enableCaptcha', 'cacheFormStructure', 'inlineFormAssets', 'enableMcp', 'dispatchIntegrationsSynchronously', 'enableAkismet', 'anonymizeInsteadOfDelete'], 'boolean'],
+            [['enableHoneypot', 'enableCaptcha', 'cacheFormStructure', 'inlineFormAssets', 'enableMcp', 'dispatchIntegrationsSynchronously', 'enableAkismet', 'anonymizeInsteadOfDelete', 'allowGraphqlCaptchaBypass'], 'boolean'],
             [['retainSubmissionsDays', 'retainIntegrationLogsDays', 'retainAuditLogDays'], 'integer', 'min' => 0],
             [['akismetMode'], 'in', 'range' => [self::AKISMET_FLAG, self::AKISMET_BLOCK]],
             [['akismetApiKey'], 'required', 'when' => fn(): bool => $this->enableAkismet],

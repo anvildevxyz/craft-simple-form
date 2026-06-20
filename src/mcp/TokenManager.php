@@ -40,7 +40,7 @@ use fabianhaef\simpleform\Plugin;
  */
 class TokenManager
 {
-    /** Bytes of entropy in a generated secret. */
+    /** Bytes of cryptographic entropy in a generated secret (32 = 256 bits). */
     private const SECRET_BYTES = 32;
 
     /** Visible prefix so an operator can recognise a Simple Form MCP token. */
@@ -69,7 +69,10 @@ class TokenManager
             static fn(string $s): bool => Scopes::isValid($s),
         ));
 
-        $secret = self::SECRET_PREFIX . StringHelper::randomString(self::SECRET_BYTES);
+        // F12 (CWE-330): use a CSPRNG with full byte entropy. StringHelper::
+        // randomString() draws from a 26-char lowercase alphabet (~150 bits at
+        // 32 chars), well below the 256 bits this token is meant to carry.
+        $secret = self::SECRET_PREFIX . bin2hex(random_bytes(self::SECRET_BYTES));
 
         $token = new McpToken(
             id: StringHelper::UUID(),
@@ -186,8 +189,15 @@ class TokenManager
      */
     private function hashSecret(string $secret): string
     {
-        $key = Craft::$app->getConfig()->getGeneral()->securityKey ?: Craft::$app->id;
-        return hash_hmac('sha256', $secret, (string)$key);
+        // F9 (CWE-321): require the real security key. The previous fallback to
+        // Craft::$app->id used a guessable, public application id as the HMAC
+        // key when securityKey was empty, which would let an attacker forge a
+        // valid token hash. Fail closed instead — production always sets it.
+        $key = (string) Craft::$app->getConfig()->getGeneral()->securityKey;
+        if ($key === '') {
+            throw new \RuntimeException('A securityKey must be configured in .env to use Simple Form MCP tokens.');
+        }
+        return hash_hmac('sha256', $secret, $key);
     }
 
     /**

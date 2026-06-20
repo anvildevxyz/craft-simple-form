@@ -88,12 +88,19 @@ class RecaptchaProvider implements CaptchaProviderInterface
         if (!$siteKey) {
             return '';
         }
-        $siteKey = htmlspecialchars((string) $siteKey, ENT_QUOTES);
+        // F15 (CWE-116): encode the site key per output context. HTML-escaping
+        // alone is wrong for the URL and the JS-string contexts below.
+        $rawKey = (string) $siteKey;
+        $siteKeyAttr = htmlspecialchars($rawKey, ENT_QUOTES);
+        $siteKeyUrl = rawurlencode($rawKey);
+        // JSON-encode for the JS string literal; HEX_TAG/QUOT/APOS neutralise
+        // </script>, quotes and apostrophes so the key cannot break out.
+        $siteKeyJs = (string) json_encode($rawKey, JSON_HEX_TAG | JSON_HEX_QUOT | JSON_HEX_APOS | JSON_HEX_AMP);
 
         if ($settings->captchaType === Settings::CAPTCHA_V2) {
             // The v2 widget injects its own `g-recaptcha-response` field on submit.
             return '<div class="simple-form-group">'
-                . '<div class="g-recaptcha" data-sitekey="' . $siteKey . '"></div>'
+                . '<div class="g-recaptcha" data-sitekey="' . $siteKeyAttr . '"></div>'
                 . '</div>'
                 . '<script src="https://www.google.com/recaptcha/api.js" async defer></script>';
         }
@@ -101,10 +108,10 @@ class RecaptchaProvider implements CaptchaProviderInterface
         // v3 is invisible: keep a fresh token in a hidden field that rides along
         // with the form's existing fetch submit.
         return '<input type="hidden" name="g-recaptcha-response" value="">'
-            . '<script src="https://www.google.com/recaptcha/api.js?render=' . $siteKey . '"></script>'
+            . '<script src="https://www.google.com/recaptcha/api.js?render=' . $siteKeyUrl . '"></script>'
             . '<script>
                 (function() {
-                    var siteKey = "' . $siteKey . '";
+                    var siteKey = ' . $siteKeyJs . ';
                     function refreshToken() {
                         if (typeof grecaptcha === "undefined") { return; }
                         grecaptcha.ready(function() {
