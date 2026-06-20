@@ -17,6 +17,8 @@ use yii\base\Component;
  * The orchestration here (amount resolution, gating, status transitions) is
  * Commerce-agnostic and unit-tested; the order creation + completion path is
  * guarded behind {@see commerceAvailable()}.
+ *
+ * @phpstan-import-type SubmissionData from Submission
  */
 class PaymentsService extends Component
 {
@@ -59,7 +61,7 @@ class PaymentsService extends Component
      * a fixed amount, or the value of another field (by handle). Returns null
      * when no positive amount is configured.
      *
-     * @param array<string, mixed> $data submission data keyed by field_<id>
+     * @param SubmissionData $data submission data keyed by field_<id>
      */
     public function resolveAmount(Form $form, array $data): ?float
     {
@@ -89,7 +91,7 @@ class PaymentsService extends Component
      * pending Commerce order, and store it on the submission. Returns true when
      * the submission is now awaiting payment (so the caller gates email).
      *
-     * @param array<string, mixed> $data
+     * @param SubmissionData $data
      */
     public function prepare(Form $form, Submission $submission, array $data): bool
     {
@@ -196,7 +198,7 @@ class PaymentsService extends Component
     /**
      * Best-effort submitter email: the first email-type field's value.
      *
-     * @param array<string, mixed> $data
+     * @param SubmissionData $data
      */
     private function submitterEmail(Form $form, array $data): ?string
     {
@@ -215,7 +217,7 @@ class PaymentsService extends Component
     }
 
     /**
-     * @param array<string, mixed> $data
+     * @param SubmissionData $data
      * @return array<string, mixed>
      */
     private function valuesByHandle(Form $form, array $data): array

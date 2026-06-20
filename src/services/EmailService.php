@@ -14,6 +14,9 @@ use fabianhaef\simpleform\Plugin;
 use Twig\Extension\SandboxExtension;
 use yii\base\Component;
 
+/**
+ * @phpstan-import-type SubmissionData from Submission
+ */
 class EmailService extends Component
 {
     /**
@@ -21,7 +24,7 @@ class EmailService extends Component
      * no notification rows, fall back to its legacy email columns so existing
      * forms keep working unchanged.
      *
-     * @param array<string, mixed> $data
+     * @param SubmissionData $data
      */
     public function sendSubmissionEmail(Form $form, Submission $submission, array $data): bool
     {
@@ -49,7 +52,7 @@ class EmailService extends Component
     /**
      * Legacy single-notification path driven by the form's own email columns.
      *
-     * @param array<string, mixed> $data
+     * @param SubmissionData $data
      */
     private function sendLegacy(Form $form, Submission $submission, array $data): bool
     {
@@ -124,7 +127,7 @@ class EmailService extends Component
      * Render a notification body template (per-site so it localises), falling
      * back to the shared default template when blank or on a render error.
      *
-     * @param array<string, mixed> $data
+     * @param SubmissionData $data
      */
     private function renderBodyFor(?string $body, Form $form, Submission $submission, array $data): string
     {
@@ -198,7 +201,7 @@ class EmailService extends Component
     }
 
     /**
-     * @param array<string, mixed> $data
+     * @param SubmissionData $data
      */
     private function renderDefaultBody(Form $form, Submission $submission, array $data): string
     {
@@ -225,8 +228,8 @@ class EmailService extends Component
         $html .= '<table style="border-collapse: collapse; width: 100%;">';
 
         foreach ($data as $fieldData) {
-            $label = htmlspecialchars($fieldData['label'] ?? '');
-            $value = ($fieldData['type'] ?? null) === 'file'
+            $label = htmlspecialchars($fieldData['label']);
+            $value = $fieldData['type'] === 'file'
                 ? $this->formatFileValue($fieldData['value'])
                 : $this->formatFieldValue($fieldData['value']);
 

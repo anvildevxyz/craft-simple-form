@@ -107,7 +107,7 @@ final class SubmissionCsv
         foreach ($submissions as $submission) {
             foreach (($submission->data ?? []) as $key => $entry) {
                 if (!isset($fieldCols[$key])) {
-                    $fieldCols[$key] = is_array($entry) ? (string) ($entry['label'] ?? $key) : (string) $key;
+                    $fieldCols[$key] = $entry['label'];
                 }
             }
         }
