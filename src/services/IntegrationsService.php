@@ -28,7 +28,7 @@ class IntegrationsService extends Component
     private const PIVOT_TABLE = '{{%simpleform_form_integrations}}';
 
     /** Settings keys holding third-party secrets, encrypted at rest (F4). */
-    private const SECRET_KEYS = ['apiKey', 'apiToken', 'secret', 'token'];
+    private const SECRET_KEYS = ['apiKey', 'apiToken', 'secret', 'token', 'serviceAccountKey', 'refreshToken', 'clientSecret'];
 
     /** Marks a settings value as ciphertext produced by {@see encryptSettings()}. */
     private const ENC_PREFIX = 'sfenc:';

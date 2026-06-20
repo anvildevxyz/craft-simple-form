@@ -55,8 +55,8 @@ German CP UI — match buttons by role, click checkbox **labels** not inputs.
 
 ## B. Connectors selectable + settings render (#82–#84)
 
-### S5 — All 7 connector types render their settings ⬜
-For each `type` in [webhook, slack, discord, mailchimp, activecampaign, hubspot, pipedrive]:
+### S5 — All 8 connector types render their settings ⬜
+For each `type` in [webhook, slack, discord, mailchimp, activecampaign, hubspot, pipedrive, google-sheets]:
 1. EXECUTE (UI): `/admin/simple-form/forms/{id}/integrations/new` → type picker lists the type.
 2. EXECUTE (UI): choose it → settings form renders the expected fields:
    - webhook: URL, HTTP method, payload format, signing secret
@@ -66,12 +66,26 @@ For each `type` in [webhook, slack, discord, mailchimp, activecampaign, hubspot,
    - activecampaign: API URL, API key, list ID, email field
    - hubspot: private-app token, object type (contact/deal), email field
    - pipedrive: API domain, API token, name field, email field
+   - google-sheets: Authentication mode, service-account JSON key / OAuth client+refresh token, Spreadsheet, Worksheet, Field→column mapping (editable table), Write a header row
 3. VERIFY (UI): required-field markers present; saving with the required field blank shows a validation error (no row written).
 4. VERIFY (DB): a valid save persists `type` correctly in `simpleform_integrations`.
 
 > Live dispatch for slack/mailchimp/etc. needs real endpoints/keys — out of scope for
 > CP smoke. Dispatch mechanics are covered generically by S3 (webhook) + the unit/
 > integration suites (mocked transports).
+
+### S13 — Google Sheets connector (service account) (#141) ⬜
+1. SETUP: S0 form exists with at least a `name` and `email` field.
+2. EXECUTE (UI): `/admin/simple-form/settings/integrations/new` → choose **Google Sheets**.
+3. EXECUTE (UI): Authentication = **Service account (JSON key)**; paste a (test) service-account JSON key (or an env ref like `$GOOGLE_SA_KEY`); Spreadsheet = a full sheet URL; Worksheet = `Leads`; add two mapping rows (`name → Name`, `email → Email`); turn **Write a header row** on → Save.
+4. VERIFY (UI): redirected to the integrations index; a row “… / google-sheets / Enabled” is listed.
+5. VERIFY (DB — encryption): `SELECT settings FROM simpleform_integrations WHERE type='google-sheets';` → the `serviceAccountKey` value is prefixed `sfenc:` (ciphertext); the raw `private_key` text is **not** present in cleartext. The mapping + spreadsheet id persist.
+6. VERIFY (no echo): re-open the edit screen → the JSON key field is **not** re-rendered in plaintext (decrypted only at dispatch).
+7. EXECUTE (UI): attach the integration to the S0 form (per-form Integrations toggle).
+8. EXECUTE: submit the form; run `ddev craft queue/run`.
+9. VERIFY (DB): a `simpleform_integration_logs` row for the submission. In CI without live Google access the most-recent attempt is `failed` with a **scrubbed** message (no bearer token, no key) — confirm by inspecting the `message` column. The success path is covered by `GoogleSheetsDispatchTest` (HTTP mocked).
+10. EXECUTE (UI): on a deliberately-wrong worksheet name, after fixing it hit **Resend** on the submission detail and verify a fresh log row.
+11. VERIFY (exposure): inspect the form via GraphQL (`SimpleFormIntegration` type) and the `list_integrations` MCP tool → only name/type/enabled (+ health) are returned; **no** settings/secrets cross either boundary.
 
 ---
 
@@ -157,7 +171,8 @@ For each `type` in [webhook, slack, discord, mailchimp, activecampaign, hubspot,
 ```
 /craft-smoke-test plugin:simple-form S1: add a Webhook integration to a form and verify the row + DB
 /craft-smoke-test plugin:simple-form S3: submit a form, run the queue, verify an integration_logs row + Resend
-/craft-smoke-test plugin:simple-form S5: open New Integration and verify each of the 7 connector settings forms render
+/craft-smoke-test plugin:simple-form S5: open New Integration and verify each of the 8 connector settings forms render
+/craft-smoke-test plugin:simple-form S13: add a Google Sheets integration (service account), verify the key is stored encrypted + not echoed, submit + Resend, and confirm no secret crosses GraphQL/MCP
 /craft-smoke-test plugin:simple-form S6: Settings Spam — switch captcha provider to Turnstile/hCaptcha and verify key fields toggle + persist
 /craft-smoke-test plugin:simple-form S7: enable Akismet, mark a submission spam, verify the Spam filter on the index
 /craft-smoke-test plugin:simple-form S8+S9: add a File field, upload a pdf, verify asset + download link, reject a .exe
