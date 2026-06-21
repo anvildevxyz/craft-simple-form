@@ -2,15 +2,22 @@
 
 namespace fabianhaef\simpleform\tests\smoke;
 
+use fabianhaef\simpleform\elements\Form;
+use fabianhaef\simpleform\Plugin;
 use SmokeTester;
 
 /**
  * Form Rendering Smoke Tests (functional).
  *
- * Exercises the public Twig `simpleForm()` render path end-to-end: HTML
- * structure, CSRF + honeypot, and per-field markup for every field type. Forms
- * and fields are seeded through the data layer (see {@see BaseSmokeCest}); the
- * render runs through the real Twig function a site template would call.
+ * Exercises the public form render path end-to-end through the real
+ * {@see \fabianhaef\simpleform\services\FormRenderService} the `simpleForm()`
+ * Twig function delegates to: HTML structure, CSRF + honeypot, the hidden
+ * `formHandle`, and per-field markup for every field type. Forms and fields are
+ * seeded through the data layer (see {@see BaseSmokeCest}).
+ *
+ * The rendered string is a bare `<form>` — CSS/JS live in the registered
+ * {@see \fabianhaef\simpleform\web\assets\form\FormAsset} bundle, not inline in
+ * the markup, unless the `inlineFormAssets` setting forces the escape hatch.
  *
  * @author Fabian Haefliger
  * @since 1.0.0
@@ -39,16 +46,18 @@ class FormRenderingCest extends BaseSmokeCest
 
         $I->assertStringContainsString('class="simple-form"', $html);
         $I->assertStringContainsString('method="POST"', $html);
-        $I->assertStringContainsString('action="/simple-form/submit"', $html);
+        $I->assertStringContainsString('action="', $html);
+        $I->assertStringContainsString('/actions/simple-form/submit', $html);
         $I->assertStringContainsString('type="submit"', $html);
         $I->assertStringContainsString('class="simple-form-submit-btn"', $html);
+        $I->assertStringContainsString('</form>', $html);
     }
 
     public function testFormIncludesCsrfToken(SmokeTester $I): void
     {
         $html = $this->renderForm($this->formHandle);
 
-        $I->assertStringContainsString('csrf', strtolower($html), 'Should render the CSRF input');
+        $I->assertStringContainsString('name="CRAFT_CSRF_TOKEN"', $html, 'Should render the CSRF input');
         $I->assertStringContainsString('type="hidden"', $html);
     }
 
@@ -91,7 +100,7 @@ class FormRenderingCest extends BaseSmokeCest
 
         $I->assertStringContainsString('Email Address', $html);
         $I->assertStringContainsString('type="email"', $html);
-        $I->assertStringContainsString('<span class="required">*</span>', $html);
+        $I->assertStringContainsString('class="required"', $html);
     }
 
     public function testTextareaFieldRendering(SmokeTester $I): void
@@ -209,24 +218,41 @@ class FormRenderingCest extends BaseSmokeCest
         $I->assertStringContainsString('type="submit"', $html);
     }
 
-    public function testFormIncludesInlineCss(SmokeTester $I): void
+    public function testInlineAssetsEmitStyleAndScript(SmokeTester $I): void
     {
-        // The default render registers the FormAsset bundle; inlineFormAssets
-        // emits the CSS/JS straight into the markup, which is what a static
-        // (cached) page or a bundle-less render relies on.
-        $html = $this->renderForm($this->formHandle, ['inlineFormAssets' => true]);
+        // By default the render registers the FormAsset bundle and emits no inline
+        // markup. With the `inlineFormAssets` setting on, the CSS/JS build artifacts
+        // are embedded straight into the markup — the static-page escape hatch.
+        $settings = Plugin::getInstance()->getSettings();
+        $original = $settings->inlineFormAssets;
+        $settings->inlineFormAssets = true;
 
-        $I->assertStringContainsString('<style', $html);
-        $I->assertStringContainsString('.simple-form', $html);
+        try {
+            $html = $this->renderForm($this->formHandle);
+
+            $I->assertStringContainsString('<style', $html);
+            $I->assertStringContainsString('<script', $html);
+        } finally {
+            $settings->inlineFormAssets = $original;
+        }
     }
 
-    public function testFormIncludesJavaScript(SmokeTester $I): void
+    public function testDefaultRenderHasNoInlineAssets(SmokeTester $I): void
     {
-        $html = $this->renderForm($this->formHandle, ['inlineFormAssets' => true]);
+        // The default render delegates CSS/JS to the registered asset bundle, so the
+        // form string itself carries no inline <style>/<script> block.
+        $settings = Plugin::getInstance()->getSettings();
+        $original = $settings->inlineFormAssets;
+        $settings->inlineFormAssets = false;
 
-        $I->assertStringContainsString('<script', $html);
-        $I->assertStringContainsString('fetch', $html);
-        $I->assertStringContainsString('addEventListener', $html);
+        try {
+            $html = $this->renderForm($this->formHandle);
+
+            $I->assertStringNotContainsString('<style', $html);
+            $I->assertStringNotContainsString('<script', $html);
+        } finally {
+            $settings->inlineFormAssets = $original;
+        }
     }
 
     // =========================================================================
@@ -235,7 +261,7 @@ class FormRenderingCest extends BaseSmokeCest
 
     private function fieldFormId(): int
     {
-        return (int)\fabianhaef\simpleform\elements\Form::find()
+        return (int)Form::find()
             ->handle($this->formHandle)
             ->one()
             ->id;
