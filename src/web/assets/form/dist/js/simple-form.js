@@ -84,6 +84,181 @@
         }
     };
 
+    // ---- calculation formula engine --------------------------------------
+    // Mirrors the PHP Formula helper (src/helpers/Formula.php): same allow-listed
+    // grammar (numbers, + - * /, parentheses, {handle} refs, and the functions
+    // min max round ceil floor abs). NO eval/Function — a hand-written tokenizer
+    // + recursive-descent evaluator. The server recompute is authoritative; this
+    // is cosmetic live UX. Keep in sync — tests/js/formula.test.js asserts parity.
+    var Formula = (function () {
+        var FUNCS = { min: null, max: null, round: null, ceil: 1, floor: 1, abs: 1 };
+
+        function tokenize(src) {
+            var tokens = [];
+            var i = 0;
+            var n = src.length;
+            while (i < n) {
+                var c = src[i];
+                if (/\s/.test(c)) { i++; continue; }
+                if (/[0-9]/.test(c) || (c === "." && i + 1 < n && /[0-9]/.test(src[i + 1]))) {
+                    var num = "";
+                    var dot = false;
+                    while (i < n && (/[0-9]/.test(src[i]) || src[i] === ".")) {
+                        if (src[i] === ".") { if (dot) { throw new Error("number"); } dot = true; }
+                        num += src[i]; i++;
+                    }
+                    tokens.push({ type: "number", value: num });
+                } else if (c === "{") {
+                    var close = src.indexOf("}", i);
+                    if (close === -1) { throw new Error("ref"); }
+                    var handle = src.slice(i + 1, close);
+                    if (!/^[a-zA-Z_][a-zA-Z0-9_]*$/.test(handle)) { throw new Error("ref"); }
+                    tokens.push({ type: "ref", value: handle });
+                    i = close + 1;
+                } else if (/[a-zA-Z]/.test(c)) {
+                    var word = "";
+                    while (i < n && /[a-zA-Z0-9_]/.test(src[i])) { word += src[i]; i++; }
+                    if (!Object.prototype.hasOwnProperty.call(FUNCS, word.toLowerCase())) { throw new Error("func"); }
+                    tokens.push({ type: "func", value: word.toLowerCase() });
+                } else if ("+-*/(),".indexOf(c) !== -1) {
+                    tokens.push({ type: c, value: c }); i++;
+                } else {
+                    throw new Error("char");
+                }
+            }
+            return tokens;
+        }
+
+        function evaluate(src, refs) {
+            var tokens = tokenize(src);
+            if (!tokens.length) { return 0; }
+            var pos = 0;
+
+            function peek() { return tokens[pos] || null; }
+            function isType(t) { return (tokens[pos] && tokens[pos].type) === t; }
+            function expect(t) { if (!isType(t)) { throw new Error("expect"); } pos++; }
+
+            function parseExpr() {
+                var v = parseTerm();
+                while (isType("+") || isType("-")) {
+                    var op = tokens[pos++].type;
+                    var rhs = parseTerm();
+                    v = op === "+" ? v + rhs : v - rhs;
+                }
+                return v;
+            }
+            function parseTerm() {
+                var v = parseFactor();
+                while (isType("*") || isType("/")) {
+                    var op = tokens[pos++].type;
+                    var rhs = parseFactor();
+                    if (op === "*") { v = v * rhs; }
+                    else { v = (rhs === 0) ? 0 : v / rhs; }
+                }
+                return v;
+            }
+            function parseFactor() {
+                var t = peek();
+                if (!t) { throw new Error("eof"); }
+                if (t.type === "+" || t.type === "-") {
+                    pos++;
+                    var operand = parseFactor();
+                    return t.type === "-" ? -operand : operand;
+                }
+                if (t.type === "number") { pos++; return parseFloat(t.value); }
+                if (t.type === "ref") {
+                    pos++;
+                    var raw = refs[t.value];
+                    var num = (typeof raw === "number") ? raw : (raw !== undefined && raw !== null && raw !== "" && !isNaN(Number(raw)) ? Number(raw) : 0);
+                    return num;
+                }
+                if (t.type === "(") { pos++; var v = parseExpr(); expect(")"); return v; }
+                if (t.type === "func") { return parseFunction(t.value); }
+                throw new Error("token");
+            }
+            function parseFunction(name) {
+                pos++; expect("(");
+                var args = [parseExpr()];
+                while (isType(",")) { pos++; args.push(parseExpr()); }
+                expect(")");
+                var arity = FUNCS[name];
+                if (arity !== null && args.length !== arity) { throw new Error("arity"); }
+                switch (name) {
+                    case "min": return Math.min.apply(null, args);
+                    case "max": return Math.max.apply(null, args);
+                    case "abs": return Math.abs(args[0]);
+                    case "ceil": return Math.ceil(args[0]);
+                    case "floor": return Math.floor(args[0]);
+                    case "round":
+                        if (args.length === 1) { return Math.round(args[0]); }
+                        if (args.length === 2) {
+                            var f = Math.pow(10, args[1]);
+                            return Math.round(args[0] * f) / f;
+                        }
+                        throw new Error("arity");
+                    default: throw new Error("func");
+                }
+            }
+
+            var result = parseExpr();
+            if (pos !== tokens.length) { throw new Error("trailing"); }
+            return isFinite(result) ? result : 0;
+        }
+
+        function format(value, opts) {
+            var decimals = Math.max(0, Math.min(6, opts.decimals || 0));
+            var fixed = value.toFixed(decimals);
+            if (opts.separator) {
+                var parts = fixed.split(".");
+                parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+                fixed = parts.join(".");
+            }
+            return (opts.prefix || "") + fixed + (opts.suffix || "");
+        }
+
+        return { tokenize: tokenize, evaluate: evaluate, format: format };
+    })();
+
+    // ---- per-form calculation wiring -------------------------------------
+    // For each <output data-sf-formula>, recompute live as referenced inputs
+    // change and update both the displayed text and the hidden round-trip input.
+    // Server is authoritative — this is cosmetic UX only.
+    function initCalculations(form) {
+        var outputs = Array.prototype.slice.call(form.querySelectorAll("[data-sf-formula]"));
+        if (!outputs.length) { return; }
+
+        var groups = Array.prototype.slice.call(form.querySelectorAll("[data-sf-handle]"));
+
+        function valuesByHandle() {
+            var values = {};
+            groups.forEach(function (g) { values[g.dataset.sfHandle] = groupValue(g); });
+            return values;
+        }
+
+        function recompute() {
+            var values = valuesByHandle();
+            outputs.forEach(function (out) {
+                var formula = out.getAttribute("data-sf-formula") || "";
+                var result;
+                try { result = Formula.evaluate(formula, values); }
+                catch (e) { result = 0; }
+                var opts = {
+                    decimals: parseInt(out.getAttribute("data-sf-decimals") || "2", 10),
+                    separator: out.getAttribute("data-sf-separator") === "1",
+                    prefix: out.getAttribute("data-sf-prefix") || "",
+                    suffix: out.getAttribute("data-sf-suffix") || ""
+                };
+                out.textContent = Formula.format(result, opts);
+                var hidden = form.querySelector("input[type=hidden][name=\"" + out.getAttribute("name").replace(/-display$/, "") + "\"]");
+                if (hidden) { hidden.value = String(result); }
+            });
+        }
+
+        form.addEventListener("input", recompute);
+        form.addEventListener("change", recompute);
+        recompute();
+    }
+
     // ---- per-form conditional wiring -------------------------------------
 
     // Current value of a field group, keyed by what its inputs are.
@@ -411,6 +586,7 @@
         form.dataset.simpleFormBound = "1";
 
         initConditions(form);
+        initCalculations(form);
         initSteps(form);
         initSaveResume(form);
         initSignaturePads(form);
@@ -516,6 +692,6 @@
             init();
         }
     } else if (typeof module !== "undefined" && module.exports) {
-        module.exports = { SF: SF };
+        module.exports = { SF: SF, Formula: Formula };
     }
 })();

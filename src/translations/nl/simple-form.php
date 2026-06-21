@@ -135,4 +135,9 @@ return [
     'Value' => 'Waarde',
     'Responses' => 'Reacties',
     'No responses yet.' => 'Nog geen reacties.',
+    'Calculation' => 'Berekening',
+    'Field {name}: a calculation formula is required.' => 'Veld {name}: een berekeningsformule is vereist.',
+    'Field {name}: the formula is invalid. {detail}' => 'Veld {name}: de formule is ongeldig. {detail}',
+    'Field {name}: the formula references an unknown field “{handle}”.' => 'Veld {name}: de formule verwijst naar een onbekend veld “{handle}”.',
+    'Calculation formulas form a circular dependency between fields. Remove one of the references.' => 'Berekeningsformules vormen een circulaire afhankelijkheid tussen velden. Verwijder een van de verwijzingen.',
 ];

@@ -20,7 +20,7 @@
         payment: 'Payment', hidden: 'Hidden', consent: 'Agree / Consent',
         rating: 'Rating', opinion: 'Opinion Scale',
         entry: 'Entries', category: 'Categories', tag: 'Tags',
-        user: 'Users', asset: 'Assets',
+        user: 'Users', asset: 'Assets', calculation: 'Calculation',
         heading: 'Heading', divider: 'Section Divider', html: 'HTML Block'
     };
     var OPTION_TYPES = ['select', 'checkbox', 'radio'];
@@ -102,6 +102,9 @@
         }
         if (RELATION_TYPES.indexOf(type) !== -1) {
             return { sources: [], multiple: false };
+        }
+        if (type === 'calculation') {
+            return { formula: '', decimals: 2, thousandsSeparator: false, missingAsZero: true };
         }
         if (type === 'heading') {
             return { level: 'h3' };
@@ -625,6 +628,59 @@
             inspector.appendChild(rightRow);
         } else if (RELATION_TYPES.indexOf(f.type) !== -1) {
             renderRelationConfig(f);
+        } else if (f.type === 'calculation') {
+            var fRow = row('Formula');
+            var ta = document.createElement('textarea');
+            ta.className = 'text fullwidth'; ta.rows = 2;
+            ta.placeholder = '{quantity} * {unitPrice}';
+            ta.value = c.formula || '';
+            ta.addEventListener('input', function() { c.formula = ta.value; serialize(); });
+            fRow._input.appendChild(ta);
+            var fHint = document.createElement('div'); fHint.className = 'instructions';
+            var fp = document.createElement('p');
+            fp.textContent = 'Reference fields by handle, e.g. {quantity} * {unitPrice}. Allowed: + - * / ( ) and min, max, round, ceil, floor, abs.';
+            fHint.appendChild(fp); fRow.appendChild(fHint);
+            inspector.appendChild(fRow);
+
+            // Quick-insert buttons for each other field's handle.
+            var handles = fields.filter(function(other) { return other.clientId !== f.clientId && other.handle; });
+            if (handles.length) {
+                var pickRow = row('Insert Field');
+                handles.forEach(function(other) {
+                    var b = document.createElement('button');
+                    b.type = 'button'; b.className = 'btn'; b.textContent = '{' + other.handle + '}';
+                    b.style.marginRight = '4px'; b.style.marginBottom = '4px';
+                    b.addEventListener('click', function() {
+                        ta.value += '{' + other.handle + '}';
+                        c.formula = ta.value; serialize(); ta.focus();
+                    });
+                    pickRow._input.appendChild(b);
+                });
+                inspector.appendChild(pickRow);
+            }
+
+            inspector.appendChild(numberRow('Decimal Places', c.decimals != null ? c.decimals : 2, function(v) {
+                if (v === '' || v == null) { c.decimals = 2; } else { c.decimals = Math.max(0, Math.min(6, parseInt(v, 10) || 0)); }
+                serialize();
+            }));
+
+            var sepRow = row('Thousands Separator');
+            var sepCb = document.createElement('input'); sepCb.type = 'checkbox'; sepCb.checked = !!c.thousandsSeparator;
+            sepCb.addEventListener('change', function() { c.thousandsSeparator = sepCb.checked; serialize(); });
+            sepRow._input.appendChild(sepCb);
+            inspector.appendChild(sepRow);
+
+            var preRow = row('Prefix');
+            preRow._input.appendChild(textInput(c.prefix || '', function(v) {
+                if (v === '') { delete c.prefix; } else { c.prefix = v; } serialize();
+            }));
+            inspector.appendChild(preRow);
+
+            var sufRow = row('Suffix');
+            sufRow._input.appendChild(textInput(c.suffix || '', function(v) {
+                if (v === '') { delete c.suffix; } else { c.suffix = v; } serialize();
+            }));
+            inspector.appendChild(sufRow);
         }
     }
 

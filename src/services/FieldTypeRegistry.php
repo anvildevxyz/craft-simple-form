@@ -3,6 +3,7 @@
 namespace fabianhaef\simpleform\services;
 
 use fabianhaef\simpleform\fields\AssetRelationFieldType;
+use fabianhaef\simpleform\fields\CalculationFieldType;
 use fabianhaef\simpleform\fields\CategoryRelationFieldType;
 use fabianhaef\simpleform\fields\CheckboxFieldType;
 use fabianhaef\simpleform\fields\ConsentFieldType;
@@ -85,6 +86,7 @@ class FieldTypeRegistry extends Component
         $this->registerFieldType(TagRelationFieldType::class);
         $this->registerFieldType(UserRelationFieldType::class);
         $this->registerFieldType(AssetRelationFieldType::class);
+        $this->registerFieldType(CalculationFieldType::class);
 
         // Presentational/layout blocks (value-less; isInput() === false).
         $this->registerFieldType(HeadingFieldType::class);

@@ -141,4 +141,9 @@ return [
     'Value' => 'Valor',
     'Responses' => 'Respuestas',
     'No responses yet.' => 'Aún no hay respuestas.',
+    'Calculation' => 'Cálculo',
+    'Field {name}: a calculation formula is required.' => 'Campo {name}: se requiere una fórmula de cálculo.',
+    'Field {name}: the formula is invalid. {detail}' => 'Campo {name}: la fórmula no es válida. {detail}',
+    'Field {name}: the formula references an unknown field “{handle}”.' => 'Campo {name}: la fórmula hace referencia a un campo desconocido «{handle}».',
+    'Calculation formulas form a circular dependency between fields. Remove one of the references.' => 'Las fórmulas de cálculo forman una dependencia circular entre campos. Elimine una de las referencias.',
 ];

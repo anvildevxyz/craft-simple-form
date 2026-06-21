@@ -122,6 +122,8 @@ final class SubmissionCsv
     /**
      * Render a stored data entry (`{label, type, value}`) to a single CSV cell.
      *
+     * Calculation fields carry a pre-formatted `display` string
+     * (prefix/decimals/suffix) preferred for the human-readable export.
      * Asset-bearing fields (file, signature) are resolved to asset URLs first via
      * {@see self::valueForExport()} so the export is a link, never raw base64 or
      * an opaque id. Element-relation fields resolve their stored element ids to
@@ -136,6 +138,11 @@ final class SubmissionCsv
     private static function cell(mixed $entry): string
     {
         $type = is_array($entry) ? (string) ($entry['type'] ?? '') : '';
+
+        // Calculation fields export their pre-formatted display string.
+        if (is_array($entry) && isset($entry['display']) && is_string($entry['display'])) {
+            return self::scalar($entry['display']);
+        }
 
         // Asset fields resolve their id list to URLs before any other shaping.
         if ($type !== '' && in_array($type, self::ASSET_TYPES, true)) {
