@@ -27,6 +27,15 @@ final class SubmissionValues
     }
 
     /**
+     * Extract the stored label from one submission-data entry, or `''` for a raw
+     * legacy scalar row that carries no label. Counterpart to {@see value()}.
+     */
+    public static function label(mixed $entry): string
+    {
+        return is_array($entry) ? (string) ($entry['label'] ?? '') : '';
+    }
+
+    /**
      * Flatten the submission to a `handle => value` map. Falls back to the raw
      * `field_<id>` key when the field handle can't be resolved.
      *
@@ -58,8 +67,8 @@ final class SubmissionValues
     {
         $lines = [];
         foreach ($submission->data ?? [] as $entry) {
-            $label = $entry['label'];
-            $value = $entry['value'];
+            $label = self::label($entry);
+            $value = self::value($entry);
             if (is_array($value)) {
                 $value = implode(', ', array_map('strval', $value));
             }

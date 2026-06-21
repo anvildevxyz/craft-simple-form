@@ -378,12 +378,18 @@ class McpServer
      * @param array<string, mixed>|object $result
      * @return array<string, mixed>
      */
+    /**
+     * @param string|int|null $id the JSON-RPC request id, echoed back verbatim
+     * @param array<string, mixed>|object $result
+     * @return array<string, mixed>
+     */
     public function result(mixed $id, array|object $result): array
     {
         return ['jsonrpc' => '2.0', 'id' => $id, 'result' => $result];
     }
 
     /**
+     * @param string|int|null $id the JSON-RPC request id, echoed back verbatim
      * @param array<string, mixed>|null $data
      * @return array<string, mixed>
      */
