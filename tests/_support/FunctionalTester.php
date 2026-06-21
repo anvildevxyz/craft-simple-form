@@ -2,54 +2,18 @@
 
 use Codeception\Actor;
 
+/**
+ * Back-compat alias for the smoke suite's actor.
+ *
+ * The smoke Cests were originally authored against a `FunctionalTester` that
+ * drove the CP via a real browser (PhpBrowser). That browser actor is gone —
+ * the functional smoke suite runs the public render/submit paths through a real
+ * Craft (the `\craft\test\Craft` module) instead, so this alias simply exposes
+ * the same generated module actions as {@see SmokeTester}. Cests should
+ * type-hint `SmokeTester`; this alias remains only so any stray reference still
+ * resolves to a clean, browser-free actor.
+ */
 class FunctionalTester extends Actor
 {
-
-    public function loginAsAdmin()
-    {
-        $I = $this;
-        $I->amOnPage('/admin/login');
-
-        // Fill in test credentials
-        $I->fillField('loginName', 'admin');
-        $I->fillField('password', 'password');
-        $I->click('Login');
-
-        $I->amOnPage('/admin');
-    }
-
-    public function createTestForm($name, $handle, $email = null)
-    {
-        $I = $this;
-        $I->amOnPage('/admin/simple-form/forms');
-        $I->click('New Form');
-
-        $I->fillField('name', $name);
-        $I->fillField('handle', $handle);
-
-        if ($email) {
-            $I->fillField('emailTo', $email);
-        }
-
-        $I->click('Save');
-    }
-
-    public function submitForm($data)
-    {
-        $I = $this;
-        foreach ($data as $field => $value) {
-            $I->fillField('field_' . $field, $value);
-        }
-        $I->click('Submit');
-    }
-
-    public function createMultipleSubmissions($formHandle, $count)
-    {
-        $I = $this;
-        for ($i = 1; $i <= $count; $i++) {
-            $I->amOnPage('/forms/' . $formHandle);
-            $I->fillField('name', 'Submission ' . $i);
-            $I->click('Submit');
-        }
-    }
+    use _generated\SmokeTesterActions;
 }
