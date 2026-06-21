@@ -107,7 +107,9 @@ trait ApiConnector
         }
 
         try {
-            return $this->httpClient()->request($method, $url, ['http_errors' => false] + $options);
+            $pinOptions = SafeUrl::guzzlePinDnsOptions($url);
+
+            return $this->httpClient()->request($method, $url, ['http_errors' => false] + $pinOptions + $options);
         } catch (\Throwable $e) {
             return IntegrationResult::failure(null, $e->getMessage());
         }

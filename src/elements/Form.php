@@ -11,6 +11,7 @@ use DateTime;
 use fabianhaef\simpleform\elements\actions\DuplicateForm;
 use fabianhaef\simpleform\elements\db\FormQuery;
 use fabianhaef\simpleform\helpers\FieldQueryHelper;
+use fabianhaef\simpleform\helpers\SafeUrl;
 use fabianhaef\simpleform\Plugin;
 use fabianhaef\simpleform\traits\HasPropagation;
 
@@ -436,6 +437,7 @@ class Form extends Element
         $rules[] = [['postSubmitAction'], 'in', 'range' => self::POST_SUBMIT_ACTIONS];
         $rules[] = [['redirectEntryId'], 'integer'];
         $rules[] = [['redirectUrl'], 'required', 'when' => fn(): bool => $this->postSubmitAction === 'url'];
+        $rules[] = [['redirectUrl'], 'validateRedirectUrl', 'when' => fn(): bool => $this->postSubmitAction === 'url'];
         $rules[] = [['redirectEntryId'], 'required', 'when' => fn(): bool => $this->postSubmitAction === 'entry'];
 
         // Scheduling + quota. The date properties are typed ?DateTime, so PHP
@@ -473,6 +475,25 @@ class Form extends Element
     {
         if ($this->openDate !== null && $this->closeDate !== null && $this->closeDate < $this->openDate) {
             $this->addError($attribute, Craft::t('simple-form', 'The close date must be on or after the open date.'));
+        }
+    }
+
+    /**
+     * Reject redirect URL templates that would navigate off-site or execute script
+     * after placeholder interpolation (CWE-601).
+     */
+    public function validateRedirectUrl(string $attribute): void
+    {
+        $url = $this->redirectUrl;
+        if (!is_string($url) || trim($url) === '') {
+            return;
+        }
+
+        if (!SafeUrl::isAcceptableRedirectTemplate($url)) {
+            $this->addError(
+                $attribute,
+                Craft::t('simple-form', 'The redirect URL must be a site-relative path (starting with /) or a safe http(s) URL.'),
+            );
         }
     }
 

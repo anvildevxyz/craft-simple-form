@@ -153,6 +153,8 @@ class FileFieldType extends FieldType
             'application/x-dosexec',
             'application/x-mach-binary',
             'application/vnd.microsoft.portable-executable',
+            'text/html',
+            'application/xhtml+xml',
             'image/svg+xml',
         ];
 

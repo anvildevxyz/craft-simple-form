@@ -1,0 +1,11 @@
+{
+  "name": "simple-form-browser-smoke",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "run": "node run-all.mjs"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.52.0"
+  }
+}

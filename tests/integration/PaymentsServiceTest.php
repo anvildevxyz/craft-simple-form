@@ -56,6 +56,25 @@ class PaymentsServiceTest extends SimpleFormTestCase
         unset($amountId);
     }
 
+    public function testFieldAmountRejectsOutOfBoundsValues(): void
+    {
+        $this->requireCraft();
+        $form = $this->createForm('Pay', 'pay_bounds');
+        $aid = $this->createField((int) $form->id, 'number', 'amount', 'Amount');
+        $this->createField((int) $form->id, 'payment', 'payment', 'Payment', false, [
+            'amountType' => 'field',
+            'amountField' => 'amount',
+            'minAmount' => 10,
+            'maxAmount' => 100,
+        ]);
+
+        $this->assertSame('The payment amount is below the minimum allowed.', $this->payments()->amountOutOfBoundsMessage($form, 5.0));
+        $this->assertSame('The payment amount exceeds the maximum allowed.', $this->payments()->amountOutOfBoundsMessage($form, 150.0));
+        $this->assertNull($this->payments()->amountOutOfBoundsMessage($form, 50.0));
+
+        unset($aid);
+    }
+
     public function testZeroAmountResolvesToNull(): void
     {
         $this->requireCraft();

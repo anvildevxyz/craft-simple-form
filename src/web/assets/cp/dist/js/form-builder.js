@@ -650,6 +650,9 @@
 
             inspector.appendChild(numberRow('Fixed Amount', c.amount, function(v) { setNum(c, 'amount', v); }));
 
+            inspector.appendChild(numberRow('Min Amount', c.minAmount, function(v) { setNum(c, 'minAmount', v); }));
+            inspector.appendChild(numberRow('Max Amount', c.maxAmount, function(v) { setNum(c, 'maxAmount', v); }));
+
             var afRow = row('Amount Field Handle');
             afRow._input.appendChild(textInput(c.amountField || '', function(v) {
                 if (v.trim() === '') { delete c.amountField; } else { c.amountField = v.trim(); } serialize();

@@ -134,6 +134,12 @@ class SubmitController extends Controller
             return $this->asJson(['success' => false]);
         }
 
+        if (Plugin::getInstance()->getSubmissionService()->isRateLimited($request->getUserIP())) {
+            $this->response->setStatusCode(429);
+
+            return $this->asJson(['success' => false]);
+        }
+
         $values = [];
         foreach ($request->getBodyParams() as $key => $value) {
             if (is_string($key) && str_starts_with($key, 'field_')) {

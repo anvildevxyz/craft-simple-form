@@ -20,6 +20,7 @@ use fabianhaef\simpleform\fields\HiddenFieldType;
 use fabianhaef\simpleform\fields\RepeaterFieldType;
 use fabianhaef\simpleform\fields\SignatureFieldType;
 use fabianhaef\simpleform\helpers\RateLimiter;
+use fabianhaef\simpleform\helpers\SafeUrl;
 use fabianhaef\simpleform\helpers\SignaturePng;
 use fabianhaef\simpleform\models\FieldModel;
 use fabianhaef\simpleform\models\FormModel;
@@ -707,7 +708,10 @@ class SubmissionService extends Component
 
         $redirectUrl = match ($form->postSubmitAction) {
             'url' => $form->redirectUrl !== null && trim($form->redirectUrl) !== ''
-                ? $this->interpolate($form->redirectUrl, $placeholders, true)
+                ? $this->safeRedirectUrl(
+                    $this->interpolate($form->redirectUrl, $placeholders, true),
+                    (int) $submission->siteId,
+                )
                 : null,
             'entry' => $this->resolveEntryUrl($form, $submission),
             default => null,
@@ -1112,7 +1116,23 @@ class SubmissionService extends Component
             ->siteId((int) $submission->siteId)
             ->one();
 
-        return $entry instanceof Entry ? $entry->getUrl() : null;
+        $url = $entry instanceof Entry ? $entry->getUrl() : null;
+
+        return $url !== null
+            ? $this->safeRedirectUrl($url, (int) $submission->siteId)
+            : null;
+    }
+
+    /**
+     * Return $url when it passes the post-submit redirect guard, else null.
+     */
+    private function safeRedirectUrl(string $url, int $siteId): ?string
+    {
+        $site = Craft::$app->getSites()->getSiteById($siteId);
+        $host = $site !== null ? parse_url($site->getBaseUrl(), PHP_URL_HOST) : null;
+        $host = is_string($host) ? $host : null;
+
+        return SafeUrl::isSafeRedirectUrl($url, $host) ? $url : null;
     }
 
     /**

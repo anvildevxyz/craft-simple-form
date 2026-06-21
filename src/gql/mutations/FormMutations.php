@@ -205,7 +205,7 @@ class FormMutations extends BaseMutation
 
         $submission = Submission::find()->id($id)->siteId('*')->one();
         if (!$submission instanceof Submission) {
-            return self::errorPayload([['key' => 'submission', 'messages' => ['Submission not found.']]]);
+            return self::errorPayload([['key' => 'auth', 'messages' => ['You are not authorized to edit this submission.']]]);
         }
 
         // Shared per-IP abuse throttle (also guards the create path).

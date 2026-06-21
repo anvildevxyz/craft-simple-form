@@ -67,6 +67,56 @@ class SafeUrlTest extends TestCase
         SafeUrl::assertPublicHttpUrl('http://169.254.169.254/');
     }
 
+    /**
+     * @return array<string, array{0: string, 1: ?string}>
+     */
+    public static function blockedRedirectUrls(): array
+    {
+        return [
+            'javascript' => ['javascript:alert(1)', 'example.com'],
+            'protocol-relative' => ['//evil.example/phish', 'example.com'],
+            'off-site absolute' => ['https://evil.example/thanks', 'example.com'],
+            'empty' => ['', 'example.com'],
+        ];
+    }
+
+    /**
+     * @dataProvider blockedRedirectUrls
+     */
+    public function testBlockedRedirectUrlsAreRejected(string $url, ?string $siteHost): void
+    {
+        $this->assertFalse(SafeUrl::isSafeRedirectUrl($url, $siteHost));
+    }
+
+    /**
+     * @return array<string, array{0: string, 1: ?string}>
+     */
+    public static function allowedRedirectUrls(): array
+    {
+        return [
+            'relative path' => ['/thanks?x=1', 'example.com'],
+            'same-site absolute' => ['https://example.com/thanks', 'example.com'],
+        ];
+    }
+
+    /**
+     * @dataProvider allowedRedirectUrls
+     */
+    public function testAllowedRedirectUrls(string $url, ?string $siteHost): void
+    {
+        $this->assertTrue(SafeUrl::isSafeRedirectUrl($url, $siteHost));
+    }
+
+    public function testAcceptableRedirectTemplateRejectsProtocolRelative(): void
+    {
+        $this->assertFalse(SafeUrl::isAcceptableRedirectTemplate('//evil.example'));
+    }
+
+    public function testAcceptableRedirectTemplateAllowsRelativeWithPlaceholder(): void
+    {
+        $this->assertTrue(SafeUrl::isAcceptableRedirectTemplate('/thanks?e={email}'));
+    }
+
     public function testSettingUrlRuleTargetsItsAttribute(): void
     {
         [$attributes, $validator] = SafeUrl::settingUrlRule('apiUrl');

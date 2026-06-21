@@ -40,6 +40,9 @@ class PhoneFieldType extends FieldType
     /** Upper digit-count bound when `maxDigits` is not configured (E.164 max). */
     public const DEFAULT_MAX_DIGITS = 15;
 
+    /** Hard cap on digits passed to creator regex patterns (ReDoS guard). */
+    private const MAX_PATTERN_DIGITS = 32;
+
     // =========================================================================
     // PUBLIC METHODS
     // =========================================================================
@@ -316,6 +319,10 @@ class PhoneFieldType extends FieldType
      */
     private function matchesPattern(string $digits): bool
     {
+        if (strlen($digits) > self::MAX_PATTERN_DIGITS) {
+            return false;
+        }
+
         $pattern = trim((string) ($this->config['pattern'] ?? ''));
         if ($pattern !== '') {
             $delimited = '/' . str_replace('/', '\/', $pattern) . '/';

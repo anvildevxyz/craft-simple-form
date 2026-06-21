@@ -22,8 +22,13 @@ Run a single Cest:
 ddev exec -d /var/www/html/plugins/simple-form 'vendor/bin/codecept run smoke FormRenderingCest'
 ```
 
-`composer check` (ECS + PHPStan + the PHPUnit unit suite) runs fine on the host;
-only the Craft-DB Codeception suites need DDEV.
+### Run everything sequentially (functional + browser)
+
+```bash
+plugins/simple-form/scripts/run-all-smoke.sh
+```
+
+This runs Codeception first, then the Playwright browser runner (`scripts/browser-smoke/run-all.mjs`). Reports land in `scripts/browser-smoke/report-YYYY-MM-DD.md`.
 
 ## How the suite is split
 
@@ -54,6 +59,14 @@ Two kinds of Cests live here:
 | `FormSchedulingCest` | Open/close window + quota: closed-message render + server-side rejection of crafted submissions. |
 | `SpamDenylistCest` | Denylist enforcement (keyword/email, flag vs block) through the public submit path. |
 | `UserLimitsCest` | Login-required guest rejection + per-user cap notice/rejection. |
+| `IntegrationsSmokeCest` | Global integration save/attach, sync dispatch on submit, failure logging, disabled-integration skip. |
+| `NotificationsSmokeCest` | Legacy `emailTo` + per-form notification rows: recipient resolution, autoresponder, no-recipient short-circuit. |
+| `SaveResumeSmokeCest` | Draft round-trip, save-draft controller, opt-in gating, rate limit, resume prefill render, token hashing. |
+| `FieldTypesSmokeCest` | Hidden (query), consent audit record, phone E.164 normalization, rating/opinion-scale ints + range rejection. |
+| `DuplicatePreventionSmokeCest` | Email/content dedupe keys mark repeats as spam; different values still allowed. |
+| `SubmissionEditingSmokeCest` | Edit-token issue/verify, authorizeEdit, in-place update, editing-disabled refusal. |
+| `ConditionalLogicSmokeCest` | Hidden required fields skipped; shown required fields enforced server-side. |
+| `SecurityHardeningSmokeCest` | Unsafe redirect stripped, safe relative redirect kept, payment bounds, empty payment params (when Commerce installed), draft rate limit (see `SaveResumeSmokeCest`). |
 
 ### Playwright-only Cests (skipped here)
 

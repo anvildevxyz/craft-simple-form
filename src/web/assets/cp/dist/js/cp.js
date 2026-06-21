@@ -210,9 +210,11 @@
     }
 
     if (enableCaptcha && captchaSettings) {
-        enableCaptcha.addEventListener('change', function () {
-            captchaSettings.style.display = this.checked ? 'block' : 'none';
-        });
+        function syncCaptchaSettingsVisibility() {
+            captchaSettings.style.display = enableCaptcha.checked ? 'block' : 'none';
+        }
+        syncCaptchaSettingsVisibility();
+        enableCaptcha.addEventListener('change', syncCaptchaSettingsVisibility);
     }
 
     if (captchaType) {
@@ -240,9 +242,11 @@
     var enableAkismet = document.querySelector('input[type="checkbox"][name="enableAkismet"]');
     var akismetSettings = document.getElementById('akismet-settings');
     if (enableAkismet && akismetSettings) {
-        enableAkismet.addEventListener('change', function () {
-            akismetSettings.style.display = this.checked ? 'block' : 'none';
-        });
+        function syncAkismetSettingsVisibility() {
+            akismetSettings.style.display = enableAkismet.checked ? 'block' : 'none';
+        }
+        syncAkismetSettingsVisibility();
+        enableAkismet.addEventListener('change', syncAkismetSettingsVisibility);
     }
 
     // --- Forms index: open the import-a-form modal (#139) ---
@@ -265,8 +269,10 @@
     var enableDenylists = document.querySelector('input[type="checkbox"][name="enableDenylists"]');
     var denylistSettings = document.getElementById('denylist-settings');
     if (enableDenylists && denylistSettings) {
-        enableDenylists.addEventListener('change', function () {
-            denylistSettings.style.display = this.checked ? 'block' : 'none';
-        });
+        function syncDenylistSettingsVisibility() {
+            denylistSettings.style.display = enableDenylists.checked ? 'block' : 'none';
+        }
+        syncDenylistSettingsVisibility();
+        enableDenylists.addEventListener('change', syncDenylistSettingsVisibility);
     }
 })();

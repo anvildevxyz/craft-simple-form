@@ -8,6 +8,8 @@ use craft\helpers\StringHelper;
 use fabianhaef\simpleform\elements\Form;
 use fabianhaef\simpleform\exceptions\FormulaException;
 use fabianhaef\simpleform\fields\CalculationFieldType;
+use fabianhaef\simpleform\fields\PaymentFieldType;
+use fabianhaef\simpleform\fields\PhoneFieldType;
 use fabianhaef\simpleform\fields\RepeaterFieldType;
 use fabianhaef\simpleform\fields\SelectFieldType;
 use fabianhaef\simpleform\helpers\ConditionalEvaluator;
@@ -78,6 +80,23 @@ class FieldSyncService extends Component
             if ($type === RepeaterFieldType::getType()) {
                 $config = is_array($item['config'] ?? null) ? $item['config'] : [];
                 $errors = array_merge($errors, self::repeaterConfigErrors($config, $name));
+            }
+
+            if ($type === PhoneFieldType::getType()) {
+                $config = is_array($item['config'] ?? null) ? $item['config'] : [];
+                $pattern = trim((string) ($config['pattern'] ?? ''));
+                if ($pattern !== '' && !self::isSafeRegexPattern($pattern)) {
+                    $errors[] = Craft::t('simple-form', 'Field {name}: the phone pattern is invalid or too complex.', ['name' => $name]);
+                }
+            }
+
+            if ($type === PaymentFieldType::getType()) {
+                $config = is_array($item['config'] ?? null) ? $item['config'] : [];
+                $min = isset($config['minAmount']) && is_numeric($config['minAmount']) ? (float) $config['minAmount'] : null;
+                $max = isset($config['maxAmount']) && is_numeric($config['maxAmount']) ? (float) $config['maxAmount'] : null;
+                if ($min !== null && $max !== null && $min > $max) {
+                    $errors[] = Craft::t('simple-form', 'Field {name}: the minimum payment amount cannot exceed the maximum.', ['name' => $name]);
+                }
             }
         }
 
@@ -588,6 +607,24 @@ class FieldSyncService extends Component
         }
 
         return $config;
+    }
+
+    /**
+     * Reject phone patterns that are syntactically invalid or likely catastrophic
+     * backtracking targets (CWE-1333).
+     */
+    private static function isSafeRegexPattern(string $pattern): bool
+    {
+        if (strlen($pattern) > 128) {
+            return false;
+        }
+
+        $delimited = '/' . str_replace('/', '\/', $pattern) . '/';
+        if (@preg_match($delimited, '') === false) {
+            return false;
+        }
+
+        return !preg_match('/(\([^)]*[+*][^)]*\)[+*]|[+*]{2,})/', $pattern);
     }
 
     /**

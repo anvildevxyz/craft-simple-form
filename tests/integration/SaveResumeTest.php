@@ -113,6 +113,16 @@ class SaveResumeTest extends SimpleFormTestCase
         $this->assertNull($this->callSaveDraft('ctrl_plain', ['field_5' => 'hello']));
     }
 
+    public function testSaveDraftIsRateLimited(): void
+    {
+        $this->requireCraft();
+        $this->resumableForm('ctrl_rate');
+        Plugin::getInstance()->getSettings()->submitRateLimitPerMinute = 1;
+
+        $this->assertNotNull($this->callSaveDraft('ctrl_rate', ['field_1' => 'a']));
+        $this->assertNull($this->callSaveDraft('ctrl_rate', ['field_1' => 'b']));
+    }
+
     public function testRenderPrefillsSavedValuesOnResume(): void
     {
         $this->requireCraft();

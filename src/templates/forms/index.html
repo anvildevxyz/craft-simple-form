@@ -1,4 +1,5 @@
 {% extends '_layouts/cp.twig' %}
+{% import "_includes/forms.twig" as cpForms %}
 
 {% set title = 'Forms'|t('simple-form') %}
 {% set selectedSubnavItem = 'forms' %}
@@ -127,12 +128,12 @@
         <h2>{{ 'Import a form'|t('simple-form') }}</h2>
         <p class="light">{{ 'Upload a form definition JSON file exported from Simple Form. Secrets are never included and must be re-entered after import.'|t('simple-form') }}</p>
 
-        {{ forms.field({
+        {{ cpForms.field({
             label: 'Form definition (.json)'|t('simple-form'),
             required: true,
         }, tag('input', { type: 'file', name: 'file', accept: '.json,application/json' })) }}
 
-        {{ forms.selectField({
+        {{ cpForms.selectField({
             label: 'If the handle already exists'|t('simple-form'),
             name: 'mode',
             options: [

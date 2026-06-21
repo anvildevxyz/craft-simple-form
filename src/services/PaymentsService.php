@@ -126,6 +126,15 @@ class PaymentsService extends Component
             return null;
         }
 
+        $boundsError = $this->amountOutOfBoundsMessage($form, $amount);
+        if ($boundsError !== null) {
+            return $this->result('', 0, $amount, null, $boundsError);
+        }
+
+        if ($paymentParams === []) {
+            return $this->result('', 0, $amount, null, Craft::t('simple-form', 'Payment information is required.'));
+        }
+
         try {
             $gateway = $this->gateway();
             $donation = $this->donation();
@@ -133,12 +142,6 @@ class PaymentsService extends Component
         } catch (\Throwable $e) {
             Craft::error('Payment setup failed (#116): ' . $e->getMessage(), 'simple-form');
             return $this->result('', 0, $amount, null, Craft::t('simple-form', 'Payments are not available right now. Please try again later.'));
-        }
-
-        // Headless / no card data posted: leave the order pending and let the
-        // client drive payment via Commerce against the returned order id.
-        if ($paymentParams === []) {
-            return $this->result(self::STATUS_PENDING, (int) $order->id, $amount, null, null);
         }
 
         $paymentForm = $gateway->getPaymentFormModel();
@@ -149,7 +152,9 @@ class PaymentsService extends Component
         try {
             \craft\commerce\Plugin::getInstance()->getPayments()->processPayment($order, $paymentForm, $redirect, $transaction);
         } catch (\craft\commerce\errors\PaymentException $e) {
-            return $this->result('', 0, $amount, null, $e->getMessage() ?: Craft::t('simple-form', 'Your payment could not be processed.'));
+            Craft::warning('Payment declined (#116): ' . $e->getMessage(), 'simple-form');
+
+            return $this->result('', 0, $amount, null, Craft::t('simple-form', 'Your payment could not be processed.'));
         }
 
         // Offsite / 3-D-Secure: persist pending and hand the visitor off.
@@ -160,6 +165,32 @@ class PaymentsService extends Component
         // Onsite: paid if the order settled, otherwise authorized-but-pending.
         $status = $order->getIsPaid() ? self::STATUS_PAID : self::STATUS_PENDING;
         return $this->result($status, (int) $order->id, $amount, null, null);
+    }
+
+    /**
+     * Whether a resolved charge amount falls outside the Payment field's optional
+     * min/max bounds. Returns a user-safe error message, or null when in range or
+     * unbounded.
+     */
+    public function amountOutOfBoundsMessage(Form $form, float $amount): ?string
+    {
+        $config = $this->paymentFieldConfig($form);
+        if ($config === null) {
+            return null;
+        }
+
+        $min = isset($config['minAmount']) && is_numeric($config['minAmount']) ? (float) $config['minAmount'] : null;
+        $max = isset($config['maxAmount']) && is_numeric($config['maxAmount']) ? (float) $config['maxAmount'] : null;
+
+        if ($min !== null && $amount < $min) {
+            return Craft::t('simple-form', 'The payment amount is below the minimum allowed.');
+        }
+
+        if ($max !== null && $amount > $max) {
+            return Craft::t('simple-form', 'The payment amount exceeds the maximum allowed.');
+        }
+
+        return null;
     }
 
     /**

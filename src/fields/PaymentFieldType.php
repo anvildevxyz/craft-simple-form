@@ -17,6 +17,7 @@ use fabianhaef\simpleform\Plugin;
  *  - amountType: 'fixed' | 'field' (default 'fixed')
  *  - amount:     fixed amount (when amountType = fixed)
  *  - amountField: handle of a numeric field holding the amount (when 'field')
+ *  - minAmount / maxAmount: optional server-side bounds on the resolved charge
  *  - currency:   ISO currency code (informational; the Commerce store currency
  *                is authoritative)
  */

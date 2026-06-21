@@ -17,3 +17,6 @@ tests/_support/_generated/
 
 # Published asset-bundle copies (regenerated from src/web/assets at runtime)
 cpresources/
+
+# Generated browser-smoke run reports (the runner is committed, its output isn't)
+scripts/browser-smoke/report-*.md

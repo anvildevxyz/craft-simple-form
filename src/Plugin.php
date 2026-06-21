@@ -18,6 +18,7 @@ use craft\services\Fields;
 use craft\services\Gc;
 use craft\services\Gql;
 use craft\services\UserPermissions;
+use craft\web\Response;
 use craft\web\twig\variables\CraftVariable;
 use craft\web\UrlManager;
 use craft\web\View;
@@ -163,6 +164,25 @@ class Plugin extends BasePlugin
         if (!Craft::$app->getRequest()->getIsConsoleRequest()) {
             Craft::$app->getView()->registerTwigExtension(new TwigExtension());
         }
+
+        // Edit/resume links carry bearer tokens in the query string (#211, CWE-598).
+        // Strip Referer on those pages so the token is not leaked to third parties.
+        Event::on(
+            Response::class,
+            Response::EVENT_BEFORE_SEND,
+            static function(): void {
+                /** @var \craft\web\Request $request */
+                $request = Craft::$app->getRequest();
+                if ($request->getIsConsoleRequest() || !$request->getIsSiteRequest()) {
+                    return;
+                }
+                if ($request->getQueryParam('t') !== null || $request->getQueryParam('sfresume') !== null) {
+                    /** @var \craft\web\Response $response */
+                    $response = Craft::$app->getResponse();
+                    $response->getHeaders()->set('Referrer-Policy', 'no-referrer');
+                }
+            },
+        );
 
         // Register the plugin's built-in form partials as a SITE template root so
         // the front-end render path can address them (e.g. `simple-form/form`) and

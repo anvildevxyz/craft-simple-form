@@ -124,6 +124,120 @@ final class SafeUrl
     }
 
     /**
+     * True when $url is safe to hand to the browser as a post-submit redirect:
+     * a same-site relative path (`/…`, not `//…`) or an absolute http(s) URL on
+     * $siteHost. Rejects `javascript:`, `data:`, protocol-relative, and off-site
+     * absolute URLs (CWE-601).
+     */
+    public static function isSafeRedirectUrl(string $url, ?string $siteHost = null): bool
+    {
+        $url = trim($url);
+        if ($url === '') {
+            return false;
+        }
+
+        if (preg_match('#^(javascript|data|vbscript):#i', $url)) {
+            return false;
+        }
+
+        if (str_starts_with($url, '//')) {
+            return false;
+        }
+
+        if (str_starts_with($url, '/')) {
+            return true;
+        }
+
+        $parts = parse_url($url);
+        if ($parts === false || !isset($parts['scheme'], $parts['host'])) {
+            return false;
+        }
+
+        if (!in_array(strtolower($parts['scheme']), ['http', 'https'], true)) {
+            return false;
+        }
+
+        if ($siteHost === null || $siteHost === '') {
+            return false;
+        }
+
+        return strtolower($parts['host']) === strtolower($siteHost);
+    }
+
+    /**
+     * Save-time check for a redirect URL *template* (may contain `{handle}`
+     * placeholders). Rejects dangerous schemes and protocol-relative paths; allows
+     * site-relative paths and absolute http(s) templates (host checked after
+     * interpolation at submit time).
+     */
+    public static function isAcceptableRedirectTemplate(string $template): bool
+    {
+        $template = trim($template);
+        if ($template === '') {
+            return false;
+        }
+
+        if (preg_match('#^(javascript|data|vbscript):#i', $template)) {
+            return false;
+        }
+
+        if (str_starts_with($template, '//')) {
+            return false;
+        }
+
+        if (str_starts_with($template, '/')) {
+            return true;
+        }
+
+        $structural = preg_replace('/\{[a-zA-Z_][a-zA-Z0-9_]*\}/', 'x', $template) ?? $template;
+        $parts = parse_url($structural);
+        if ($parts === false || !isset($parts['scheme'], $parts['host'])) {
+            return false;
+        }
+
+        return in_array(strtolower($parts['scheme']), ['http', 'https'], true);
+    }
+
+    /**
+     * Resolve a hostname to its IP addresses for DNS pinning at request time.
+     *
+     * @return list<string>
+     */
+    public static function resolveHostIps(string $host): array
+    {
+        return self::resolveIps(trim($host, '[]'));
+    }
+
+    /**
+     * Guzzle/cURL options that pin $url's host to the IPs resolved at call time,
+     * closing the DNS-rebinding window between {@see isPublicHttpUrl()} and connect.
+     *
+     * @return array<string, mixed>
+     */
+    public static function guzzlePinDnsOptions(string $url): array
+    {
+        $parts = parse_url($url);
+        if ($parts === false || !isset($parts['host'])) {
+            return [];
+        }
+
+        $host = trim($parts['host'], '[]');
+        $ips = self::resolveHostIps($host);
+        if ($ips === []) {
+            return [];
+        }
+
+        $scheme = strtolower($parts['scheme'] ?? 'https');
+        $port = $parts['port'] ?? ($scheme === 'https' ? 443 : 80);
+        $entries = [];
+        foreach ($ips as $ip) {
+            $entries[] = "{$host}:{$port}:{$ip}";
+        }
+
+        return ['curl' => [CURLOPT_RESOLVE => $entries]];
+    }
+
+    /**
      * Resolve a host (or IP literal) to the list of IP addresses it points at.
      * IP literals resolve to themselves; hostnames are resolved for both A and
      * (best-effort) AAAA records.

@@ -101,6 +101,23 @@ class PostSubmitResolveTest extends SimpleFormTestCase
         $this->assertSame('/thanks?e=ada%40example.com', $resolved['redirectUrl']);
     }
 
+    public function testUnsafeRedirectUrlIsNullAfterInterpolation(): void
+    {
+        $this->requireCraft();
+
+        $form = $this->createForm('Contact', 'resolve_unsafe');
+        $fieldId = $this->createField($form->id, 'text', 'name', 'Name', false);
+
+        $reloaded = Form::find()->id($form->id)->one();
+        $reloaded->postSubmitAction = 'url';
+        // Bypass save-time validation: simulate a legacy/unsafe stored template.
+        $reloaded->redirectUrl = '//evil.example/phish';
+        $sub = $this->submit($reloaded, ['field_' . $fieldId => 'x']);
+        $resolved = $this->service()->resolvePostSubmit($reloaded, $sub['submission'], $sub['data']);
+
+        $this->assertNull($resolved['redirectUrl']);
+    }
+
     public function testArrayValueJoinsForPlaceholder(): void
     {
         $this->requireCraft();
