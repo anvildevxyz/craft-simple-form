@@ -184,3 +184,24 @@
     outline: 2px solid #0b69a3;
     outline-offset: 2px;
 }
+
+/* Signature pad (#129) */
+.simple-form-signature { max-width: 100%; }
+.simple-form-signature__canvas {
+    display: block;
+    width: 100%;
+    height: 150px;
+    border: 1px solid #cbd5e1;
+    border-radius: 4px;
+    background: #fff;
+    touch-action: none;
+    cursor: crosshair;
+}
+.simple-form-signature__controls {
+    display: flex;
+    align-items: center;
+    gap: .75em;
+    margin-top: .4em;
+}
+.simple-form-signature__hint { color: #64748b; }
+.simple-form-signature__nojs { color: #b91c1c; }

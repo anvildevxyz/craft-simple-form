@@ -85,6 +85,17 @@
                             {% else %}
                                 —
                             {% endfor %}
+                        {% elseif fieldData.type == 'signature' %}
+                            {% for assetId in fieldData.value %}
+                                {% set asset = craft.assets().id(assetId).one() %}
+                                {% if asset %}
+                                    <a href="{{ asset.url }}" target="_blank" rel="noopener" class="simple-form-signature-asset">
+                                        <img src="{{ asset.url }}" alt="{{ 'Signature'|t('simple-form') }}" style="max-width:240px;max-height:120px;border:1px solid var(--hairline-color);background:#fff;">
+                                    </a>{% if not loop.last %}<br>{% endif %}
+                                {% endif %}
+                            {% else %}
+                                {{ 'Signature scrubbed'|t('simple-form') }}
+                            {% endfor %}
                         {% elseif fieldData.value is iterable and fieldData.value is not string %}
                             {{ fieldData.value|join(', ') }}
                         {% else %}

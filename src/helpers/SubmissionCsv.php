@@ -2,6 +2,8 @@
 
 namespace fabianhaef\simpleform\helpers;
 
+use Craft;
+use craft\elements\Asset;
 use fabianhaef\simpleform\elements\Submission;
 use fabianhaef\simpleform\Plugin;
 
@@ -10,9 +12,21 @@ use fabianhaef\simpleform\Plugin;
  * metadata columns followed by one column per distinct field (header = the
  * field's label), with each cell the submitted value (multi-value fields
  * pipe-joined). Columns are the union across the result set so every row aligns.
+ *
+ * Asset-bearing fields (file, signature) store asset ids; their cells are
+ * rendered as the asset URL (or an `Asset #id` reference when no public URL
+ * exists), never raw base64 (#129).
  */
 final class SubmissionCsv
 {
+    /**
+     * Field types whose stored value is a list of asset ids that should export
+     * as asset URLs/references rather than raw ids.
+     *
+     * @var list<string>
+     */
+    private const ASSET_TYPES = ['file', 'signature'];
+
     /**
      * @param array<int, Submission> $submissions
      */
@@ -105,8 +119,11 @@ final class SubmissionCsv
 
     /**
      * Render a stored data entry (`{label, type, value}`) to a single CSV cell.
-     * Field types with a structured stored value (e.g. Phone's
-     * `{raw, e164, country}`) decide their own export shape via
+     *
+     * Asset-bearing fields (file, signature) are resolved to asset URLs first via
+     * {@see self::valueForExport()} so the export is a link, never raw base64 or
+     * an opaque id. Field types with a structured stored value (e.g. Phone's
+     * `{raw, e164, country}`) then decide their own export shape via
      * {@see \fabianhaef\simpleform\fields\FieldType::exportValue()}; everything
      * else falls back to the generic scalar/pipe-join. The cell is always passed
      * through formula neutralization.
@@ -115,8 +132,14 @@ final class SubmissionCsv
      */
     private static function cell(mixed $entry): string
     {
-        $value = is_array($entry) ? ($entry['value'] ?? '') : $entry;
         $type = is_array($entry) ? (string) ($entry['type'] ?? '') : '';
+
+        // Asset fields resolve their id list to URLs before any other shaping.
+        if ($type !== '' && in_array($type, self::ASSET_TYPES, true)) {
+            return self::scalar(self::valueForExport($entry));
+        }
+
+        $value = is_array($entry) ? ($entry['value'] ?? '') : $entry;
 
         if ($type !== '') {
             $fieldType = Plugin::getInstance()->getFieldTypeRegistry()->getFieldType($type);
@@ -126,6 +149,47 @@ final class SubmissionCsv
         }
 
         return self::scalar($value);
+    }
+
+    /**
+     * Resolve a stored field entry to its exportable value. Asset-bearing fields
+     * (file, signature) carry a list of asset ids; those become asset URLs (or an
+     * `Asset #id` reference when the volume has no public URL) so the export is a
+     * link, never raw base64 or an opaque id. Other fields export their value
+     * verbatim.
+     */
+    private static function valueForExport(mixed $entry): mixed
+    {
+        if (!is_array($entry)) {
+            return $entry;
+        }
+
+        $value = $entry['value'] ?? '';
+        if (!in_array($entry['type'] ?? null, self::ASSET_TYPES, true)) {
+            return $value;
+        }
+
+        $refs = [];
+        foreach ((array) $value as $assetId) {
+            if (!is_numeric($assetId)) {
+                continue;
+            }
+            $refs[] = self::assetReference((int) $assetId);
+        }
+        return $refs;
+    }
+
+    /** The public URL for an asset, or an `Asset #id` reference as a fallback. */
+    private static function assetReference(int $assetId): string
+    {
+        $asset = Asset::find()->id($assetId)->one();
+        if ($asset instanceof Asset) {
+            $url = $asset->getUrl();
+            if (is_string($url) && $url !== '') {
+                return $url;
+            }
+        }
+        return 'Asset #' . $assetId;
     }
 
     private static function scalar(mixed $value): string

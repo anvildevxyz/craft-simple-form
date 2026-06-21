@@ -283,6 +283,127 @@
         });
     }
 
+    // ---- signature pad (#129) --------------------------------------------
+    // Dependency-free canvas signature pad. Pointer events cover mouse, touch,
+    // and stylus uniformly; the backing store is scaled to devicePixelRatio for
+    // crisp lines and the rendered PNG data URL is written to the hidden input
+    // on each stroke end / Clear so the current state always posts. An empty pad
+    // posts an empty string → the server treats it as "no signature".
+    function initSignaturePad(wrapper) {
+        if (wrapper.dataset.sfSignatureBound === "1") { return; }
+        wrapper.dataset.sfSignatureBound = "1";
+
+        var canvas = wrapper.querySelector("[data-sf-signature-canvas]");
+        var input = wrapper.querySelector("[data-sf-signature-input]");
+        var clearBtn = wrapper.querySelector("[data-sf-signature-clear]");
+        if (!canvas || !input || !canvas.getContext) { return; }
+
+        var ctx = canvas.getContext("2d");
+        var penColor = wrapper.getAttribute("data-sf-pen") || "#1a1a1a";
+        var background = wrapper.getAttribute("data-sf-bg") || "#ffffff";
+        var drawing = false;
+        var hasInk = false;
+        var lastX = 0;
+        var lastY = 0;
+
+        function ratio() {
+            return Math.max(1, window.devicePixelRatio || 1);
+        }
+
+        // Size the backing store to the CSS box × DPR and paint the background.
+        // Called on init and resize; resizing clears the pad (acceptable — a
+        // reflow during signing is rare and the visitor can simply re-sign).
+        function resize() {
+            var r = ratio();
+            var rect = canvas.getBoundingClientRect();
+            var w = Math.max(1, Math.round(rect.width));
+            var h = Math.max(1, Math.round(rect.height || 150));
+            canvas.width = w * r;
+            canvas.height = h * r;
+            ctx.setTransform(r, 0, 0, r, 0, 0);
+            ctx.fillStyle = background;
+            ctx.fillRect(0, 0, w, h);
+            ctx.lineWidth = 2.5;
+            ctx.lineCap = "round";
+            ctx.lineJoin = "round";
+            ctx.strokeStyle = penColor;
+            hasInk = false;
+            input.value = "";
+        }
+
+        function pos(event) {
+            var rect = canvas.getBoundingClientRect();
+            return { x: event.clientX - rect.left, y: event.clientY - rect.top };
+        }
+
+        function serialize() {
+            input.value = hasInk ? canvas.toDataURL("image/png") : "";
+        }
+
+        function start(event) {
+            drawing = true;
+            var p = pos(event);
+            lastX = p.x;
+            lastY = p.y;
+            // A single dot (tap) still counts as a signature.
+            ctx.beginPath();
+            ctx.moveTo(lastX, lastY);
+            ctx.lineTo(lastX + 0.01, lastY + 0.01);
+            ctx.stroke();
+            hasInk = true;
+            if (canvas.setPointerCapture && event.pointerId !== undefined) {
+                try { canvas.setPointerCapture(event.pointerId); } catch (e) { /* ignore */ }
+            }
+            event.preventDefault();
+        }
+
+        function move(event) {
+            if (!drawing) { return; }
+            var p = pos(event);
+            ctx.beginPath();
+            ctx.moveTo(lastX, lastY);
+            ctx.lineTo(p.x, p.y);
+            ctx.stroke();
+            lastX = p.x;
+            lastY = p.y;
+            hasInk = true;
+            event.preventDefault();
+        }
+
+        function end(event) {
+            if (!drawing) { return; }
+            drawing = false;
+            serialize();
+            if (event && event.preventDefault) { event.preventDefault(); }
+        }
+
+        function clear() {
+            resize();
+        }
+
+        resize();
+
+        canvas.style.touchAction = "none";
+        canvas.addEventListener("pointerdown", start);
+        canvas.addEventListener("pointermove", move);
+        canvas.addEventListener("pointerup", end);
+        canvas.addEventListener("pointerleave", end);
+        canvas.addEventListener("pointercancel", end);
+        if (clearBtn) { clearBtn.addEventListener("click", clear); }
+
+        // Reflow with the layout, but only when the visible size actually
+        // changed, so an unrelated resize doesn't wipe an in-progress signature.
+        var lastW = canvas.getBoundingClientRect().width;
+        window.addEventListener("resize", function () {
+            var w = canvas.getBoundingClientRect().width;
+            if (Math.abs(w - lastW) > 1) { lastW = w; resize(); }
+        });
+    }
+
+    function initSignaturePads(form) {
+        form.querySelectorAll("[data-sf-signature]").forEach(initSignaturePad);
+    }
+
     function initForm(form) {
         if (form.dataset.simpleFormBound === "1") {
             return;
@@ -292,6 +413,7 @@
         initConditions(form);
         initSteps(form);
         initSaveResume(form);
+        initSignaturePads(form);
 
         // Remove any prior error state so re-submits don't stack duplicate
         // messages and resolved fields lose their invalid wiring (a11y, #105).

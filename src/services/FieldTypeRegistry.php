@@ -19,6 +19,7 @@ use fabianhaef\simpleform\fields\PhoneFieldType;
 use fabianhaef\simpleform\fields\RadioFieldType;
 use fabianhaef\simpleform\fields\RatingFieldType;
 use fabianhaef\simpleform\fields\SelectFieldType;
+use fabianhaef\simpleform\fields\SignatureFieldType;
 use fabianhaef\simpleform\fields\TextareaFieldType;
 use fabianhaef\simpleform\fields\TextFieldType;
 use yii\base\Component;
@@ -60,6 +61,7 @@ class FieldTypeRegistry extends Component
         $this->registerFieldType(NumberFieldType::class);
         $this->registerFieldType(PhoneFieldType::class);
         $this->registerFieldType(FileFieldType::class);
+        $this->registerFieldType(SignatureFieldType::class);
         $this->registerFieldType(PaymentFieldType::class);
         $this->registerFieldType(HiddenFieldType::class);
         $this->registerFieldType(ConsentFieldType::class);
