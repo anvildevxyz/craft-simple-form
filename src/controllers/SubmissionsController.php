@@ -139,6 +139,39 @@ class SubmissionsController extends Controller
     }
 
     /**
+     * The CP edit URL + label for the Craft element an element-integration
+     * dispatch created (#142), or null when the log row carries no element or it
+     * has since been deleted.
+     *
+     * @param array<string, mixed> $log a dispatch-log row
+     * @return array{url: string, label: string}|null
+     */
+    private function elementLink(array $log): ?array
+    {
+        $elementId = $log['elementId'] ?? null;
+        $elementType = $log['elementType'] ?? null;
+        if ($elementId === null || !is_string($elementType)
+            || !is_subclass_of($elementType, \craft\base\ElementInterface::class)) {
+            return null;
+        }
+
+        $element = Craft::$app->getElements()->getElementById((int) $elementId, $elementType, '*');
+        if ($element === null) {
+            return null;
+        }
+
+        $url = $element->getCpEditUrl();
+        if ($url === null) {
+            return null;
+        }
+
+        return [
+            'url' => $url,
+            'label' => sprintf('%s #%d', $element::displayName(), (int) $elementId),
+        ];
+    }
+
+    /**
      * Submissions analytics: trends, status + spam split, per-form totals, and
      * integration dispatch health. Read-only; gated by viewSubmissions.
      */
@@ -200,12 +233,23 @@ class SubmissionsController extends Controller
             $integrationNames[(int) $integration->id] = $integration->name;
         }
 
+        // Deep links to elements created by element-integration dispatches (#142),
+        // keyed by log id.
+        $elementLinks = [];
+        foreach ($logs as $log) {
+            $link = $this->elementLink($log);
+            if ($link !== null) {
+                $elementLinks[(int) $log['id']] = $link;
+            }
+        }
+
         return $this->renderTemplate('simple-form/submissions/view', [
             'submission' => $submission,
             'form' => $form,
             'data' => $data,
             'integrationLogs' => $logs,
             'integrationNames' => $integrationNames,
+            'elementLinks' => $elementLinks,
             'canManageIntegrations' => Craft::$app->getUser()->checkPermission(SimpleFormPermissions::MANAGE_INTEGRATIONS),
         ]);
     }

@@ -4,6 +4,7 @@ namespace fabianhaef\simpleform\services;
 
 use fabianhaef\simpleform\events\RegisterIntegrationTypesEvent;
 use fabianhaef\simpleform\integrations\ActiveCampaignIntegration;
+use fabianhaef\simpleform\integrations\CraftElementIntegration;
 use fabianhaef\simpleform\integrations\DiscordIntegration;
 use fabianhaef\simpleform\integrations\GoogleSheetsIntegration;
 use fabianhaef\simpleform\integrations\HubSpotIntegration;
@@ -39,6 +40,7 @@ class IntegrationTypeRegistry extends Component
         $this->registerType(HubSpotIntegration::class);
         $this->registerType(PipedriveIntegration::class);
         $this->registerType(GoogleSheetsIntegration::class);
+        $this->registerType(CraftElementIntegration::class);
 
         // Let third parties contribute their own. Fired on the Plugin class so the
         // registration ergonomics match field types / MCP tools. Guarded on the

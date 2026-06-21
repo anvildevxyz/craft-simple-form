@@ -1,0 +1,123 @@
+{# @var settings array #}
+{# @var elementTypeOptions array #}
+{# @var sectionOptions array #}
+{# @var entryTypeOptions array #}
+{# @var groupOptions array #}
+{# @var authorModeOptions array #}
+{# @var entryStatusOptions array #}
+{# @var userStatusOptions array #}
+{% import '_includes/forms.twig' as forms %}
+
+{% set elementType = settings.elementType ?? 'entry' %}
+
+{# The mapping is stored as a `sourceHandle => targetHandle` map; the editable
+   table wants a list of {source, target} rows. #}
+{% set mappingRows = [] %}
+{% for source, target in (settings.fieldMapping ?? {}) %}
+    {% if target is iterable %}
+        {% set mappingRows = mappingRows|merge([target]) %}
+    {% else %}
+        {% set mappingRows = mappingRows|merge([{ source: source, target: target }]) %}
+    {% endif %}
+{% endfor %}
+
+{{ forms.selectField({
+    label: 'Element type'|t('simple-form'),
+    instructions: 'What to create from each submission.'|t('simple-form'),
+    id: 'elementType',
+    name: 'elementType',
+    options: elementTypeOptions,
+    value: elementType,
+    required: true,
+    toggle: true,
+    targetPrefix: 'sf-eltype-',
+}) }}
+
+{# --- Entry target --- #}
+<div id="sf-eltype-entry" {{ elementType != 'entry' ? 'class="hidden"' }}>
+    {{ forms.selectField({
+        label: 'Section'|t('simple-form'),
+        id: 'sectionUid',
+        name: 'sectionUid',
+        options: [{ label: '— ' ~ 'Select a section'|t('simple-form') ~ ' —', value: '' }]|merge(sectionOptions),
+        value: settings.sectionUid ?? '',
+    }) }}
+
+    {{ forms.selectField({
+        label: 'Entry type'|t('simple-form'),
+        instructions: 'Defaults to the section’s first entry type when left unset.'|t('simple-form'),
+        id: 'entryTypeUid',
+        name: 'entryTypeUid',
+        options: [{ label: '— ' ~ 'First entry type'|t('simple-form') ~ ' —', value: '' }]|merge(entryTypeOptions),
+        value: settings.entryTypeUid ?? '',
+    }) }}
+
+    {{ forms.textField({
+        label: 'Title template'|t('simple-form'),
+        instructions: 'Optional Twig rendered against the submission values, e.g. `{{ values.name }} — {{ now|date(\'Y-m-d\') }}`. Falls back to a mapped Title field.'|t('simple-form'),
+        id: 'titleTemplate',
+        name: 'titleTemplate',
+        value: settings.titleTemplate ?? '',
+    }) }}
+
+    {{ forms.selectField({
+        label: 'Author'|t('simple-form'),
+        id: 'authorMode',
+        name: 'authorMode',
+        options: authorModeOptions,
+        value: settings.authorMode ?? 'submitter',
+    }) }}
+
+    {{ forms.elementSelectField({
+        label: 'Default author'|t('simple-form'),
+        instructions: 'Used when the submitter isn’t logged in (or a fixed author is chosen).'|t('simple-form'),
+        id: 'authorId',
+        name: 'authorId',
+        elementType: 'craft\\elements\\User',
+        limit: 1,
+        elements: (settings.authorId ?? null) ? craft.users.id(settings.authorId).all() : [],
+    }) }}
+
+    {{ forms.selectField({
+        label: 'Status'|t('simple-form'),
+        id: 'entryStatus',
+        name: 'entryStatus',
+        options: entryStatusOptions,
+        value: settings.entryStatus ?? 'live',
+    }) }}
+</div>
+
+{# --- User target --- #}
+<div id="sf-eltype-user" {{ elementType != 'user' ? 'class="hidden"' }}>
+    {{ forms.selectField({
+        label: 'User group'|t('simple-form'),
+        id: 'groupUid',
+        name: 'groupUid',
+        options: [{ label: '— ' ~ 'No group'|t('simple-form') ~ ' —', value: '' }]|merge(groupOptions),
+        value: settings.groupUid ?? '',
+    }) }}
+
+    {{ forms.selectField({
+        label: 'Status'|t('simple-form'),
+        id: 'userStatus',
+        name: 'userStatus',
+        options: userStatusOptions,
+        value: settings.userStatus ?? 'pending',
+    }) }}
+</div>
+
+<hr>
+
+{{ forms.editableTableField({
+    label: 'Field mapping'|t('simple-form'),
+    instructions: 'Map submission field handles to target handles. Targets may be native attributes (title, slug, email, username) or custom-field handles on the section / group.'|t('simple-form'),
+    id: 'fieldMapping',
+    name: 'fieldMapping',
+    cols: {
+        source: { heading: 'Submission field handle'|t('simple-form'), type: 'singleline', width: '50%' },
+        target: { heading: 'Target handle'|t('simple-form'), type: 'singleline' },
+    },
+    rows: mappingRows ?? [],
+    addRowLabel: 'Add a mapping'|t('simple-form'),
+    static: false,
+}) }}
