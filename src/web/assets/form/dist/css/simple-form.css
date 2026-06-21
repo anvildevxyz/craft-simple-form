@@ -53,6 +53,22 @@
     margin-top: 5px;
 }
 
+/* Multi-column rows: equal-width CSS grid that collapses on mobile (no JS). */
+.simple-form-row {
+    display: grid;
+    gap: 1rem;
+}
+.simple-form-row[data-cols="2"] { grid-template-columns: repeat(2, 1fr); }
+.simple-form-row[data-cols="3"] { grid-template-columns: repeat(3, 1fr); }
+.simple-form-row[data-cols="4"] { grid-template-columns: repeat(4, 1fr); }
+.simple-form-col { min-width: 0; }
+/* Give multi-column layouts room to breathe without affecting single-column
+   forms (their .simple-form max-width is unchanged). */
+.simple-form:has(.simple-form-row) { max-width: 720px; }
+@media (max-width: 600px) {
+    .simple-form-row { grid-template-columns: 1fr; }
+}
+
 /* Save & resume */
 .simple-form-save-resume { margin-left: .5em; }
 .simple-form-resume-link {

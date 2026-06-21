@@ -50,7 +50,8 @@
     "test:js": [
       "node tests/js/conditional-evaluator.test.js",
       "node tests/js/formula.test.js",
-      "node tests/js/success-action.test.js"
+      "node tests/js/success-action.test.js",
+      "node tests/js/row-grouping.test.js"
     ],
     "test:all": ["@test", "@test:js", "@test:integration"],
     "ecs": "ecs check",

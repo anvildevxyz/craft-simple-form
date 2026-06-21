@@ -1,6 +1,46 @@
 (function() {
     'use strict';
 
+    // Mirrors fabianhaef\simpleform\helpers\FormRows::MAX_COLUMNS — keep in sync.
+    var MAX_COLUMNS = 4;
+
+    // Pure, order-driven row grouping — parity with the PHP FormRows::group().
+    // Walks fields in order; consecutive fields sharing the same positive numeric
+    // config.row join one visual row (capped at MAX_COLUMNS); anything else starts
+    // a new single-column row. Exported for the Node parity test.
+    function rowKeyOf(f) {
+        var config = (f && f.config) || {};
+        var row = config.row;
+        var n = (typeof row === 'number') ? row : parseInt(row, 10);
+        return (!isNaN(n) && n >= 1) ? n : null;
+    }
+    function groupRows(list) {
+        var rows = [];
+        var current = [];
+        var currentKey = null;
+        (list || []).forEach(function(f) {
+            var key = rowKeyOf(f);
+            var same = key !== null && key === currentKey && current.length < MAX_COLUMNS;
+            if (!same) {
+                if (current.length) { rows.push(current); }
+                current = [];
+                currentKey = key;
+            }
+            current.push(f);
+        });
+        if (current.length) { rows.push(current); }
+        return rows;
+    }
+
+    // Under Node (tests) there is no DOM, so export the pure row grouper for the
+    // parity test and skip everything that touches `document`.
+    if (typeof document === 'undefined') {
+        if (typeof module !== 'undefined' && module.exports) {
+            module.exports = { groupRows: groupRows, MAX_COLUMNS: MAX_COLUMNS };
+        }
+        return;
+    }
+
     // On non-source sites the option editor is translation-only: option values
     // and the source labels are locked, and only the per-site label is editable.
     var sfBuilder = document.querySelector('.sf-builder');
@@ -179,10 +219,21 @@
     // ---- canvas rendering ------------------------------------------------
 
     function render() {
-        Array.prototype.slice.call(canvas.querySelectorAll('.sf-field')).forEach(function(el) { el.remove(); });
+        Array.prototype.slice.call(canvas.querySelectorAll('.sf-field, .sf-builder-row')).forEach(function(el) { el.remove(); });
         var empty = canvas.querySelector('.sf-empty');
         if (empty) { empty.style.display = fields.length ? 'none' : ''; }
-        fields.forEach(function(f) { canvas.appendChild(renderBlock(f)); });
+        // Group into visual rows so columns sit side by side in the builder too.
+        groupRows(fields).forEach(function(row) {
+            if (row.length <= 1) {
+                canvas.appendChild(renderBlock(row[0]));
+                return;
+            }
+            var wrap = document.createElement('div');
+            wrap.className = 'sf-builder-row';
+            wrap.dataset.cols = row.length;
+            row.forEach(function(f) { wrap.appendChild(renderBlock(f)); });
+            canvas.appendChild(wrap);
+        });
     }
 
     function renderBlock(f) {
@@ -410,8 +461,24 @@
             f.config = f.config || {};
             var n = parseInt(v, 10);
             if (v === '' || v == null || isNaN(n) || n < 1) { delete f.config.page; } else { f.config.page = n; }
-            serialize();
+            commit();
         }));
+
+        // Row: fields that share the same Row number (and Page) on consecutive
+        // positions render side by side as columns (max MAX_COLUMNS). Blank = a
+        // full-width, single-column field (the default).
+        var rowRow = numberRow('Row', (f.config && f.config.row) || '', function(v) {
+            f.config = f.config || {};
+            var n = parseInt(v, 10);
+            if (v === '' || v == null || isNaN(n) || n < 1) { delete f.config.row; } else { f.config.row = n; }
+            commit();
+        });
+        var rowHint = document.createElement('div'); rowHint.className = 'instructions';
+        var rowHintP = document.createElement('p');
+        rowHintP.textContent = 'Give two or more adjacent fields the same Row number to lay them out side by side (up to ' + MAX_COLUMNS + ' columns).';
+        rowHint.appendChild(rowHintP);
+        rowRow._input.appendChild(rowHint);
+        inspector.appendChild(rowRow);
 
         renderTypeConfig(f);
         inspector.appendChild(conditionsSection(f));
