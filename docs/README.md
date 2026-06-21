@@ -3,6 +3,9 @@
 The single entry point for Simple Form's documentation. (The short overview and
 installation live in the [project README](../README.md).)
 
+**New here? Start with [Getting started](getting-started.md)** — install, your
+first form, and what to configure first.
+
 ## Feature guides
 
 - **[Building forms](building-forms.md)** — the form builder, multi-step pages,

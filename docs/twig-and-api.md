@@ -353,15 +353,41 @@ forms-only integration can never read or export submissions.
 
 ### Tools
 
-- **Form management** (`forms:manage`): `list_forms`, `get_form`, `create_form`,
-  `update_form`, `delete_form`, `add_field`, `update_field`, `reorder_fields`,
-  `delete_field`, and read-only `list_integrations` (name/type/enabled only —
-  never secrets).
-- **Submissions** (`submissions:read` / `submissions:export`):
-  `query_submissions`, `get_submission`, `submission_stats`,
-  `export_submissions`.
-- **AI insight** (`submissions:read`): `summarize_submissions`,
-  `categorize_submissions`, `detect_spam_patterns`.
+17 tools, each gated by the single scope in its section. Destructive tools
+require an explicit confirmation argument.
+
+**Form management** — scope `forms:manage`:
+
+| Tool | Does |
+| --- | --- |
+| `list_forms` | List the forms in this install (id, handle, name, field count). |
+| `get_form` | Full definition of one form (metadata + resolved fields) by id or handle. Never submission data. |
+| `create_form` | Create a form, running the same validation and events as the CP. |
+| `update_form` | Update a form's metadata (name, recipient, messages, …). |
+| `delete_form` | Delete a form and all its fields across every site. **Destructive.** |
+| `add_field` | Add a field to a form (same validation + multi-site behaviour as the builder). |
+| `update_field` | Update a field's label, handle, required flag, help text, or config. |
+| `reorder_fields` | Reorder a form's fields. |
+| `delete_field` | Delete a single field from a form. **Destructive.** |
+| `list_integrations` | List a form's outbound integrations (name / type / enabled + recent dispatch status). **Never** secrets or credentials. |
+
+**Submissions** — scope `submissions:read` (or `submissions:export` for export):
+
+| Tool | Scope | Does |
+| --- | --- | --- |
+| `query_submissions` | `submissions:read` | Query submissions with filters: form, status, date range, field-value match. |
+| `get_submission` | `submissions:read` | Full detail of one submission by id, including its field values. |
+| `submission_stats` | `submissions:read` | Aggregate counts: total, per-status, per-form, and over time. |
+| `export_submissions` | `submissions:export` | Bulk export of matching submissions (same filters as `query_submissions`). |
+
+**AI insight** — scope `submissions:read` (these return raw material for the
+calling model to reason over; they don't call any LLM themselves):
+
+| Tool | Does |
+| --- | --- |
+| `summarize_submissions` | Return the free-text corpus of matching submissions for the client to summarize. |
+| `categorize_submissions` | Group matching submissions so the client can categorize them. |
+| `detect_spam_patterns` | Flag likely-spam submissions using explainable heuristics (duplicate content, link floods, …). |
 
 ### Resources
 
@@ -382,6 +408,7 @@ All commands live under the `simple-form/` namespace:
 | `simple-form/forms/import <path.json> [--mode=rename\|replace\|abort]` | Import a form definition from JSON. |
 | `simple-form/submissions/purge --days=<n> [--form=<handle>]` | Delete (or anonymize) submissions older than `--days`. |
 | `simple-form/submissions/export [--form=<handle>] [--out=<path>]` | Export submissions as CSV to stdout or a file. |
+| `simple-form/submissions/expire-payments` | Cancel submissions whose payment stayed pending past the TTL (also runs on GC). See [Payments](payments.md). |
 | `simple-form/integrations/redispatch …` | Re-queue integration dispatch for a submission (all enabled, or one `--integration`). |
 
 Run any command with `--help` for its full option list.
