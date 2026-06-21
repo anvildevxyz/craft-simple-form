@@ -752,9 +752,10 @@ class SubmissionService extends Component
         Plugin::getInstance()->trigger(Plugin::EVENT_AFTER_SUBMISSION_SAVE, $afterEvent);
 
         // Notification + autoresponder emails (no-ops when neither is configured).
-        // Queued so the withheld PDF render / upload reads (#143) run off-request,
-        // matching the post-submit dispatch path.
-        Plugin::getInstance()->getEmailService()->queueForSubmission($form, $submission, $data);
+        // Sent inline: this is a CP approve action (not a visitor request), so the
+        // withheld email — including any PDF/upload attachments (#143) — fires
+        // immediately rather than being deferred to the queue.
+        Plugin::getInstance()->getEmailService()->sendSubmissionEmail($form, $submission, $data);
     }
 
     /**

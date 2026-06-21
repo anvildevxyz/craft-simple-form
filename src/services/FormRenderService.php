@@ -199,8 +199,10 @@ class FormRenderService extends Component
             }
         }
 
-        $context = $this->buildContext($form, $options);
-        $settings = Plugin::getInstance()->getSettings();
+        // Prime every input with the submission's stored value via the context
+        // builder (the input HTML carries the value, so the prefill must be applied
+        // during field resolution — not in the partial).
+        $context = $this->buildContext($form, $options, $prefill);
         $token = isset($options['token']) ? (string) $options['token'] : '';
         $submitText = (string) ($options['submitText'] ?? Craft::t('simple-form', 'Save changes'));
         $action = Craft::$app->getUrlManager()->createUrl('simple-form/submission-edit/update');
@@ -244,9 +246,12 @@ class FormRenderService extends Component
      * (or null when disabled).
      *
      * @param array<string, mixed> $options
+     * @param array<string, mixed>|null $prefillValues optional input prefill map
+     *        (field_<id> => value) that overrides the resume map, e.g. an edit's
+     *        existing submission data (#144)
      * @return array<string, mixed>
      */
-    public function buildContext(Form $form, array $options = []): array
+    public function buildContext(Form $form, array $options = [], ?array $prefillValues = null): array
     {
         $settings = Plugin::getInstance()->getSettings();
         $siteId = Craft::$app->getSites()->getCurrentSite()->id;
@@ -254,8 +259,13 @@ class FormRenderService extends Component
 
         // Resume prefill must be known before rendering inputs so a saved value
         // re-populates the control. Group first (resume.enabled depends on steps),
-        // but the prefill map itself is independent of grouping.
+        // but the prefill map itself is independent of grouping. An explicit
+        // $prefillValues (e.g. an edit's existing submission data, #144) overrides
+        // the resume map so each input is primed with the value being edited.
         $prefill = $this->_resumeValues($form);
+        if ($prefillValues !== null) {
+            $prefill['values'] = $prefillValues;
+        }
         $resolvedFields = array_map(fn(array $row): array => $this->_resolveFieldRow($row, $prefill['values']), $fields);
         $steps = FormSteps::group($resolvedFields);
         $resume = $this->_buildResume($form, $steps, $prefill);

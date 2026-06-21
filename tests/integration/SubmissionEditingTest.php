@@ -11,7 +11,6 @@ use fabianhaef\simpleform\elements\Form;
 use fabianhaef\simpleform\elements\Submission;
 use fabianhaef\simpleform\events\SubmissionEvent;
 use fabianhaef\simpleform\Plugin;
-use fabianhaef\simpleform\TwigExtension;
 use fabianhaef\simpleform\web\twig\variables\SimpleFormVariable;
 use yii\web\ForbiddenHttpException;
 
@@ -254,7 +253,7 @@ class SubmissionEditingTest extends SimpleFormTestCase
         $submission = $this->submissionWith($form, $fieldId, 'Grace Hopper');
 
         $token = Plugin::getInstance()->getSubmissionEditTokens()->issue($submission);
-        $html = (new TwigExtension())->renderEditForm($submission, ['token' => $token]);
+        $html = Plugin::getInstance()->getFormRender()->renderEditForm($submission, ['token' => $token]);
 
         $this->assertStringContainsString('Grace Hopper', $html);
         $this->assertStringContainsString('simple-form-edit', $html);
@@ -269,7 +268,7 @@ class SubmissionEditingTest extends SimpleFormTestCase
         $fieldId = $this->createField($form->id, 'text', 'name', 'Name', false);
         $submission = $this->submissionWith($form, $fieldId, 'X');
 
-        $html = (new TwigExtension())->renderEditForm($submission);
+        $html = Plugin::getInstance()->getFormRender()->renderEditForm($submission);
         $this->assertStringContainsString('Editing is not enabled', $html);
     }
 
