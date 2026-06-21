@@ -8,6 +8,7 @@ use craft\helpers\Db;
 use craft\helpers\StringHelper;
 use fabianhaef\simpleform\elements\Form;
 use fabianhaef\simpleform\helpers\FieldQueryHelper;
+use fabianhaef\simpleform\helpers\FormContentHelper;
 use fabianhaef\simpleform\models\NotificationModel;
 use fabianhaef\simpleform\Plugin;
 use fabianhaef\simpleform\stencils\Stencil;
@@ -150,7 +151,7 @@ class FormCloneService extends Component
     {
         $base = trim($base) !== '' ? trim($base) : 'form';
 
-        if (!$this->handleExists($base)) {
+        if (!FormContentHelper::handleExists($base)) {
             return $base;
         }
 
@@ -162,12 +163,12 @@ class FormCloneService extends Component
         }
 
         $candidate = $root . '-copy';
-        if (!$this->handleExists($candidate)) {
+        if (!FormContentHelper::handleExists($candidate)) {
             return $candidate;
         }
 
         $n = 2;
-        while ($this->handleExists($root . '-copy-' . $n)) {
+        while (FormContentHelper::handleExists($root . '-copy-' . $n)) {
             $n++;
         }
 
@@ -219,7 +220,7 @@ class FormCloneService extends Component
             $form->allowSaveResume = $allowSaveResume;
             $this->applyContent($form, $primaryContent);
             foreach ($overrides as $attr => $value) {
-                if (in_array($attr, ['title', 'description', 'emailTo', 'emailSubject', 'emailReplyTo', 'emailBody', 'name'], true)) {
+                if (in_array($attr, [...FormContentHelper::CONTENT_ATTRS, 'name'], true)) {
                     $form->$attr = $value;
                 }
             }
@@ -253,7 +254,7 @@ class FormCloneService extends Component
                 }
                 $fieldSync->sync($form, $items, $siteId);
                 if ($idByHandle === []) {
-                    $idByHandle = $this->fieldIdsByHandle($newId);
+                    $idByHandle = FormContentHelper::fieldIdsByHandle($newId);
                 }
             }
 
@@ -362,25 +363,6 @@ class FormCloneService extends Component
         }, $items);
     }
 
-    /**
-     * The copy's field ids keyed by handle, for re-targeting later site passes.
-     *
-     * @return array<string,int>
-     */
-    private function fieldIdsByHandle(int $formId): array
-    {
-        $rows = (new Query())
-            ->select(['id', 'name'])
-            ->from('{{%simpleform_fields}}')
-            ->where(['formId' => $formId])
-            ->all();
-
-        $map = [];
-        foreach ($rows as $row) {
-            $map[(string) $row['name']] = (int) $row['id'];
-        }
-        return $map;
-    }
 
     /**
      * Order site ids with the primary site first so it owns the canonical
@@ -503,14 +485,12 @@ class FormCloneService extends Component
      */
     private function contentFrom(Form $form): array
     {
-        return [
-            'title' => $form->title,
-            'description' => $form->description,
-            'emailTo' => $form->emailTo,
-            'emailSubject' => $form->emailSubject,
-            'emailReplyTo' => $form->emailReplyTo,
-            'emailBody' => $form->emailBody,
-        ];
+        $content = [];
+        foreach (FormContentHelper::CONTENT_ATTRS as $attr) {
+            $content[$attr] = $form->$attr;
+        }
+
+        return $content;
     }
 
     /**
@@ -520,7 +500,7 @@ class FormCloneService extends Component
      */
     private function applyContent(Form $form, array $content): void
     {
-        foreach (['title', 'description', 'emailTo', 'emailSubject', 'emailReplyTo', 'emailBody'] as $attr) {
+        foreach (FormContentHelper::CONTENT_ATTRS as $attr) {
             if (array_key_exists($attr, $content)) {
                 $form->$attr = $content[$attr];
             }
@@ -600,16 +580,5 @@ class FormCloneService extends Component
                 'uid' => StringHelper::UUID(),
             ])->execute();
         }
-    }
-
-    /**
-     * Whether a form handle already exists (case-insensitive).
-     */
-    private function handleExists(string $handle): bool
-    {
-        return (new Query())
-            ->from('{{%simpleform_forms}}')
-            ->where(['handle' => $handle])
-            ->exists();
     }
 }

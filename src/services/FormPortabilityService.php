@@ -6,6 +6,7 @@ use Craft;
 use craft\enums\PropagationMethod;
 use fabianhaef\simpleform\elements\Form;
 use fabianhaef\simpleform\helpers\FieldQueryHelper;
+use fabianhaef\simpleform\helpers\FormContentHelper;
 use fabianhaef\simpleform\models\ImportResult;
 use fabianhaef\simpleform\models\IntegrationModel;
 use fabianhaef\simpleform\models\NotificationModel;
@@ -365,7 +366,7 @@ class FormPortabilityService extends Component
     private function resolveHandle(string $handle, string $mode, ImportResult $result): string
     {
         $handle = trim($handle);
-        if (!$this->handleExists($handle)) {
+        if (!FormContentHelper::handleExists($handle)) {
             return $handle;
         }
 
@@ -404,20 +405,12 @@ class FormPortabilityService extends Component
         $base = $handle;
         $suffix = 2;
         $candidate = "{$base}-{$suffix}";
-        while ($this->handleExists($candidate)) {
+        while (FormContentHelper::handleExists($candidate)) {
             $suffix++;
             $candidate = "{$base}-{$suffix}";
         }
 
         return $candidate;
-    }
-
-    private function handleExists(string $handle): bool
-    {
-        return (new \craft\db\Query())
-            ->from('{{%simpleform_forms}}')
-            ->where(['handle' => $handle])
-            ->exists();
     }
 
     /**
@@ -567,14 +560,7 @@ class FormPortabilityService extends Component
         $db = Craft::$app->getDb();
         $now = date('Y-m-d H:i:s');
 
-        $idByHandle = [];
-        foreach ((new \craft\db\Query())
-            ->select(['id', 'name'])
-            ->from('{{%simpleform_fields}}')
-            ->where(['formId' => $formId])
-            ->all() as $row) {
-            $idByHandle[(string)$row['name']] = (int)$row['id'];
-        }
+        $idByHandle = FormContentHelper::fieldIdsByHandle($formId);
 
         foreach ($this->fieldsToBuilderItems($fields, $siteHandle) as $item) {
             $fieldId = $idByHandle[(string)$item['handle']] ?? null;
