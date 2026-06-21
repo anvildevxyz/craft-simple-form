@@ -260,4 +260,13 @@
             importModal.show();
         });
     }
+
+    // #140: reveal the denylist textareas only when denylists are enabled.
+    var enableDenylists = document.querySelector('input[type="checkbox"][name="enableDenylists"]');
+    var denylistSettings = document.getElementById('denylist-settings');
+    if (enableDenylists && denylistSettings) {
+        enableDenylists.addEventListener('change', function () {
+            denylistSettings.style.display = this.checked ? 'block' : 'none';
+        });
+    }
 })();

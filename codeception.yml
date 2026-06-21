@@ -58,6 +58,8 @@ modules:
           params: {}
         - class: fabianhaef\simpleform\migrations\m260620_000005_form_template_path
           params: {}
+        - class: fabianhaef\simpleform\migrations\m260620_000005_form_prevent_duplicates
+          params: {}
       plugins:
         - handle: simple-form
           class: fabianhaef\simpleform\Plugin

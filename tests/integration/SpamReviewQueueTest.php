@@ -4,11 +4,13 @@ namespace fabianhaef\simpleform\tests\integration;
 
 use Craft;
 use craft\db\Query;
+use craft\test\TestMailer;
 use craft\web\Response;
 use fabianhaef\simpleform\controllers\SubmissionsController;
 use fabianhaef\simpleform\elements\Submission;
 use fabianhaef\simpleform\elements\SubmissionStatus;
 use fabianhaef\simpleform\Plugin;
+use yii\mail\MessageInterface;
 
 /**
  * The spam-review queue: a Spam source (readStatus = spam), the spamReason
@@ -112,5 +114,75 @@ class SpamReviewQueueTest extends SimpleFormTestCase
         // Soft-deleted: gone from normal queries, still recoverable via trashed().
         $this->assertNull(Submission::find()->id($sub->id)->one());
         $this->assertNotNull(Submission::find()->id($sub->id)->trashed()->one());
+    }
+
+    /**
+     * Approving a quarantined submission fires the notification email that was
+     * withheld at submit time — exactly once, idempotent on re-approve (#140).
+     */
+    public function testApproveFiresWithheldNotificationOnceAndIsIdempotent(): void
+    {
+        $this->requireCraft();
+
+        $form = $this->createForm(
+            'ApproveNotify',
+            'spam_approve_notify',
+            'ApproveNotify',
+            emailTo: 'owner@example.com',
+            emailSubject: 'You got a submission',
+        );
+        $fieldId = $this->createField((int) $form->id, 'text', 'fullName', 'Full Name');
+        $reloaded = \fabianhaef\simpleform\elements\Form::find()->id($form->id)->one();
+
+        $sub = new Submission();
+        $sub->formId = (int) $reloaded->id;
+        $sub->siteId = Craft::$app->getSites()->getCurrentSite()->id;
+        $sub->readStatus = SubmissionStatus::SPAM;
+        $sub->spamReason = 'keyword:casino';
+        $sub->data = ['field_' . $fieldId => ['label' => 'Full Name', 'type' => 'text', 'value' => 'Grace Hopper']];
+        $this->assertTrue(Craft::$app->getElements()->saveElement($sub));
+
+        $service = Plugin::getInstance()->getSubmissionService();
+
+        $sent = $this->captureSentMessages(function () use ($service, $sub): void {
+            // First approve: SPAM → NEW releases the withheld email.
+            $this->assertTrue($service->updateStatus((int) $sub->id, SubmissionStatus::NEW));
+            // Second approve (already NEW): no-op, must not re-send.
+            $this->assertTrue($service->updateStatus((int) $sub->id, SubmissionStatus::NEW));
+        });
+
+        $this->assertCount(1, $sent, 'the withheld email fires exactly once across two approves');
+
+        $row = (new Query())->from('{{%simpleform_submissions}}')->where(['id' => $sub->id])->one();
+        $this->assertSame(SubmissionStatus::NEW, $row['readStatus']);
+        $this->assertNull($row['spamReason']);
+    }
+
+    /**
+     * @return list<MessageInterface>
+     */
+    private function captureSentMessages(callable $work): array
+    {
+        $mailer = Craft::$app->getMailer();
+        $collected = [];
+
+        if ($mailer instanceof TestMailer) {
+            $original = $mailer->callback;
+            $mailer->callback = function (MessageInterface $message) use (&$collected, $original): void {
+                $collected[] = $message;
+                if (is_callable($original)) {
+                    $original($message);
+                }
+            };
+            try {
+                $work();
+            } finally {
+                $mailer->callback = $original;
+            }
+        } else {
+            $work();
+        }
+
+        return $collected;
     }
 }

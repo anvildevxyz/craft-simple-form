@@ -2,6 +2,7 @@
 
 namespace fabianhaef\simpleform\services;
 
+use Carbon\Carbon;
 use Craft;
 use craft\elements\Entry;
 use craft\helpers\Db;
@@ -412,13 +413,43 @@ class SubmissionService extends Component
             ];
         }
 
-        // (5) Content spam scoring (Akismet). A spam verdict either drops the
+        // (5a) Deterministic denylists (#140): blocked keywords, emails/domains,
+        // and IPs/CIDR ranges. A hit either drops the submission silently (block —
+        // like the honeypot) or flags it as spam for review (flag, the default),
+        // mirroring the Akismet fork. The reason (e.g. "keyword:casino") becomes
+        // the submission's spamReason.
+        $quarantineReason = null;
+        $denylistHit = Plugin::getInstance()->getDenylistService()->match($form, $data);
+        if ($denylistHit !== null) {
+            if ($settings->denylistMode === Settings::DENYLIST_BLOCK) {
+                return ['submission' => null, 'errors' => null];
+            }
+            $quarantineReason = $denylistHit;
+        }
+
+        // (5b) Per-form duplicate prevention (#140): the same payload/email/ip
+        // hitting the form again inside the configured window. Like denylists, a
+        // hit either drops silently (block) or flags as spam (flag). The first
+        // matching reason wins, so a denylist hit takes precedence.
+        if ($quarantineReason === null && $this->isDuplicate($form, $data)) {
+            if ($settings->denylistMode === Settings::DENYLIST_BLOCK) {
+                return ['submission' => null, 'errors' => null];
+            }
+            $quarantineReason = 'duplicate';
+        }
+
+        // (5c) Content spam scoring (Akismet). A spam verdict either drops the
         // submission silently (block — like the honeypot, no signal to the bot)
         // or saves it flagged as spam for review (flag, the default).
-        $isSpam = Plugin::getInstance()->getAkismetService()->isSpam($form, $data);
-        if ($isSpam && Plugin::getInstance()->getSettings()->akismetMode === Settings::AKISMET_BLOCK) {
+        $akismetSpam = Plugin::getInstance()->getAkismetService()->isSpam($form, $data);
+        if ($akismetSpam && $settings->akismetMode === Settings::AKISMET_BLOCK) {
             return ['submission' => null, 'errors' => null];
         }
+
+        // A submission is quarantined if any deterministic filter flagged it or
+        // Akismet scored it spam; spamReason records the first/most specific cause.
+        $isSpam = $quarantineReason !== null || $akismetSpam;
+        $spamReason = $quarantineReason ?? ($akismetSpam ? 'akismet' : null);
 
         // (6) Build + save the submission element.
         $submission = new Submission();
@@ -428,7 +459,8 @@ class SubmissionService extends Component
         // Always associate the submission with the logged-in user (#135).
         $submission->userId = $userId;
         $submission->readStatus = $isSpam ? SubmissionStatus::SPAM : SubmissionStatus::NEW;
-        $submission->spamReason = $isSpam ? 'akismet' : null;
+        $submission->spamReason = $spamReason;
+        $submission->sourceIp = $this->sourceIp();
 
         // (7) Fire the before-save event (same as the Twig path).
         $beforeEvent = new SubmissionEvent($submission, $form, $data, true);
@@ -517,10 +549,14 @@ class SubmissionService extends Component
             return false;
         }
 
+        // Capture the prior status so an approve transition (SPAM → non-spam) can
+        // release the side effects that were withheld at submit time, exactly once.
+        $wasSpam = $submission->readStatus === SubmissionStatus::SPAM;
+
         $submission->readStatus = $status;
         // Keep spamReason in step with the status: marking spam by hand records
-        // 'manual' (unless Akismet already set a reason); moving out of spam
-        // (e.g. "Mark as not spam") clears it.
+        // 'manual' (unless a denylist/Akismet reason already set it); moving out
+        // of spam (e.g. "Mark as not spam") clears it.
         if ($status === SubmissionStatus::SPAM) {
             $submission->spamReason ??= 'manual';
         } else {
@@ -528,10 +564,157 @@ class SubmissionService extends Component
         }
 
         $saved = Craft::$app->getElements()->saveElement($submission);
-        if ($saved) {
-            Plugin::getInstance()->getAudit()->log('submission.status', 'submission', $submissionId, 'status → ' . $status);
+        if (!$saved) {
+            return false;
         }
-        return $saved;
+
+        Plugin::getInstance()->getAudit()->log('submission.status', 'submission', $submissionId, 'status → ' . $status);
+
+        // Approving a quarantined false-positive completes its journey: fire the
+        // integration dispatch + notification email that were suppressed while it
+        // sat in spam. Guarded on the SPAM → non-spam edge so re-approving an
+        // already-approved submission is a no-op (idempotent).
+        if ($wasSpam && $status !== SubmissionStatus::SPAM) {
+            $this->releaseWithheldSideEffects($submission);
+        }
+
+        return true;
+    }
+
+    /**
+     * Fire the integration dispatch and notification email that were withheld
+     * while a submission sat in the spam quarantine. Called once, on the approve
+     * transition out of SPAM (see {@see self::updateStatus()}).
+     */
+    private function releaseWithheldSideEffects(Submission $submission): void
+    {
+        $form = $submission->getForm();
+        if (!$form instanceof Form) {
+            return;
+        }
+
+        $data = is_array($submission->data) ? $submission->data : [];
+
+        // Integration dispatch (the after-save listener routes to IntegrationsService).
+        $afterEvent = new SubmissionEvent($submission, $form, $data, true);
+        Plugin::getInstance()->trigger(Plugin::EVENT_AFTER_SUBMISSION_SAVE, $afterEvent);
+
+        // Notification + autoresponder emails (no-ops when neither is configured).
+        Plugin::getInstance()->getEmailService()->sendSubmissionEmail($form, $submission, $data);
+    }
+
+    /**
+     * Whether this submission duplicates an earlier one on the same form within
+     * the form's configured window (#140). The dedupe key is the form's
+     * `duplicateKey`: the first email value (`email`), a hash of the data payload
+     * (`content`), or the submitter's IP (`ip`). A window of 0 means "ever".
+     * Returns false when prevention is off or the key cannot be resolved (e.g.
+     * the `email` key but no email submitted).
+     *
+     * Candidate rows in the window are loaded and compared in PHP so the match is
+     * exact (a JSON-blob LIKE would be brittle) and multi-site safe (`site('*')`).
+     *
+     * @param array<string, mixed> $data
+     */
+    private function isDuplicate(Form $form, array $data): bool
+    {
+        if (!$form->preventDuplicates || $form->id === null) {
+            return false;
+        }
+
+        $fingerprint = $this->dedupeFingerprint($form, $data, $this->sourceIp());
+        if ($fingerprint === null) {
+            return false;
+        }
+
+        $query = Submission::find()
+            ->site('*')
+            ->formId((int) $form->id);
+
+        if ($form->duplicateWindowMinutes > 0) {
+            $threshold = Carbon::now()->subMinutes($form->duplicateWindowMinutes);
+            $query->andWhere(['>=', 'elements.dateCreated', Db::prepareDateForDb($threshold)]);
+        }
+
+        foreach ($query->all() as $existing) {
+            $existingData = is_array($existing->data) ? $existing->data : [];
+            if ($this->dedupeFingerprint($form, $existingData, $existing->sourceIp) === $fingerprint) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * The dedupe fingerprint for a submission under the form's key, or null when
+     * it cannot be computed (so no false "duplicate" is reported).
+     *
+     * @param array<string, mixed> $data
+     */
+    private function dedupeFingerprint(Form $form, array $data, ?string $sourceIp): ?string
+    {
+        if ($form->duplicateKey === Form::DUPLICATE_KEY_CONTENT) {
+            return 'content:' . $this->contentHash($data);
+        }
+
+        if ($form->duplicateKey === Form::DUPLICATE_KEY_IP) {
+            return ($sourceIp !== null && $sourceIp !== '') ? 'ip:' . $sourceIp : null;
+        }
+
+        $email = $this->firstEmail($data);
+        return $email !== null ? 'email:' . strtolower($email) : null;
+    }
+
+    /**
+     * A stable hash of the submitted values, independent of key/field ordering or
+     * the JSON round-trip, so two identical payloads fingerprint the same.
+     *
+     * @param array<string, mixed> $data
+     */
+    private function contentHash(array $data): string
+    {
+        $values = [];
+        foreach ($data as $key => $entry) {
+            $values[$key] = is_array($entry) ? ($entry['value'] ?? null) : $entry;
+        }
+        ksort($values);
+
+        return md5(json_encode($values) ?: '');
+    }
+
+    /**
+     * The submitter's source IP, or null on the console / when unresolvable.
+     */
+    private function sourceIp(): ?string
+    {
+        /** @var \craft\web\Request $request */
+        $request = Craft::$app->getRequest();
+        if ($request->getIsConsoleRequest()) {
+            return null;
+        }
+        $ip = $request->getUserIP();
+        return ($ip === null || $ip === '') ? null : $ip;
+    }
+
+    /**
+     * The first email value in a submission's data payload, or null.
+     *
+     * @param array<string, mixed> $data
+     */
+    private function firstEmail(array $data): ?string
+    {
+        foreach ($data as $entry) {
+            if (!is_array($entry)) {
+                continue;
+            }
+            $value = $entry['value'] ?? null;
+            if (is_string($value) && $value !== '' && ($entry['type'] ?? '') === 'email') {
+                return $value;
+            }
+        }
+
+        return null;
     }
 
     /**

@@ -58,6 +58,20 @@ class Form extends Element
      */
     public const GUEST_LIMIT_KEYS = [self::GUEST_LIMIT_NONE, self::GUEST_LIMIT_EMAIL, self::GUEST_LIMIT_IP];
 
+    /** Duplicate-dedupe key: the first email field's value. */
+    public const DUPLICATE_KEY_EMAIL = 'email';
+    /** Duplicate-dedupe key: a hash of the persisted data payload. */
+    public const DUPLICATE_KEY_CONTENT = 'content';
+    /** Duplicate-dedupe key: the submitter's source IP. */
+    public const DUPLICATE_KEY_IP = 'ip';
+
+    /**
+     * Every valid {@see self::$duplicateKey} value.
+     *
+     * @var list<string>
+     */
+    public const DUPLICATE_KEYS = [self::DUPLICATE_KEY_EMAIL, self::DUPLICATE_KEY_CONTENT, self::DUPLICATE_KEY_IP];
+
     // Shared across sites
     public ?string $name = null;
     public ?string $handle = null;
@@ -88,6 +102,12 @@ class Form extends Element
      * across sites (structural, not translatable). Null = use the global/built-in.
      */
     public ?string $templatePath = null;
+    /** Per-form duplicate-submission prevention (#140; shared, not translatable). */
+    public bool $preventDuplicates = false;
+    /** Lookback window for duplicate detection, in minutes; 0 = "ever". */
+    public int $duplicateWindowMinutes = 0;
+    /** What makes two submissions duplicates: {@see self::DUPLICATE_KEYS}. */
+    public string $duplicateKey = self::DUPLICATE_KEY_EMAIL;
 
     // Per-site (translatable). title is stored in elements_sites via hasTitles().
     public ?string $title = null;
@@ -423,6 +443,11 @@ class Form extends Element
         // Custom render-template path (#137).
         $rules[] = [['templatePath'], 'string', 'max' => 255];
 
+        // Duplicate prevention (#140).
+        $rules[] = [['preventDuplicates'], 'boolean'];
+        $rules[] = [['duplicateWindowMinutes'], 'integer', 'min' => 0];
+        $rules[] = [['duplicateKey'], 'in', 'range' => self::DUPLICATE_KEYS];
+
         // handle is shared across sites, so it must be globally unique
         $rules[] = [['handle'], 'validateHandleUnique'];
 
@@ -482,6 +507,9 @@ class Form extends Element
             'submissionsPerUser' => $this->submissionsPerUser,
             'guestLimitKey' => $this->guestLimitKey,
             'templatePath' => $this->templatePath,
+            'preventDuplicates' => $this->preventDuplicates,
+            'duplicateWindowMinutes' => $this->duplicateWindowMinutes,
+            'duplicateKey' => $this->duplicateKey,
             'dateUpdated' => $now,
         ];
 

@@ -179,6 +179,59 @@
 
 <hr>
 
+<h3>{{ 'Denylists'|t('simple-form') }}</h3>
+<p class="light">{{ 'Deterministic, owner-controlled filters that run before Akismet — no third-party call needed. Add one entry per line.'|t('simple-form') }}</p>
+
+{{ forms.checkboxField({
+    label: 'Enable denylists'|t('simple-form'),
+    name: 'enableDenylists',
+    value: 1,
+    checked: settings.enableDenylists ?? false,
+    instructions: 'Block or flag submissions that match a keyword, email/domain, or IP you specify below.'|t('simple-form'),
+}) }}
+
+<div id="denylist-settings" style="display: {% if settings.enableDenylists ?? false %}block{% else %}none{% endif %};">
+    {{ forms.selectField({
+        label: 'On a denylist hit'|t('simple-form'),
+        id: 'denylistMode',
+        name: 'denylistMode',
+        options: {
+            'flag': 'Flag (save as spam for review)'|t('simple-form'),
+            'block': 'Block (silently drop the submission)'|t('simple-form'),
+        },
+        value: settings.denylistMode ?? 'flag',
+    }) }}
+
+    {{ forms.textareaField({
+        label: 'Blocked keywords'|t('simple-form'),
+        name: 'blockedKeywords',
+        value: settings.blockedKeywords ?? '',
+        rows: 4,
+        instructions: 'One keyword per line. Matched case-insensitively against any text value. Use * as a wildcard (e.g. buy*now).'|t('simple-form'),
+        errors: settings.getErrors('blockedKeywords') ?? [],
+    }) }}
+
+    {{ forms.textareaField({
+        label: 'Blocked emails'|t('simple-form'),
+        name: 'blockedEmails',
+        value: settings.blockedEmails ?? '',
+        rows: 4,
+        instructions: 'One per line. Exact address (bob@x.tld), whole domain (@x.tld), or domain + subdomains (*.x.tld).'|t('simple-form'),
+        errors: settings.getErrors('blockedEmails') ?? [],
+    }) }}
+
+    {{ forms.textareaField({
+        label: 'Blocked IPs'|t('simple-form'),
+        name: 'blockedIps',
+        value: settings.blockedIps ?? '',
+        rows: 4,
+        instructions: 'One per line. A single IPv4/IPv6 address or a CIDR range (e.g. 203.0.113.0/24, 2001:db8::/32).'|t('simple-form'),
+        errors: settings.getErrors('blockedIps') ?? [],
+    }) }}
+</div>
+
+<hr>
+
 <h3>{{ 'Rate limiting'|t('simple-form') }}</h3>
 <p class="light">{{ 'Throttle how often a single visitor can submit, independent of CAPTCHA/honeypot.'|t('simple-form') }}</p>
 

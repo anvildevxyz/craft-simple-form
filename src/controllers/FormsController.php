@@ -164,6 +164,11 @@ class FormsController extends Controller
         $templatePath = trim((string) $request->getBodyParam('templatePath', ''));
         $form->templatePath = $templatePath !== '' ? $templatePath : null;
 
+        // Duplicate prevention (#140). Shared flags + window.
+        $form->preventDuplicates = (bool) $request->getBodyParam('preventDuplicates');
+        $form->duplicateWindowMinutes = (int) $request->getBodyParam('duplicateWindowMinutes', 0);
+        $form->duplicateKey = (string) $request->getBodyParam('duplicateKey', Form::DUPLICATE_KEY_EMAIL);
+
         $form->propagationMethod = PropagationMethod::tryFrom(
             (string)$request->getBodyParam('propagationMethod', 'none')
         ) ?? PropagationMethod::None;

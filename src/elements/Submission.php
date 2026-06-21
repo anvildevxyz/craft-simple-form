@@ -24,8 +24,10 @@ class Submission extends Element
     public ?array $data = null;
     public ?int $userId = null;
     public string $readStatus = SubmissionStatus::NEW;
-    /** Why this submission is flagged spam: 'akismet', 'manual', or null. */
+    /** Why this submission is flagged spam: 'akismet', 'manual', a denylist reason, 'duplicate', or null. */
     public ?string $spamReason = null;
+    /** Submitter's source IP, captured at submit time for duplicate detection (#140). */
+    public ?string $sourceIp = null;
     /** null = no payment; self::PAYMENT_PENDING = awaiting; self::PAYMENT_PAID = complete. */
     public ?string $paymentStatus = null;
     public ?string $paymentAmount = null;
@@ -141,6 +143,7 @@ class Submission extends Element
             'userId' => $this->userId,
             'readStatus' => $this->readStatus,
             'spamReason' => $this->spamReason,
+            'sourceIp' => $this->sourceIp,
             'paymentStatus' => $this->paymentStatus,
             'paymentAmount' => $this->paymentAmount,
             'orderId' => $this->orderId,

@@ -2,9 +2,11 @@
 
 namespace fabianhaef\simpleform\models;
 
+use Craft;
 use craft\base\Model;
 use craft\behaviors\EnvAttributeParserBehavior;
 use craft\helpers\App;
+use fabianhaef\simpleform\services\DenylistService;
 
 /**
  * Simple Form plugin settings.
@@ -51,6 +53,26 @@ class Settings extends Model
 
     public const AKISMET_FLAG = 'flag';
     public const AKISMET_BLOCK = 'block';
+
+    public const DENYLIST_FLAG = 'flag';
+    public const DENYLIST_BLOCK = 'block';
+
+    /**
+     * Deterministic, owner-controlled denylists (#140) that run before Akismet:
+     * blocked keywords, emails/domains, and IPs/CIDR ranges. Off by default so
+     * existing installs are unchanged. A hit either flags the submission as spam
+     * for review (flag, the default) or silently drops it (block), mirroring the
+     * Akismet flag/block fork.
+     */
+    public bool $enableDenylists = false;
+    public string $denylistMode = self::DENYLIST_FLAG;
+
+    /** Newline-separated keywords; '*' wildcard. Matched case-insensitively against text values. */
+    public ?string $blockedKeywords = null;
+    /** Newline-separated emails, '@domain.tld', or '*.domain.tld'. */
+    public ?string $blockedEmails = null;
+    /** Newline-separated single IPs or CIDR ranges (v4/v6). */
+    public ?string $blockedIps = null;
 
     /**
      * Max public form submissions accepted per visitor IP per minute, an abuse
@@ -195,10 +217,15 @@ class Settings extends Model
                 'email',
                 'when' => fn(): bool => !$this->isEnvReference($this->defaultEmailSender),
             ],
-            [['enableHoneypot', 'enableCaptcha', 'cacheFormStructure', 'inlineFormAssets', 'enableMcp', 'dispatchIntegrationsSynchronously', 'enableAkismet', 'anonymizeInsteadOfDelete', 'allowGraphqlCaptchaBypass'], 'boolean'],
+            [['enableHoneypot', 'enableCaptcha', 'cacheFormStructure', 'inlineFormAssets', 'enableMcp', 'dispatchIntegrationsSynchronously', 'enableAkismet', 'anonymizeInsteadOfDelete', 'allowGraphqlCaptchaBypass', 'enableDenylists'], 'boolean'],
             [['retainSubmissionsDays', 'retainIntegrationLogsDays', 'retainAuditLogDays', 'submitRateLimitPerMinute'], 'integer', 'min' => 0],
             [['draftRetentionDays'], 'integer', 'min' => 1],
             [['akismetMode'], 'in', 'range' => [self::AKISMET_FLAG, self::AKISMET_BLOCK]],
+            [['denylistMode'], 'in', 'range' => [self::DENYLIST_FLAG, self::DENYLIST_BLOCK]],
+            [['blockedKeywords', 'blockedEmails', 'blockedIps'], 'string'],
+            // Reject malformed IP/CIDR entries at save so they never fail silently
+            // at submit time (a bad line would simply never match).
+            [['blockedIps'], 'validateBlockedIps'],
             [['akismetApiKey'], 'required', 'when' => fn(): bool => $this->enableAkismet],
             [['mcpTokens'], 'safe'],
             [['captchaType'], 'in', 'range' => [self::CAPTCHA_V3, self::CAPTCHA_V2]],
@@ -275,6 +302,31 @@ class Settings extends Model
     public function getParsedSecretKey(): ?string
     {
         return $this->parseValue($this->getActiveSecretKey());
+    }
+
+    /**
+     * Validate every non-empty line of the blocked-IPs list is either a single
+     * IPv4/IPv6 address or a CIDR range. Surfaces a specific inline error naming
+     * the offending entry so it can be fixed at save time rather than failing
+     * silently (an unparseable line would otherwise just never match).
+     */
+    public function validateBlockedIps(string $attribute): void
+    {
+        $value = $this->$attribute;
+        if (!is_string($value) || trim($value) === '') {
+            return;
+        }
+
+        foreach (preg_split('/\R/', $value) ?: [] as $line) {
+            $entry = trim((string) $line);
+            if ($entry === '') {
+                continue;
+            }
+
+            if (!DenylistService::isValidIpEntry($entry)) {
+                $this->addError($attribute, Craft::t('simple-form', 'Invalid IP or CIDR range: {entry}', ['entry' => $entry]));
+            }
+        }
     }
 
     private function parseValue(?string $value): ?string
