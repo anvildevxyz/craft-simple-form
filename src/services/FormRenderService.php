@@ -10,6 +10,7 @@ use fabianhaef\simpleform\elements\Form;
 use fabianhaef\simpleform\helpers\FieldQueryHelper;
 use fabianhaef\simpleform\helpers\FormRows;
 use fabianhaef\simpleform\helpers\FormSteps;
+use fabianhaef\simpleform\integrations\support\SubmissionValues;
 use fabianhaef\simpleform\models\Settings;
 use fabianhaef\simpleform\Plugin;
 use fabianhaef\simpleform\web\assets\form\FormAsset;
@@ -191,10 +192,12 @@ class FormRenderService extends Component
         }
 
         // Map the submission's stored data (field_<id> => [..., value]) into the
-        // prefill shape the field partial expects (field_<id> => value).
+        // prefill shape the field partial expects (field_<id> => value). A legacy
+        // bare-scalar entry (older rows without the {label,type,value} wrapper) is
+        // carried through as-is.
         $prefill = [];
         foreach (($submission->data ?? []) as $key => $entry) {
-            $prefill[$key] = $entry['value'];
+            $prefill[$key] = SubmissionValues::value($entry);
         }
 
         // Prime every input with the submission's stored value via the context

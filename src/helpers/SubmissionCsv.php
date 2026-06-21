@@ -353,7 +353,7 @@ final class SubmissionCsv
                 $key = (string) $key;
 
                 if (self::isComposite($entry)) {
-                    $fieldLabel = $entry['label'];
+                    $fieldLabel = self::entryLabel($entry, $key);
                     foreach (self::compositeSubLabels($entry) as $sub => $subLabel) {
                         $colId = $key . '::' . $sub;
                         if (isset($seen[$colId])) {
@@ -376,7 +376,7 @@ final class SubmissionCsv
                 $columns[] = [
                     'key' => $key,
                     'sub' => null,
-                    'label' => $entry['label'],
+                    'label' => self::entryLabel($entry, $key),
                 ];
             }
         }
@@ -412,6 +412,22 @@ final class SubmissionCsv
         }
 
         return $values;
+    }
+
+    /**
+     * The column label for a stored data entry: its `label` from the
+     * `{label, type, value}` shape, or the raw `field_<id>` key for a legacy
+     * bare-scalar entry (older submissions stored values without the wrapper).
+     *
+     * @param mixed $entry a stored data entry, or a bare value for legacy rows
+     */
+    private static function entryLabel(mixed $entry, string $fallback): string
+    {
+        if (is_array($entry) && isset($entry['label']) && is_string($entry['label'])) {
+            return $entry['label'];
+        }
+
+        return $fallback;
     }
 
     /**
