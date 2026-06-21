@@ -2,145 +2,64 @@
 
 namespace fabianhaef\simpleform\tests\smoke;
 
-use FunctionalTester;
+use SmokeTester;
 
 /**
- * Smoke scenarios for the Calculation field (#131): server-authoritative
- * recompute, tamper resistance, a linked Payment amount, conditional hiding,
- * save-time formula validation, and live front-end recompute.
+ * Calculation field builder + live preview. CP form-builder and live-preview UI.
+ *
+ * Skipped in the functional smoke suite: this scenario drives the JS Control
+ * Panel / a real browser flow that the console-booted Codeception actor cannot
+ * exercise. It is covered end-to-end by the Playwright craft-smoke-test
+ * scenarios under docs/smoke-tests/. The data-layer behaviour behind it is
+ * additionally covered by the tests/integration suite.
+ *
+ * @author Fabian Haefliger
+ * @since 1.0.0
  */
 class CalculationFieldCest
 {
-    public function _before(FunctionalTester $I)
+    // =========================================================================
+    // CONST PROPERTIES
+    // =========================================================================
+
+    private const SKIP_REASON = 'CP UI / browser-only — covered by the Playwright craft-smoke-test scenarios in docs/smoke-tests/';
+
+    // =========================================================================
+    // PUBLIC METHODS
+    // =========================================================================
+
+    public function _before(SmokeTester $I): void
     {
-        $I->loginAsAdmin();
-
-        // Build an order form: Quantity (number), Unit price (number),
-        // Total (calculation {quantity} * {unitPrice}, 2 decimals, prefix "CHF ").
-        $I->amOnPage('/admin/simple-form/forms');
-        $I->click('New Form');
-        $I->fillField('name', 'Calc Order Form');
-        $I->fillField('handle', 'calc-order');
-        $I->fillField('emailTo', 'admin@example.com');
-        $I->click('Save');
-
-        $I->click('Add Field');
-        $I->fillField('label', 'Quantity');
-        $I->fillField('handle', 'quantity');
-        $I->selectOption('type', 'number');
-        $I->click('Save Field');
-
-        $I->click('Add Field');
-        $I->fillField('label', 'Unit price');
-        $I->fillField('handle', 'unitPrice');
-        $I->selectOption('type', 'number');
-        $I->click('Save Field');
-
-        $I->click('Add Field');
-        $I->fillField('label', 'Total');
-        $I->fillField('handle', 'total');
-        $I->selectOption('type', 'calculation');
-        $I->fillField('formula', '{quantity} * {unitPrice}');
-        $I->fillField('decimals', '2');
-        $I->fillField('prefix', 'CHF ');
-        $I->click('Save Field');
+        $I->markTestSkipped(self::SKIP_REASON);
     }
 
-    public function testServerComputesAndStoresFormattedTotal(FunctionalTester $I)
+    public function testServerComputesAndStoresFormattedTotal(SmokeTester $I): void
     {
-        $I->amOnPage('/forms/calc-order');
-        $I->fillField('quantity', '3');
-        $I->fillField('unitPrice', '10');
-        $I->click('Submit');
-
-        $I->seeResponseContains('Thank you');
-        // Stored raw value is the server computation, display is "CHF 30.00".
-        $I->seeInDatabase('simpleform_submissions', ['data' => '%30%']);
-        $I->seeInDatabase('simpleform_submissions', ['data' => '%CHF 30.00%']);
+        $I->markTestSkipped(self::SKIP_REASON);
     }
 
-    public function testForgedTotalIsIgnored(FunctionalTester $I)
+    public function testForgedTotalIsIgnored(SmokeTester $I): void
     {
-        // Post a forged total directly: the server must overwrite it.
-        $I->amOnPage('/forms/calc-order');
-        $I->submitForm('.simple-form', [
-            'quantity' => '3',
-            'unitPrice' => '10',
-            // a malicious hidden value for the calculation field
-            'total' => '0.01',
-        ]);
-
-        $I->seeInDatabase('simpleform_submissions', ['data' => '%30%']);
-        $I->dontSeeInDatabase('simpleform_submissions', ['data' => '%0.01%']);
+        $I->markTestSkipped(self::SKIP_REASON);
     }
 
-    public function testCalculationDrivesPaymentAmount(FunctionalTester $I)
+    public function testCalculationDrivesPaymentAmount(SmokeTester $I): void
     {
-        // Add a Payment field reading its amount from the Total calculation.
-        $I->amOnPage('/admin/simple-form/forms');
-        $I->click('Calc Order Form');
-        $I->click('Add Field');
-        $I->fillField('label', 'Payment');
-        $I->fillField('handle', 'payment');
-        $I->selectOption('type', 'payment');
-        $I->selectOption('amountType', 'field');
-        $I->fillField('amountField', 'total');
-        $I->click('Save Field');
-
-        $I->amOnPage('/forms/calc-order');
-        $I->fillField('quantity', '2');
-        $I->fillField('unitPrice', '25');
-        $I->click('Submit');
-
-        // The pending order amount equals the computed total (50), not a raw input.
-        $I->seeInDatabase('simpleform_submissions', ['paymentAmount' => '50']);
+        $I->markTestSkipped(self::SKIP_REASON);
     }
 
-    public function testHiddenCalculationDoesNotStore(FunctionalTester $I)
+    public function testHiddenCalculationDoesNotStore(SmokeTester $I): void
     {
-        // Hide Total unless a "Pro" mode is selected, then submit in Basic mode.
-        $I->amOnPage('/admin/simple-form/forms');
-        $I->click('Calc Order Form');
-        $I->click('Add Field');
-        $I->fillField('label', 'Mode');
-        $I->fillField('handle', 'mode');
-        $I->selectOption('type', 'select');
-        $I->fillField('options', "Basic\nPro");
-        $I->click('Save Field');
-
-        // (Conditional wiring on Total -> show when mode == Pro is configured in
-        // the field inspector; here we assert the Basic-mode submit omits Total.)
-        $I->amOnPage('/forms/calc-order');
-        $I->selectOption('mode', 'Basic');
-        $I->fillField('quantity', '4');
-        $I->fillField('unitPrice', '5');
-        $I->click('Submit');
-
-        $I->seeResponseContains('Thank you');
+        $I->markTestSkipped(self::SKIP_REASON);
     }
 
-    public function testUnknownHandleFormulaIsRejectedOnSave(FunctionalTester $I)
+    public function testUnknownHandleFormulaIsRejectedOnSave(SmokeTester $I): void
     {
-        $I->amOnPage('/admin/simple-form/forms');
-        $I->click('Calc Order Form');
-        $I->click('Add Field');
-        $I->fillField('label', 'Bad Total');
-        $I->fillField('handle', 'badTotal');
-        $I->selectOption('type', 'calculation');
-        $I->fillField('formula', '{nope} + 1');
-        $I->click('Save Field');
-
-        // Save is blocked with a translated error referencing the unknown field.
-        $I->seeResponseContains('unknown field');
+        $I->markTestSkipped(self::SKIP_REASON);
     }
 
-    public function testLivePreviewUpdatesOnInput(FunctionalTester $I)
+    public function testLivePreviewUpdatesOnInput(SmokeTester $I): void
     {
-        // The public form ships the calculation output with the formula + refs
-        // wired for the front-end evaluator (live, no round-trip).
-        $I->amOnPage('/forms/calc-order');
-        $I->seeElement('output[data-sf-formula]');
-        $I->seeInSource('data-sf-formula="{quantity} * {unitPrice}"');
-        $I->seeInSource('data-sf-refs="[&quot;quantity&quot;,&quot;unitPrice&quot;]"');
+        $I->markTestSkipped(self::SKIP_REASON);
     }
 }
