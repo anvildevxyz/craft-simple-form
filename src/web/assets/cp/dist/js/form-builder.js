@@ -17,6 +17,7 @@
         text: 'Text', email: 'Email', textarea: 'Textarea', select: 'Select',
         checkbox: 'Checkbox', radio: 'Radio', date: 'Date', number: 'Number',
         phone: 'Phone', file: 'File Upload',
+        name: 'Name', address: 'Address',
         payment: 'Payment', hidden: 'Hidden', consent: 'Agree / Consent',
         rating: 'Rating', opinion: 'Opinion Scale',
         entry: 'Entries', category: 'Categories', tag: 'Tags',
@@ -36,6 +37,28 @@
     // Inner field types a repeater may contain (mirrors
     // RepeaterFieldType::ALLOWED_INNER_TYPES — keep in lockstep).
     var REPEATER_INNER_TYPES = ['text', 'email', 'number', 'select'];
+    var COMPOSITE_TYPES = ['name', 'address'];
+
+    // Ordered sub-field defs per composite type, mirroring the PHP field types:
+    // [key, default label, enabled-by-default, primary]. Used to seed default
+    // config and to render the sub-field editor.
+    var SUBFIELD_DEFS = {
+        name: [
+            ['prefix', 'Prefix', false, false],
+            ['first', 'First name', true, true],
+            ['middle', 'Middle name', false, false],
+            ['last', 'Last name', true, true],
+            ['suffix', 'Suffix', false, false]
+        ],
+        address: [
+            ['line1', 'Address line 1', true, true],
+            ['line2', 'Address line 2', true, false],
+            ['city', 'City', true, true],
+            ['state', 'State / Region', true, false],
+            ['postalCode', 'Postal code', true, true],
+            ['country', 'Country', true, true]
+        ]
+    };
 
     var canvas = document.getElementById('sf-canvas');
     var palette = document.getElementById('sf-palette');
@@ -115,6 +138,13 @@
                 minRows: 1, maxRows: 0, addButtonLabel: '',
                 fields: [{ handle: 'item', type: 'text', label: 'Item', required: false }]
             };
+        }
+        if (COMPOSITE_TYPES.indexOf(type) !== -1) {
+            var subFields = {};
+            SUBFIELD_DEFS[type].forEach(function(d) {
+                subFields[d[0]] = { enabled: d[2], required: false, label: d[1] };
+            });
+            return { subFields: subFields };
         }
         if (type === 'heading') {
             return { level: 'h3' };
@@ -705,6 +735,8 @@
             inspector.appendChild(addLabelRow);
 
             inspector.appendChild(innerFieldsEditor(f));
+        } else if (COMPOSITE_TYPES.indexOf(f.type) !== -1) {
+            inspector.appendChild(subFieldsEditor(f));
         }
     }
 
@@ -945,6 +977,59 @@
             wrap.appendChild(add);
         }
         redraw();
+        return wrap;
+    }
+
+    // Per-sub-field editor for the composite types (Name/Address): one row per
+    // declared sub-field with an enable toggle, an editable (translatable) label,
+    // and a required toggle. The config writes back as config.subFields[<key>].
+    function subFieldsEditor(f) {
+        var c = f.config || (f.config = {});
+        if (!c.subFields || typeof c.subFields !== 'object') { c.subFields = {}; }
+        var defs = SUBFIELD_DEFS[f.type] || [];
+
+        var wrap = document.createElement('div'); wrap.className = 'field sf-subfields';
+        var heading = document.createElement('div'); heading.className = 'heading';
+        var lab = document.createElement('label'); lab.textContent = SF_SOURCE_SITE ? 'Sub-fields' : 'Sub-field Labels (this site)';
+        heading.appendChild(lab); wrap.appendChild(heading);
+
+        var list = document.createElement('div'); list.className = 'sf-subfields-list';
+        wrap.appendChild(list);
+
+        defs.forEach(function(d) {
+            var key = d[0];
+            var sub = c.subFields[key] || (c.subFields[key] = { enabled: d[2], required: false, label: d[1] });
+
+            var r = document.createElement('div'); r.className = 'sf-subfield-row';
+
+            // Enable toggle (structural — source site only).
+            if (SF_SOURCE_SITE) {
+                var en = document.createElement('input'); en.type = 'checkbox'; en.className = 'checkbox';
+                en.checked = sub.enabled !== false;
+                en.addEventListener('change', function() { sub.enabled = en.checked; serialize(); });
+                r.appendChild(en);
+            }
+
+            // Translatable label.
+            var li = document.createElement('input'); li.type = 'text'; li.className = 'text';
+            li.placeholder = d[1]; li.value = sub.label != null ? sub.label : d[1];
+            li.addEventListener('input', function() { sub.label = li.value; serialize(); });
+            r.appendChild(li);
+
+            // Required toggle (structural — source site only).
+            if (SF_SOURCE_SITE) {
+                var reqWrap = document.createElement('label'); reqWrap.className = 'sf-subfield-required';
+                var rq = document.createElement('input'); rq.type = 'checkbox'; rq.className = 'checkbox';
+                rq.checked = !!sub.required;
+                rq.addEventListener('change', function() { sub.required = rq.checked; serialize(); });
+                var rqt = document.createElement('span'); rqt.textContent = 'Required';
+                reqWrap.appendChild(rq); reqWrap.appendChild(rqt);
+                r.appendChild(reqWrap);
+            }
+
+            list.appendChild(r);
+        });
+
         return wrap;
     }
 

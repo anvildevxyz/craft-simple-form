@@ -10,6 +10,7 @@ use fabianhaef\simpleform\elements\Submission;
 use fabianhaef\simpleform\elements\SubmissionStatus;
 use fabianhaef\simpleform\events\SubmissionEvent;
 use fabianhaef\simpleform\fields\CalculationFieldType;
+use fabianhaef\simpleform\fields\CompositeFieldType;
 use fabianhaef\simpleform\fields\FileFieldType;
 use fabianhaef\simpleform\fields\HiddenFieldType;
 use fabianhaef\simpleform\fields\RepeaterFieldType;
@@ -317,6 +318,11 @@ class SubmissionService extends Component
                 $value = RepeaterFieldType::normalizeRows($value, $repeater->innerFields());
             }
 
+            // Composite fields (Name/Address) store an associative sub-part map
+            // limited to their enabled sub-keys, so a crafted POST cannot inject
+            // keys the field never rendered.
+            $value = $this->serializeFieldValue($field, $value);
+
             // Let the field type shape its persisted value (identity for most;
             // the Consent field stamps an auditable record here). Skipped when the
             // field already failed validation — the submission won't be saved.
@@ -473,6 +479,26 @@ class SubmissionService extends Component
             ->handle($form)
             ->siteId(Craft::$app->getSites()->getCurrentSite()->id)
             ->one();
+    }
+
+    /**
+     * Normalize a field's value for storage. Composite field types
+     * ({@see CompositeFieldType}) clamp the posted associative array to their
+     * enabled sub-keys; every other field type stores its value untouched.
+     *
+     * @param FieldModel $field
+     */
+    private function serializeFieldValue(FieldModel $field, mixed $value): mixed
+    {
+        $fieldType = Plugin::getInstance()
+            ->getFieldTypeRegistry()
+            ->getFieldType($field->getType(), $field->getConfig());
+
+        if ($fieldType instanceof CompositeFieldType) {
+            return $fieldType->serializeValue($value);
+        }
+
+        return $value;
     }
 
     /**

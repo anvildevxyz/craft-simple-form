@@ -2,6 +2,7 @@
 
 namespace fabianhaef\simpleform\services;
 
+use fabianhaef\simpleform\fields\AddressFieldType;
 use fabianhaef\simpleform\fields\AssetRelationFieldType;
 use fabianhaef\simpleform\fields\CalculationFieldType;
 use fabianhaef\simpleform\fields\CategoryRelationFieldType;
@@ -16,6 +17,7 @@ use fabianhaef\simpleform\fields\FileFieldType;
 use fabianhaef\simpleform\fields\HeadingFieldType;
 use fabianhaef\simpleform\fields\HiddenFieldType;
 use fabianhaef\simpleform\fields\HtmlFieldType;
+use fabianhaef\simpleform\fields\NameFieldType;
 use fabianhaef\simpleform\fields\NumberFieldType;
 use fabianhaef\simpleform\fields\OpinionScaleFieldType;
 use fabianhaef\simpleform\fields\PaymentFieldType;
@@ -89,6 +91,8 @@ class FieldTypeRegistry extends Component
         $this->registerFieldType(AssetRelationFieldType::class);
         $this->registerFieldType(CalculationFieldType::class);
         $this->registerFieldType(RepeaterFieldType::class);
+        $this->registerFieldType(NameFieldType::class);
+        $this->registerFieldType(AddressFieldType::class);
 
         // Presentational/layout blocks (value-less; isInput() === false).
         $this->registerFieldType(HeadingFieldType::class);
