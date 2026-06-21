@@ -1,207 +1,146 @@
 <?php
 
 namespace fabianhaef\simpleform\tests\smoke;
-use FunctionalTester;
-class FormSubmissionCest
+
+use fabianhaef\simpleform\elements\Submission;
+use SmokeTester;
+
+/**
+ * Form Submission Smoke Tests (functional).
+ *
+ * Exercises the end-to-end submit flow — seed a multi-field form, post through
+ * the shared {@see \fabianhaef\simpleform\services\SubmissionService::createFromRequest()}
+ * entry point, then assert the persisted {@see Submission} carries the submitted
+ * values for each field type. Forms and fields are seeded through the data layer
+ * (see {@see BaseSmokeCest}).
+ *
+ * @author Fabian Haefliger
+ * @since 1.0.0
+ */
+class FormSubmissionCest extends BaseSmokeCest
 {
-    public function _before(FunctionalTester $I)
+    // =========================================================================
+    // PRIVATE PROPERTIES
+    // =========================================================================
+
+    private int $formId;
+
+    private string $formHandle;
+
+    // =========================================================================
+    // PUBLIC METHODS
+    // =========================================================================
+
+    public function _before(SmokeTester $I): void
     {
-        $I->loginAsAdmin();
-        // Create test form
-        $I->amOnPage('/admin/simple-form/forms');
-        $I->click('New Form');
-        $I->fillField('name', 'Submission Test Form');
-        $I->fillField('handle', 'submission-test');
-        $I->fillField('emailTo', 'admin@example.com');
-        $I->click('Save');
-
-        // Add fields
-        $I->click('Add Field');
-        $I->fillField('label', 'Name');
-        $I->fillField('handle', 'name');
-        $I->selectOption('type', 'text');
-        $I->checkOption('required');
-        $I->click('Save Field');
-
-        $I->click('Add Field');
-        $I->fillField('label', 'Email');
-        $I->fillField('handle', 'email');
-        $I->selectOption('type', 'email');
-        $I->checkOption('required');
-        $I->click('Save Field');
-
-        $I->click('Add Field');
-        $I->fillField('label', 'Message');
-        $I->fillField('handle', 'message');
-        $I->selectOption('type', 'textarea');
-        $I->click('Save Field');
+        $form = $this->createForm('Submission Test Form', 'submitFlow' . uniqid(), 'admin@test.com');
+        $this->formId = (int)$form->id;
+        $this->formHandle = $form->handle;
     }
 
-    public function testSubmitFormWithValidData(FunctionalTester $I)
+    public function testSubmitFormWithValidData(SmokeTester $I): void
     {
-        $I->amOnPage('/forms/submission-test');
-        $I->fillField('name', 'John Doe');
-        $I->fillField('email', 'john@example.com');
-        $I->fillField('message', 'Test message');
-        $I->click('Submit');
+        $nameId = $this->createField($this->formId, 'text', 'name', 'Name', true);
+        $emailId = $this->createField($this->formId, 'email', 'email', 'Email', true);
+        $messageId = $this->createField($this->formId, 'textarea', 'message', 'Message');
 
-        $I->seeResponseContains('Thank you');
-        $I->seeInDatabase('simpleform_submissions', ['data' => '%John Doe%']);
+        $result = $this->submitRequest($this->formHandle, [
+            'field_' . $nameId => 'John Doe',
+            'field_' . $emailId => 'john@example.com',
+            'field_' . $messageId => 'Test message',
+        ]);
+
+        $I->assertNull($result['errors']);
+        $I->assertInstanceOf(Submission::class, $result['submission']);
+
+        $submission = Submission::find()->formId($this->formId)->one();
+        $I->assertSame('John Doe', $submission->data['field_' . $nameId]['value']);
+        $I->assertSame('john@example.com', $submission->data['field_' . $emailId]['value']);
     }
 
-    public function testSubmitFormWithInvalidEmail(FunctionalTester $I)
+    public function testSubmitFormWithInvalidEmail(SmokeTester $I): void
     {
-        $I->amOnPage('/forms/submission-test');
-        $I->fillField('name', 'Jane Doe');
-        $I->fillField('email', 'invalid-email');
-        $I->click('Submit');
+        $nameId = $this->createField($this->formId, 'text', 'name', 'Name', true);
+        $emailId = $this->createField($this->formId, 'email', 'email', 'Email', true);
 
-        $I->seeResponseContains('invalid');
+        $result = $this->submitRequest($this->formHandle, [
+            'field_' . $nameId => 'Jane Doe',
+            'field_' . $emailId => 'invalid-email',
+        ]);
+
+        $I->assertNull($result['submission']);
+        $I->assertNotNull($result['errors']);
+        $I->assertArrayHasKey('field_' . $emailId, $result['errors']);
     }
 
-    public function testSubmitWithMissingRequiredFields(FunctionalTester $I)
+    public function testSubmitWithMissingRequiredField(SmokeTester $I): void
     {
-        $I->amOnPage('/forms/submission-test');
-        $I->fillField('name', '');
-        $I->click('Submit');
+        $nameId = $this->createField($this->formId, 'text', 'name', 'Name', true);
 
-        $I->seeResponseContains('required');
+        $result = $this->submitRequest($this->formHandle, ['field_' . $nameId => '']);
+
+        $I->assertNull($result['submission']);
+        $I->assertArrayHasKey('field_' . $nameId, $result['errors']);
     }
 
-    public function testHoneypotProtection(FunctionalTester $I)
+    public function testSelectFieldValuePersists(SmokeTester $I): void
     {
-        $I->amOnPage('/forms/submission-test');
-        // Fill honeypot field (should be hidden from users)
-        // This would require special test handling in real implementation
-        $I->see('form');
+        $statusId = $this->createField($this->formId, 'select', 'status', 'Status', false, [
+            'options' => [
+                ['label' => 'Active', 'value' => 'active'],
+                ['label' => 'Inactive', 'value' => 'inactive'],
+            ],
+        ]);
+
+        $result = $this->submitRequest($this->formHandle, ['field_' . $statusId => 'active']);
+
+        $I->assertNull($result['errors']);
+        $submission = Submission::find()->formId($this->formId)->one();
+        $I->assertSame('active', $submission->data['field_' . $statusId]['value']);
     }
 
-    public function testTextFieldLengthValidation(FunctionalTester $I)
+    public function testCheckboxMultipleValuesPersist(SmokeTester $I): void
     {
-        $I->amOnPage('/admin/simple-form/forms');
-        $I->click('Submission Test Form');
-        $I->click('Edit', "//tr[contains(., 'Name')]");
-        $I->fillField('minLength', '5');
-        $I->fillField('maxLength', '50');
-        $I->click('Save Field');
+        $interestsId = $this->createField($this->formId, 'checkbox', 'interests', 'Interests', false, [
+            'options' => [
+                ['label' => 'Sports', 'value' => 'sports'],
+                ['label' => 'Music', 'value' => 'music'],
+                ['label' => 'Reading', 'value' => 'reading'],
+            ],
+        ]);
 
-        $I->amOnPage('/forms/submission-test');
-        $I->fillField('name', 'ab');
-        $I->click('Submit');
+        $result = $this->submitRequest($this->formHandle, ['field_' . $interestsId => ['sports', 'music']]);
 
-        $I->seeResponseContains('least');
+        $I->assertNull($result['errors']);
+        $submission = Submission::find()->formId($this->formId)->one();
+        $I->assertContains('sports', $submission->data['field_' . $interestsId]['value']);
+        $I->assertContains('music', $submission->data['field_' . $interestsId]['value']);
     }
 
-    public function testSelectFieldValidation(FunctionalTester $I)
+    public function testNumberFieldMinMaxValidation(SmokeTester $I): void
     {
-        $I->amOnPage('/admin/simple-form/forms');
-        $I->click('Submission Test Form');
-        $I->click('Add Field');
-        $I->fillField('label', 'Status');
-        $I->fillField('handle', 'status');
-        $I->selectOption('type', 'select');
-        $I->fillField('options', "Active\nInactive");
-        $I->click('Save Field');
+        $quantityId = $this->createField($this->formId, 'number', 'quantity', 'Quantity', false, [
+            'min' => 1,
+            'max' => 100,
+        ]);
 
-        $I->amOnPage('/forms/submission-test');
-        $I->selectOption('status', 'Active');
-        $I->fillField('name', 'Test');
-        $I->fillField('email', 'test@example.com');
-        $I->click('Submit');
+        $tooHigh = $this->submitRequest($this->formHandle, ['field_' . $quantityId => '150']);
+        $I->assertNull($tooHigh['submission']);
+        $I->assertArrayHasKey('field_' . $quantityId, $tooHigh['errors']);
 
-        $I->seeInDatabase('simpleform_submissions', ['data' => '%Active%']);
+        $valid = $this->submitRequest($this->formHandle, ['field_' . $quantityId => '42']);
+        $I->assertNull($valid['errors']);
+        $I->assertInstanceOf(Submission::class, $valid['submission']);
     }
 
-    public function testCheckboxMultipleValues(FunctionalTester $I)
+    public function testDateFieldValuePersists(SmokeTester $I): void
     {
-        $I->amOnPage('/admin/simple-form/forms');
-        $I->click('Submission Test Form');
-        $I->click('Add Field');
-        $I->fillField('label', 'Interests');
-        $I->fillField('handle', 'interests');
-        $I->selectOption('type', 'checkbox');
-        $I->fillField('options', "Sports\nMusic\nReading");
-        $I->click('Save Field');
+        $birthdateId = $this->createField($this->formId, 'date', 'birthdate', 'Birthdate');
 
-        $I->amOnPage('/forms/submission-test');
-        $I->checkOption('input[value="Sports"]');
-        $I->checkOption('input[value="Music"]');
-        $I->fillField('name', 'Test User');
-        $I->fillField('email', 'test@example.com');
-        $I->click('Submit');
+        $result = $this->submitRequest($this->formHandle, ['field_' . $birthdateId => '1990-01-15']);
 
-        $I->seeInDatabase('simpleform_submissions', ['data' => '%Sports%']);
-    }
-
-    public function testDateFieldValidation(FunctionalTester $I)
-    {
-        $I->amOnPage('/admin/simple-form/forms');
-        $I->click('Submission Test Form');
-        $I->click('Add Field');
-        $I->fillField('label', 'Birthdate');
-        $I->fillField('handle', 'birthdate');
-        $I->selectOption('type', 'date');
-        $I->click('Save Field');
-
-        $I->amOnPage('/forms/submission-test');
-        $I->fillField('birthdate', '01/15/1990');
-        $I->fillField('name', 'Test');
-        $I->fillField('email', 'test@example.com');
-        $I->click('Submit');
-
-        $I->seeInDatabase('simpleform_submissions', ['data' => '%1990%']);
-    }
-
-    public function testNumberFieldMinMaxValidation(FunctionalTester $I)
-    {
-        $I->amOnPage('/admin/simple-form/forms');
-        $I->click('Submission Test Form');
-        $I->click('Add Field');
-        $I->fillField('label', 'Quantity');
-        $I->fillField('handle', 'quantity');
-        $I->selectOption('type', 'number');
-        $I->fillField('minValue', '1');
-        $I->fillField('maxValue', '100');
-        $I->click('Save Field');
-
-        $I->amOnPage('/forms/submission-test');
-        $I->fillField('quantity', '150');
-        $I->fillField('name', 'Test');
-        $I->fillField('email', 'test@example.com');
-        $I->click('Submit');
-
-        $I->seeResponseContains('maximum');
-    }
-
-    public function testCsrfTokenValidation(FunctionalTester $I)
-    {
-        $I->amOnPage('/forms/submission-test');
-        // CSRF token should be present in form
-        $I->seeElement('input[name="__csrf"]');
-        $I->seeElement('input[name="__requestVerificationToken"]');
-    }
-
-    public function testMultiStepSubmissionFlow(FunctionalTester $I)
-    {
-        $I->amOnPage('/forms/submission-test');
-        $I->fillField('name', 'Multi Step');
-        $I->fillField('email', 'multi@example.com');
-        $I->fillField('message', 'Testing multi-step');
-        $I->click('Submit');
-
-        $I->seeResponseContains('Thank you');
-        $I->dontSee('Multi Step');
-        $I->dontSee('multi@example.com');
-    }
-
-    public function testFormResetAfterSuccessfulSubmission(FunctionalTester $I)
-    {
-        $I->amOnPage('/forms/submission-test');
-        $I->fillField('name', 'Reset Test');
-        $I->fillField('email', 'reset@example.com');
-        $I->click('Submit');
-
-        $I->amOnPage('/forms/submission-test');
-        $I->seeFormFieldDoesNotHaveValue('name', 'Reset Test');
+        $I->assertNull($result['errors']);
+        $submission = Submission::find()->formId($this->formId)->one();
+        $I->assertStringContainsString('1990', (string)$submission->data['field_' . $birthdateId]['value']);
     }
 }

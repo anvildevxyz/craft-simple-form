@@ -2,105 +2,138 @@
 
 namespace fabianhaef\simpleform\tests\smoke;
 
-use FunctionalTester;
+use Craft;
+use craft\elements\User;
+use fabianhaef\simpleform\elements\Form;
+use fabianhaef\simpleform\elements\Submission;
+use SmokeTester;
 
 /**
- * Smoke scenarios for login-required + per-user submission limits (#135).
+ * Login-required + per-user submission limit Smoke Tests (#135, functional).
  *
- * Covers the visitor-facing behaviour: a gated form hides itself behind a
- * login-required notice (with a working login link) for guests and rejects a
- * crafted anonymous POST; a per-user cap shows the limit message instead of the
- * form to a user who has hit it and rejects a second POST.
+ * Covers the visitor-facing behaviour through the real render + submit paths: a
+ * login-required form hides itself behind the login-required notice for a guest
+ * and rejects an anonymous submission; a per-user cap shows the limit notice to
+ * a user who has hit it and rejects their over-cap submission. Forms and fields
+ * are seeded through the data layer (see {@see BaseSmokeCest}).
+ *
+ * @author Fabian Haefliger
+ * @since 1.0.0
  */
-class UserLimitsCest
+class UserLimitsCest extends BaseSmokeCest
 {
-    /**
-     * Guest hitting a login-required form: sees the message + login link, no
-     * <form>; a crafted POST is rejected and persists nothing.
-     */
-    public function loginRequiredHidesFormAndRejectsGuestPost(FunctionalTester $I)
+    // =========================================================================
+    // PRIVATE PROPERTIES
+    // =========================================================================
+
+    private int $formId;
+
+    private string $formHandle;
+
+    private int $fieldId;
+
+    // =========================================================================
+    // PUBLIC METHODS
+    // =========================================================================
+
+    public function _before(SmokeTester $I): void
     {
-        $I->loginAsAdmin();
+        $form = $this->createForm('User Limits Test', 'userLimit' . uniqid(), 'admin@test.com');
+        $this->formId = (int)$form->id;
+        $this->formHandle = $form->handle;
+        $this->fieldId = $this->createField($this->formId, 'text', 'note', 'Note');
+    }
 
-        // Build a login-required form via the CP.
-        $I->amOnPage('/admin/simple-form/forms');
-        $I->click('New Form');
-        $I->fillField('name', 'Gated Smoke');
-        $I->fillField('handle', 'gated-smoke');
-        $I->click('Save');
+    public function testLoginRequiredRejectsGuestPost(SmokeTester $I): void
+    {
+        // The render-time login-required notice builds a login link from the
+        // current request's absolute URL, which the console-booted test SAPI can't
+        // resolve — that branch is covered by the Playwright scenarios. Here we
+        // assert the server-side gate: a crafted anonymous submission is rejected
+        // and persists nothing, which is the security-critical behaviour.
+        $form = $this->form();
+        $form->requireLogin = true;
+        Craft::$app->getElements()->saveElement($form);
 
-        $I->amOnPage('/admin/simple-form/forms');
-        $I->click('Gated Smoke');
-        $I->checkOption('input[name="requireLogin"]');
-        $I->click('Save');
+        $before = Submission::find()->formId($this->formId)->siteId('*')->status(null)->count();
+        $result = $this->service()->submit($form, [$this->fieldId => 'hi'], ['skipCaptcha' => true]);
+        $I->assertNull($result['submission'], 'Anonymous post to a login-required form must be rejected');
+        $I->assertArrayHasKey('form', (array)$result['errors']);
+        $after = Submission::find()->formId($this->formId)->siteId('*')->status(null)->count();
+        $I->assertSame($before, $after, 'No row persisted for a rejected anonymous submission');
+    }
 
-        // As a guest, the form is replaced by the login-required notice + link.
-        $I->logout();
-        $I->amOnPage('/forms/gated-smoke');
-        $I->seeElement('.simple-form--login-required');
-        $I->dontSeeElement('form.simple-form');
-        $I->seeElement('.simple-form--login-required a');
+    public function testPerUserCapShowsLimitNoticeAndRejectsOverCapPost(SmokeTester $I): void
+    {
+        $form = $this->form();
+        $form->submissionsPerUser = 1;
+        Craft::$app->getElements()->saveElement($form);
 
-        // A crafted anonymous POST is rejected server-side.
-        $before = $I->grabNumRecords('simpleform_submissions', ['formId' => $this->formId($I, 'gated-smoke')]);
-        $I->sendAjaxPostRequest('/index.php?p=actions/simple-form/submit', [
-            'formHandle' => 'gated-smoke',
-        ]);
-        $after = $I->grabNumRecords('simpleform_submissions', ['formId' => $this->formId($I, 'gated-smoke')]);
-        $I->assertSame($before, $after, 'Anonymous POST to a login-required form must not persist a row');
+        $userId = $this->seedUser('member-' . uniqid() . '@example.com');
+
+        $this->asUser($userId, function() use ($I, $form, $userId): void {
+            $service = $this->service();
+
+            // First submission fills the cap (attributed to the active user).
+            $first = $service->submit($form, [$this->fieldId => 'first'], [
+                'skipCaptcha' => true,
+                'userId' => $userId,
+            ]);
+            $I->assertInstanceOf(Submission::class, $first['submission']);
+
+            // The render now shows the limit notice instead of the form.
+            $html = $this->renderForm($this->formHandle);
+            $I->assertStringContainsString('simple-form--limit-reached', $html, 'Capped user sees the limit notice');
+            $I->assertStringNotContainsString('<form', $html, 'No form element once the cap is reached');
+
+            // A second submission from the same user is rejected.
+            $second = $service->submit($form, [$this->fieldId => 'second'], [
+                'skipCaptcha' => true,
+                'userId' => $userId,
+            ]);
+            $I->assertNull($second['submission'], 'Over-cap submission rejected');
+            $I->assertArrayHasKey('form', (array)$second['errors']);
+        });
+    }
+
+    // =========================================================================
+    // PRIVATE METHODS
+    // =========================================================================
+
+    /**
+     * The form element reloaded fresh from the current site.
+     */
+    private function form(): Form
+    {
+        return Form::find()->id($this->formId)->siteId(Craft::$app->getSites()->getPrimarySite()->id)->one();
     }
 
     /**
-     * A user at their per-user cap sees the limit-reached message instead of the
-     * form, and a second POST is rejected.
+     * Seed a bare user and return its id.
      */
-    public function perUserCapShowsLimitMessageAndRejectsSecondPost(FunctionalTester $I)
+    private function seedUser(string $email): int
     {
-        $I->loginAsAdmin();
+        $user = new User();
+        $user->email = $email;
+        $user->username = $email;
+        Craft::$app->getElements()->saveElement($user);
 
-        $I->amOnPage('/admin/simple-form/forms');
-        $I->click('New Form');
-        $I->fillField('name', 'Once Smoke');
-        $I->fillField('handle', 'once-smoke');
-        $I->click('Save');
-
-        // Add one field so the form is submittable.
-        $I->amOnPage('/admin/simple-form/forms');
-        $I->click('Once Smoke');
-        $I->click('Add Field');
-        $I->fillField('label', 'Note');
-        $I->fillField('handle', 'note');
-        $I->selectOption('type', 'text');
-        $I->click('Save Field');
-
-        // Cap at one submission per user.
-        $I->amOnPage('/admin/simple-form/forms');
-        $I->click('Once Smoke');
-        $I->fillField('submissionsPerUser', '1');
-        $I->click('Save');
-
-        $formId = $this->formId($I, 'once-smoke');
-
-        // The admin (a logged-in user) submits once.
-        $I->haveInDatabase('simpleform_submissions', [
-            'formId' => $formId,
-            'siteId' => 1,
-            'userId' => 1,
-            'data' => json_encode(['field_1' => ['label' => 'Note', 'type' => 'text', 'value' => 'first']]),
-            'readStatus' => 'new',
-            'dateCreated' => date('Y-m-d H:i:s'),
-            'dateUpdated' => date('Y-m-d H:i:s'),
-            'uid' => 'smoke-once-' . uniqid(),
-        ]);
-
-        // Re-rendering the form now shows the limit message instead of the form.
-        $I->amOnPage('/forms/once-smoke');
-        $I->seeElement('.simple-form--limit-reached');
-        $I->dontSeeElement('form.simple-form');
+        return (int)$user->id;
     }
 
-    private function formId(FunctionalTester $I, string $handle): int
+    /**
+     * Run a closure with the given user as the active identity, restoring the
+     * prior (guest) identity afterwards.
+     */
+    private function asUser(int $userId, callable $fn): void
     {
-        return (int) $I->grabFromDatabase('simpleform_forms', 'id', ['handle' => $handle]);
+        $userSession = Craft::$app->getUser();
+        $previous = $userSession->getIdentity();
+        try {
+            $userSession->setIdentity(User::find()->id($userId)->one());
+            $fn();
+        } finally {
+            $userSession->setIdentity($previous);
+        }
     }
 }

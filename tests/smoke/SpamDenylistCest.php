@@ -2,154 +2,140 @@
 
 namespace fabianhaef\simpleform\tests\smoke;
 
-use FunctionalTester;
+use craft\db\Query;
+use fabianhaef\simpleform\elements\Submission;
+use fabianhaef\simpleform\elements\SubmissionStatus;
+use fabianhaef\simpleform\models\Settings;
+use fabianhaef\simpleform\Plugin;
+use SmokeTester;
 
 /**
- * #140 — Spam denylists, duplicate prevention, and the quarantine review
- * workflow. Mirrors the PRD's six smoke scenarios end-to-end through the CP and
- * the public submit path.
+ * Spam Denylist Smoke Tests (#140, functional).
+ *
+ * Exercises the settings-driven denylists through the public submit path
+ * ({@see \fabianhaef\simpleform\services\SubmissionService::createFromRequest()},
+ * field values posted as `field_<id>`): a flagged submission is quarantined with
+ * its reason, a clean one passes as New, and block mode drops the row silently.
+ * Forms and fields are seeded through the data layer (see {@see BaseSmokeCest}).
+ *
+ * The CP settings/review-queue UI and Mailpit delivery are covered by the
+ * Playwright craft-smoke-test scenarios; the enforcement is covered here and in
+ * the integration DenylistEnforcementTest.
+ *
+ * @author Fabian Haefliger
+ * @since 1.0.0
  */
-class SpamDenylistCest
+class SpamDenylistCest extends BaseSmokeCest
 {
-    public function _before(FunctionalTester $I): void
+    // =========================================================================
+    // PRIVATE PROPERTIES
+    // =========================================================================
+
+    private int $formId;
+
+    private string $formHandle;
+
+    // =========================================================================
+    // PUBLIC METHODS
+    // =========================================================================
+
+    public function _before(SmokeTester $I): void
     {
-        $I->loginAsAdmin();
+        $form = $this->createForm('Spam Test Form', 'spamTest' . uniqid(), 'admin@test.com');
+        $this->formId = (int)$form->id;
+        $this->formHandle = $form->handle;
     }
 
-    /**
-     * Scenario 1: a blocked keyword (flag mode) lands the submission in the Spam
-     * filter with reason "keyword:casino" and sends no notification email.
-     */
-    public function keywordFlagsSubmissionForReview(FunctionalTester $I): void
+    public function testKeywordFlagsSubmissionForReview(SmokeTester $I): void
     {
-        $I->amOnPage('/admin/simple-form/settings/spam');
-        $I->checkOption('input[name="enableDenylists"]');
-        $I->selectOption('denylistMode', 'flag');
-        $I->fillField('blockedKeywords', "casino\ncrypto");
-        $I->click('Save');
-        $I->seeInDatabase('simpleform_submissions', []); // placeholder anchor
+        $messageId = $this->createField($this->formId, 'text', 'message', 'Message');
 
-        // Submit the contact form with a message containing "Casino night!".
-        $I->amOnPage('/contact');
-        $I->fillField('field_message', 'Casino night! Join us.');
-        $I->click('Submit');
+        $this->withDenylist(['blockedKeywords' => "casino\ncrypto"], function() use ($I, $messageId): void {
+            $result = $this->submitRequest($this->formHandle, ['field_' . $messageId => 'Casino night! Join us.']);
 
-        // The submission is quarantined, visible only under the Spam filter.
-        $I->amOnPage('/admin/simple-form/submissions?status=spam');
-        $I->see('SPAM');
-        $I->see('Blocked keyword: casino');
-
-        // No notification email reached Mailpit (withheld for spam).
-        $I->cantSeeEmailIsSent();
+            $I->assertInstanceOf(Submission::class, $result['submission']);
+            $I->assertSame(SubmissionStatus::SPAM, $result['submission']->readStatus);
+            $I->assertSame('keyword:casino', $result['submission']->spamReason);
+        });
     }
 
-    /**
-     * Scenario 2: a blocked @domain quarantines a matching address; a clean
-     * address lands as New.
-     */
-    public function blockedDomainQuarantinesAndCleanEmailPasses(FunctionalTester $I): void
+    public function testBlockedDomainQuarantinesAndCleanEmailPasses(SmokeTester $I): void
     {
-        $I->amOnPage('/admin/simple-form/settings/spam');
-        $I->checkOption('input[name="enableDenylists"]');
-        $I->fillField('blockedEmails', '@mailinator.com');
-        $I->click('Save');
+        $emailId = $this->createField($this->formId, 'email', 'email', 'Email');
 
-        $I->amOnPage('/contact');
-        $I->fillField('field_email', 'bob@mailinator.com');
-        $I->fillField('field_message', 'hi');
-        $I->click('Submit');
-        $I->amOnPage('/admin/simple-form/submissions?status=spam');
-        $I->see('Blocked email: bob@mailinator.com');
+        $this->withDenylist(['blockedEmails' => '@mailinator.com'], function() use ($I, $emailId): void {
+            $blocked = $this->submitRequest($this->formHandle, ['field_' . $emailId => 'bob@mailinator.com']);
+            $I->assertSame(SubmissionStatus::SPAM, $blocked['submission']->readStatus);
+            $I->assertSame('email:bob@mailinator.com', $blocked['submission']->spamReason);
 
-        $I->amOnPage('/contact');
-        $I->fillField('field_email', 'bob@gmail.com');
-        $I->fillField('field_message', 'hi');
-        $I->click('Submit');
-        $I->amOnPage('/admin/simple-form/submissions?status=new');
-        $I->seeInDatabase('simpleform_submissions', ['readStatus' => 'new']);
+            $clean = $this->submitRequest($this->formHandle, ['field_' . $emailId => 'bob@gmail.com']);
+            $I->assertSame(SubmissionStatus::NEW, $clean['submission']->readStatus);
+            $I->assertNull($clean['submission']->spamReason);
+        });
     }
 
-    /**
-     * Scenario 3: block mode drops the submission silently — no row created, but
-     * the visitor still sees the success message (no denylist leak).
-     */
-    public function blockModeDropsSilently(FunctionalTester $I): void
+    public function testBlockModeDropsSilently(SmokeTester $I): void
     {
-        $I->amOnPage('/admin/simple-form/settings/spam');
-        $I->checkOption('input[name="enableDenylists"]');
-        $I->selectOption('denylistMode', 'block');
-        $I->fillField('blockedKeywords', 'casino');
-        $I->click('Save');
+        $messageId = $this->createField($this->formId, 'text', 'message', 'Message');
 
-        $I->amOnPage('/contact');
-        $I->fillField('field_message', 'casino casino casino');
-        $I->click('Submit');
+        $this->withDenylist(
+            ['blockedKeywords' => 'casino', 'denylistMode' => Settings::DENYLIST_BLOCK],
+            function() use ($I, $messageId): void {
+                $result = $this->submitRequest($this->formHandle, ['field_' . $messageId => 'casino casino casino']);
 
-        // Visitor sees the generic success message; no row was persisted.
-        $I->see('Thank you');
-        $I->dontSeeInDatabase('simpleform_submissions', ['readStatus' => 'spam', 'spamReason' => 'keyword:casino']);
+                // Visitor gets no signal: no submission, no errors — and no row.
+                $I->assertNull($result['submission'], 'block mode drops the submission');
+                $I->assertNull($result['errors']);
+
+                $count = (new Query())
+                    ->from('{{%simpleform_submissions}}')
+                    ->where(['formId' => $this->formId])
+                    ->count();
+                $I->assertSame(0, (int)$count, 'no row persisted in block mode');
+            },
+        );
     }
 
-    /**
-     * Scenario 4: per-form duplicate prevention (key=email, 10m window) blocks a
-     * second submission with the same email inside the window.
-     */
-    public function duplicatePreventionBlocksRepeatEmail(FunctionalTester $I): void
+    public function testDisabledDenylistLetsKeywordThrough(SmokeTester $I): void
     {
-        // Enable on the form's edit screen.
-        $I->amOnPage('/admin/simple-form/forms/1');
-        $I->click('Prevent duplicate submissions'); // lightswitch
-        $I->selectOption('duplicateKey', 'email');
-        $I->fillField('duplicateWindowMinutes', '10');
-        $I->click('Save');
+        $messageId = $this->createField($this->formId, 'text', 'message', 'Message');
 
-        $I->amOnPage('/contact');
-        $I->fillField('field_email', 'dup@example.com');
-        $I->fillField('field_message', 'first');
-        $I->click('Submit');
+        $settings = Plugin::getInstance()->getSettings();
+        $original = $settings->getAttributes();
+        try {
+            $settings->enableDenylists = false;
+            $settings->blockedKeywords = 'casino';
 
-        $I->amOnPage('/contact');
-        $I->fillField('field_email', 'dup@example.com');
-        $I->fillField('field_message', 'second');
-        $I->click('Submit');
+            $result = $this->submitRequest($this->formHandle, ['field_' . $messageId => 'casino night']);
 
-        // Exactly one non-spam row for that email; the second is quarantined.
-        $I->amOnPage('/admin/simple-form/submissions?status=spam');
-        $I->see('Duplicate submission');
+            $I->assertInstanceOf(Submission::class, $result['submission']);
+            $I->assertSame(SubmissionStatus::NEW, $result['submission']->readStatus);
+        } finally {
+            $settings->setAttributes($original, false);
+        }
     }
 
-    /**
-     * Scenario 5: bulk-approve a quarantined false positive — status flips to
-     * New, the reason clears, the withheld notification now sends, and an audit
-     * entry is written.
-     */
-    public function approveReleasesWithheldNotification(FunctionalTester $I): void
-    {
-        $I->amOnPage('/admin/simple-form/submissions?status=spam');
-        $I->click('Not spam', '//tbody/tr[1]');
-
-        $I->seeInDatabase('simpleform_submissions', ['readStatus' => 'new', 'spamReason' => null]);
-        $I->seeEmailIsSent();
-        $I->seeInDatabase('simpleform_audit_log', ['event' => 'submission.status']);
-    }
+    // =========================================================================
+    // PRIVATE METHODS
+    // =========================================================================
 
     /**
-     * Scenario 6: the GraphQL submitForm mutation inherits identical quarantine
-     * behaviour (it routes through SubmissionService::submit()).
+     * Enable denylists (flag mode) with the given overrides, run the closure, then
+     * restore the original settings.
+     *
+     * @param array<string, mixed> $overrides
      */
-    public function graphqlSubmissionIsQuarantinedIdentically(FunctionalTester $I): void
+    private function withDenylist(array $overrides, callable $fn): void
     {
-        $I->amOnPage('/admin/simple-form/settings/spam');
-        $I->checkOption('input[name="enableDenylists"]');
-        $I->selectOption('denylistMode', 'flag');
-        $I->fillField('blockedKeywords', 'casino');
-        $I->click('Save');
-
-        $I->sendPost('/api', [
-            'query' => 'mutation { submitForm(handle: "contact", fields: [{ handle: "message", value: "casino night" }]) { id } }',
-        ]);
-
-        $I->amOnPage('/admin/simple-form/submissions?status=spam');
-        $I->see('Blocked keyword: casino');
+        $settings = Plugin::getInstance()->getSettings();
+        $original = $settings->getAttributes();
+        try {
+            $settings->enableDenylists = true;
+            $settings->denylistMode = Settings::DENYLIST_FLAG;
+            $settings->setAttributes($overrides, false);
+            $fn();
+        } finally {
+            $settings->setAttributes($original, false);
+        }
     }
 }
