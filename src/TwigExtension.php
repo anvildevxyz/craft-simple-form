@@ -175,9 +175,17 @@ class TwigExtension extends AbstractExtension
             return '';
         }
 
+        $fieldName = 'field_' . $field['id'];
+
+        // Non-visible fields (e.g. Hidden, #124) emit their bare control with no
+        // label, help text, or wrapper — and never carry the conditional group
+        // attributes, since they are invisible by definition.
+        if (!$fieldType->isInput()) {
+            return $fieldType->renderInput($fieldName, $values[$fieldName] ?? null);
+        }
+
         $label = $field['label'] ?? $field['name'];
         $helpText = $field['helpText'] ?? '';
-        $fieldName = 'field_' . $field['id'];
 
         // Tag every group with its field handle so the front-end evaluator
         // can build a handle => value map; carry the conditional rules (when

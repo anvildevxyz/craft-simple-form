@@ -167,6 +167,19 @@ abstract class FieldType
         return false;
     }
 
+    /**
+     * Whether this type renders a visitor-facing input that belongs inside the
+     * standard labelled field group (label + help text + wrapper).
+     *
+     * Value-less / non-visible types (e.g. the Hidden field, #124) return false
+     * so the front-end template emits their bare markup with no label or
+     * wrapper.
+     */
+    public function isInput(): bool
+    {
+        return true;
+    }
+
     protected function controlAttributes(string $name): string
     {
         // id mirrors the field name so the group's <label for> associates with

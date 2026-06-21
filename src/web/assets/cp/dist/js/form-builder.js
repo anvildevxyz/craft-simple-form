@@ -15,9 +15,12 @@
         text: 'Text', email: 'Email', textarea: 'Textarea', select: 'Select',
         checkbox: 'Checkbox', radio: 'Radio', date: 'Date', number: 'Number',
         phone: 'Phone', file: 'File Upload',
-        payment: 'Payment'
+        payment: 'Payment', hidden: 'Hidden'
     };
     var OPTION_TYPES = ['select', 'checkbox', 'radio'];
+    // Non-visible types: the visitor never sees them, so the inspector suppresses
+    // the Required / Help Text / Error Message rows (#124).
+    var HIDDEN_TYPES = ['hidden'];
 
     var canvas = document.getElementById('sf-canvas');
     var palette = document.getElementById('sf-palette');
@@ -73,6 +76,9 @@
         }
         if (type === 'payment') {
             return { amountType: 'fixed', currency: 'USD' };
+        }
+        if (type === 'hidden') {
+            return { source: 'static' };
         }
         return {};
     }
@@ -131,6 +137,12 @@
 
         var type = document.createElement('span');
         type.className = 'sf-field-type'; type.textContent = TYPE_LABELS[f.type] || f.type;
+        // Hidden fields are invisible on the front end — flag the card so a
+        // creator doesn't expect it to render (#124).
+        if (HIDDEN_TYPES.indexOf(f.type) !== -1) {
+            type.classList.add('sf-field-type-hidden');
+            type.title = 'Hidden — captured silently; never shown on the form.';
+        }
 
         var req = document.createElement('span');
         req.className = 'sf-field-req'; req.textContent = f.required ? '*' : '';
@@ -258,35 +270,47 @@
         handleRow._input.appendChild(handleInput);
         inspector.appendChild(handleRow);
 
-        // Required
-        var reqRow = document.createElement('div'); reqRow.className = 'field';
-        var reqWrap = document.createElement('div'); reqWrap.className = 'checkbox-wrapper';
-        var cb = document.createElement('input'); cb.type = 'checkbox'; cb.className = 'checkbox';
-        cb.id = 'sf-req-' + f.clientId; cb.checked = f.required;
-        cb.addEventListener('change', function() { f.required = cb.checked; commit(); });
-        var cbl = document.createElement('label'); cbl.setAttribute('for', cb.id); cbl.textContent = 'Required field';
-        reqWrap.appendChild(cb); reqWrap.appendChild(cbl); reqRow.appendChild(reqWrap);
-        inspector.appendChild(reqRow);
+        var isHiddenType = HIDDEN_TYPES.indexOf(f.type) !== -1;
 
-        // Help text
-        var helpRow = row('Help Text');
-        var ta = document.createElement('textarea'); ta.className = 'text fullwidth'; ta.rows = 2; ta.value = f.helpText || '';
-        ta.addEventListener('input', function() { f.helpText = ta.value; serialize(); });
-        helpRow._input.appendChild(ta);
-        inspector.appendChild(helpRow);
+        // Hidden fields are non-visible: they have no Required / Help Text /
+        // Error Message — only an internal label (above) for exports/CP (#124).
+        if (!isHiddenType) {
+            // Required
+            var reqRow = document.createElement('div'); reqRow.className = 'field';
+            var reqWrap = document.createElement('div'); reqWrap.className = 'checkbox-wrapper';
+            var cb = document.createElement('input'); cb.type = 'checkbox'; cb.className = 'checkbox';
+            cb.id = 'sf-req-' + f.clientId; cb.checked = f.required;
+            cb.addEventListener('change', function() { f.required = cb.checked; commit(); });
+            var cbl = document.createElement('label'); cbl.setAttribute('for', cb.id); cbl.textContent = 'Required field';
+            reqWrap.appendChild(cb); reqWrap.appendChild(cbl); reqRow.appendChild(reqWrap);
+            inspector.appendChild(reqRow);
 
-        // Custom validation message (per-site override). Blank falls back to the
-        // field type's localized default message at submit time.
-        var errRow = row('Error Message');
-        var errInput = textInput(f.errorMessage, function(v) { f.errorMessage = v; serialize(); });
-        errInput.placeholder = 'Leave blank to use the default';
-        errRow._input.appendChild(errInput);
-        var errHint = document.createElement('div'); errHint.className = 'instructions';
-        var errHintP = document.createElement('p');
-        errHintP.textContent = 'Shown for this site when the field fails validation. Leave blank to use the default (translated) message.';
-        errHint.appendChild(errHintP);
-        errRow._input.appendChild(errHint);
-        inspector.appendChild(errRow);
+            // Help text
+            var helpRow = row('Help Text');
+            var ta = document.createElement('textarea'); ta.className = 'text fullwidth'; ta.rows = 2; ta.value = f.helpText || '';
+            ta.addEventListener('input', function() { f.helpText = ta.value; serialize(); });
+            helpRow._input.appendChild(ta);
+            inspector.appendChild(helpRow);
+
+            // Custom validation message (per-site override). Blank falls back to the
+            // field type's localized default message at submit time.
+            var errRow = row('Error Message');
+            var errInput = textInput(f.errorMessage, function(v) { f.errorMessage = v; serialize(); });
+            errInput.placeholder = 'Leave blank to use the default';
+            errRow._input.appendChild(errInput);
+            var errHint = document.createElement('div'); errHint.className = 'instructions';
+            var errHintP = document.createElement('p');
+            errHintP.textContent = 'Shown for this site when the field fails validation. Leave blank to use the default (translated) message.';
+            errHint.appendChild(errHintP);
+            errRow._input.appendChild(errHint);
+            inspector.appendChild(errRow);
+        } else {
+            var hiddenHint = document.createElement('div'); hiddenHint.className = 'instructions';
+            var hiddenHintP = document.createElement('p');
+            hiddenHintP.textContent = 'Hidden — captured silently. This field is never shown on the form; the label is used only for the CP submission view and exports.';
+            hiddenHint.appendChild(hiddenHintP);
+            inspector.appendChild(hiddenHint);
+        }
 
         inspector.appendChild(numberRow('Step / Page', (f.config && f.config.page) || '', function(v) {
             f.config = f.config || {};
@@ -425,7 +449,64 @@
                 c.currency = v.trim().toUpperCase(); serialize();
             }));
             inspector.appendChild(curRow);
+        } else if (f.type === 'hidden') {
+            renderHiddenConfig(f, c);
         }
+    }
+
+    // Source dropdown + the source-specific input for a Hidden field (#124). The
+    // source-specific row is re-rendered when the source changes so only the
+    // relevant input shows.
+    function renderHiddenConfig(f, c) {
+        if (!c.source) { c.source = 'static'; }
+
+        var srcRow = row('Source');
+        srcRow._input.appendChild(selectEl(
+            [
+                { value: 'static', label: 'Static value' },
+                { value: 'query', label: 'URL query parameter' },
+                { value: 'user', label: 'Logged-in user' },
+                { value: 'cookie', label: 'Cookie' }
+            ],
+            c.source,
+            function(v) { c.source = v; serialize(); renderInspector(); }
+        ));
+        inspector.appendChild(srcRow);
+
+        if (c.source === 'query') {
+            var qpRow = row('Query Parameter');
+            qpRow._input.appendChild(textInput(c.queryParam || '', function(v) {
+                c.queryParam = v.trim(); serialize();
+            }));
+            inspector.appendChild(qpRow);
+        } else if (c.source === 'user') {
+            var uaRow = row('User Attribute');
+            uaRow._input.appendChild(selectEl(
+                [
+                    { value: 'email', label: 'Email' },
+                    { value: 'id', label: 'User ID' },
+                    { value: 'username', label: 'Username' }
+                ],
+                c.userAttribute || 'email',
+                function(v) { c.userAttribute = v; serialize(); }
+            ));
+            inspector.appendChild(uaRow);
+        } else if (c.source === 'cookie') {
+            var ckRow = row('Cookie Name');
+            ckRow._input.appendChild(textInput(c.cookieName || '', function(v) {
+                c.cookieName = v.trim(); serialize();
+            }));
+            inspector.appendChild(ckRow);
+        }
+
+        // Default / fallback value (used when the source yields nothing).
+        var defRow = row(c.source === 'static' ? 'Value' : 'Default Value');
+        defRow._input.appendChild(textInput(c.default || '', function(v) {
+            if (v === '') { delete c.default; } else { c.default = v; } serialize();
+        }));
+        inspector.appendChild(defRow);
+
+        inspector.appendChild(numberRow('Maximum Length', c.maxLength, function(v) { setNum(c, 'maxLength', v); }));
     }
 
     function setNum(c, key, v) {
