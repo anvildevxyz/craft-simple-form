@@ -255,7 +255,7 @@ class EmailService extends Component
             }
         }
 
-        return $this->renderDefaultBody($form, $submission, $data);
+        return Plugin::getInstance()->getSubmissionBodyRenderer()->render($form, $submission, $data);
     }
 
     /**
@@ -280,121 +280,5 @@ class EmailService extends Component
             $variables,
             [Form::class, Submission::class, FieldModel::class],
         );
-    }
-
-    /**
-     * Render an overridable Twig *template file* (e.g. the PDF layout) with the
-     * Twig sandbox forced on, mirroring {@see renderSandboxed()} but resolving a
-     * template path instead of an inline string. Used by {@see PdfService} so a
-     * form author's `pdf.twig` override cannot reach the application or filesystem.
-     * Delegates to the shared {@see SafeRenderService} seam.
-     *
-     * @param array<string, mixed> $variables
-     * @throws \Throwable when the sandbox rejects the template or rendering fails
-     */
-    public function renderSandboxedTemplate(string $template, array $variables): string
-    {
-        return Plugin::getInstance()->getSafeRender()->renderTemplate(
-            $template,
-            $variables,
-            [Form::class, Submission::class, FieldModel::class],
-        );
-    }
-
-    /**
-     * Build the plugin's default submission HTML (a titled field-value table),
-     * reused by the notification body fallback and the PDF default layout (#143).
-     *
-     * @param SubmissionData $data
-     */
-    public function renderDefaultBody(Form $form, Submission $submission, array $data): string
-    {
-        $html = '<html><body>';
-        $html .= '<h2>' . Craft::t('simple-form', 'New Form Submission') . '</h2>';
-
-        // Form information
-        $html .= '<p>';
-        $html .= '<strong>' . Craft::t('simple-form', 'Form') . ':</strong> ' . htmlspecialchars($form->title ?? $form->name) . '<br>';
-        $html .= '<strong>' . Craft::t('simple-form', 'Date') . ':</strong> ' . $submission->dateCreated->format('Y-m-d H:i:s') . '<br>';
-
-        if ($submission->userId) {
-            $user = Craft::$app->getUsers()->getUserById($submission->userId);
-            if ($user) {
-                $html .= '<strong>' . Craft::t('simple-form', 'User') . ':</strong> ' . htmlspecialchars($user->fullName ?: $user->username) . '<br>';
-            }
-        }
-
-        $html .= '</p>';
-
-        // Submission data
-        $html .= '<hr>';
-        $html .= '<h3>' . Craft::t('simple-form', 'Submission Data') . '</h3>';
-        $html .= '<table style="border-collapse: collapse; width: 100%;">';
-
-        foreach ($data as $fieldData) {
-            $label = htmlspecialchars($fieldData['label']);
-            $value = $fieldData['type'] === 'file'
-                ? $this->formatFileValue($fieldData['value'])
-                : $this->formatFieldValue($fieldData['value']);
-
-            $html .= '<tr style="border-bottom: 1px solid #ddd;">';
-            $html .= '<td style="padding: 10px; font-weight: bold; width: 30%;">' . $label . '</td>';
-            $html .= '<td style="padding: 10px;">' . $value . '</td>';
-            $html .= '</tr>';
-        }
-
-        $html .= '</table>';
-
-        // Footer
-        $html .= '<hr>';
-        $html .= '<p style="font-size: 0.9em; color: #666;">';
-        $html .= Craft::t('simple-form', 'This is an automated message. Please do not reply directly to this email.');
-        $html .= '</p>';
-
-        $html .= '</body></html>';
-
-        return $html;
-    }
-
-    private function formatFieldValue(mixed $value): string
-    {
-        if ($value === null || $value === '') {
-            return '<em style="color: #999;">—</em>';
-        }
-
-        if (is_array($value)) {
-            $stringValues = array_map('strval', $value);
-            return htmlspecialchars(implode(', ', $stringValues));
-        }
-
-        return htmlspecialchars((string) $value);
-    }
-
-    /**
-     * Render a file field's stored asset ids as download links (filename + URL).
-     *
-     * @param mixed $value list of asset ids
-     */
-    private function formatFileValue(mixed $value): string
-    {
-        $ids = is_array($value) ? $value : [];
-        if ($ids === []) {
-            return '<em style="color: #999;">—</em>';
-        }
-
-        $links = [];
-        foreach ($ids as $id) {
-            $asset = \craft\elements\Asset::find()->id((int) $id)->one();
-            if (!$asset instanceof \craft\elements\Asset) {
-                continue;
-            }
-            $url = $asset->getUrl();
-            $name = htmlspecialchars((string) $asset->getFilename());
-            $links[] = $url
-                ? '<a href="' . htmlspecialchars((string) $url) . '">' . $name . '</a>'
-                : $name;
-        }
-
-        return $links === [] ? '<em style="color: #999;">—</em>' : implode('<br>', $links);
     }
 }

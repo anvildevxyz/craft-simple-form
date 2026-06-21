@@ -59,6 +59,7 @@ use fabianhaef\simpleform\services\PdfService;
 use fabianhaef\simpleform\services\ReportsService;
 use fabianhaef\simpleform\services\RetentionService;
 use fabianhaef\simpleform\services\SafeRenderService;
+use fabianhaef\simpleform\services\SubmissionBodyRenderer;
 use fabianhaef\simpleform\services\SubmissionEditTokenService;
 use fabianhaef\simpleform\services\SubmissionService;
 use fabianhaef\simpleform\stencils\StencilLibrary;
@@ -123,6 +124,7 @@ class Plugin extends BasePlugin
         $this->setComponents([
             'fieldTypeRegistry' => FieldTypeRegistry::class,
             'safeRender' => SafeRenderService::class,
+            'submissionBodyRenderer' => SubmissionBodyRenderer::class,
             'emailService' => EmailService::class,
             'submissionService' => SubmissionService::class,
             'submissionEditTokens' => SubmissionEditTokenService::class,
@@ -408,6 +410,13 @@ class Plugin extends BasePlugin
     {
         /** @var SafeRenderService $service */
         $service = $this->get('safeRender');
+        return $service;
+    }
+
+    public function getSubmissionBodyRenderer(): SubmissionBodyRenderer
+    {
+        /** @var SubmissionBodyRenderer $service */
+        $service = $this->get('submissionBodyRenderer');
         return $service;
     }
 

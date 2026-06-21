@@ -45,10 +45,10 @@ class PdfServiceTest extends TestCase
 
     public function testServiceRendersThroughSandboxedTemplate(): void
     {
-        // The PDF body must be produced through EmailService's sandboxed renderer
-        // (F2/SSTI), not a raw renderTemplate, so an overriding pdf.twig is sandboxed.
+        // The PDF body must be produced through the sandboxed SafeRenderService
+        // seam (F2/SSTI), so an overriding pdf.twig cannot reach craft.app.
         $code = $this->source('services/PdfService.php');
-        $this->assertStringContainsString('renderSandboxedTemplate(', $code);
+        $this->assertStringContainsString('getSafeRender()->renderTemplate(', $code);
         $this->assertStringContainsString("public const TEMPLATE = 'simple-form/forms/notifications/pdf'", $code);
     }
 

@@ -9,6 +9,7 @@ use craft\helpers\FileHelper;
 use craft\web\View;
 use fabianhaef\simpleform\elements\Form;
 use fabianhaef\simpleform\elements\Submission;
+use fabianhaef\simpleform\models\FieldModel;
 use fabianhaef\simpleform\pdf\DompdfEngine;
 use fabianhaef\simpleform\pdf\PdfEngineInterface;
 use fabianhaef\simpleform\Plugin;
@@ -175,24 +176,18 @@ class PdfService extends Component
             ];
 
             if ($view->doesTemplateExist(self::TEMPLATE, View::TEMPLATE_MODE_CP)) {
-                return Plugin::getInstance()->getEmailService()->renderSandboxedTemplate(self::TEMPLATE, $variables);
+                return Plugin::getInstance()->getSafeRender()->renderTemplate(
+                    self::TEMPLATE,
+                    $variables,
+                    [Form::class, Submission::class, FieldModel::class],
+                );
             }
 
-            return $this->defaultHtml($form, $submission, $data);
+            // No author-supplied pdf.twig: fall back to the shared default body.
+            return Plugin::getInstance()->getSubmissionBodyRenderer()->render($form, $submission, $data);
         } finally {
             $sites->setCurrentSite($restore);
         }
-    }
-
-    /**
-     * A minimal default PDF body when no `pdf.twig` is resolvable: a titled table
-     * of field label → formatted value, reusing the EmailService formatters.
-     *
-     * @param array<string, mixed> $data
-     */
-    private function defaultHtml(Form $form, Submission $submission, array $data): string
-    {
-        return Plugin::getInstance()->getEmailService()->renderDefaultBody($form, $submission, $data);
     }
 
     /**
