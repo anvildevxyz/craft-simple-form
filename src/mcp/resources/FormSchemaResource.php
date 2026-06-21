@@ -12,79 +12,63 @@ use fabianhaef\simpleform\mcp\tools\support\FormPresenter;
  *
  * Follows the forms:manage scope, matching how the form-management tools are
  * gated. Contents reuse {@see FormPresenter} so the resource and {@code get_form}
- * never disagree about the schema.
- *
- * @phpstan-import-type McpError from \fabianhaef\simpleform\mcp\tools\ToolInterface
- * @phpstan-import-type McpResourceContents from ResourceProviderInterface
- * @phpstan-import-type ResourceDescriptor from ResourceProviderInterface
+ * never disagree about the schema. The list/read/handles plumbing lives in
+ * {@see AbstractFormResource}; this provider only declares its scheme, scope,
+ * MIME, descriptor and payload.
  */
-final class FormSchemaResource implements ResourceProviderInterface
+final class FormSchemaResource extends AbstractFormResource
 {
+    // =========================================================================
+    // Const Properties
+    // =========================================================================
+
     private const SCHEME = 'form';
     private const MIME = 'application/json';
+
+    // =========================================================================
+    // Public Methods
+    // =========================================================================
 
     public function requiredScope(): string
     {
         return Scopes::FORMS_MANAGE;
     }
 
-    /**
-     * @return list<ResourceDescriptor>
-     */
-    public function list(): array
-    {
-        $resources = [];
-        $seen = [];
-        // siteId('*') returns one element instance per site; dedupe by handle so
-        // a multi-site form yields a single (handle-keyed) resource entry.
-        $forms = Form::find()->siteId('*')->status(null)->all();
-        foreach ($forms as $form) {
-            if (!$form instanceof Form || $form->handle === null || isset($seen[$form->handle])) {
-                continue;
-            }
-            $seen[$form->handle] = true;
-            $resources[] = [
-                'uri' => self::SCHEME . '://' . $form->handle,
-                'name' => $form->name ?? $form->handle,
-                'title' => $form->title ?? $form->name ?? $form->handle,
-                'description' => 'Schema (fields, types, options, validation) for the "'
-                    . ($form->name ?? $form->handle) . '" form.',
-                'mimeType' => self::MIME,
-            ];
-        }
+    // =========================================================================
+    // Protected Methods
+    // =========================================================================
 
-        return $resources;
+    protected function scheme(): string
+    {
+        return self::SCHEME;
     }
 
-    public function handles(string $uri): bool
+    protected function mimeType(): string
     {
-        return str_starts_with($uri, self::SCHEME . '://');
+        return self::MIME;
     }
 
     /**
-     * @return McpResourceContents|McpError
+     * @inheritdoc
      */
-    public function read(string $uri): array
+    protected function describe(Form $form): array
     {
-        $handle = substr($uri, strlen(self::SCHEME . '://'));
-        if ($handle === '') {
-            return ['isError' => true, 'error' => 'Missing form handle in URI: ' . $uri];
-        }
-
-        $form = Form::find()->siteId('*')->status(null)->handle($handle)->one();
-        if (!$form instanceof Form) {
-            return ['isError' => true, 'error' => 'Form not found: ' . $handle];
-        }
-
-        // Reuse the tool-layer presenter so the resource schema matches get_form.
-        $schema = FormPresenter::form($form);
-
         return [
-            'contents' => [[
-                'uri' => $uri,
-                'mimeType' => self::MIME,
-                'text' => (string)json_encode($schema, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES),
-            ]],
+            'uri' => self::SCHEME . '://' . $form->handle,
+            'name' => $form->name ?? $form->handle,
+            'title' => $form->title ?? $form->name ?? $form->handle,
+            'description' => 'Schema (fields, types, options, validation) for the "'
+                . ($form->name ?? $form->handle) . '" form.',
+            'mimeType' => self::MIME,
         ];
+    }
+
+    /**
+     * @inheritdoc
+     */
+    protected function payload(Form $form): array
+    {
+        // Reuse the tool-layer presenter so the resource schema matches get_form.
+        return FormPresenter::form($form);
     }
 }

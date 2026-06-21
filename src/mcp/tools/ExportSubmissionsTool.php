@@ -2,7 +2,6 @@
 
 namespace fabianhaef\simpleform\mcp\tools;
 
-use fabianhaef\simpleform\elements\db\SubmissionQuery;
 use fabianhaef\simpleform\mcp\Scopes;
 use fabianhaef\simpleform\mcp\tools\support\SubmissionQueryBuilder;
 
@@ -63,15 +62,12 @@ class ExportSubmissionsTool implements ToolInterface
             return ['isError' => true, 'error' => 'format must be "csv" or "json".'];
         }
 
-        $built = SubmissionQueryBuilder::build($arguments);
-        if (is_array($built)) {
-            return $built;
+        $query = SubmissionQueryBuilder::buildWithForm($arguments);
+        if (is_array($query)) {
+            return $query;
         }
-        /** @var SubmissionQuery $query */
-        $query = $built;
-        $query->with(['form']);
 
-        $fieldMatch = is_array($arguments['fieldMatch'] ?? null) ? $arguments['fieldMatch'] : [];
+        $fieldMatch = SubmissionQueryBuilder::fieldMatch($arguments);
         $submissions = SubmissionQueryBuilder::applyFieldMatch($query->all(), $fieldMatch);
 
         $rows = array_map(

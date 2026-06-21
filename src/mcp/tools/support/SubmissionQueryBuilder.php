@@ -58,6 +58,39 @@ final class SubmissionQueryBuilder
     }
 
     /**
+     * Like {@see self::build()} but additionally eager-loads the related form,
+     * which every submission tool needs. The `is_array(...)` error bail stays in
+     * the caller so it can `return` the payload directly.
+     *
+     * @param array<string, mixed> $args
+     * @return SubmissionQuery|McpError the eager-loaded query, or an
+     *   error payload when a referenced form can't be resolved.
+     */
+    public static function buildWithForm(array $args): SubmissionQuery|array
+    {
+        $built = self::build($args);
+        if (is_array($built)) {
+            return $built;
+        }
+
+        $built->with(['form']);
+
+        return $built;
+    }
+
+    /**
+     * Coerce the shared `fieldMatch` argument into an array, so every tool
+     * interprets a missing or non-array value the same way (empty filter).
+     *
+     * @param array<string, mixed> $args
+     * @return array<string, mixed>
+     */
+    public static function fieldMatch(array $args): array
+    {
+        return is_array($args['fieldMatch'] ?? null) ? $args['fieldMatch'] : [];
+    }
+
+    /**
      * Apply an in-PHP field-value filter to a fetched submission set. The
      * submission `data` blob is schemaless JSON, so this can't be pushed into
      * SQL portably; filtering after fetch keeps it DB-agnostic.

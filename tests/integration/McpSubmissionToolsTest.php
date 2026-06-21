@@ -5,9 +5,11 @@ namespace fabianhaef\simpleform\tests\integration;
 use Craft;
 use craft\web\Response;
 use fabianhaef\simpleform\controllers\McpController;
+use fabianhaef\simpleform\elements\db\SubmissionQuery;
 use fabianhaef\simpleform\elements\Form;
 use fabianhaef\simpleform\elements\Submission;
 use fabianhaef\simpleform\mcp\Scopes;
+use fabianhaef\simpleform\mcp\tools\support\SubmissionQueryBuilder;
 use fabianhaef\simpleform\Plugin;
 
 /**
@@ -227,5 +229,33 @@ class McpSubmissionToolsTest extends SimpleFormTestCase
 
         $this->assertArrayHasKey('error', $res);
         $this->assertSame(-32001, $res['error']['code']);
+    }
+
+    public function testBuildWithFormEagerLoadsTheForm(): void
+    {
+        $this->requireCraft();
+        $form = $this->createForm('Build With Form', 'buildWithForm');
+        $this->seedSubmission((int)$form->id, ['name' => 'Dana']);
+
+        $query = SubmissionQueryBuilder::buildWithForm(['formId' => (int)$form->id]);
+        $this->assertInstanceOf(SubmissionQuery::class, $query);
+        $this->assertContains('form', $query->with ?? []);
+
+        $submissions = $query->all();
+        $this->assertCount(1, $submissions);
+        // The eager-load means the related form is resolved without another query.
+        $this->assertInstanceOf(Form::class, $submissions[0]->getForm());
+    }
+
+    public function testBuildWithFormReturnsErrorPayloadForUnknownForm(): void
+    {
+        $this->requireCraft();
+
+        $result = SubmissionQueryBuilder::buildWithForm(['form' => 'noSuchFormHandle']);
+
+        $this->assertSame(
+            ['isError' => true, 'error' => 'Form not found: noSuchFormHandle'],
+            $result,
+        );
     }
 }
