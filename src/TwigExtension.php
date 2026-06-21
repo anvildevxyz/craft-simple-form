@@ -3,6 +3,7 @@
 namespace fabianhaef\simpleform;
 
 use Craft;
+use craft\helpers\UrlHelper;
 use fabianhaef\simpleform\elements\Form;
 use fabianhaef\simpleform\helpers\FieldQueryHelper;
 use fabianhaef\simpleform\helpers\FormSteps;
@@ -49,6 +50,15 @@ class TwigExtension extends AbstractExtension
         if (!$form->isAcceptingSubmissions()) {
             return '<div class="simple-form simple-form--closed" role="status">'
                 . htmlspecialchars($form->getResolvedClosedMessage()) . '</div>';
+        }
+
+        // Access gates (#135): a guest sees the login-required message + link, a
+        // capped user sees the limit-reached message — both instead of the form.
+        // The server still re-checks every gate in SubmissionService::submit(), so
+        // a page cached before login (or a crafted POST) is rejected there too.
+        $accessNotice = $this->renderAccessNotice($form);
+        if ($accessNotice !== null) {
+            return $accessNotice;
         }
 
         $fieldTypeRegistry = Plugin::getInstance()->getFieldTypeRegistry();
@@ -165,6 +175,43 @@ class TwigExtension extends AbstractExtension
         $html .= $this->renderAssets($settings);
 
         return $html;
+    }
+
+    /**
+     * Build the access-gate notice shown instead of the form (#135), or null when
+     * the visitor may proceed:
+     *  - login required + guest → the login-required message plus a login link
+     *    that returns to the current URL after sign-in;
+     *  - logged-in user at/over the per-user cap → the limit-reached message.
+     *
+     * The server re-checks both gates on submit, so this is purely a render-time
+     * convenience (a cached/forged request is still rejected there).
+     */
+    private function renderAccessNotice(Form $form): ?string
+    {
+        $user = Craft::$app->getUser();
+
+        if ($form->requireLogin && $user->getIsGuest()) {
+            /** @var \craft\web\Request $request */
+            $request = Craft::$app->getRequest();
+            $loginUrl = UrlHelper::siteUrl(
+                Craft::$app->getConfig()->getGeneral()->getLoginPath(),
+                ['return' => $request->getAbsoluteUrl()]
+            );
+
+            return '<div class="simple-form simple-form--login-required" role="status">'
+                . htmlspecialchars($form->getLoginRequiredMessage())
+                . ' <a href="' . htmlspecialchars($loginUrl) . '">'
+                . htmlspecialchars(Craft::t('simple-form', 'Log in')) . '</a></div>';
+        }
+
+        $userId = $user->getId();
+        if (Plugin::getInstance()->getSubmissionService()->userHasReachedLimit($form, $userId !== null ? (int) $userId : null)) {
+            return '<div class="simple-form simple-form--limit-reached" role="status">'
+                . htmlspecialchars($form->getUserLimitMessage()) . '</div>';
+        }
+
+        return null;
     }
 
     /**

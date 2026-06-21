@@ -141,6 +141,14 @@ class FormsController extends Controller
             : null;
         $form->closedMessage = $request->getBodyParam('closedMessage') ?: null;
 
+        // Login + per-user limit (#135). Shared flags + per-site notice overrides.
+        $form->requireLogin = (bool) $request->getBodyParam('requireLogin');
+        $form->loginRequiredMessage = $request->getBodyParam('loginRequiredMessage');
+        $submissionsPerUser = trim((string) $request->getBodyParam('submissionsPerUser', ''));
+        $form->submissionsPerUser = $submissionsPerUser !== '' ? (int) $submissionsPerUser : null;
+        $form->guestLimitKey = (string) $request->getBodyParam('guestLimitKey', Form::GUEST_LIMIT_NONE);
+        $form->userLimitMessage = $request->getBodyParam('userLimitMessage');
+
         $form->propagationMethod = PropagationMethod::tryFrom(
             (string)$request->getBodyParam('propagationMethod', 'none')
         ) ?? PropagationMethod::None;

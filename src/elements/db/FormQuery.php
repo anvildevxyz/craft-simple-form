@@ -60,6 +60,9 @@ class FormQuery extends ElementQuery
             'simpleform_forms.openDate',
             'simpleform_forms.closeDate',
             'simpleform_forms.submissionLimit',
+            'simpleform_forms.requireLogin',
+            'simpleform_forms.submissionsPerUser',
+            'simpleform_forms.guestLimitKey',
             'simpleform_forms_sites.description',
             'simpleform_forms_sites.emailTo',
             'simpleform_forms_sites.emailSubject',
@@ -69,6 +72,8 @@ class FormQuery extends ElementQuery
             'simpleform_forms_sites.errorMessage',
             'simpleform_forms_sites.redirectUrl',
             'simpleform_forms_sites.closedMessage',
+            'simpleform_forms_sites.loginRequiredMessage',
+            'simpleform_forms_sites.userLimitMessage',
             // title is supplied from elements_sites.title via the element column map
         ]);
 

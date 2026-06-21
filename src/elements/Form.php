@@ -43,6 +43,20 @@ class Form extends Element
     /** {@see getClosedReason()}: the submission limit has been reached. */
     public const CLOSED_FULL = 'full';
 
+    /** Per-user limit never applies to guests. */
+    public const GUEST_LIMIT_NONE = 'none';
+    /** Key the per-user limit for guests on the submitted email-field value. */
+    public const GUEST_LIMIT_EMAIL = 'email';
+    /** Key the per-user limit for guests on the submitter IP (reserved; not stored in v1). */
+    public const GUEST_LIMIT_IP = 'ip';
+
+    /**
+     * Supported {@see self::$guestLimitKey} values.
+     *
+     * @var list<string>
+     */
+    public const GUEST_LIMIT_KEYS = [self::GUEST_LIMIT_NONE, self::GUEST_LIMIT_EMAIL, self::GUEST_LIMIT_IP];
+
     // Shared across sites
     public ?string $name = null;
     public ?string $handle = null;
@@ -60,6 +74,12 @@ class Form extends Element
     public ?DateTime $openDate = null;
     public ?DateTime $closeDate = null;
     public ?int $submissionLimit = null;
+    /** Require a logged-in user to view/submit the form (shared, not translatable). */
+    public bool $requireLogin = false;
+    /** Max submissions per user; null = unlimited (shared, not translatable). */
+    public ?int $submissionsPerUser = null;
+    /** How to key the per-user limit for guests: 'none' | 'email' | 'ip' (shared). */
+    public string $guestLimitKey = self::GUEST_LIMIT_NONE;
 
     // Per-site (translatable). title is stored in elements_sites via hasTitles().
     public ?string $title = null;
@@ -76,6 +96,10 @@ class Form extends Element
     public ?string $redirectUrl = null;
     /** Per-site message shown in place of the form when it is closed/full. */
     public ?string $closedMessage = null;
+    /** Message shown (with a login link) instead of the form when login is required. */
+    public ?string $loginRequiredMessage = null;
+    /** Message shown instead of the form when the per-user limit is reached. */
+    public ?string $userLimitMessage = null;
 
     public static function displayName(): string
     {
@@ -224,6 +248,32 @@ class Form extends Element
     }
 
     /**
+     * The message to show (with a login link) when login is required, falling
+     * back to a translatable default when the per-site message is blank.
+     */
+    public function getLoginRequiredMessage(): string
+    {
+        $message = trim((string) $this->loginRequiredMessage);
+
+        return $message !== ''
+            ? $message
+            : Craft::t('simple-form', 'Please log in to submit this form.');
+    }
+
+    /**
+     * The message to show when the per-user submission limit is reached, falling
+     * back to a translatable default when the per-site message is blank.
+     */
+    public function getUserLimitMessage(): string
+    {
+        $message = trim((string) $this->userLimitMessage);
+
+        return $message !== ''
+            ? $message
+            : Craft::t('simple-form', 'You have already submitted this form.');
+    }
+
+    /**
      * The form's resolved field set (decoded config + this site's label/help
      * text), served from the structure cache. When pre-loaded via
      * {@see self::eagerLoadFields()} the primed set is returned with no query.
@@ -330,6 +380,10 @@ class Form extends Element
         $rules[] = [['emailTo', 'emailSubject', 'emailReplyTo'], 'string', 'max' => 255];
         $rules[] = [['emailBody'], 'string'];
         $rules[] = [['allowSaveResume'], 'boolean'];
+        $rules[] = [['requireLogin'], 'boolean'];
+        $rules[] = [['submissionsPerUser'], 'integer', 'min' => 1];
+        $rules[] = [['loginRequiredMessage', 'userLimitMessage'], 'string'];
+        $rules[] = [['guestLimitKey'], 'in', 'range' => self::GUEST_LIMIT_KEYS];
 
         // Post-submit behavior (#133).
         $rules[] = [['submitMessage', 'errorMessage', 'redirectUrl'], 'string'];
@@ -403,6 +457,9 @@ class Form extends Element
             'openDate' => Db::prepareDateForDb($this->openDate),
             'closeDate' => Db::prepareDateForDb($this->closeDate),
             'submissionLimit' => $this->submissionLimit,
+            'requireLogin' => $this->requireLogin,
+            'submissionsPerUser' => $this->submissionsPerUser,
+            'guestLimitKey' => $this->guestLimitKey,
             'dateUpdated' => $now,
         ];
 
@@ -437,6 +494,8 @@ class Form extends Element
             'errorMessage' => $this->errorMessage,
             'redirectUrl' => $this->redirectUrl,
             'closedMessage' => $this->closedMessage,
+            'loginRequiredMessage' => $this->loginRequiredMessage,
+            'userLimitMessage' => $this->userLimitMessage,
         ];
 
         $rowExists = (new \craft\db\Query())

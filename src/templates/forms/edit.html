@@ -293,6 +293,63 @@
 
 <hr>
 
+<h2>{{ 'Access & limits'|t('simple-form') }}</h2>
+
+{{ forms.lightswitchField({
+    label: 'Require login to view & submit'|t('simple-form'),
+    id: 'requireLogin',
+    name: 'requireLogin',
+    on: form.requireLogin ?? false,
+    instructions: 'When enabled, only logged-in users can view or submit this form. Guests see a message with a login link, and anonymous submissions are rejected server-side.'|t('simple-form'),
+}) }}
+
+{{ forms.textareaField({
+    label: 'Login-required message'|t('simple-form'),
+    id: 'loginRequiredMessage',
+    name: 'loginRequiredMessage',
+    value: form.loginRequiredMessage,
+    rows: 2,
+    errors: form.getErrors('loginRequiredMessage'),
+    instructions: 'Shown (with a login link) instead of the form when login is required. Leave blank to use the default.'|t('simple-form'),
+    translatable: true,
+}) }}
+
+{{ forms.textField({
+    label: 'Submissions per user'|t('simple-form'),
+    id: 'submissionsPerUser',
+    name: 'submissionsPerUser',
+    type: 'number',
+    min: 1,
+    value: form.submissionsPerUser,
+    errors: form.getErrors('submissionsPerUser'),
+    instructions: 'Maximum times a single user may submit this form (e.g. 1 = once per user). Leave blank for unlimited.'|t('simple-form'),
+}) }}
+
+{{ forms.selectField({
+    label: 'Limit guests by'|t('simple-form'),
+    id: 'guestLimitKey',
+    name: 'guestLimitKey',
+    value: form.guestLimitKey ?? 'none',
+    options: [
+        { label: 'Don’t limit guests'|t('simple-form'), value: 'none' },
+        { label: 'Email field value'|t('simple-form'), value: 'email' },
+    ],
+    instructions: 'How the per-user limit applies to logged-out visitors. “Email field value” matches the form’s email field and is best-effort, not a security control.'|t('simple-form'),
+}) }}
+
+{{ forms.textareaField({
+    label: 'Limit-reached message'|t('simple-form'),
+    id: 'userLimitMessage',
+    name: 'userLimitMessage',
+    value: form.userLimitMessage,
+    rows: 2,
+    errors: form.getErrors('userLimitMessage'),
+    instructions: 'Shown instead of the form when a user has reached their submission limit. Leave blank to use the default.'|t('simple-form'),
+    translatable: true,
+}) }}
+
+<hr>
+
 <h2>{{ 'Form Fields'|t('simple-form') }}</h2>
 <p class="light">{{ 'Drag a field type from the right onto the form, or click it to add. Click a field to edit its properties. Changes are saved when you save the form.'|t('simple-form') }}</p>
 

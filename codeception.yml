@@ -54,6 +54,8 @@ modules:
           params: {}
         - class: fabianhaef\simpleform\migrations\m260620_000005_form_scheduling
           params: {}
+        - class: fabianhaef\simpleform\migrations\m260620_000006_form_user_limits
+          params: {}
       plugins:
         - handle: simple-form
           class: fabianhaef\simpleform\Plugin
