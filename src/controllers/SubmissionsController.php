@@ -106,13 +106,11 @@ class SubmissionsController extends Controller
 
         $submissions = $query->all();
 
-        // Get all forms for filter dropdown
         $allForms = Form::find()
             ->siteId($siteId)
             ->orderBy(['title' => SORT_ASC])
             ->all();
 
-        // Get submission statistics
         $stats = $this->getSubmissionStats($siteId, $formId !== null ? (int) $formId : null);
 
         return $this->renderTemplate('simple-form/submissions/index', [

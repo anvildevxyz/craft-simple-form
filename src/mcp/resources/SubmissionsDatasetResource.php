@@ -18,6 +18,7 @@ use fabianhaef\simpleform\mcp\tools\support\SubmissionQueryBuilder;
  *
  * @phpstan-import-type McpError from \fabianhaef\simpleform\mcp\tools\ToolInterface
  * @phpstan-import-type McpResourceContents from ResourceProviderInterface
+ * @phpstan-import-type ResourceDescriptor from ResourceProviderInterface
  */
 final class SubmissionsDatasetResource implements ResourceProviderInterface
 {
@@ -33,7 +34,7 @@ final class SubmissionsDatasetResource implements ResourceProviderInterface
     }
 
     /**
-     * @return list<array<string, mixed>>
+     * @return list<ResourceDescriptor>
      */
     public function list(): array
     {

@@ -23,7 +23,7 @@ use yii\web\Response;
  * This implements the request/response half of MCP's Streamable HTTP transport:
  * one POST whose body is a JSON-RPC request and whose response is
  * `application/json`. That is sufficient for the synchronous request/response
- * tools in this foundation. SSE streaming (server-initiated messages over a GET
+ * tools the plugin exposes. SSE streaming (server-initiated messages over a GET
  * stream) is intentionally NOT implemented yet; the dispatch is isolated in
  * {@see McpServer} so an SSE action can be added later without touching auth or
  * tool logic.

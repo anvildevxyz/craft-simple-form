@@ -353,7 +353,7 @@ final class SubmissionCsv
                 $key = (string) $key;
 
                 if (self::isComposite($entry)) {
-                    $fieldLabel = (string) ($entry['label'] ?? $key);
+                    $fieldLabel = $entry['label'];
                     foreach (self::compositeSubLabels($entry) as $sub => $subLabel) {
                         $colId = $key . '::' . $sub;
                         if (isset($seen[$colId])) {
@@ -376,7 +376,7 @@ final class SubmissionCsv
                 $columns[] = [
                     'key' => $key,
                     'sub' => null,
-                    'label' => is_array($entry) ? (string) ($entry['label'] ?? $key) : $key,
+                    'label' => $entry['label'],
                 ];
             }
         }

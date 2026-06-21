@@ -43,7 +43,7 @@ class SubmissionService extends Component
      * @param Request|null $request Request object (uses Craft request if null)
      * @return array{submission: Submission|null, errors: array<string, mixed>|null, data?: array<string, mixed>}
      */
-    public function createFromRequest($form, ?Request $request = null): array
+    public function createFromRequest(FormModel|Form|string $form, ?Request $request = null): array
     {
         if ($request === null) {
             /** @var Request $request */
@@ -965,7 +965,7 @@ class SubmissionService extends Component
      *
      * @param FormModel|Form|string $form
      */
-    private function resolveForm($form): ?Form
+    private function resolveForm(FormModel|Form|string $form): ?Form
     {
         if ($form instanceof Form) {
             return $form;

@@ -6,9 +6,8 @@
 {% do craft.app.view.registerAssetBundle('fabianhaef\\simpleform\\web\\assets\\cp\\SimpleFormCpAsset') %}
 {% set selectedSettingsSubnavItem = selectedSettingsSubnavItem ?? 'general' %}
 
-{# Native Craft header tabs for the settings sub-sections (replaces the
-   hand-rolled _sidebar.html). Each tab is a real URL; selectedTab highlights
-   the active one. #}
+{# Native Craft header tabs for the settings sub-sections. Each tab is a real
+   URL; selectedTab highlights the active one. #}
 {% set tabs = {
     general: { label: 'General'|t('simple-form'), url: cpUrl('simple-form/settings/general') },
     email: { label: 'Email'|t('simple-form'), url: cpUrl('simple-form/settings/email') },

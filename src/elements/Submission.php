@@ -12,6 +12,9 @@ use fabianhaef\simpleform\elements\actions\SetSubmissionStatus;
 use fabianhaef\simpleform\elements\db\SubmissionQuery;
 use fabianhaef\simpleform\elements\exporters\SubmissionExporter;
 
+/**
+ * @phpstan-type SubmissionData array<string, array{label: string, type: string, value: mixed}>
+ */
 class Submission extends Element
 {
     /** Payment is required but not yet settled. */
@@ -20,7 +23,7 @@ class Submission extends Element
     public const PAYMENT_PAID = 'paid';
 
     public ?int $formId = null;
-    /** @var array<string, mixed>|null */
+    /** @var SubmissionData|null */
     public ?array $data = null;
     public ?int $userId = null;
     public string $readStatus = SubmissionStatus::NEW;

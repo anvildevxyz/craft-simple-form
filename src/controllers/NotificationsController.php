@@ -22,15 +22,6 @@ class NotificationsController extends Controller
 
     protected const PERMISSION = SimpleFormPermissions::MANAGE_FORMS;
 
-    private function getFormOrFail(int $formId): Form
-    {
-        $form = Form::find()->siteId('*')->id($formId)->status(null)->one();
-        if (!$form) {
-            throw new NotFoundHttpException('Form not found');
-        }
-        return $form;
-    }
-
     public function actionIndex(int $formId): Response
     {
         $form = $this->getFormOrFail($formId);
@@ -192,7 +183,7 @@ class NotificationsController extends Controller
         $fields = Plugin::getInstance()->getFormStructure()->getFieldSet((int) $form->id, (int) $form->siteId);
         $options = [];
         foreach ($fields as $field) {
-            $options[(string) $field['name']] = (string) ($field['label'] ?? $field['name']);
+            $options[(string) $field['name']] = (string) $field['label'];
         }
         return $options;
     }

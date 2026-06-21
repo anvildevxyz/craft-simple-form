@@ -286,7 +286,7 @@ class FormCloneService extends Component
         $rows = FieldQueryHelper::fieldsForForm($formId, $siteId);
 
         return array_map(function(array $row): array {
-            $config = is_array($row['config'] ?? null) ? $row['config'] : [];
+            $config = $row['config'];
             // FieldQueryHelper injects `required` into config; drop it so it
             // doesn't double up with the column the sync path writes.
             unset($config['required']);
@@ -296,7 +296,7 @@ class FormCloneService extends Component
             return [
                 'type' => (string) $row['type'],
                 'handle' => (string) $row['name'],
-                'label' => (string) ($row['label'] ?? $row['name']),
+                'label' => $row['label'],
                 'required' => (bool) $row['required'],
                 'helpText' => (string) ($row['helpText'] ?? ''),
                 'errorMessage' => (string) ($row['errorMessage'] ?? ''),

@@ -17,6 +17,8 @@ use fabianhaef\simpleform\Plugin;
  * Field resolution reuses the same single-source-of-truth field set the CP and
  * Twig rendering use (via FormStructureService → FieldQueryHelper), so the
  * GraphQL schema, the rendered form, and submit validation never drift apart.
+ *
+ * @phpstan-import-type ResolvedFieldRow from FieldQueryHelper
  */
 final class FormGqlResolver
 {
@@ -63,12 +65,12 @@ final class FormGqlResolver
      * Map a resolved field row (see {@see \fabianhaef\simpleform\helpers\FieldQueryHelper})
      * to the GraphQL field shape.
      *
-     * @param array<string, mixed> $row
+     * @param ResolvedFieldRow $row
      * @return array<string, mixed>
      */
     private static function mapField(array $row): array
     {
-        $config = is_array($row['config'] ?? null) ? $row['config'] : [];
+        $config = $row['config'];
         // Overlay this site's option-label translations so the GraphQL schema
         // matches the rendered form for the requested site (option values stay
         // canonical; missing translations fall back to the source label).
@@ -76,16 +78,16 @@ final class FormGqlResolver
             $config,
             is_array($row['optionLabels'] ?? null) ? $row['optionLabels'] : []
         );
-        $required = (bool) ($row['required'] ?? ($config['required'] ?? false));
+        $required = $row['required'];
 
         return [
             'id' => (int) $row['id'],
             'name' => (string) $row['name'],
             'type' => (string) $row['type'],
-            'label' => (string) ($row['label'] ?? $row['name']),
+            'label' => (string) $row['label'],
             'helpText' => ($row['helpText'] ?? '') !== '' ? $row['helpText'] : null,
             'required' => $required,
-            'sortOrder' => isset($row['sortOrder']) ? (int) $row['sortOrder'] : null,
+            'sortOrder' => (int) $row['sortOrder'],
             'page' => self::pageOf($config),
             'placeholder' => self::stringOrNull($config['placeholder'] ?? null),
             'options' => self::mapOptions($config['options'] ?? null),

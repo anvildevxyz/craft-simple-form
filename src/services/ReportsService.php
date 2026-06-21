@@ -7,6 +7,7 @@ use craft\helpers\Db;
 use fabianhaef\simpleform\elements\Form;
 use fabianhaef\simpleform\elements\Submission;
 use fabianhaef\simpleform\elements\SubmissionStatus;
+use fabianhaef\simpleform\integrations\DispatchStatus;
 use fabianhaef\simpleform\Plugin;
 use yii\base\Component;
 
@@ -128,11 +129,11 @@ class ReportsService extends Component
         $fields = Plugin::getInstance()->getFormStructure()->getFieldSet($formId, $siteId);
         $scaleFields = [];
         foreach ($fields as $field) {
-            $type = (string) ($field['type'] ?? '');
+            $type = $field['type'];
             if (in_array($type, FieldTypeRegistry::SCALE_TYPES, true)) {
-                $key = 'field_' . (int) $field['id'];
+                $key = 'field_' . $field['id'];
                 $scaleFields[$key] = [
-                    'label' => (string) ($field['label'] ?? $field['name'] ?? $key),
+                    'label' => $field['label'],
                     'type' => $type,
                 ];
             }
@@ -203,7 +204,11 @@ class ReportsService extends Component
             ->groupBy(['status'])
             ->all();
 
-        $health = ['success' => 0, 'failed' => 0, 'pending' => 0];
+        $health = [
+            DispatchStatus::SUCCESS => 0,
+            DispatchStatus::FAILED => 0,
+            DispatchStatus::PENDING => 0,
+        ];
         foreach ($rows as $row) {
             $status = (string) $row['status'];
             if (isset($health[$status])) {

@@ -194,9 +194,7 @@ class FormRenderService extends Component
         // prefill shape the field partial expects (field_<id> => value).
         $prefill = [];
         foreach (($submission->data ?? []) as $key => $entry) {
-            if (is_string($key) && is_array($entry) && array_key_exists('value', $entry)) {
-                $prefill[$key] = $entry['value'];
-            }
+            $prefill[$key] = $entry['value'];
         }
 
         // Prime every input with the submission's stored value via the context
@@ -662,10 +660,26 @@ class FormRenderService extends Component
             }
         }
 
-        $css = @file_get_contents(FormAsset::distPath('css/simple-form.css')) ?: '';
-        $js = @file_get_contents(FormAsset::distPath('js/simple-form.js')) ?: '';
+        $css = $this->_readInlineAsset(FormAsset::distPath('css/simple-form.css'));
+        $js = $this->_readInlineAsset(FormAsset::distPath('js/simple-form.js'));
 
         return '<style>' . $css . '</style>' . '<script>' . $js . '</script>';
+    }
+
+    /**
+     * Read a bundled build artifact for inline embedding. A missing file means a
+     * broken/incomplete build, so log a warning instead of silently emitting an
+     * empty asset block.
+     */
+    private function _readInlineAsset(string $path): string
+    {
+        if (!is_file($path)) {
+            Craft::warning('Inline form asset missing (build artifact not found): ' . $path, 'simple-form');
+
+            return '';
+        }
+
+        return file_get_contents($path) ?: '';
     }
 
     /**

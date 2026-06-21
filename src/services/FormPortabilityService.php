@@ -229,7 +229,7 @@ class FormPortabilityService extends Component
             }
             foreach (FieldQueryHelper::fieldsForForm($formId, $siteId) as $row) {
                 $contentBySite[(int)$row['id']][$site->handle] = [
-                    'label' => $row['label'] ?? $row['name'],
+                    'label' => $row['label'],
                     'helpText' => $row['helpText'] ?? null,
                     'optionLabels' => !empty($row['optionLabels']) ? $row['optionLabels'] : null,
                     'errorMessage' => $row['errorMessage'] ?? null,
@@ -239,7 +239,7 @@ class FormPortabilityService extends Component
 
         $fields = [];
         foreach ($baseRows as $row) {
-            $config = is_array($row['config'] ?? null) ? $row['config'] : [];
+            $config = $row['config'];
             // `required` is exposed as its own column; drop the duplicate merged
             // into config by the query helper so the document stays canonical.
             unset($config['required']);

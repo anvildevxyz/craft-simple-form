@@ -50,6 +50,7 @@ class FieldsController extends Controller
             ->where(['formId' => $formId])
             ->max('sortOrder') ?? 0;
 
+        $transaction = $db->beginTransaction();
         try {
             // Structural (shared) row
             $db->createCommand()->insert('{{%simpleform_fields}}', [
@@ -81,10 +82,13 @@ class FieldsController extends Controller
                 ])->execute();
             }
 
+            $transaction->commit();
+
             Plugin::getInstance()->getFormStructure()->invalidate((int)$formId);
 
             return $this->asJsonSuccess(['fieldId' => $fieldId]);
         } catch (\Exception $e) {
+            $transaction->rollBack();
             Craft::warning('Error adding field: ' . $e->getMessage(), 'simple-form');
             return $this->asJsonError('Failed to add field');
         }
@@ -118,6 +122,7 @@ class FieldsController extends Controller
 
         $now = date('Y-m-d H:i:s');
 
+        $transaction = $db->beginTransaction();
         try {
             // Structural (shared) columns — updated once, no site filter.
             $db->createCommand()->update('{{%simpleform_fields}}', [
@@ -143,10 +148,13 @@ class FieldsController extends Controller
                 'dateUpdated' => $now,
             ])->execute();
 
+            $transaction->commit();
+
             Plugin::getInstance()->getFormStructure()->invalidate((int)$field['formId']);
 
             return $this->asJsonSuccess();
         } catch (\Exception $e) {
+            $transaction->rollBack();
             Craft::warning('Error updating field: ' . $e->getMessage(), 'simple-form');
             return $this->asJsonError('Failed to update field');
         }
@@ -231,11 +239,19 @@ class FieldsController extends Controller
             }
             $formId = (int) $formIds[0];
 
-            foreach ($ordered as $id => $sortOrder) {
-                $db->createCommand()->update('{{%simpleform_fields}}', [
-                    'sortOrder' => $sortOrder,
-                    'dateUpdated' => date('Y-m-d H:i:s'),
-                ], ['id' => $id, 'formId' => $formId])->execute();
+            $transaction = $db->beginTransaction();
+            try {
+                foreach ($ordered as $id => $sortOrder) {
+                    $db->createCommand()->update('{{%simpleform_fields}}', [
+                        'sortOrder' => $sortOrder,
+                        'dateUpdated' => date('Y-m-d H:i:s'),
+                    ], ['id' => $id, 'formId' => $formId])->execute();
+                }
+
+                $transaction->commit();
+            } catch (\Throwable $e) {
+                $transaction->rollBack();
+                throw $e;
             }
 
             // Reorder changes the rendered field order, so invalidate the form's

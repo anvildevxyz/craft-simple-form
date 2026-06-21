@@ -2,11 +2,26 @@
 
 namespace fabianhaef\simpleform\controllers;
 
+use fabianhaef\simpleform\elements\Form;
 use Yii;
+use yii\web\NotFoundHttpException;
 use yii\web\Response;
 
 trait SimpleFormControllerTrait
 {
+    /**
+     * Resolve a form by id across all sites (status-agnostic), or throw a 404.
+     * Uses `siteId('*')` so a form is still found from a non-primary site.
+     */
+    protected function getFormOrFail(int $formId): Form
+    {
+        $form = Form::find()->siteId('*')->id($formId)->status(null)->one();
+        if (!$form) {
+            throw new NotFoundHttpException('Form not found');
+        }
+        return $form;
+    }
+
     public function beforeAction($action): bool
     {
         // Get permission from child class. Each controller must define: protected const PERMISSION = '...';

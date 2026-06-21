@@ -38,6 +38,8 @@ use fabianhaef\simpleform\mcp\tools\UpdateFormTool;
  *
  * SECURITY: every tool is gated by the single scope it declares. Dispatch is
  * deny-by-default — a tool runs only when the token explicitly holds its scope.
+ *
+ * @phpstan-import-type ResourceDescriptor from ResourceProviderInterface
  */
 class McpServer
 {
@@ -295,7 +297,7 @@ class McpServer
      * boundary (a submissions:// URI must not even be discoverable without
      * submissions:read) — and the read path still enforces independently.
      *
-     * @return list<array<string, mixed>>
+     * @return list<ResourceDescriptor>
      */
     private function resourceDescriptors(McpToken $token): array
     {

@@ -41,16 +41,15 @@ final class FormPresenter
     {
         $fields = [];
         foreach ($form->getFields() as $row) {
-            $config = is_array($row['config'] ?? null) ? $row['config'] : [];
             $fields[] = [
                 'id' => (int)$row['id'],
                 'type' => (string)$row['type'],
                 'handle' => (string)$row['name'],
-                'label' => (string)($row['label'] ?? $row['name']),
+                'label' => (string)$row['label'],
                 'required' => (bool)$row['required'],
                 'helpText' => (string)($row['helpText'] ?? ''),
-                'sortOrder' => (int)($row['sortOrder'] ?? 0),
-                'config' => $config,
+                'sortOrder' => (int)$row['sortOrder'],
+                'config' => $row['config'],
             ];
         }
 

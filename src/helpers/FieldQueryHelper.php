@@ -9,13 +9,16 @@ use craft\db\Query;
  * Loads a form's fields with structural columns plus the per-site translatable
  * label/helpText for a given site. Single source of truth for the fields join,
  * reused by the CP edit screen, Twig rendering, and submission handling.
+ *
+ * @phpstan-type ResolvedFieldRow array{id:int, formId:int, type:string, name:string, required:bool, config:array<string,mixed>, sortOrder:int, label:string, helpText:?string, optionLabels?:array<string,string>, errorMessage?:?string}
  */
 class FieldQueryHelper
 {
     /**
-     * @return array<int,array<string,mixed>> rows with: id, formId, type, name,
+     * @return list<ResolvedFieldRow> rows with: id, formId, type, name,
      *   required (bool), config (array, with 'required' merged in for field types),
-     *   sortOrder, label (falls back to handle), helpText
+     *   sortOrder, label (falls back to handle), helpText. `name` is the field
+     *   handle (some consumers re-key it to `handle`).
      */
     public static function fieldsForForm(int $formId, ?int $siteId = null): array
     {
@@ -29,7 +32,7 @@ class FieldQueryHelper
      * query per form.
      *
      * @param int[] $formIds
-     * @return array<int,array<int,array<string,mixed>>> formId => rows (see
+     * @return array<int,list<ResolvedFieldRow>> formId => rows (see
      *   fieldsForForm() for the per-row shape). Forms with no fields are present
      *   with an empty array.
      */

@@ -70,10 +70,7 @@ class FormsController extends Controller
 
             // Not present on this site — fall back to wherever it exists and redirect there.
             if (!$form) {
-                $form = Form::find()->siteId('*')->id($formId)->status(null)->one();
-                if (!$form) {
-                    throw new NotFoundHttpException('Form not found');
-                }
+                $form = $this->getFormOrFail((int)$formId);
                 $existingSite = Craft::$app->getSites()->getSiteById($form->siteId);
                 if ($existingSite) {
                     return $this->redirect("simple-form/forms/edit/{$formId}?site={$existingSite->handle}");
@@ -357,10 +354,7 @@ class FormsController extends Controller
         $formId = $request->getRequiredBodyParam('formId');
 
         // Deletion is element-wide (all sites), so load from any site.
-        $form = Form::find()->siteId('*')->id($formId)->status(null)->one();
-        if (!$form) {
-            throw new NotFoundHttpException('Form not found');
-        }
+        $form = $this->getFormOrFail((int)$formId);
 
         if (!Craft::$app->getElements()->deleteElement($form)) {
             return $this->asJsonErrors($form->getErrors());
