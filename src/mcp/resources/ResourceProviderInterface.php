@@ -18,7 +18,9 @@ namespace fabianhaef\simpleform\mcp\resources;
  * so a resource and the equivalent tool never disagree about the schema.
  *
  * @phpstan-import-type McpError from \fabianhaef\simpleform\mcp\tools\ToolInterface
- * @phpstan-type McpResourceContents array{contents:list<array<string, mixed>>}
+ * @phpstan-type ResourceDescriptor array{uri:string, name:string, mimeType:string, title?:string, description?:string}
+ * @phpstan-type ResourceContentsEntry array{uri:string, mimeType:string, text:string}
+ * @phpstan-type McpResourceContents array{contents:list<ResourceContentsEntry>}
  */
 interface ResourceProviderInterface
 {
@@ -33,7 +35,7 @@ interface ResourceProviderInterface
      * currently-existing resource, each with at least a {@code uri}, {@code name}
      * and {@code mimeType}. Only called when the caller holds {@see self::requiredScope()}.
      *
-     * @return list<array<string, mixed>>
+     * @return list<ResourceDescriptor>
      */
     public function list(): array;
 

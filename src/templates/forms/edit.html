@@ -49,6 +49,16 @@
     <a class="btn" href="{{ cpUrl('simple-form/forms/' ~ form.id ~ '/notifications') }}">
         {{ 'Notifications'|t('simple-form') }}
     </a>
+    {# Duplicate this form into a fresh copy and jump to its edit screen. Posts
+       outside the field builder's serialise step, so it copies the SAVED form. #}
+    <a class="btn formsubmit"
+       data-action="simple-form/forms/duplicate"
+       data-params="{{ { formId: form.id }|json_encode }}">
+        {{ 'Save as a new form'|t('simple-form') }}
+    </a>
+    <a class="btn icon download" href="{{ cpUrl('simple-form/forms/export/' ~ form.id) }}">
+        {{ 'Export'|t('simple-form') }}
+    </a>
 </div>
 {% endif %}
 
@@ -160,12 +170,257 @@
 
 <hr>
 
+<h2>{{ 'After Submit'|t('simple-form') }}</h2>
+
+{% set placeholderHint = 'You can use {submissionId} and field handles like {handle} as placeholders.'|t('simple-form') %}
+
+{{ forms.textareaField({
+    label: 'Success Message'|t('simple-form'),
+    id: 'submitMessage',
+    name: 'submitMessage',
+    value: form.submitMessage,
+    rows: 3,
+    errors: form.getErrors('submitMessage'),
+    instructions: 'Shown after a successful submission. Leave blank to use the global default. '|t('simple-form') ~ placeholderHint,
+    translatable: true,
+}) }}
+
+{{ forms.selectField({
+    label: 'On Submit'|t('simple-form'),
+    id: 'postSubmitAction',
+    name: 'postSubmitAction',
+    value: form.postSubmitAction ?? 'message',
+    options: [
+        { label: 'Show success message'|t('simple-form'), value: 'message' },
+        { label: 'Redirect to a URL'|t('simple-form'), value: 'url' },
+        { label: 'Redirect to an entry'|t('simple-form'), value: 'entry' },
+    ],
+    errors: form.getErrors('postSubmitAction'),
+    toggle: true,
+    targetPrefix: 'sf-postsubmit-',
+}) }}
+
+<div id="sf-postsubmit-url" {{ (form.postSubmitAction ?? 'message') == 'url' ? '' : 'class="hidden"' }}>
+    {{ forms.textField({
+        label: 'Redirect URL'|t('simple-form'),
+        id: 'redirectUrl',
+        name: 'redirectUrl',
+        value: form.redirectUrl,
+        errors: form.getErrors('redirectUrl'),
+        instructions: 'Where to send the visitor after submitting. '|t('simple-form') ~ placeholderHint,
+        translatable: true,
+    }) }}
+</div>
+
+<div id="sf-postsubmit-entry" {{ (form.postSubmitAction ?? 'message') == 'entry' ? '' : 'class="hidden"' }}>
+    {{ forms.elementSelectField({
+        label: 'Redirect Entry'|t('simple-form'),
+        id: 'redirectEntryId',
+        name: 'redirectEntryId',
+        elementType: 'craft\\elements\\Entry',
+        limit: 1,
+        elements: redirectEntry is defined and redirectEntry ? [redirectEntry] : [],
+        errors: form.getErrors('redirectEntryId'),
+        instructions: 'The visitor is sent to this entry’s URL after submitting.'|t('simple-form'),
+    }) }}
+</div>
+
+{{ forms.textareaField({
+    label: 'Error Message'|t('simple-form'),
+    id: 'errorMessage',
+    name: 'errorMessage',
+    value: form.errorMessage,
+    rows: 2,
+    errors: form.getErrors('errorMessage'),
+    instructions: 'Shown if the submission fails. Leave blank to use the global default.'|t('simple-form'),
+    translatable: true,
+}) }}
+
+<hr>
+
 {{ forms.lightswitchField({
     label: 'Allow save & resume'|t('simple-form'),
     id: 'allowSaveResume',
     name: 'allowSaveResume',
     on: form.allowSaveResume ?? false,
     instructions: 'Add a “Save & continue later” button to this form so visitors can save their progress and return via a link. Applies to multi-step forms.'|t('simple-form'),
+}) }}
+
+{{ forms.textField({
+    label: 'Custom template path'|t('simple-form'),
+    id: 'templatePath',
+    name: 'templatePath',
+    value: form.templatePath,
+    errors: form.getErrors('templatePath'),
+    instructions: 'A folder of Twig partials in your site’s templates/ that override how this form renders (e.g. `_simple-form/landing`). Overrides the global default. Leave blank to use the global default or the built-in markup.'|t('simple-form'),
+    placeholder: '_simple-form/landing',
+}) }}
+
+<hr>
+
+<h2>{{ 'Availability'|t('simple-form') }}</h2>
+<p class="light">{{ 'Optionally limit when this form accepts submissions and how many it accepts. Leave a field blank for no limit. Closed forms are rejected on the server, so a crafted or cached submission cannot get through.'|t('simple-form') }}</p>
+
+{{ forms.dateTimeField({
+    label: 'Open date'|t('simple-form'),
+    id: 'openDate',
+    name: 'openDate',
+    value: form.openDate,
+    errors: form.getErrors('openDate'),
+    instructions: 'Submissions are rejected before this date. Leave blank to open immediately.'|t('simple-form'),
+}) }}
+
+{{ forms.dateTimeField({
+    label: 'Close date'|t('simple-form'),
+    id: 'closeDate',
+    name: 'closeDate',
+    value: form.closeDate,
+    errors: form.getErrors('closeDate'),
+    instructions: 'Submissions are rejected after this date. Leave blank to stay open indefinitely.'|t('simple-form'),
+}) }}
+
+{{ forms.textField({
+    label: 'Submission limit'|t('simple-form'),
+    id: 'submissionLimit',
+    name: 'submissionLimit',
+    type: 'number',
+    min: 1,
+    value: form.submissionLimit,
+    errors: form.getErrors('submissionLimit'),
+    instructions: 'Stop accepting submissions once this many have been received (spam excluded). Leave blank for unlimited.'|t('simple-form'),
+}) }}
+
+{% if form.id and form.submissionLimit %}
+    <p class="light" style="margin-top:-8px;">
+        {{ '{count} / {limit} submissions'|t('simple-form', { count: form.getSubmissionCount(), limit: form.submissionLimit }) }}
+    </p>
+{% elseif form.id %}
+    <p class="light" style="margin-top:-8px;">
+        {{ '{count} submissions so far'|t('simple-form', { count: form.getSubmissionCount() }) }}
+    </p>
+{% endif %}
+
+{{ forms.textareaField({
+    label: 'Closed message'|t('simple-form'),
+    id: 'closedMessage',
+    name: 'closedMessage',
+    value: form.closedMessage,
+    rows: 2,
+    errors: form.getErrors('closedMessage'),
+    instructions: 'Shown in place of the form when it is closed or full. Leave blank for a default message.'|t('simple-form'),
+    translatable: true,
+}) }}
+
+<hr>
+
+<h2>{{ 'Access & limits'|t('simple-form') }}</h2>
+
+{{ forms.lightswitchField({
+    label: 'Require login to view & submit'|t('simple-form'),
+    id: 'requireLogin',
+    name: 'requireLogin',
+    on: form.requireLogin ?? false,
+    instructions: 'When enabled, only logged-in users can view or submit this form. Guests see a message with a login link, and anonymous submissions are rejected server-side.'|t('simple-form'),
+}) }}
+
+{{ forms.textareaField({
+    label: 'Login-required message'|t('simple-form'),
+    id: 'loginRequiredMessage',
+    name: 'loginRequiredMessage',
+    value: form.loginRequiredMessage,
+    rows: 2,
+    errors: form.getErrors('loginRequiredMessage'),
+    instructions: 'Shown (with a login link) instead of the form when login is required. Leave blank to use the default.'|t('simple-form'),
+    translatable: true,
+}) }}
+
+{{ forms.textField({
+    label: 'Submissions per user'|t('simple-form'),
+    id: 'submissionsPerUser',
+    name: 'submissionsPerUser',
+    type: 'number',
+    min: 1,
+    value: form.submissionsPerUser,
+    errors: form.getErrors('submissionsPerUser'),
+    instructions: 'Maximum times a single user may submit this form (e.g. 1 = once per user). Leave blank for unlimited.'|t('simple-form'),
+}) }}
+
+{{ forms.selectField({
+    label: 'Limit guests by'|t('simple-form'),
+    id: 'guestLimitKey',
+    name: 'guestLimitKey',
+    value: form.guestLimitKey ?? 'none',
+    options: [
+        { label: 'Don’t limit guests'|t('simple-form'), value: 'none' },
+        { label: 'Email field value'|t('simple-form'), value: 'email' },
+    ],
+    instructions: 'How the per-user limit applies to logged-out visitors. “Email field value” matches the form’s email field and is best-effort, not a security control.'|t('simple-form'),
+}) }}
+
+{{ forms.textareaField({
+    label: 'Limit-reached message'|t('simple-form'),
+    id: 'userLimitMessage',
+    name: 'userLimitMessage',
+    value: form.userLimitMessage,
+    rows: 2,
+    errors: form.getErrors('userLimitMessage'),
+    instructions: 'Shown instead of the form when a user has reached their submission limit. Leave blank to use the default.'|t('simple-form'),
+    translatable: true,
+}) }}
+
+<hr>
+
+{{ forms.lightswitchField({
+    label: 'Prevent duplicate submissions'|t('simple-form'),
+    id: 'preventDuplicates',
+    name: 'preventDuplicates',
+    on: form.preventDuplicates ?? false,
+    instructions: 'Flag (or block) a repeat submission to this form within the window below.'|t('simple-form'),
+}) }}
+
+{{ forms.selectField({
+    label: 'Duplicate key'|t('simple-form'),
+    id: 'duplicateKey',
+    name: 'duplicateKey',
+    options: {
+        email: 'Same email address'|t('simple-form'),
+        content: 'Identical submitted content'|t('simple-form'),
+        ip: 'Same source IP'|t('simple-form'),
+    },
+    value: form.duplicateKey ?? 'email',
+    instructions: 'What makes two submissions a duplicate.'|t('simple-form'),
+}) }}
+
+{{ forms.textField({
+    label: 'Duplicate window (minutes)'|t('simple-form'),
+    id: 'duplicateWindowMinutes',
+    name: 'duplicateWindowMinutes',
+    type: 'number',
+    value: form.duplicateWindowMinutes ?? 0,
+    min: 0,
+    step: 1,
+    instructions: 'How far back to look for a duplicate. 0 means “ever”.'|t('simple-form'),
+    errors: form.getErrors('duplicateWindowMinutes') ?? [],
+}) }}
+
+{{ forms.lightswitchField({
+    label: 'Allow front-end editing'|t('simple-form'),
+    id: 'allowEditing',
+    name: 'allowEditing',
+    on: form.allowEditing ?? false,
+    instructions: 'Let a submitter return to view and edit their submission via a secure tokenized link (or, for logged-in users, their own submission). Off by default.'|t('simple-form'),
+}) }}
+
+{{ forms.textField({
+    label: 'Edit window (minutes)'|t('simple-form'),
+    id: 'editWindowMinutes',
+    name: 'editWindowMinutes',
+    type: 'number',
+    min: 0,
+    size: 6,
+    value: form.editWindowMinutes ?? 0,
+    instructions: 'How long after submission edits are accepted. 0 = no time limit while editing is allowed.'|t('simple-form'),
+    errors: form.getErrors('editWindowMinutes'),
 }) }}
 
 <hr>
@@ -175,7 +430,10 @@
 
 <div class="sf-builder"
      data-source-site="{{ (isSourceSite ?? true) ? '1' : '' }}"
+     data-can-html="{{ (canEditHtmlBlocks ?? false) ? '1' : '' }}"
      data-volumes="{{ (volumes ?? [])|json_encode|e('html_attr') }}"
+     data-phone-countries="{{ (phoneCountries ?? [])|json_encode|e('html_attr') }}"
+     data-relation-sources="{{ (relationSources ?? {})|json_encode|e('html_attr') }}"
      data-initial-fields="{{ (builderData ?? '[]')|e('html_attr') }}">
     <div class="sf-canvas-col">
         <div id="sf-canvas" class="sf-canvas">
@@ -195,13 +453,41 @@
                 { type: 'radio', label: 'Radio Buttons'|t('simple-form') },
                 { type: 'date', label: 'Date'|t('simple-form') },
                 { type: 'number', label: 'Number'|t('simple-form') },
+                { type: 'phone', label: 'Phone'|t('simple-form') },
                 { type: 'file', label: 'File Upload'|t('simple-form') },
+                { type: 'name', label: 'Name'|t('simple-form') },
+                { type: 'address', label: 'Address'|t('simple-form') },
                 { type: 'payment', label: 'Payment'|t('simple-form') },
+                { type: 'hidden', label: 'Hidden'|t('simple-form') },
+                { type: 'consent', label: 'Agree / Consent'|t('simple-form') },
+                { type: 'rating', label: 'Rating'|t('simple-form') },
+                { type: 'opinion', label: 'Opinion Scale'|t('simple-form') },
+                { type: 'entry', label: 'Entries'|t('simple-form') },
+                { type: 'category', label: 'Categories'|t('simple-form') },
+                { type: 'tag', label: 'Tags'|t('simple-form') },
+                { type: 'user', label: 'Users'|t('simple-form') },
+                { type: 'asset', label: 'Assets'|t('simple-form') },
+                { type: 'calculation', label: 'Calculation'|t('simple-form') },
+                { type: 'repeater', label: 'Repeater'|t('simple-form') },
             ] %}
             {% for p in palette %}
                 <button type="button" class="sf-palette-item" draggable="true" data-type="{{ p.type }}">
                     <span class="sf-grip" aria-hidden="true">⋮⋮</span>{{ p.label }}
                 </button>
+            {% endfor %}
+
+            <h3 class="sf-panel-title sf-panel-title--group">{{ 'Layout'|t('simple-form') }}</h3>
+            {% set layoutPalette = [
+                { type: 'heading', label: 'Heading'|t('simple-form'), html: false },
+                { type: 'divider', label: 'Section Divider'|t('simple-form'), html: false },
+                { type: 'html', label: 'HTML Block'|t('simple-form'), html: true },
+            ] %}
+            {% for p in layoutPalette %}
+                {% if not p.html or (canEditHtmlBlocks ?? false) %}
+                    <button type="button" class="sf-palette-item sf-palette-item--layout" draggable="true" data-type="{{ p.type }}">
+                        <span class="sf-grip" aria-hidden="true">⋮⋮</span>{{ p.label }}
+                    </button>
+                {% endif %}
             {% endfor %}
         </div>
 

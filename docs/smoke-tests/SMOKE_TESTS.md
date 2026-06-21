@@ -272,6 +272,18 @@ Run these tests sequentially using the `/craft-smoke-test` command to verify all
 /craft-smoke-test Verify admin access - log in as admin user, navigate to Simple Form → Forms and Submissions, verify you can view, create, edit, and delete forms and submissions. Log out and attempt to access /admin/simple-form as anonymous user, verify access is denied.
 ```
 
+## Test Suite 46: Front-End Submission Editing - Token Round-Trip
+
+```
+/craft-smoke-test Enable front-end editing on a form and edit a submission via its tokenized link. In the CP, edit a form and turn on "Allow front-end editing" (leave the edit window at 0), then save. Submit that form anonymously from the front end. In a template, render craft.simpleForm.editForm(submission, { token: tokenFromCraftSimpleFormEditUrl }) for that submission — verify the form re-renders pre-filled with the stored values. Change a field value and submit the edit (POST to /simple-form/submission-edit/update with submissionId + t). Verify the SAME submission element is updated (same id and dateCreated), the new value is stored, and an audit-log row with action "submission.edit" was written. Then tamper with the token in the URL and re-submit — verify the request is refused with a 403 and the submission is unchanged.
+```
+
+## Test Suite 47: Front-End Submission Editing - Edit Window & GraphQL
+
+```
+/craft-smoke-test Verify the edit window and GraphQL update path. Set a form's "Allow front-end editing" on with an edit window of 10 minutes, submit it anonymously, and confirm the tokenized edit works inside the window. Back-date the submission's dateCreated beyond 10 minutes and confirm the edit is now refused even with a valid token (the window is authoritative). Then, with a GraphQL token scoped to simpleFormSubmissions:edit, call the updateSubmission(id, token, values) mutation for a fresh submission and verify it succeeds, the stored content updates, and the response payload contains no edit token or secret.
+```
+
 ---
 
 ## Instructions for Running Tests

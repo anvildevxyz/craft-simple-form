@@ -81,8 +81,192 @@
             if (!Array.isArray(req.rules) || !req.rules.length) { return false; }
             var match = req.match === "any" ? "any" : "all";
             return SF.rulesMatch(req.rules, match, values);
+        },
+        // Decide the post-submit branch from a success envelope (#133): a
+        // non-empty redirectUrl navigates; otherwise the inline message shows.
+        // Pure so its parity with the PHP resolution can be asserted in node.
+        successAction: function (data) {
+            if (data && data.redirectUrl) {
+                return { action: "redirect", url: String(data.redirectUrl) };
+            }
+            return { action: "message", message: (data && data.message) || "" };
         }
     };
+
+    // ---- calculation formula engine --------------------------------------
+    // Mirrors the PHP Formula helper (src/helpers/Formula.php): same allow-listed
+    // grammar (numbers, + - * /, parentheses, {handle} refs, and the functions
+    // min max round ceil floor abs). NO eval/Function — a hand-written tokenizer
+    // + recursive-descent evaluator. The server recompute is authoritative; this
+    // is cosmetic live UX. Keep in sync — tests/js/formula.test.js asserts parity.
+    var Formula = (function () {
+        var FUNCS = { min: null, max: null, round: null, ceil: 1, floor: 1, abs: 1 };
+
+        function tokenize(src) {
+            var tokens = [];
+            var i = 0;
+            var n = src.length;
+            while (i < n) {
+                var c = src[i];
+                if (/\s/.test(c)) { i++; continue; }
+                if (/[0-9]/.test(c) || (c === "." && i + 1 < n && /[0-9]/.test(src[i + 1]))) {
+                    var num = "";
+                    var dot = false;
+                    while (i < n && (/[0-9]/.test(src[i]) || src[i] === ".")) {
+                        if (src[i] === ".") { if (dot) { throw new Error("number"); } dot = true; }
+                        num += src[i]; i++;
+                    }
+                    tokens.push({ type: "number", value: num });
+                } else if (c === "{") {
+                    var close = src.indexOf("}", i);
+                    if (close === -1) { throw new Error("ref"); }
+                    var handle = src.slice(i + 1, close);
+                    if (!/^[a-zA-Z_][a-zA-Z0-9_]*$/.test(handle)) { throw new Error("ref"); }
+                    tokens.push({ type: "ref", value: handle });
+                    i = close + 1;
+                } else if (/[a-zA-Z]/.test(c)) {
+                    var word = "";
+                    while (i < n && /[a-zA-Z0-9_]/.test(src[i])) { word += src[i]; i++; }
+                    if (!Object.prototype.hasOwnProperty.call(FUNCS, word.toLowerCase())) { throw new Error("func"); }
+                    tokens.push({ type: "func", value: word.toLowerCase() });
+                } else if ("+-*/(),".indexOf(c) !== -1) {
+                    tokens.push({ type: c, value: c }); i++;
+                } else {
+                    throw new Error("char");
+                }
+            }
+            return tokens;
+        }
+
+        function evaluate(src, refs) {
+            var tokens = tokenize(src);
+            if (!tokens.length) { return 0; }
+            var pos = 0;
+
+            function peek() { return tokens[pos] || null; }
+            function isType(t) { return (tokens[pos] && tokens[pos].type) === t; }
+            function expect(t) { if (!isType(t)) { throw new Error("expect"); } pos++; }
+
+            function parseExpr() {
+                var v = parseTerm();
+                while (isType("+") || isType("-")) {
+                    var op = tokens[pos++].type;
+                    var rhs = parseTerm();
+                    v = op === "+" ? v + rhs : v - rhs;
+                }
+                return v;
+            }
+            function parseTerm() {
+                var v = parseFactor();
+                while (isType("*") || isType("/")) {
+                    var op = tokens[pos++].type;
+                    var rhs = parseFactor();
+                    if (op === "*") { v = v * rhs; }
+                    else { v = (rhs === 0) ? 0 : v / rhs; }
+                }
+                return v;
+            }
+            function parseFactor() {
+                var t = peek();
+                if (!t) { throw new Error("eof"); }
+                if (t.type === "+" || t.type === "-") {
+                    pos++;
+                    var operand = parseFactor();
+                    return t.type === "-" ? -operand : operand;
+                }
+                if (t.type === "number") { pos++; return parseFloat(t.value); }
+                if (t.type === "ref") {
+                    pos++;
+                    var raw = refs[t.value];
+                    var num = (typeof raw === "number") ? raw : (raw !== undefined && raw !== null && raw !== "" && !isNaN(Number(raw)) ? Number(raw) : 0);
+                    return num;
+                }
+                if (t.type === "(") { pos++; var v = parseExpr(); expect(")"); return v; }
+                if (t.type === "func") { return parseFunction(t.value); }
+                throw new Error("token");
+            }
+            function parseFunction(name) {
+                pos++; expect("(");
+                var args = [parseExpr()];
+                while (isType(",")) { pos++; args.push(parseExpr()); }
+                expect(")");
+                var arity = FUNCS[name];
+                if (arity !== null && args.length !== arity) { throw new Error("arity"); }
+                switch (name) {
+                    case "min": return Math.min.apply(null, args);
+                    case "max": return Math.max.apply(null, args);
+                    case "abs": return Math.abs(args[0]);
+                    case "ceil": return Math.ceil(args[0]);
+                    case "floor": return Math.floor(args[0]);
+                    case "round":
+                        if (args.length === 1) { return Math.round(args[0]); }
+                        if (args.length === 2) {
+                            var f = Math.pow(10, args[1]);
+                            return Math.round(args[0] * f) / f;
+                        }
+                        throw new Error("arity");
+                    default: throw new Error("func");
+                }
+            }
+
+            var result = parseExpr();
+            if (pos !== tokens.length) { throw new Error("trailing"); }
+            return isFinite(result) ? result : 0;
+        }
+
+        function format(value, opts) {
+            var decimals = Math.max(0, Math.min(6, opts.decimals || 0));
+            var fixed = value.toFixed(decimals);
+            if (opts.separator) {
+                var parts = fixed.split(".");
+                parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+                fixed = parts.join(".");
+            }
+            return (opts.prefix || "") + fixed + (opts.suffix || "");
+        }
+
+        return { tokenize: tokenize, evaluate: evaluate, format: format };
+    })();
+
+    // ---- per-form calculation wiring -------------------------------------
+    // For each <output data-sf-formula>, recompute live as referenced inputs
+    // change and update both the displayed text and the hidden round-trip input.
+    // Server is authoritative — this is cosmetic UX only.
+    function initCalculations(form) {
+        var outputs = Array.prototype.slice.call(form.querySelectorAll("[data-sf-formula]"));
+        if (!outputs.length) { return; }
+
+        var groups = Array.prototype.slice.call(form.querySelectorAll("[data-sf-handle]"));
+
+        function valuesByHandle() {
+            var values = {};
+            groups.forEach(function (g) { values[g.dataset.sfHandle] = groupValue(g); });
+            return values;
+        }
+
+        function recompute() {
+            var values = valuesByHandle();
+            outputs.forEach(function (out) {
+                var formula = out.getAttribute("data-sf-formula") || "";
+                var result;
+                try { result = Formula.evaluate(formula, values); }
+                catch (e) { result = 0; }
+                var opts = {
+                    decimals: parseInt(out.getAttribute("data-sf-decimals") || "2", 10),
+                    separator: out.getAttribute("data-sf-separator") === "1",
+                    prefix: out.getAttribute("data-sf-prefix") || "",
+                    suffix: out.getAttribute("data-sf-suffix") || ""
+                };
+                out.textContent = Formula.format(result, opts);
+                var hidden = form.querySelector("input[type=hidden][name=\"" + out.getAttribute("name").replace(/-display$/, "") + "\"]");
+                if (hidden) { hidden.value = String(result); }
+            });
+        }
+
+        form.addEventListener("input", recompute);
+        form.addEventListener("change", recompute);
+        recompute();
+    }
 
     // ---- per-form conditional wiring -------------------------------------
 
@@ -150,6 +334,64 @@
         form.addEventListener("input", rerun);
         form.addEventListener("change", rerun);
         rerun(); // set initial visibility before first paint of interaction
+    }
+
+    // ---- repeater rows ----------------------------------------------------
+    // Add/remove repeatable rows on the public form. The server re-keys row
+    // indices on submit, so cloned rows keep the prototype's __INDEX__ token
+    // replaced with a monotonic counter (uniqueness, not density, matters). Add
+    // disables at maxRows, Remove at minRows. With JS off the server-rendered
+    // rows still submit.
+
+    var SF_INDEX_TOKEN = "__INDEX__";
+
+    function initRepeaters(form) {
+        var repeaters = form.querySelectorAll("[data-sf-repeater]");
+        if (!repeaters.length) { return; }
+
+        Array.prototype.forEach.call(repeaters, function (rep) {
+            var rows = rep.querySelector("[data-sf-repeater-rows]");
+            var template = rep.querySelector("[data-sf-repeater-template]");
+            var addBtn = rep.querySelector("[data-sf-repeater-add]");
+            if (!rows || !template || !addBtn) { return; }
+
+            var min = parseInt(rep.getAttribute("data-sf-min"), 10) || 0;
+            var max = parseInt(rep.getAttribute("data-sf-max"), 10) || 0;
+            // Seed the counter past the server-rendered rows so cloned indices
+            // never collide with the initial set.
+            var next = rows.querySelectorAll("[data-sf-repeater-row]").length;
+
+            function currentRows() { return rows.querySelectorAll("[data-sf-repeater-row]"); }
+
+            function refresh() {
+                var count = currentRows().length;
+                addBtn.disabled = max > 0 && count >= max;
+                Array.prototype.forEach.call(rep.querySelectorAll("[data-sf-repeater-remove]"), function (btn) {
+                    btn.disabled = count <= Math.max(min, 1) || count <= min;
+                });
+            }
+
+            addBtn.addEventListener("click", function () {
+                var count = currentRows().length;
+                if (max > 0 && count >= max) { return; }
+                // template.content (a DocumentFragment) holds the prototype row.
+                var html = (template.innerHTML || "").split(SF_INDEX_TOKEN).join(String(next++));
+                var holder = document.createElement("div");
+                holder.innerHTML = html;
+                var row = holder.firstElementChild;
+                if (row) { rows.appendChild(row); refresh(); }
+            });
+
+            rep.addEventListener("click", function (e) {
+                var removeBtn = e.target.closest && e.target.closest("[data-sf-repeater-remove]");
+                if (!removeBtn) { return; }
+                if (currentRows().length <= min) { return; }
+                var row = removeBtn.closest("[data-sf-repeater-row]");
+                if (row) { row.remove(); refresh(); }
+            });
+
+            refresh();
+        });
     }
 
     // ---- multi-step navigation -------------------------------------------
@@ -283,6 +525,127 @@
         });
     }
 
+    // ---- signature pad (#129) --------------------------------------------
+    // Dependency-free canvas signature pad. Pointer events cover mouse, touch,
+    // and stylus uniformly; the backing store is scaled to devicePixelRatio for
+    // crisp lines and the rendered PNG data URL is written to the hidden input
+    // on each stroke end / Clear so the current state always posts. An empty pad
+    // posts an empty string → the server treats it as "no signature".
+    function initSignaturePad(wrapper) {
+        if (wrapper.dataset.sfSignatureBound === "1") { return; }
+        wrapper.dataset.sfSignatureBound = "1";
+
+        var canvas = wrapper.querySelector("[data-sf-signature-canvas]");
+        var input = wrapper.querySelector("[data-sf-signature-input]");
+        var clearBtn = wrapper.querySelector("[data-sf-signature-clear]");
+        if (!canvas || !input || !canvas.getContext) { return; }
+
+        var ctx = canvas.getContext("2d");
+        var penColor = wrapper.getAttribute("data-sf-pen") || "#1a1a1a";
+        var background = wrapper.getAttribute("data-sf-bg") || "#ffffff";
+        var drawing = false;
+        var hasInk = false;
+        var lastX = 0;
+        var lastY = 0;
+
+        function ratio() {
+            return Math.max(1, window.devicePixelRatio || 1);
+        }
+
+        // Size the backing store to the CSS box × DPR and paint the background.
+        // Called on init and resize; resizing clears the pad (acceptable — a
+        // reflow during signing is rare and the visitor can simply re-sign).
+        function resize() {
+            var r = ratio();
+            var rect = canvas.getBoundingClientRect();
+            var w = Math.max(1, Math.round(rect.width));
+            var h = Math.max(1, Math.round(rect.height || 150));
+            canvas.width = w * r;
+            canvas.height = h * r;
+            ctx.setTransform(r, 0, 0, r, 0, 0);
+            ctx.fillStyle = background;
+            ctx.fillRect(0, 0, w, h);
+            ctx.lineWidth = 2.5;
+            ctx.lineCap = "round";
+            ctx.lineJoin = "round";
+            ctx.strokeStyle = penColor;
+            hasInk = false;
+            input.value = "";
+        }
+
+        function pos(event) {
+            var rect = canvas.getBoundingClientRect();
+            return { x: event.clientX - rect.left, y: event.clientY - rect.top };
+        }
+
+        function serialize() {
+            input.value = hasInk ? canvas.toDataURL("image/png") : "";
+        }
+
+        function start(event) {
+            drawing = true;
+            var p = pos(event);
+            lastX = p.x;
+            lastY = p.y;
+            // A single dot (tap) still counts as a signature.
+            ctx.beginPath();
+            ctx.moveTo(lastX, lastY);
+            ctx.lineTo(lastX + 0.01, lastY + 0.01);
+            ctx.stroke();
+            hasInk = true;
+            if (canvas.setPointerCapture && event.pointerId !== undefined) {
+                try { canvas.setPointerCapture(event.pointerId); } catch (e) { /* ignore */ }
+            }
+            event.preventDefault();
+        }
+
+        function move(event) {
+            if (!drawing) { return; }
+            var p = pos(event);
+            ctx.beginPath();
+            ctx.moveTo(lastX, lastY);
+            ctx.lineTo(p.x, p.y);
+            ctx.stroke();
+            lastX = p.x;
+            lastY = p.y;
+            hasInk = true;
+            event.preventDefault();
+        }
+
+        function end(event) {
+            if (!drawing) { return; }
+            drawing = false;
+            serialize();
+            if (event && event.preventDefault) { event.preventDefault(); }
+        }
+
+        function clear() {
+            resize();
+        }
+
+        resize();
+
+        canvas.style.touchAction = "none";
+        canvas.addEventListener("pointerdown", start);
+        canvas.addEventListener("pointermove", move);
+        canvas.addEventListener("pointerup", end);
+        canvas.addEventListener("pointerleave", end);
+        canvas.addEventListener("pointercancel", end);
+        if (clearBtn) { clearBtn.addEventListener("click", clear); }
+
+        // Reflow with the layout, but only when the visible size actually
+        // changed, so an unrelated resize doesn't wipe an in-progress signature.
+        var lastW = canvas.getBoundingClientRect().width;
+        window.addEventListener("resize", function () {
+            var w = canvas.getBoundingClientRect().width;
+            if (Math.abs(w - lastW) > 1) { lastW = w; resize(); }
+        });
+    }
+
+    function initSignaturePads(form) {
+        form.querySelectorAll("[data-sf-signature]").forEach(initSignaturePad);
+    }
+
     function initForm(form) {
         if (form.dataset.simpleFormBound === "1") {
             return;
@@ -290,8 +653,11 @@
         form.dataset.simpleFormBound = "1";
 
         initConditions(form);
+        initCalculations(form);
+        initRepeaters(form);
         initSteps(form);
         initSaveResume(form);
+        initSignaturePads(form);
 
         // Remove any prior error state so re-submits don't stack duplicate
         // messages and resolved fields lose their invalid wiring (a11y, #105).
@@ -324,6 +690,26 @@
             general.focus();
         }
 
+        // Replace the form with a focusable role="status" success node. The
+        // message is set via textContent (never innerHTML) so a server-supplied
+        // string can't inject markup (a11y parity with the error path, #105).
+        function showSuccess(message) {
+            var existing = form.parentNode
+                ? form.parentNode.querySelector(".simple-form-success") : null;
+            if (existing) { existing.remove(); }
+
+            var node = document.createElement("div");
+            node.className = "simple-form-success";
+            node.setAttribute("role", "status");
+            node.setAttribute("tabindex", "-1");
+            node.textContent = message || "Thank you! Your submission has been received.";
+
+            form.hidden = true;
+            if (form.parentNode) { form.parentNode.insertBefore(node, form.nextSibling); }
+            else { form.appendChild(node); }
+            node.focus();
+        }
+
         form.addEventListener("submit", function (e) {
             e.preventDefault();
             var formData = new FormData(form); // disabled (hidden) inputs are excluded
@@ -338,7 +724,15 @@
                 .then(function (data) {
                     clearErrors();
                     if (data.success) {
-                        alert(data.message || "Form submitted successfully!");
+                        var next = SF.successAction(data);
+                        // A resolved redirect wins: navigate the browser to the
+                        // post-submit URL (thank-you page / entry / external).
+                        if (next.action === "redirect") {
+                            window.location.assign(next.url);
+                            return;
+                        }
+                        // Otherwise replace the form with an inline success node.
+                        showSuccess(next.message);
                         form.reset();
                     } else if (data.errors) {
                         var generalErrors = [];
@@ -394,6 +788,6 @@
             init();
         }
     } else if (typeof module !== "undefined" && module.exports) {
-        module.exports = { SF: SF };
+        module.exports = { SF: SF, Formula: Formula };
     }
 })();

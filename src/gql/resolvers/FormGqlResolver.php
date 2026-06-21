@@ -2,7 +2,11 @@
 
 namespace fabianhaef\simpleform\gql\resolvers;
 
+use craft\base\ElementInterface;
 use fabianhaef\simpleform\elements\Form;
+use fabianhaef\simpleform\fields\ElementRelationFieldType;
+use fabianhaef\simpleform\fields\OpinionScaleFieldType;
+use fabianhaef\simpleform\fields\RatingFieldType;
 use fabianhaef\simpleform\helpers\ConditionalEvaluator;
 use fabianhaef\simpleform\helpers\FieldQueryHelper;
 use fabianhaef\simpleform\Plugin;
@@ -13,6 +17,8 @@ use fabianhaef\simpleform\Plugin;
  * Field resolution reuses the same single-source-of-truth field set the CP and
  * Twig rendering use (via FormStructureService → FieldQueryHelper), so the
  * GraphQL schema, the rendered form, and submit validation never drift apart.
+ *
+ * @phpstan-import-type ResolvedFieldRow from FieldQueryHelper
  */
 final class FormGqlResolver
 {
@@ -31,7 +37,7 @@ final class FormGqlResolver
             'title' => $form->title,
             'description' => $form->description,
             'siteId' => $siteId,
-            'fields' => array_map([self::class, 'mapField'], $rawFields),
+            'fields' => array_map(static fn(array $row): array => self::mapField($row), $rawFields),
             'integrations' => self::mapIntegrations((int) $form->id),
         ];
     }
@@ -59,12 +65,12 @@ final class FormGqlResolver
      * Map a resolved field row (see {@see \fabianhaef\simpleform\helpers\FieldQueryHelper})
      * to the GraphQL field shape.
      *
-     * @param array<string, mixed> $row
+     * @param ResolvedFieldRow $row
      * @return array<string, mixed>
      */
     private static function mapField(array $row): array
     {
-        $config = is_array($row['config'] ?? null) ? $row['config'] : [];
+        $config = $row['config'];
         // Overlay this site's option-label translations so the GraphQL schema
         // matches the rendered form for the requested site (option values stay
         // canonical; missing translations fall back to the source label).
@@ -72,21 +78,56 @@ final class FormGqlResolver
             $config,
             is_array($row['optionLabels'] ?? null) ? $row['optionLabels'] : []
         );
-        $required = (bool) ($row['required'] ?? ($config['required'] ?? false));
+        $required = $row['required'];
 
         return [
             'id' => (int) $row['id'],
             'name' => (string) $row['name'],
             'type' => (string) $row['type'],
-            'label' => (string) ($row['label'] ?? $row['name']),
+            'label' => (string) $row['label'],
             'helpText' => ($row['helpText'] ?? '') !== '' ? $row['helpText'] : null,
             'required' => $required,
-            'sortOrder' => isset($row['sortOrder']) ? (int) $row['sortOrder'] : null,
+            'sortOrder' => (int) $row['sortOrder'],
             'page' => self::pageOf($config),
             'placeholder' => self::stringOrNull($config['placeholder'] ?? null),
             'options' => self::mapOptions($config['options'] ?? null),
-            'validation' => self::mapValidation($config, $required),
+            'validation' => self::mapValidation($config, $required, (string) $row['type']),
             'conditional' => self::mapConditional($config['conditional'] ?? null),
+            'relation' => self::mapRelation((string) $row['type'], $config),
+        ];
+    }
+
+    /**
+     * Map a relation field's element-relation config (element type, allowed
+     * sources, single/multi, limit, and the resolved option list) for the GraphQL
+     * schema, or null for any non-relation field type.
+     *
+     * @param array<string, mixed> $config
+     * @return array<string, mixed>|null
+     */
+    private static function mapRelation(string $type, array $config): ?array
+    {
+        $field = Plugin::getInstance()->getFieldTypeRegistry()->getFieldType($type, $config);
+        if (!$field instanceof ElementRelationFieldType) {
+            return null;
+        }
+
+        // Options resolve for the current site so titles match the requested
+        // form's language; the allowed set already excludes disabled/other-site
+        // elements (see ElementRelationFieldType::optionList()).
+        $options = [];
+        /** @var array<int, ElementInterface> $elements */
+        $elements = $field->allowedElementQuery()->indexBy('id')->all();
+        foreach ($elements as $id => $element) {
+            $options[] = ['id' => (int) $id, 'title' => (string) $element];
+        }
+
+        return [
+            'elementType' => $type,
+            'sources' => $field->sources(),
+            'multiple' => $field->isMultiple(),
+            'limit' => $field->limit(),
+            'options' => $options,
         ];
     }
 
@@ -170,16 +211,37 @@ final class FormGqlResolver
      * @param array<string, mixed> $config
      * @return array<string, mixed>
      */
-    private static function mapValidation(array $config, bool $required): array
+    private static function mapValidation(array $config, bool $required, string $type): array
     {
-        return [
+        $validation = [
             'required' => $required,
             'minLength' => self::intOrNull($config['minLength'] ?? null),
             'maxLength' => self::intOrNull($config['maxLength'] ?? null),
             'min' => self::floatOrNull($config['min'] ?? null),
             'max' => self::floatOrNull($config['max'] ?? null),
             'pattern' => self::stringOrNull($config['pattern'] ?? null),
+            'iconStyle' => null,
+            'leftLabel' => null,
+            'rightLabel' => null,
         ];
+
+        // For the scale field types, expose the effective (clamped) bounds plus
+        // the render hints a headless client needs, sourced from the field type
+        // itself so the schema matches what the server validates.
+        if ($type === RatingFieldType::getType()) {
+            $field = new RatingFieldType($config);
+            $validation['min'] = 1.0;
+            $validation['max'] = (float) $field->max();
+            $validation['iconStyle'] = $field->iconStyle();
+        } elseif ($type === OpinionScaleFieldType::getType()) {
+            $field = new OpinionScaleFieldType($config);
+            $validation['min'] = (float) $field->min();
+            $validation['max'] = (float) $field->max();
+            $validation['leftLabel'] = self::stringOrNull($field->leftLabel());
+            $validation['rightLabel'] = self::stringOrNull($field->rightLabel());
+        }
+
+        return $validation;
     }
 
     /**

@@ -75,6 +75,25 @@
     }) }}
 
     <hr>
+    <h2>{{ 'Attachments'|t('simple-form') }}</h2>
+
+    {{ forms.lightswitchField({
+        label: 'Attach a submission PDF'|t('simple-form'),
+        instructions: pdfAvailable
+            ? 'Attach a rendered PDF of the submission to this notification.'|t('simple-form')
+            : 'Install the dompdf library to enable PDF attachments.'|t('simple-form'),
+        id: 'attachPdf', name: 'attachPdf',
+        on: notification.attachPdf and pdfAvailable,
+        disabled: not pdfAvailable,
+    }) }}
+
+    {{ forms.lightswitchField({
+        label: 'Attach uploaded files'|t('simple-form'),
+        instructions: 'Attach the submission’s file-field uploads. Over the configured size cap they fall back to in-body links.'|t('simple-form'),
+        id: 'attachUploads', name: 'attachUploads', on: notification.attachUploads,
+    }) }}
+
+    <hr>
     <h2>{{ 'Send condition'|t('simple-form') }}</h2>
 
     {{ forms.lightswitchField({

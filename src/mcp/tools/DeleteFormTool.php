@@ -3,8 +3,8 @@
 namespace fabianhaef\simpleform\mcp\tools;
 
 use Craft;
-use fabianhaef\simpleform\elements\Form;
 use fabianhaef\simpleform\mcp\Scopes;
+use fabianhaef\simpleform\mcp\tools\support\FormPresenter;
 
 /**
  * MCP tool: delete a form (element-wide, all sites).
@@ -34,9 +34,7 @@ class DeleteFormTool implements ToolInterface
     {
         return [
             'type' => 'object',
-            'properties' => [
-                'id' => ['type' => 'integer', 'description' => 'The form id. Provide id OR handle.'],
-                'handle' => ['type' => 'string', 'description' => 'The form handle. Provide id OR handle.'],
+            'properties' => FormPresenter::idOrHandleProperties() + [
                 'confirm' => [
                     'type' => 'boolean',
                     'description' => 'Must be true to actually delete. The call is refused without it.',
@@ -65,18 +63,9 @@ class DeleteFormTool implements ToolInterface
             ];
         }
 
-        $query = Form::find()->siteId('*')->status(null)->unique();
-        if (isset($arguments['id'])) {
-            $query->id((int)$arguments['id']);
-        } elseif (isset($arguments['handle']) && is_string($arguments['handle'])) {
-            $query->handle($arguments['handle']);
-        } else {
-            return ['isError' => true, 'error' => 'Provide either "id" or "handle".'];
-        }
-
-        $form = $query->one();
-        if (!$form instanceof Form) {
-            return ['isError' => true, 'error' => 'Form not found.'];
+        $form = FormPresenter::resolveByIdOrHandle($arguments);
+        if (is_array($form)) {
+            return $form;
         }
 
         $formId = (int)$form->id;

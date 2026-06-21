@@ -1,6 +1,46 @@
 (function() {
     'use strict';
 
+    // Mirrors fabianhaef\simpleform\helpers\FormRows::MAX_COLUMNS — keep in sync.
+    var MAX_COLUMNS = 4;
+
+    // Pure, order-driven row grouping — parity with the PHP FormRows::group().
+    // Walks fields in order; consecutive fields sharing the same positive numeric
+    // config.row join one visual row (capped at MAX_COLUMNS); anything else starts
+    // a new single-column row. Exported for the Node parity test.
+    function rowKeyOf(f) {
+        var config = (f && f.config) || {};
+        var row = config.row;
+        var n = (typeof row === 'number') ? row : parseInt(row, 10);
+        return (!isNaN(n) && n >= 1) ? n : null;
+    }
+    function groupRows(list) {
+        var rows = [];
+        var current = [];
+        var currentKey = null;
+        (list || []).forEach(function(f) {
+            var key = rowKeyOf(f);
+            var same = key !== null && key === currentKey && current.length < MAX_COLUMNS;
+            if (!same) {
+                if (current.length) { rows.push(current); }
+                current = [];
+                currentKey = key;
+            }
+            current.push(f);
+        });
+        if (current.length) { rows.push(current); }
+        return rows;
+    }
+
+    // Under Node (tests) there is no DOM, so export the pure row grouper for the
+    // parity test and skip everything that touches `document`.
+    if (typeof document === 'undefined') {
+        if (typeof module !== 'undefined' && module.exports) {
+            module.exports = { groupRows: groupRows, MAX_COLUMNS: MAX_COLUMNS };
+        }
+        return;
+    }
+
     // On non-source sites the option editor is translation-only: option values
     // and the source labels are locked, and only the per-site label is editable.
     var sfBuilder = document.querySelector('.sf-builder');
@@ -9,13 +49,56 @@
     // on .sf-builder so this file can ship as a static, cache-bustable asset.
     var SF_SOURCE_SITE = sfData.sourceSite === '1';
     var SF_VOLUMES = JSON.parse(sfData.volumes || '[]');
+    var SF_PHONE_COUNTRIES = JSON.parse(sfData.phoneCountries || '[]');
+    // Selectable sources per element-relation type (section/group/volume).
+    var SF_SOURCES = JSON.parse(sfData.relationSources || '{}');
 
     var TYPE_LABELS = {
         text: 'Text', email: 'Email', textarea: 'Textarea', select: 'Select',
-        checkbox: 'Checkbox', radio: 'Radio', date: 'Date', number: 'Number', file: 'File Upload',
-        payment: 'Payment'
+        checkbox: 'Checkbox', radio: 'Radio', date: 'Date', number: 'Number',
+        phone: 'Phone', file: 'File Upload',
+        name: 'Name', address: 'Address',
+        payment: 'Payment', hidden: 'Hidden', consent: 'Agree / Consent',
+        rating: 'Rating', opinion: 'Opinion Scale',
+        entry: 'Entries', category: 'Categories', tag: 'Tags',
+        user: 'Users', asset: 'Assets', calculation: 'Calculation',
+        repeater: 'Repeater',
+        heading: 'Heading', divider: 'Section Divider', html: 'HTML Block'
     };
     var OPTION_TYPES = ['select', 'checkbox', 'radio'];
+    // Non-visible types: the visitor never sees them, so the inspector suppresses
+    // the Required / Help Text / Error Message rows (#124).
+    var HIDDEN_TYPES = ['hidden'];
+    // Presentational/layout blocks: value-less, so the inspector omits
+    // Required / validation / conditions and the submit guard skips them.
+    var LAYOUT_TYPES = ['heading', 'divider', 'html'];
+    function isLayout(type) { return LAYOUT_TYPES.indexOf(type) !== -1; }
+    var RELATION_TYPES = ['entry', 'category', 'tag', 'user', 'asset'];
+    // Inner field types a repeater may contain (mirrors
+    // RepeaterFieldType::ALLOWED_INNER_TYPES — keep in lockstep).
+    var REPEATER_INNER_TYPES = ['text', 'email', 'number', 'select'];
+    var COMPOSITE_TYPES = ['name', 'address'];
+
+    // Ordered sub-field defs per composite type, mirroring the PHP field types:
+    // [key, default label, enabled-by-default, primary]. Used to seed default
+    // config and to render the sub-field editor.
+    var SUBFIELD_DEFS = {
+        name: [
+            ['prefix', 'Prefix', false, false],
+            ['first', 'First name', true, true],
+            ['middle', 'Middle name', false, false],
+            ['last', 'Last name', true, true],
+            ['suffix', 'Suffix', false, false]
+        ],
+        address: [
+            ['line1', 'Address line 1', true, true],
+            ['line2', 'Address line 2', true, false],
+            ['city', 'City', true, true],
+            ['state', 'State / Region', true, false],
+            ['postalCode', 'Postal code', true, true],
+            ['country', 'Country', true, true]
+        ]
+    };
 
     var canvas = document.getElementById('sf-canvas');
     var palette = document.getElementById('sf-palette');
@@ -72,6 +155,40 @@
         if (type === 'payment') {
             return { amountType: 'fixed', currency: 'USD' };
         }
+        if (type === 'hidden') {
+            return { source: 'static' };
+        }
+        if (type === 'consent') {
+            return { consentText: 'I agree to the [privacy policy](https://example.com/privacy)' };
+        }
+        if (type === 'rating') {
+            return { max: 5, iconStyle: 'star' };
+        }
+        if (type === 'opinion') {
+            return { min: 0, max: 10 };
+        }
+        if (RELATION_TYPES.indexOf(type) !== -1) {
+            return { sources: [], multiple: false };
+        }
+        if (type === 'calculation') {
+            return { formula: '', decimals: 2, thousandsSeparator: false, missingAsZero: true };
+        }
+        if (type === 'repeater') {
+            return {
+                minRows: 1, maxRows: 0, addButtonLabel: '',
+                fields: [{ handle: 'item', type: 'text', label: 'Item', required: false }]
+            };
+        }
+        if (COMPOSITE_TYPES.indexOf(type) !== -1) {
+            var subFields = {};
+            SUBFIELD_DEFS[type].forEach(function(d) {
+                subFields[d[0]] = { enabled: d[2], required: false, label: d[1] };
+            });
+            return { subFields: subFields };
+        }
+        if (type === 'heading') {
+            return { level: 'h3' };
+        }
         return {};
     }
 
@@ -102,20 +219,32 @@
     // ---- canvas rendering ------------------------------------------------
 
     function render() {
-        Array.prototype.slice.call(canvas.querySelectorAll('.sf-field')).forEach(function(el) { el.remove(); });
+        Array.prototype.slice.call(canvas.querySelectorAll('.sf-field, .sf-builder-row')).forEach(function(el) { el.remove(); });
         var empty = canvas.querySelector('.sf-empty');
         if (empty) { empty.style.display = fields.length ? 'none' : ''; }
-        fields.forEach(function(f) { canvas.appendChild(renderBlock(f)); });
+        // Group into visual rows so columns sit side by side in the builder too.
+        groupRows(fields).forEach(function(row) {
+            if (row.length <= 1) {
+                canvas.appendChild(renderBlock(row[0]));
+                return;
+            }
+            var wrap = document.createElement('div');
+            wrap.className = 'sf-builder-row';
+            wrap.dataset.cols = row.length;
+            row.forEach(function(f) { wrap.appendChild(renderBlock(f)); });
+            canvas.appendChild(wrap);
+        });
     }
 
     function renderBlock(f) {
+        var layout = isLayout(f.type);
         var el = document.createElement('div');
-        el.className = 'sf-field' + (f.clientId === selectedId ? ' sel' : '');
+        el.className = 'sf-field' + (layout ? ' sf-field--layout' : '') + (f.clientId === selectedId ? ' sel' : '');
         el.setAttribute('draggable', 'true');
         // Keyboard-selectable: focusable + Enter/Space opens the inspector (#105).
         el.setAttribute('tabindex', '0');
         el.setAttribute('role', 'button');
-        el.setAttribute('aria-label', (f.label || '(untitled)') + ' — ' + (TYPE_LABELS[f.type] || f.type));
+        el.setAttribute('aria-label', blockPreviewText(f) + ' — ' + (TYPE_LABELS[f.type] || f.type));
         el.addEventListener('keydown', function(e) {
             if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); select(f.clientId); focusInspector(); }
         });
@@ -125,19 +254,38 @@
         grip.className = 'sf-grip'; grip.setAttribute('aria-hidden', 'true'); grip.textContent = '⋮⋮';
 
         var label = document.createElement('span');
-        label.className = 'sf-field-label'; label.textContent = f.label || '(untitled)';
+        label.className = 'sf-field-label'; label.textContent = blockPreviewText(f);
 
         var type = document.createElement('span');
         type.className = 'sf-field-type'; type.textContent = TYPE_LABELS[f.type] || f.type;
-
-        var req = document.createElement('span');
-        req.className = 'sf-field-req'; req.textContent = f.required ? '*' : '';
+        // Hidden fields are invisible on the front end — flag the card so a
+        // creator doesn't expect it to render (#124).
+        if (HIDDEN_TYPES.indexOf(f.type) !== -1) {
+            type.classList.add('sf-field-type-hidden');
+            type.title = 'Hidden — captured silently; never shown on the form.';
+        }
 
         var del = document.createElement('button');
         del.type = 'button'; del.className = 'sf-field-del'; del.title = 'Remove'; del.textContent = '×';
 
-        el.appendChild(grip); el.appendChild(label); el.appendChild(req); el.appendChild(type); el.appendChild(del);
+        el.appendChild(grip); el.appendChild(label);
+        // Layout blocks are value-less, so the canvas never shows a required mark.
+        if (!layout) {
+            var req = document.createElement('span');
+            req.className = 'sf-field-req'; req.textContent = f.required ? '*' : '';
+            el.appendChild(req);
+        }
+        el.appendChild(type); el.appendChild(del);
         return el;
+    }
+
+    // The canvas-preview text for a block: its visible content for layout blocks
+    // (heading text / divider label / "HTML block"), its label otherwise.
+    function blockPreviewText(f) {
+        if (f.type === 'heading') { return (f.label && f.label.trim()) || '(heading)'; }
+        if (f.type === 'divider') { return (f.label && f.label.trim()) || '— divider —'; }
+        if (f.type === 'html') { return 'HTML block'; }
+        return f.label || '(untitled)';
     }
 
     // ---- mutation --------------------------------------------------------
@@ -163,9 +311,13 @@
     }
 
     function addField(type, atIndex) {
-        var label = TYPE_LABELS[type] || 'Field';
-        var f = normalize({ id: null, type: type, label: label, config: defaultConfig(type) });
-        f.handle = uniqueHandle(slug(label), f.clientId);
+        // Layout blocks have no user-facing label (heading text / divider label
+        // is the content); start them blank and seed the handle from the type so
+        // the row is still uniquely addressable for conditionals + persistence.
+        var label = isLayout(type) ? '' : (TYPE_LABELS[type] || 'Field');
+        // Consent is, by design, normally a required tick — default it on.
+        var f = normalize({ id: null, type: type, label: label, required: type === 'consent', config: defaultConfig(type) });
+        f.handle = uniqueHandle(slug(label) || type, f.clientId);
         if (atIndex == null || atIndex >= fields.length) { fields.push(f); }
         else { fields.splice(Math.max(0, atIndex), 0, f); }
         commit();
@@ -237,6 +389,13 @@
         head.appendChild(title); head.appendChild(back);
         inspector.appendChild(head);
 
+        // Presentational/layout blocks: a tailored editor with no Required,
+        // validation message, or generic help-text — only their own content.
+        if (isLayout(f.type)) {
+            renderLayoutInspector(f);
+            return;
+        }
+
         // Label
         var labelRow = row('Label');
         labelRow._input.appendChild(textInput(f.label, function(v) {
@@ -256,35 +415,114 @@
         handleRow._input.appendChild(handleInput);
         inspector.appendChild(handleRow);
 
-        // Required
-        var reqRow = document.createElement('div'); reqRow.className = 'field';
-        var reqWrap = document.createElement('div'); reqWrap.className = 'checkbox-wrapper';
-        var cb = document.createElement('input'); cb.type = 'checkbox'; cb.className = 'checkbox';
-        cb.id = 'sf-req-' + f.clientId; cb.checked = f.required;
-        cb.addEventListener('change', function() { f.required = cb.checked; commit(); });
-        var cbl = document.createElement('label'); cbl.setAttribute('for', cb.id); cbl.textContent = 'Required field';
-        reqWrap.appendChild(cb); reqWrap.appendChild(cbl); reqRow.appendChild(reqWrap);
-        inspector.appendChild(reqRow);
+        var isHiddenType = HIDDEN_TYPES.indexOf(f.type) !== -1;
 
-        // Help text
-        var helpRow = row('Help Text');
-        var ta = document.createElement('textarea'); ta.className = 'text fullwidth'; ta.rows = 2; ta.value = f.helpText || '';
-        ta.addEventListener('input', function() { f.helpText = ta.value; serialize(); });
-        helpRow._input.appendChild(ta);
-        inspector.appendChild(helpRow);
+        // Hidden fields are non-visible: they have no Required / Help Text /
+        // Error Message — only an internal label (above) for exports/CP (#124).
+        if (!isHiddenType) {
+            // Required
+            var reqRow = document.createElement('div'); reqRow.className = 'field';
+            var reqWrap = document.createElement('div'); reqWrap.className = 'checkbox-wrapper';
+            var cb = document.createElement('input'); cb.type = 'checkbox'; cb.className = 'checkbox';
+            cb.id = 'sf-req-' + f.clientId; cb.checked = f.required;
+            cb.addEventListener('change', function() { f.required = cb.checked; commit(); });
+            var cbl = document.createElement('label'); cbl.setAttribute('for', cb.id); cbl.textContent = 'Required field';
+            reqWrap.appendChild(cb); reqWrap.appendChild(cbl); reqRow.appendChild(reqWrap);
+            inspector.appendChild(reqRow);
 
-        // Custom validation message (per-site override). Blank falls back to the
-        // field type's localized default message at submit time.
-        var errRow = row('Error Message');
-        var errInput = textInput(f.errorMessage, function(v) { f.errorMessage = v; serialize(); });
-        errInput.placeholder = 'Leave blank to use the default';
-        errRow._input.appendChild(errInput);
-        var errHint = document.createElement('div'); errHint.className = 'instructions';
-        var errHintP = document.createElement('p');
-        errHintP.textContent = 'Shown for this site when the field fails validation. Leave blank to use the default (translated) message.';
-        errHint.appendChild(errHintP);
-        errRow._input.appendChild(errHint);
-        inspector.appendChild(errRow);
+            // Help text
+            var helpRow = row('Help Text');
+            var ta = document.createElement('textarea'); ta.className = 'text fullwidth'; ta.rows = 2; ta.value = f.helpText || '';
+            ta.addEventListener('input', function() { f.helpText = ta.value; serialize(); });
+            helpRow._input.appendChild(ta);
+            inspector.appendChild(helpRow);
+
+            // Custom validation message (per-site override). Blank falls back to the
+            // field type's localized default message at submit time.
+            var errRow = row('Error Message');
+            var errInput = textInput(f.errorMessage, function(v) { f.errorMessage = v; serialize(); });
+            errInput.placeholder = 'Leave blank to use the default';
+            errRow._input.appendChild(errInput);
+            var errHint = document.createElement('div'); errHint.className = 'instructions';
+            var errHintP = document.createElement('p');
+            errHintP.textContent = 'Shown for this site when the field fails validation. Leave blank to use the default (translated) message.';
+            errHint.appendChild(errHintP);
+            errRow._input.appendChild(errHint);
+            inspector.appendChild(errRow);
+        } else {
+            var hiddenHint = document.createElement('div'); hiddenHint.className = 'instructions';
+            var hiddenHintP = document.createElement('p');
+            hiddenHintP.textContent = 'Hidden — captured silently. This field is never shown on the form; the label is used only for the CP submission view and exports.';
+            hiddenHint.appendChild(hiddenHintP);
+            inspector.appendChild(hiddenHint);
+        }
+
+        inspector.appendChild(numberRow('Step / Page', (f.config && f.config.page) || '', function(v) {
+            f.config = f.config || {};
+            var n = parseInt(v, 10);
+            if (v === '' || v == null || isNaN(n) || n < 1) { delete f.config.page; } else { f.config.page = n; }
+            commit();
+        }));
+
+        // Row: fields that share the same Row number (and Page) on consecutive
+        // positions render side by side as columns (max MAX_COLUMNS). Blank = a
+        // full-width, single-column field (the default).
+        var rowRow = numberRow('Row', (f.config && f.config.row) || '', function(v) {
+            f.config = f.config || {};
+            var n = parseInt(v, 10);
+            if (v === '' || v == null || isNaN(n) || n < 1) { delete f.config.row; } else { f.config.row = n; }
+            commit();
+        });
+        var rowHint = document.createElement('div'); rowHint.className = 'instructions';
+        var rowHintP = document.createElement('p');
+        rowHintP.textContent = 'Give two or more adjacent fields the same Row number to lay them out side by side (up to ' + MAX_COLUMNS + ' columns).';
+        rowHint.appendChild(rowHintP);
+        rowRow._input.appendChild(rowHint);
+        inspector.appendChild(rowRow);
+
+        renderTypeConfig(f);
+        inspector.appendChild(conditionsSection(f));
+    }
+
+    // Tailored editor for the value-less layout blocks. The per-site
+    // translatable content rides on the field's label (heading text / divider
+    // label) and helpText (HTML body) so it persists with no schema change.
+    function renderLayoutInspector(f) {
+        var c = f.config || (f.config = {});
+
+        if (f.type === 'heading') {
+            var lvlRow = row('Heading Level');
+            lvlRow._input.appendChild(selectEl(
+                [{ value: 'h2', label: 'Heading 2' }, { value: 'h3', label: 'Heading 3' }, { value: 'h4', label: 'Heading 4' }],
+                c.level || 'h3',
+                function(v) { c.level = v; serialize(); }
+            ));
+            inspector.appendChild(lvlRow);
+
+            var textRow = row('Heading Text');
+            textRow._input.appendChild(textInput(f.label, function(v) { f.label = v; commit(); }));
+            inspector.appendChild(textRow);
+        } else if (f.type === 'divider') {
+            var labRow = row('Label (optional)');
+            labRow._input.appendChild(textInput(f.label, function(v) { f.label = v; commit(); }));
+            var labHint = document.createElement('div'); labHint.className = 'instructions';
+            var labHintP = document.createElement('p');
+            labHintP.textContent = 'Optional text shown over the divider line. Leave blank for a plain rule.';
+            labHint.appendChild(labHintP); labRow._input.appendChild(labHint);
+            inspector.appendChild(labRow);
+        } else if (f.type === 'html') {
+            var htmlRow = row('HTML / Twig');
+            var ta = document.createElement('textarea'); ta.className = 'text fullwidth code'; ta.rows = 8;
+            ta.value = f.helpText || '';
+            ta.addEventListener('input', function() { f.helpText = ta.value; commit(); });
+            htmlRow._input.appendChild(ta);
+            var htmlHint = document.createElement('div'); htmlHint.className = 'instructions';
+            var htmlHintP = document.createElement('p');
+            htmlHintP.textContent = 'Rendered safely on the form: Twig runs in a sandbox and the output is purified — '
+                + 'scripts, inline handlers and unsafe URLs are stripped.';
+            htmlHint.appendChild(htmlHintP); htmlRow._input.appendChild(htmlHint);
+            inspector.appendChild(htmlRow);
+        }
 
         inspector.appendChild(numberRow('Step / Page', (f.config && f.config.page) || '', function(v) {
             f.config = f.config || {};
@@ -293,7 +531,7 @@
             serialize();
         }));
 
-        renderTypeConfig(f);
+        // Layout blocks may still be shown/hidden by conditional logic.
         inspector.appendChild(conditionsSection(f));
     }
 
@@ -307,6 +545,66 @@
         } else if (f.type === 'number') {
             inspector.appendChild(numberRow('Minimum Value', c.min, function(v) { setNum(c, 'min', v); }));
             inspector.appendChild(numberRow('Maximum Value', c.max, function(v) { setNum(c, 'max', v); }));
+        } else if (f.type === 'phone') {
+            var phRow = row('Placeholder');
+            phRow._input.appendChild(textInput(c.placeholder || '', function(v) {
+                if (v.trim() === '') { delete c.placeholder; } else { c.placeholder = v; } serialize();
+            }));
+            inspector.appendChild(phRow);
+
+            var selRow = row('Show Country Selector');
+            var selCb = document.createElement('input'); selCb.type = 'checkbox'; selCb.checked = !!c.showCountrySelector;
+            selCb.addEventListener('change', function() { c.showCountrySelector = selCb.checked; serialize(); });
+            selRow._input.appendChild(selCb);
+            inspector.appendChild(selRow);
+
+            var countryOpts = (SF_PHONE_COUNTRIES || []).map(function(co) {
+                return { value: co.iso, label: co.label + ' (' + co.dial + ')' };
+            });
+
+            var dcRow = row('Default Country');
+            dcRow._input.appendChild(selectEl(countryOpts, c.defaultCountry || 'CH', function(v) {
+                c.defaultCountry = v; serialize();
+            }));
+            inspector.appendChild(dcRow);
+
+            var allowedSelected = Array.isArray(c.allowedCountries) ? c.allowedCountries : [];
+            var acRow = row('Allowed Countries');
+            var acHint = document.createElement('div'); acHint.className = 'instructions';
+            var acHintP = document.createElement('p');
+            acHintP.textContent = 'Leave all unchecked to allow every country.';
+            acHint.appendChild(acHintP); acRow._input.appendChild(acHint);
+            (SF_PHONE_COUNTRIES || []).forEach(function(co) {
+                var w = document.createElement('div'); w.className = 'checkbox-wrapper';
+                var cbx = document.createElement('input'); cbx.type = 'checkbox'; cbx.className = 'checkbox';
+                cbx.id = 'sf-ac-' + f.clientId + '-' + co.iso;
+                cbx.checked = allowedSelected.indexOf(co.iso) !== -1;
+                cbx.addEventListener('change', function() {
+                    var list = Array.isArray(c.allowedCountries) ? c.allowedCountries : [];
+                    var i = list.indexOf(co.iso);
+                    if (cbx.checked && i === -1) { list.push(co.iso); }
+                    else if (!cbx.checked && i !== -1) { list.splice(i, 1); }
+                    if (list.length === 0) { delete c.allowedCountries; } else { c.allowedCountries = list; }
+                    serialize();
+                });
+                var lbl = document.createElement('label'); lbl.setAttribute('for', cbx.id);
+                lbl.textContent = co.label + ' (' + co.dial + ')';
+                w.appendChild(cbx); w.appendChild(lbl); acRow._input.appendChild(w);
+            });
+            inspector.appendChild(acRow);
+
+            inspector.appendChild(numberRow('Minimum Digits', c.minDigits, function(v) { setNum(c, 'minDigits', v); }));
+            inspector.appendChild(numberRow('Maximum Digits', c.maxDigits, function(v) { setNum(c, 'maxDigits', v); }));
+
+            var patRow = row('Custom Pattern');
+            patRow._input.appendChild(textInput(c.pattern || '', function(v) {
+                if (v.trim() === '') { delete c.pattern; } else { c.pattern = v; } serialize();
+            }));
+            var patHint = document.createElement('div'); patHint.className = 'instructions';
+            var patHintP = document.createElement('p');
+            patHintP.textContent = 'Optional regex applied to the number’s digits. Leave blank for the default check.';
+            patHint.appendChild(patHintP); patRow._input.appendChild(patHint);
+            inspector.appendChild(patRow);
         } else if (f.type === 'date') {
             var fmtRow = row('Date Format');
             var sel = document.createElement('div'); sel.className = 'select';
@@ -363,7 +661,443 @@
                 c.currency = v.trim().toUpperCase(); serialize();
             }));
             inspector.appendChild(curRow);
+        } else if (f.type === 'hidden') {
+            renderHiddenConfig(f, c);
+        } else if (f.type === 'consent') {
+            // Consent text (rich label). One inline [label](url) link is rendered
+            // safely server-side; everything else is escaped.
+            var ctRow = row('Consent Text');
+            var ctTa = document.createElement('textarea');
+            ctTa.className = 'text fullwidth'; ctTa.rows = 3;
+            ctTa.value = c.consentText || '';
+            ctTa.addEventListener('input', function() { c.consentText = ctTa.value; serialize(); });
+            ctRow._input.appendChild(ctTa);
+
+            var addLink = document.createElement('button');
+            addLink.type = 'button'; addLink.className = 'btn small';
+            addLink.style.marginTop = '5px';
+            addLink.textContent = 'Add link';
+            addLink.addEventListener('click', function() {
+                var token = '[privacy policy](https://example.com/privacy)';
+                ctTa.value = (ctTa.value ? ctTa.value + ' ' : '') + token;
+                c.consentText = ctTa.value; serialize(); ctTa.focus();
+            });
+            ctRow._input.appendChild(addLink);
+
+            var ctHint = document.createElement('div'); ctHint.className = 'instructions';
+            var ctHintP = document.createElement('p');
+            ctHintP.textContent = 'Use [label](https://…) for a single inline link. Per-site translatable.';
+            ctHint.appendChild(ctHintP);
+            ctRow._input.appendChild(ctHint);
+            inspector.appendChild(ctRow);
+
+            // Required message override (the "must agree" error).
+            var rmRow = row('Required Message');
+            var rmInput = textInput(c.requiredMessage || '', function(v) {
+                if (v.trim() === '') { delete c.requiredMessage; } else { c.requiredMessage = v; } serialize();
+            });
+            rmInput.placeholder = 'You must agree before submitting.';
+            rmRow._input.appendChild(rmInput);
+            inspector.appendChild(rmRow);
+        } else if (f.type === 'rating') {
+            inspector.appendChild(numberRow('Maximum (1–10)', c.max != null ? c.max : 5, function(v) {
+                var n = parseInt(v, 10);
+                if (isNaN(n)) { delete c.max; } else { c.max = Math.max(1, Math.min(10, n)); }
+                serialize();
+            }));
+            var styleRow = row('Icon Style');
+            styleRow._input.appendChild(selectEl(
+                [{ value: 'star', label: 'Stars' }, { value: 'heart', label: 'Hearts' }, { value: 'number', label: 'Numbers' }],
+                c.iconStyle || 'star',
+                function(v) { c.iconStyle = v; serialize(); }
+            ));
+            inspector.appendChild(styleRow);
+        } else if (f.type === 'opinion') {
+            inspector.appendChild(numberRow('Minimum', c.min != null ? c.min : 0, function(v) {
+                var n = parseInt(v, 10);
+                if (v === '' || isNaN(n)) { delete c.min; } else { c.min = n; }
+                serialize();
+            }));
+            inspector.appendChild(numberRow('Maximum', c.max != null ? c.max : 10, function(v) {
+                var n = parseInt(v, 10);
+                if (v === '' || isNaN(n)) { delete c.max; } else { c.max = n; }
+                serialize();
+            }));
+            var leftRow = row('Left Label');
+            leftRow._input.appendChild(textInput(c.leftLabel || '', function(v) {
+                if (v.trim() === '') { delete c.leftLabel; } else { c.leftLabel = v; } serialize();
+            }));
+            inspector.appendChild(leftRow);
+            var rightRow = row('Right Label');
+            rightRow._input.appendChild(textInput(c.rightLabel || '', function(v) {
+                if (v.trim() === '') { delete c.rightLabel; } else { c.rightLabel = v; } serialize();
+            }));
+            inspector.appendChild(rightRow);
+        } else if (RELATION_TYPES.indexOf(f.type) !== -1) {
+            renderRelationConfig(f);
+        } else if (f.type === 'calculation') {
+            var fRow = row('Formula');
+            var ta = document.createElement('textarea');
+            ta.className = 'text fullwidth'; ta.rows = 2;
+            ta.placeholder = '{quantity} * {unitPrice}';
+            ta.value = c.formula || '';
+            ta.addEventListener('input', function() { c.formula = ta.value; serialize(); });
+            fRow._input.appendChild(ta);
+            var fHint = document.createElement('div'); fHint.className = 'instructions';
+            var fp = document.createElement('p');
+            fp.textContent = 'Reference fields by handle, e.g. {quantity} * {unitPrice}. Allowed: + - * / ( ) and min, max, round, ceil, floor, abs.';
+            fHint.appendChild(fp); fRow.appendChild(fHint);
+            inspector.appendChild(fRow);
+
+            // Quick-insert buttons for each other field's handle.
+            var handles = fields.filter(function(other) { return other.clientId !== f.clientId && other.handle; });
+            if (handles.length) {
+                var pickRow = row('Insert Field');
+                handles.forEach(function(other) {
+                    var b = document.createElement('button');
+                    b.type = 'button'; b.className = 'btn'; b.textContent = '{' + other.handle + '}';
+                    b.style.marginRight = '4px'; b.style.marginBottom = '4px';
+                    b.addEventListener('click', function() {
+                        ta.value += '{' + other.handle + '}';
+                        c.formula = ta.value; serialize(); ta.focus();
+                    });
+                    pickRow._input.appendChild(b);
+                });
+                inspector.appendChild(pickRow);
+            }
+
+            inspector.appendChild(numberRow('Decimal Places', c.decimals != null ? c.decimals : 2, function(v) {
+                if (v === '' || v == null) { c.decimals = 2; } else { c.decimals = Math.max(0, Math.min(6, parseInt(v, 10) || 0)); }
+                serialize();
+            }));
+
+            var sepRow = row('Thousands Separator');
+            var sepCb = document.createElement('input'); sepCb.type = 'checkbox'; sepCb.checked = !!c.thousandsSeparator;
+            sepCb.addEventListener('change', function() { c.thousandsSeparator = sepCb.checked; serialize(); });
+            sepRow._input.appendChild(sepCb);
+            inspector.appendChild(sepRow);
+
+            var preRow = row('Prefix');
+            preRow._input.appendChild(textInput(c.prefix || '', function(v) {
+                if (v === '') { delete c.prefix; } else { c.prefix = v; } serialize();
+            }));
+            inspector.appendChild(preRow);
+
+            var sufRow = row('Suffix');
+            sufRow._input.appendChild(textInput(c.suffix || '', function(v) {
+                if (v === '') { delete c.suffix; } else { c.suffix = v; } serialize();
+            }));
+            inspector.appendChild(sufRow);
+        } else if (f.type === 'repeater') {
+            inspector.appendChild(numberRow('Minimum Rows', c.minRows, function(v) {
+                var n = parseInt(v, 10); c.minRows = (isNaN(n) || n < 0) ? 0 : n; serialize();
+            }));
+            inspector.appendChild(numberRow('Maximum Rows (0 = unlimited)', c.maxRows, function(v) {
+                var n = parseInt(v, 10); c.maxRows = (isNaN(n) || n < 0) ? 0 : n; serialize();
+            }));
+            var addLabelRow = row('Add Button Label');
+            var addLabelInput = textInput(c.addButtonLabel || '', function(v) { c.addButtonLabel = v; serialize(); });
+            addLabelInput.placeholder = 'Add another';
+            addLabelRow._input.appendChild(addLabelInput);
+            inspector.appendChild(addLabelRow);
+
+            inspector.appendChild(innerFieldsEditor(f));
+        } else if (COMPOSITE_TYPES.indexOf(f.type) !== -1) {
+            inspector.appendChild(subFieldsEditor(f));
         }
+    }
+
+    // Source picker + single/multi + limit for the element-relation field types.
+    function renderRelationConfig(f) {
+        var c = f.config || (f.config = {});
+        var available = SF_SOURCES[f.type] || [];
+
+        // Allowed sources: a checkbox list (empty selection = any source). Stored
+        // as a list of handles; '*' / empty both mean "any".
+        if (!Array.isArray(c.sources)) { c.sources = []; }
+
+        var srcWrap = document.createElement('div'); srcWrap.className = 'field';
+        var srcHead = document.createElement('div'); srcHead.className = 'heading';
+        var srcLab = document.createElement('label'); srcLab.textContent = 'Allowed Sources';
+        srcHead.appendChild(srcLab); srcWrap.appendChild(srcHead);
+        var srcHint = document.createElement('div'); srcHint.className = 'instructions';
+        var srcHintP = document.createElement('p');
+        srcHintP.textContent = 'Leave all unchecked to allow any source of this element type.';
+        srcHint.appendChild(srcHintP); srcWrap.appendChild(srcHint);
+
+        if (available.length === 0) {
+            var none = document.createElement('p'); none.className = 'light';
+            none.textContent = 'No sources available for this element type.';
+            srcWrap.appendChild(none);
+        }
+
+        available.forEach(function(src) {
+            var line = document.createElement('div'); line.className = 'sf-source-row';
+            var cb = document.createElement('input'); cb.type = 'checkbox';
+            cb.id = 'sf-src-' + f.type + '-' + src.handle;
+            cb.checked = c.sources.indexOf(src.handle) !== -1;
+            cb.addEventListener('change', function() {
+                var i = c.sources.indexOf(src.handle);
+                if (cb.checked && i === -1) { c.sources.push(src.handle); }
+                else if (!cb.checked && i !== -1) { c.sources.splice(i, 1); }
+                serialize();
+            });
+            var lab = document.createElement('label'); lab.setAttribute('for', cb.id);
+            lab.textContent = ' ' + src.name;
+            line.appendChild(cb); line.appendChild(lab);
+            srcWrap.appendChild(line);
+        });
+        inspector.appendChild(srcWrap);
+
+        // Single vs. multiple.
+        var multRow = row('Allow Multiple');
+        var multCb = document.createElement('input'); multCb.type = 'checkbox'; multCb.checked = !!c.multiple;
+        multCb.addEventListener('change', function() {
+            c.multiple = multCb.checked;
+            if (!c.multiple) { delete c.limit; }
+            serialize();
+            // Re-render so the Limit row shows/hides with the toggle.
+            renderInspector();
+        });
+        multRow._input.appendChild(multCb);
+        inspector.appendChild(multRow);
+
+        // Limit only applies to multiple-select.
+        if (c.multiple) {
+            inspector.appendChild(numberRow('Limit', c.limit, function(v) { setNum(c, 'limit', v); }));
+        }
+    }
+
+    // Source dropdown + the source-specific input for a Hidden field (#124). The
+    // source-specific row is re-rendered when the source changes so only the
+    // relevant input shows.
+    function renderHiddenConfig(f, c) {
+        if (!c.source) { c.source = 'static'; }
+
+        var srcRow = row('Source');
+        srcRow._input.appendChild(selectEl(
+            [
+                { value: 'static', label: 'Static value' },
+                { value: 'query', label: 'URL query parameter' },
+                { value: 'user', label: 'Logged-in user' },
+                { value: 'cookie', label: 'Cookie' }
+            ],
+            c.source,
+            function(v) { c.source = v; serialize(); renderInspector(); }
+        ));
+        inspector.appendChild(srcRow);
+
+        if (c.source === 'query') {
+            var qpRow = row('Query Parameter');
+            qpRow._input.appendChild(textInput(c.queryParam || '', function(v) {
+                c.queryParam = v.trim(); serialize();
+            }));
+            inspector.appendChild(qpRow);
+        } else if (c.source === 'user') {
+            var uaRow = row('User Attribute');
+            uaRow._input.appendChild(selectEl(
+                [
+                    { value: 'email', label: 'Email' },
+                    { value: 'id', label: 'User ID' },
+                    { value: 'username', label: 'Username' }
+                ],
+                c.userAttribute || 'email',
+                function(v) { c.userAttribute = v; serialize(); }
+            ));
+            inspector.appendChild(uaRow);
+        } else if (c.source === 'cookie') {
+            var ckRow = row('Cookie Name');
+            ckRow._input.appendChild(textInput(c.cookieName || '', function(v) {
+                c.cookieName = v.trim(); serialize();
+            }));
+            inspector.appendChild(ckRow);
+        }
+
+        // Default / fallback value (used when the source yields nothing).
+        var defRow = row(c.source === 'static' ? 'Value' : 'Default Value');
+        defRow._input.appendChild(textInput(c.default || '', function(v) {
+            if (v === '') { delete c.default; } else { c.default = v; } serialize();
+        }));
+        inspector.appendChild(defRow);
+
+        inspector.appendChild(numberRow('Maximum Length', c.maxLength, function(v) { setNum(c, 'maxLength', v); }));
+    }
+
+    // ---- repeater inner-field editor -------------------------------------
+
+    // A mini field editor for a repeater's inner sub-fields: add/remove, with a
+    // type picker limited to REPEATER_INNER_TYPES, a handle, a label, a required
+    // toggle, and the type's own settings (select options, number min/max).
+    function innerFieldsEditor(f) {
+        var c = f.config || (f.config = {});
+        if (!Array.isArray(c.fields)) { c.fields = []; }
+
+        var wrap = document.createElement('div'); wrap.className = 'field sf-repeater-fields';
+        var heading = document.createElement('div'); heading.className = 'heading';
+        var lab = document.createElement('label'); lab.textContent = 'Inner Fields';
+        heading.appendChild(lab); wrap.appendChild(heading);
+
+        var hint = document.createElement('div'); hint.className = 'instructions';
+        var hp = document.createElement('p');
+        hp.textContent = 'The sub-fields a visitor fills in per row. Allowed types: text, email, number, select.';
+        hint.appendChild(hp); wrap.appendChild(hint);
+
+        var list = document.createElement('div'); list.className = 'sf-repeater-list';
+        wrap.appendChild(list);
+
+        function redraw() {
+            list.innerHTML = '';
+            c.fields.forEach(function(inner, idx) { list.appendChild(innerRow(inner, idx)); });
+        }
+
+        function innerRow(inner, idx) {
+            var r = document.createElement('div'); r.className = 'sf-repeater-row';
+
+            var li = document.createElement('input'); li.type = 'text'; li.className = 'text'; li.placeholder = 'Label';
+            li.value = inner.label || '';
+            li.addEventListener('input', function() { inner.label = li.value; serialize(); });
+
+            var hi = document.createElement('input'); hi.type = 'text'; hi.className = 'text'; hi.placeholder = 'Handle';
+            hi.value = inner.handle || '';
+            hi.addEventListener('input', function() { inner.handle = slug(hi.value); serialize(); });
+
+            var typeSel = selectEl(REPEATER_INNER_TYPES.map(function(t) {
+                return { value: t, label: TYPE_LABELS[t] || t };
+            }), inner.type || 'text', function(v) {
+                inner.type = v;
+                if (v === 'select' && !Array.isArray(inner.options)) {
+                    inner.options = [{ label: 'Option 1', value: 'option1' }];
+                }
+                serialize(); redraw();
+            });
+
+            var reqWrap = document.createElement('label'); reqWrap.className = 'sf-repeater-req';
+            var cb = document.createElement('input'); cb.type = 'checkbox'; cb.checked = !!inner.required;
+            cb.addEventListener('change', function() { inner.required = cb.checked; serialize(); });
+            reqWrap.appendChild(cb);
+            reqWrap.appendChild(document.createTextNode(' required'));
+
+            var del = document.createElement('button'); del.type = 'button'; del.className = 'btn sf-repeater-del'; del.textContent = '×';
+            del.addEventListener('click', function() { c.fields.splice(idx, 1); redraw(); serialize(); });
+
+            r.appendChild(li); r.appendChild(hi); r.appendChild(typeSel); r.appendChild(reqWrap); r.appendChild(del);
+
+            // Per-type extra settings.
+            if (inner.type === 'select') {
+                r.appendChild(innerOptionsEditor(inner));
+            } else if (inner.type === 'number') {
+                var nWrap = document.createElement('div'); nWrap.className = 'sf-repeater-subsettings';
+                nWrap.appendChild(miniNumber('Min', inner.min, function(v) { setNum(inner, 'min', v); }));
+                nWrap.appendChild(miniNumber('Max', inner.max, function(v) { setNum(inner, 'max', v); }));
+                r.appendChild(nWrap);
+            }
+
+            return r;
+        }
+
+        function miniNumber(labelText, value, oninput) {
+            var l = document.createElement('label'); l.className = 'sf-repeater-mini';
+            l.appendChild(document.createTextNode(labelText + ' '));
+            l.appendChild(textInput(value, oninput, 'number'));
+            return l;
+        }
+
+        redraw();
+
+        var add = document.createElement('button'); add.type = 'button'; add.className = 'btn sf-repeater-add'; add.textContent = 'Add Inner Field';
+        add.addEventListener('click', function() {
+            c.fields.push({ handle: uniqueInnerHandle(c.fields, 'field'), type: 'text', label: '', required: false });
+            redraw(); serialize();
+        });
+        wrap.appendChild(add);
+        return wrap;
+    }
+
+    function uniqueInnerHandle(innerFields, base) {
+        var taken = {};
+        innerFields.forEach(function(i) { if (i.handle) { taken[i.handle.toLowerCase()] = true; } });
+        if (!taken[base]) { return base; }
+        var n = 2;
+        while (taken[(base + n).toLowerCase()]) { n++; }
+        return base + n;
+    }
+
+    function innerOptionsEditor(inner) {
+        if (!Array.isArray(inner.options)) { inner.options = []; }
+        var wrap = document.createElement('div'); wrap.className = 'sf-repeater-options';
+
+        function redraw() {
+            wrap.innerHTML = '';
+            inner.options.forEach(function(opt, idx) {
+                var r = document.createElement('div'); r.className = 'sf-option-row';
+                var li = document.createElement('input'); li.type = 'text'; li.className = 'text'; li.placeholder = 'Label'; li.value = opt.label || '';
+                var vi = document.createElement('input'); vi.type = 'text'; vi.className = 'text'; vi.placeholder = 'Value'; vi.value = opt.value || '';
+                li.addEventListener('input', function() { opt.label = li.value; serialize(); });
+                vi.addEventListener('input', function() { opt.value = vi.value; serialize(); });
+                var del = document.createElement('button'); del.type = 'button'; del.className = 'btn sf-option-del'; del.textContent = '×';
+                del.addEventListener('click', function() { inner.options.splice(idx, 1); redraw(); serialize(); });
+                r.appendChild(li); r.appendChild(vi); r.appendChild(del);
+                wrap.appendChild(r);
+            });
+            var add = document.createElement('button'); add.type = 'button'; add.className = 'btn sf-option-add'; add.textContent = 'Add Option';
+            add.addEventListener('click', function() { inner.options.push({ label: '', value: '' }); redraw(); serialize(); });
+            wrap.appendChild(add);
+        }
+        redraw();
+        return wrap;
+    }
+
+    // Per-sub-field editor for the composite types (Name/Address): one row per
+    // declared sub-field with an enable toggle, an editable (translatable) label,
+    // and a required toggle. The config writes back as config.subFields[<key>].
+    function subFieldsEditor(f) {
+        var c = f.config || (f.config = {});
+        if (!c.subFields || typeof c.subFields !== 'object') { c.subFields = {}; }
+        var defs = SUBFIELD_DEFS[f.type] || [];
+
+        var wrap = document.createElement('div'); wrap.className = 'field sf-subfields';
+        var heading = document.createElement('div'); heading.className = 'heading';
+        var lab = document.createElement('label'); lab.textContent = SF_SOURCE_SITE ? 'Sub-fields' : 'Sub-field Labels (this site)';
+        heading.appendChild(lab); wrap.appendChild(heading);
+
+        var list = document.createElement('div'); list.className = 'sf-subfields-list';
+        wrap.appendChild(list);
+
+        defs.forEach(function(d) {
+            var key = d[0];
+            var sub = c.subFields[key] || (c.subFields[key] = { enabled: d[2], required: false, label: d[1] });
+
+            var r = document.createElement('div'); r.className = 'sf-subfield-row';
+
+            // Enable toggle (structural — source site only).
+            if (SF_SOURCE_SITE) {
+                var en = document.createElement('input'); en.type = 'checkbox'; en.className = 'checkbox';
+                en.checked = sub.enabled !== false;
+                en.addEventListener('change', function() { sub.enabled = en.checked; serialize(); });
+                r.appendChild(en);
+            }
+
+            // Translatable label.
+            var li = document.createElement('input'); li.type = 'text'; li.className = 'text';
+            li.placeholder = d[1]; li.value = sub.label != null ? sub.label : d[1];
+            li.addEventListener('input', function() { sub.label = li.value; serialize(); });
+            r.appendChild(li);
+
+            // Required toggle (structural — source site only).
+            if (SF_SOURCE_SITE) {
+                var reqWrap = document.createElement('label'); reqWrap.className = 'sf-subfield-required';
+                var rq = document.createElement('input'); rq.type = 'checkbox'; rq.className = 'checkbox';
+                rq.checked = !!sub.required;
+                rq.addEventListener('change', function() { sub.required = rq.checked; serialize(); });
+                var rqt = document.createElement('span'); rqt.textContent = 'Required';
+                reqWrap.appendChild(rq); reqWrap.appendChild(rqt);
+                r.appendChild(reqWrap);
+            }
+
+            list.appendChild(r);
+        });
+
+        return wrap;
     }
 
     function setNum(c, key, v) {
@@ -692,13 +1426,41 @@
         var errs = [], seen = {};
         fields.forEach(function(f, i) {
             var name = f.label || f.handle || ('#' + (i + 1));
-            if (!f.label || !f.label.trim()) { errs.push('Field "' + name + '": label is required.'); }
+            var layout = isLayout(f.type);
+            // Layout blocks carry no user-facing label (their content is the
+            // heading text / divider label / HTML body), so a label is not
+            // required — but every block still needs a unique handle.
+            if (!layout && (!f.label || !f.label.trim())) { errs.push('Field "' + name + '": label is required.'); }
             if (!f.handle || !f.handle.trim()) { errs.push('Field "' + name + '": handle is required.'); }
             else if (!/^[a-zA-Z_][a-zA-Z0-9_]*$/.test(f.handle)) { errs.push('Field "' + name + '": invalid handle.'); }
             else { var k = f.handle.toLowerCase(); if (seen[k]) { errs.push('Duplicate handle "' + f.handle + '".'); } seen[k] = true; }
             if (OPTION_TYPES.indexOf(f.type) !== -1) {
                 var opts = (f.config && f.config.options) || [];
                 if (!opts.length) { errs.push('Field "' + name + '": needs at least one option.'); }
+            }
+            if (f.type === 'repeater') {
+                var inner = (f.config && f.config.fields) || [];
+                if (!inner.length) { errs.push('Field "' + name + '": needs at least one inner field.'); }
+                var min = parseInt((f.config && f.config.minRows), 10) || 0;
+                var max = parseInt((f.config && f.config.maxRows), 10) || 0;
+                if (max > 0 && min > max) { errs.push('Field "' + name + '": minimum rows cannot exceed maximum rows.'); }
+                var innerSeen = {};
+                inner.forEach(function(inf, j) {
+                    var iname = inf.handle || ('#' + (j + 1));
+                    if (!inf.handle || !/^[a-zA-Z_][a-zA-Z0-9_]*$/.test(inf.handle)) {
+                        errs.push('Field "' + name + '": inner field "' + iname + '" has an invalid handle.');
+                    } else {
+                        var ik = inf.handle.toLowerCase();
+                        if (innerSeen[ik]) { errs.push('Field "' + name + '": duplicate inner handle "' + inf.handle + '".'); }
+                        innerSeen[ik] = true;
+                    }
+                    if (REPEATER_INNER_TYPES.indexOf(inf.type) === -1) {
+                        errs.push('Field "' + name + '": inner field "' + iname + '" has an unsupported type.');
+                    }
+                    if (inf.type === 'select' && !((inf.options || []).length)) {
+                        errs.push('Field "' + name + '": inner select "' + iname + '" needs at least one option.');
+                    }
+                });
             }
         });
         return errs;

@@ -12,6 +12,9 @@ use fabianhaef\simpleform\elements\actions\SetSubmissionStatus;
 use fabianhaef\simpleform\elements\db\SubmissionQuery;
 use fabianhaef\simpleform\elements\exporters\SubmissionExporter;
 
+/**
+ * @phpstan-type SubmissionData array<string, array{label: string, type: string, value: mixed}>
+ */
 class Submission extends Element
 {
     /** Payment is required but not yet settled. */
@@ -20,16 +23,22 @@ class Submission extends Element
     public const PAYMENT_PAID = 'paid';
 
     public ?int $formId = null;
-    /** @var array<string, mixed>|null */
+    /** @var SubmissionData|null */
     public ?array $data = null;
     public ?int $userId = null;
     public string $readStatus = SubmissionStatus::NEW;
-    /** Why this submission is flagged spam: 'akismet', 'manual', or null. */
+    /** Why this submission is flagged spam: 'akismet', 'manual', a denylist reason, 'duplicate', or null. */
     public ?string $spamReason = null;
+    /** Submitter's source IP, captured at submit time for duplicate detection (#140). */
+    public ?string $sourceIp = null;
     /** null = no payment; self::PAYMENT_PENDING = awaiting; self::PAYMENT_PAID = complete. */
     public ?string $paymentStatus = null;
     public ?string $paymentAmount = null;
     public ?int $orderId = null;
+    /** SHA-256 hash of the active front-end edit token; the token itself lives only in the edit URL. */
+    public ?string $editTokenHash = null;
+    /** Absolute expiry of the edit token (UTC), or null when no token is active. */
+    public ?string $editTokenExpires = null;
 
     public static function displayName(): string
     {
@@ -85,12 +94,11 @@ class Submission extends Element
             return $eager instanceof Form ? $eager : null;
         }
 
-        try {
-            return Form::find()->id($this->formId)->one();
-        } catch (\Throwable $e) {
-            Craft::warning(sprintf('Error loading form %d: %s', $this->formId, $e->getMessage()), 'simple-form');
-            return null;
-        }
+        // An absent form already yields null from `->one()` without throwing, so
+        // there is no try/catch here: a genuine query/infrastructure failure is
+        // left to propagate as a clear DB error instead of being masked as a
+        // confusing "form not found" state.
+        return Form::find()->id($this->formId)->one();
     }
 
     /**
@@ -141,9 +149,12 @@ class Submission extends Element
             'userId' => $this->userId,
             'readStatus' => $this->readStatus,
             'spamReason' => $this->spamReason,
+            'sourceIp' => $this->sourceIp,
             'paymentStatus' => $this->paymentStatus,
             'paymentAmount' => $this->paymentAmount,
             'orderId' => $this->orderId,
+            'editTokenHash' => $this->editTokenHash,
+            'editTokenExpires' => $this->editTokenExpires,
             'dateUpdated' => $now,
         ];
 

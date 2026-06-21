@@ -5,17 +5,20 @@ namespace fabianhaef\simpleform\integrations;
 use Craft;
 use fabianhaef\simpleform\elements\Submission;
 use fabianhaef\simpleform\helpers\SafeUrl;
+use fabianhaef\simpleform\integrations\support\ApiConnector;
 use fabianhaef\simpleform\integrations\support\SubmissionValues;
-use GuzzleHttp\Client;
 
 /**
  * Shared base for chat/notification connectors (Slack, Discord) that POST a JSON
  * message to an incoming-webhook URL. Subclasses supply the provider-specific
  * payload shape via {@see buildPayload()}; this base owns the transport and the
  * message composition (auto field list, or a `{handle}` placeholder template).
+ * The HTTP/SSRF plumbing comes from {@see ApiConnector}.
  */
 abstract class AbstractChatIntegration implements IntegrationTypeInterface
 {
+    use ApiConnector;
+
     abstract public static function handle(): string;
 
     abstract public static function displayName(): string;
@@ -35,11 +38,7 @@ abstract class AbstractChatIntegration implements IntegrationTypeInterface
         return [
             [['url'], 'required'],
             [['url'], 'string'],
-            [['url'], function($attribute, $params, $validator, $value): void {
-                if (is_string($value) && !SafeUrl::isAcceptableSettingUrl($value)) {
-                    $this->addError($attribute, Craft::t('simple-form', 'The URL must be a public http(s) address.'));
-                }
-            }],
+            SafeUrl::settingUrlRule('url'),
         ];
     }
 
@@ -55,32 +54,14 @@ abstract class AbstractChatIntegration implements IntegrationTypeInterface
 
     /**
      * POST a JSON payload to the webhook URL. Isolated so it can be exercised
-     * with a mocked client.
+     * with a mocked client; the SSRF guard, transport-exception trap, and
+     * response mapping come from {@see ApiConnector::request()}.
      *
      * @param array<string, mixed> $payload
      */
     protected function post(string $url, array $payload): IntegrationResult
     {
-        // SSRF guard (F3): only dispatch to a public address.
-        if (!SafeUrl::isPublicHttpUrl($url)) {
-            return IntegrationResult::failure(null, 'Blocked request to a non-public address');
-        }
-
-        try {
-            $response = $this->httpClient()->request('POST', $url, [
-                'json' => $payload,
-                'http_errors' => false,
-            ]);
-        } catch (\Throwable $e) {
-            return IntegrationResult::failure(null, $e->getMessage());
-        }
-
-        $code = $response->getStatusCode();
-        if ($code >= 200 && $code < 300) {
-            return IntegrationResult::success($code, 'OK');
-        }
-
-        return IntegrationResult::failure($code, substr((string) $response->getBody(), 0, 500));
+        return $this->request('POST', $url, ['json' => $payload]);
     }
 
     /**
@@ -120,16 +101,5 @@ abstract class AbstractChatIntegration implements IntegrationTypeInterface
             }
             return (string) $value;
         }, $template) ?? $template;
-    }
-
-    protected function httpClient(): Client
-    {
-        return Craft::createGuzzleClient([
-            'timeout' => 10,
-            'connect_timeout' => 5,
-            // Don't follow redirects (F3): a public URL must not be able to
-            // 30x-bounce the request to an internal host.
-            'allow_redirects' => false,
-        ]);
     }
 }

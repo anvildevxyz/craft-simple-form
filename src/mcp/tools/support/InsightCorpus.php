@@ -29,9 +29,9 @@ final class InsightCorpus
     {
         $types = [];
         foreach ($form->getFields() as $row) {
-            $handle = (string)($row['name'] ?? '');
+            $handle = (string)$row['name'];
             if ($handle !== '') {
-                $types[$handle] = (string)($row['type'] ?? '');
+                $types[$handle] = (string)$row['type'];
             }
         }
 

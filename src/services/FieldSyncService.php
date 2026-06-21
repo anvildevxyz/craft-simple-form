@@ -6,7 +6,11 @@ use Craft;
 use craft\db\Query;
 use craft\helpers\StringHelper;
 use fabianhaef\simpleform\elements\Form;
+use fabianhaef\simpleform\exceptions\FormulaException;
+use fabianhaef\simpleform\fields\CalculationFieldType;
+use fabianhaef\simpleform\fields\RepeaterFieldType;
 use fabianhaef\simpleform\helpers\ConditionalEvaluator;
+use fabianhaef\simpleform\helpers\Formula;
 use fabianhaef\simpleform\Plugin;
 use yii\base\Component;
 
@@ -30,14 +34,20 @@ class FieldSyncService extends Component
         $errors = [];
         $seenHandles = [];
 
+        $layoutTypes = Plugin::getInstance()->getFieldTypeRegistry()->layoutTypeHandles();
+
         foreach ($items as $i => $item) {
             $pos = $i + 1;
             $label = trim((string)($item['label'] ?? ''));
             $handle = trim((string)($item['handle'] ?? ''));
             $type = (string)($item['type'] ?? '');
             $name = $label !== '' ? $label : ($handle !== '' ? $handle : "#$pos");
+            $isLayout = in_array($type, $layoutTypes, true);
 
-            if ($label === '') {
+            // Layout blocks (heading/divider/html) carry no user-facing label —
+            // their content is the heading text / divider label / HTML body — so
+            // only input fields require a label.
+            if ($label === '' && !$isLayout) {
                 $errors[] = Craft::t('simple-form', 'Field {name}: label is required.', ['name' => "#$pos"]);
             }
 
@@ -63,9 +73,156 @@ class FieldSyncService extends Component
                     $errors[] = Craft::t('simple-form', 'Field {name}: needs at least one option.', ['name' => $name]);
                 }
             }
+
+            if ($type === RepeaterFieldType::getType()) {
+                $config = is_array($item['config'] ?? null) ? $item['config'] : [];
+                $errors = array_merge($errors, self::repeaterConfigErrors($config, $name));
+            }
         }
 
-        return array_merge($errors, self::conditionalSetErrors($items));
+        return array_merge($errors, self::conditionalSetErrors($items), self::calculationSetErrors($items));
+    }
+
+    /**
+     * Validate Calculation field formulas across a full field set (#131): each
+     * formula must parse under the allow-listed grammar, every `{handle}`
+     * reference must resolve to another field in the set, and the calculation
+     * dependency graph must be acyclic (a calculation may reference another
+     * calculation, but not in a cycle). A self-reference is a cycle and rejected.
+     *
+     * Public + static so the MCP single-field write path validates with the same
+     * rules as the CP batch save.
+     *
+     * @param array<int,array<string,mixed>> $items
+     * @return string[]
+     */
+    public static function calculationSetErrors(array $items): array
+    {
+        $errors = [];
+        $present = [];
+        $calcHandles = [];
+        foreach ($items as $item) {
+            $handle = trim((string)($item['handle'] ?? ''));
+            if ($handle !== '') {
+                $present[$handle] = true;
+                if ((string)($item['type'] ?? '') === CalculationFieldType::getType()) {
+                    $calcHandles[$handle] = true;
+                }
+            }
+        }
+
+        $graph = [];
+        foreach ($items as $i => $item) {
+            if ((string)($item['type'] ?? '') !== CalculationFieldType::getType()) {
+                continue;
+            }
+
+            $handle = trim((string)($item['handle'] ?? ''));
+            $label = trim((string)($item['label'] ?? ''));
+            $name = $label !== '' ? $label : ($handle !== '' ? $handle : '#' . ($i + 1));
+            $config = is_array($item['config'] ?? null) ? $item['config'] : [];
+            $formula = trim((string)($config['formula'] ?? ''));
+
+            if ($formula === '') {
+                $errors[] = Craft::t('simple-form', 'Field {name}: a calculation formula is required.', ['name' => $name]);
+                continue;
+            }
+
+            try {
+                $refs = Formula::references($formula);
+            } catch (FormulaException $e) {
+                $errors[] = Craft::t('simple-form', 'Field {name}: the formula is invalid. {detail}', ['name' => $name, 'detail' => $e->getMessage()]);
+                continue;
+            }
+
+            foreach ($refs as $ref) {
+                if (!isset($present[$ref])) {
+                    $errors[] = Craft::t('simple-form', 'Field {name}: the formula references an unknown field “{handle}”.', ['name' => $name, 'handle' => $ref]);
+                }
+            }
+
+            // Only calculation→calculation edges matter for cycle detection;
+            // references to ordinary (leaf) fields never form a cycle.
+            $graph[$handle] = array_values(array_filter(
+                $refs,
+                static fn($ref) => isset($calcHandles[$ref])
+            ));
+        }
+
+        if (self::hasCycle($graph)) {
+            $errors[] = Craft::t('simple-form', 'Calculation formulas form a circular dependency between fields. Remove one of the references.');
+        }
+
+        return $errors;
+    }
+
+    /**
+     * Validate a repeater field's nested config: inner types must be in the
+     * allow-list, inner handles unique within the repeater and slug-safe,
+     * `minRows <= maxRows`, and select inner fields must carry options.
+     *
+     * Pure + static (no DB) so the MCP single-field write path can reuse the
+     * exact same rules as the CP batch save.
+     *
+     * @param array<string, mixed> $config the repeater container's config
+     * @param string $name the field's display name, for the error messages
+     * @return string[]
+     */
+    public static function repeaterConfigErrors(array $config, string $name): array
+    {
+        $errors = [];
+
+        $min = (int) ($config['minRows'] ?? 0);
+        $max = (int) ($config['maxRows'] ?? 0);
+        if ($min < 0) {
+            $errors[] = Craft::t('simple-form', 'Field {name}: minimum rows cannot be negative.', ['name' => $name]);
+        }
+        if ($max > 0 && $min > $max) {
+            $errors[] = Craft::t('simple-form', 'Field {name}: minimum rows cannot exceed maximum rows.', ['name' => $name]);
+        }
+
+        $inner = $config['fields'] ?? null;
+        if (empty($inner) || !is_array($inner)) {
+            $errors[] = Craft::t('simple-form', 'Field {name}: needs at least one inner field.', ['name' => $name]);
+            return $errors;
+        }
+
+        $seen = [];
+        foreach ($inner as $i => $def) {
+            $pos = $i + 1;
+            if (!is_array($def)) {
+                $errors[] = Craft::t('simple-form', 'Field {name}: inner field #{pos} is malformed.', ['name' => $name, 'pos' => $pos]);
+                continue;
+            }
+
+            $handle = trim((string) ($def['handle'] ?? ''));
+            $type = (string) ($def['type'] ?? '');
+
+            if ($handle === '') {
+                $errors[] = Craft::t('simple-form', 'Field {name}: inner field #{pos} needs a handle.', ['name' => $name, 'pos' => $pos]);
+            } elseif (!preg_match('/^[a-zA-Z_][a-zA-Z0-9_]*$/', $handle)) {
+                $errors[] = Craft::t('simple-form', 'Field {name}: inner handle “{handle}” is invalid.', ['name' => $name, 'handle' => $handle]);
+            } else {
+                $key = strtolower($handle);
+                if (isset($seen[$key])) {
+                    $errors[] = Craft::t('simple-form', 'Field {name}: duplicate inner handle “{handle}”.', ['name' => $name, 'handle' => $handle]);
+                }
+                $seen[$key] = true;
+            }
+
+            if (!in_array($type, RepeaterFieldType::ALLOWED_INNER_TYPES, true)) {
+                $errors[] = Craft::t('simple-form', 'Field {name}: inner field “{handle}” has an unsupported type.', ['name' => $name, 'handle' => $handle !== '' ? $handle : "#$pos"]);
+            }
+
+            if ($type === 'select') {
+                $options = $def['options'] ?? $def['config']['options'] ?? null;
+                if (empty($options) || !is_array($options)) {
+                    $errors[] = Craft::t('simple-form', 'Field {name}: inner select “{handle}” needs at least one option.', ['name' => $name, 'handle' => $handle !== '' ? $handle : "#$pos"]);
+                }
+            }
+        }
+
+        return $errors;
     }
 
     /**
@@ -155,6 +312,51 @@ class FieldSyncService extends Component
             }
         }
         $state[$node] = 2;
+
+        return false;
+    }
+
+    /**
+     * Whether the posted set would create or change an HTML layout block's body
+     * for the editing site, requiring the `editHtmlBlocks` permission.
+     *
+     * A user lacking that permission may still reorder or delete an existing
+     * HTML block, and may leave its body untouched — only a new block with a
+     * body, or a changed body, is gated. The body lives in the per-site
+     * `helpText` column (no schema change). The check loads the stored body for
+     * each existing HTML block so an unchanged save is never blocked.
+     *
+     * @param array<int,array<string,mixed>> $items the posted field set
+     */
+    public function htmlBlockBodyChanged(array $items, int $currentSiteId): bool
+    {
+        foreach ($items as $item) {
+            if ((string)($item['type'] ?? '') !== 'html') {
+                continue;
+            }
+
+            $body = trim((string)($item['helpText'] ?? ''));
+            $rawId = $item['id'] ?? null;
+            $id = is_numeric($rawId) ? (int)$rawId : null;
+
+            // New block: only gated when it actually carries a body.
+            if ($id === null) {
+                if ($body !== '') {
+                    return true;
+                }
+                continue;
+            }
+
+            $stored = (new Query())
+                ->select(['helpText'])
+                ->from('{{%simpleform_fields_sites}}')
+                ->where(['fieldId' => $id, 'siteId' => $currentSiteId])
+                ->scalar();
+
+            if (trim((string)$stored) !== $body) {
+                return true;
+            }
+        }
 
         return false;
     }

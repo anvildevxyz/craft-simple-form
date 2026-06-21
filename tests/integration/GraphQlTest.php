@@ -156,6 +156,103 @@ class GraphQlTest extends SimpleFormTestCase
         );
     }
 
+    public function testQueryExposesElementRelationConfig(): void
+    {
+        $this->requireCraft();
+
+        $group = new \craft\models\CategoryGroup();
+        $group->name = 'GQL Topics';
+        $group->handle = 'gqlRelTopics' . substr(\craft\helpers\StringHelper::UUID(), 0, 6);
+        $siteSettings = [];
+        foreach (Craft::$app->getSites()->getAllSites() as $site) {
+            $settings = new \craft\models\CategoryGroup_SiteSettings();
+            $settings->siteId = $site->id;
+            $settings->hasUrls = false;
+            $siteSettings[$site->id] = $settings;
+        }
+        $group->setSiteSettings($siteSettings);
+        $this->assertTrue(Craft::$app->getCategories()->saveGroup($group), 'Category group should save');
+
+        $category = new \craft\elements\Category();
+        $category->groupId = $group->id;
+        $category->title = 'Billing';
+        $this->assertTrue(Craft::$app->getElements()->saveElement($category), 'Category should save');
+
+        $siteId = Craft::$app->getSites()->getPrimarySite()->id;
+        $form = $this->createForm('Relations', 'gqlRelationsForm', 'Relations', $siteId);
+        $topicId = $this->createField($form->id, 'category', 'topic', 'Topic', false, [
+            'sources' => [$group->handle],
+            'multiple' => true,
+            'limit' => 2,
+        ]);
+
+        $document = <<<'GQL'
+        query ($handle: String!, $siteId: Int) {
+            simpleForm(handle: $handle, siteId: $siteId) {
+                fields {
+                    id
+                    type
+                    relation {
+                        elementType
+                        sources
+                        multiple
+                        limit
+                        options { id title }
+                    }
+                }
+            }
+        }
+        GQL;
+
+        $result = $this->execute($document, ['simpleForms:read'], [
+            'handle' => 'gqlRelationsForm',
+            'siteId' => $siteId,
+        ]);
+
+        $this->assertArrayNotHasKey('errors', $result, json_encode($result['errors'] ?? null));
+
+        $field = $result['data']['simpleForm']['fields'][0];
+        $this->assertSame($topicId, $field['id']);
+        $this->assertSame('category', $field['type']);
+
+        $relation = $field['relation'];
+        $this->assertNotNull($relation);
+        $this->assertSame('category', $relation['elementType']);
+        $this->assertSame([$group->handle], $relation['sources']);
+        $this->assertTrue($relation['multiple']);
+        $this->assertSame(2, $relation['limit']);
+
+        $optionIds = array_column($relation['options'], 'id');
+        $optionTitles = array_column($relation['options'], 'title');
+        $this->assertContains((int) $category->id, $optionIds);
+        $this->assertContains('Billing', $optionTitles);
+    }
+
+    public function testRelationIsNullForNonRelationFields(): void
+    {
+        $this->requireCraft();
+
+        $siteId = Craft::$app->getSites()->getPrimarySite()->id;
+        $form = $this->createForm('NoRel', 'gqlNoRelForm', 'NoRel', $siteId);
+        $this->createField($form->id, 'text', 'fullName', 'Full Name', true);
+
+        $document = <<<'GQL'
+        query ($handle: String!, $siteId: Int) {
+            simpleForm(handle: $handle, siteId: $siteId) {
+                fields { type relation { elementType } }
+            }
+        }
+        GQL;
+
+        $result = $this->execute($document, ['simpleForms:read'], [
+            'handle' => 'gqlNoRelForm',
+            'siteId' => $siteId,
+        ]);
+
+        $this->assertArrayNotHasKey('errors', $result, json_encode($result['errors'] ?? null));
+        $this->assertNull($result['data']['simpleForm']['fields'][0]['relation']);
+    }
+
     public function testQueryLocalizesOptionLabelsPerSite(): void
     {
         $this->requireCraft();
@@ -289,10 +386,21 @@ class GraphQlTest extends SimpleFormTestCase
             ],
         ];
 
+        // Notification sending is now queued (#143) so PDF rendering stays off the
+        // submit request. Use the documented sync escape hatch so the email is
+        // composed inline and the test mailer can capture it.
+        $settings = \fabianhaef\simpleform\Plugin::getInstance()->getSettings();
+        $previousSync = $settings->dispatchIntegrationsSynchronously;
+        $settings->dispatchIntegrationsSynchronously = true;
+
         $result = [];
-        $sent = $this->captureSentMessages(function () use ($document, $variables, &$result): void {
-            $result = $this->execute($document, ['simpleFormSubmissions:create'], $variables);
-        });
+        try {
+            $sent = $this->captureSentMessages(function () use ($document, $variables, &$result): void {
+                $result = $this->execute($document, ['simpleFormSubmissions:create'], $variables);
+            });
+        } finally {
+            $settings->dispatchIntegrationsSynchronously = $previousSync;
+        }
 
         $this->assertArrayNotHasKey('errors', $result, 'Mutation should not error: ' . json_encode($result['errors'] ?? null));
 
@@ -314,6 +422,112 @@ class GraphQlTest extends SimpleFormTestCase
         $message = $sent[0];
         $this->assertArrayHasKey('owner@example.com', $message->getTo());
         $this->assertSame('New signup', $message->getSubject());
+    }
+
+    public function testSubmitMutationNormalizesPhoneNumber(): void
+    {
+        $this->requireCraft();
+
+        $siteId = Craft::$app->getSites()->getPrimarySite()->id;
+        $form = $this->createForm('Phone', 'gqlPhoneForm', 'Phone', $siteId);
+        // Headless clients send a flat string value; the field normalizes it
+        // against defaultCountry, identically to the AJAX path.
+        $phoneId = $this->createField($form->id, 'phone', 'phone', 'Phone', true, [
+            'showCountrySelector' => true,
+            'defaultCountry' => 'CH',
+        ]);
+
+        $document = <<<'GQL'
+        mutation ($handle: String!, $siteId: Int, $values: [SimpleFormFieldValueInput!]!) {
+            submitForm(handle: $handle, siteId: $siteId, values: $values) {
+                success
+                submissionId
+                errors { key messages }
+            }
+        }
+        GQL;
+
+        $variables = [
+            'handle' => 'gqlPhoneForm',
+            'siteId' => $siteId,
+            'values' => [['fieldId' => $phoneId, 'value' => '079 123 45 67']],
+        ];
+
+        $result = $this->execute($document, ['simpleFormSubmissions:create'], $variables);
+
+        $this->assertArrayNotHasKey('errors', $result, json_encode($result['errors'] ?? null));
+        $payload = $result['data']['submitForm'];
+        $this->assertTrue($payload['success']);
+
+        $submission = Submission::find()->id($payload['submissionId'])->one();
+        $this->assertSame('+41791234567', $submission->data['field_' . $phoneId]['value']['e164']);
+        $this->assertSame('CH', $submission->data['field_' . $phoneId]['value']['country']);
+    }
+
+    public function testSubmitMutationRejectsInvalidPhoneNumber(): void
+    {
+        $this->requireCraft();
+
+        $siteId = Craft::$app->getSites()->getPrimarySite()->id;
+        $form = $this->createForm('PhoneBad', 'gqlPhoneBadForm', 'PhoneBad', $siteId);
+        $phoneId = $this->createField($form->id, 'phone', 'phone', 'Phone', true, [
+            'defaultCountry' => 'CH',
+        ]);
+
+        $document = <<<'GQL'
+        mutation ($handle: String!, $siteId: Int, $values: [SimpleFormFieldValueInput!]!) {
+            submitForm(handle: $handle, siteId: $siteId, values: $values) {
+                success
+                errors { key messages }
+            }
+        }
+        GQL;
+
+        $variables = [
+            'handle' => 'gqlPhoneBadForm',
+            'siteId' => $siteId,
+            'values' => [['fieldId' => $phoneId, 'value' => 'abc']],
+        ];
+
+        $result = $this->execute($document, ['simpleFormSubmissions:create'], $variables);
+        $payload = $result['data']['submitForm'];
+
+        $this->assertFalse($payload['success']);
+        $this->assertSame('field_' . $phoneId, $payload['errors'][0]['key']);
+        $this->assertSame(['Enter a valid phone number.'], $payload['errors'][0]['messages']);
+        $this->assertSame(0, Submission::find()->formId($form->id)->count());
+    }
+
+    public function testSubmitMutationReturnsResolvedRedirectUrl(): void
+    {
+        $this->requireCraft();
+
+        $siteId = Craft::$app->getSites()->getPrimarySite()->id;
+        $form = $this->createForm('GqlRedirect', 'gqlRedirectForm', 'GqlRedirect', $siteId);
+        $form->postSubmitAction = 'url';
+        $form->redirectUrl = '/thanks?e={email}';
+        $this->assertTrue(Craft::$app->getElements()->saveElement($form));
+        $emailId = $this->createField($form->id, 'email', 'email', 'Email', false);
+
+        $document = <<<'GQL'
+        mutation ($handle: String!, $siteId: Int, $values: [SimpleFormFieldValueInput!]!) {
+            submitForm(handle: $handle, siteId: $siteId, values: $values) {
+                success
+                redirectUrl
+            }
+        }
+        GQL;
+
+        $result = $this->execute($document, ['simpleFormSubmissions:create'], [
+            'handle' => 'gqlRedirectForm',
+            'siteId' => $siteId,
+            'values' => [['fieldId' => $emailId, 'value' => 'ada@example.com']],
+        ]);
+
+        $this->assertArrayNotHasKey('errors', $result, json_encode($result['errors'] ?? null));
+        $payload = $result['data']['submitForm'];
+        $this->assertTrue($payload['success']);
+        $this->assertSame('/thanks?e=ada%40example.com', $payload['redirectUrl']);
     }
 
     public function testSubmitMutationEnforcesCaptchaUnlessBypassEnabled(): void
@@ -457,5 +671,71 @@ class GraphQlTest extends SimpleFormTestCase
 
         // Without it, the submit mutation is absent from the schema entirely.
         $this->assertNotContains('submitForm', $this->mutationFieldNames(['simpleForms:read']));
+    }
+
+    public function testUpdateSubmissionMutationScopeGating(): void
+    {
+        $this->requireCraft();
+
+        // The edit scope exposes updateSubmission; the create scope alone does not.
+        $this->assertContains('updateSubmission', $this->mutationFieldNames(['simpleFormSubmissions:edit']));
+        $this->assertNotContains('updateSubmission', $this->mutationFieldNames(['simpleFormSubmissions:create']));
+    }
+
+    public function testUpdateSubmissionMutationEditsWithTokenAndLeaksNoToken(): void
+    {
+        $this->requireCraft();
+
+        $siteId = Craft::$app->getSites()->getPrimarySite()->id;
+        $form = $this->createForm('GqlEdit', 'gqlEditForm', 'GqlEdit', $siteId);
+        $form->allowEditing = true;
+        Craft::$app->getElements()->saveElement($form);
+        $nameId = $this->createField($form->id, 'text', 'fullName', 'Full Name', false);
+
+        // Seed a submission + an edit token.
+        $created = Plugin::getInstance()->getSubmissionService()->submit($form, [$nameId => 'Ada'], [
+            'skipCaptcha' => true,
+            'siteId' => $siteId,
+        ]);
+        $submission = $created['submission'];
+        $this->assertInstanceOf(Submission::class, $submission);
+        $token = Plugin::getInstance()->getSubmissionEditTokens()->issue($submission);
+
+        $document = <<<'GQL'
+        mutation ($id: Int!, $token: String, $values: [SimpleFormFieldValueInput!]!) {
+            updateSubmission(id: $id, token: $token, values: $values) {
+                success
+                submissionId
+                errors { key messages }
+            }
+        }
+        GQL;
+
+        // Valid token → success; the edit persists.
+        $result = $this->execute($document, ['simpleFormSubmissions:edit'], [
+            'id' => (int) $submission->id,
+            'token' => $token,
+            'values' => [['fieldId' => $nameId, 'value' => 'Grace']],
+        ]);
+        $payload = $result['data']['updateSubmission'];
+        $this->assertTrue($payload['success']);
+        $this->assertSame((int) $submission->id, $payload['submissionId']);
+
+        // The payload never carries the token/secret.
+        $this->assertStringNotContainsString($token, json_encode($result));
+
+        $final = Submission::find()->id($submission->id)->one();
+        $this->assertSame('Grace', $final->data['field_' . $nameId]['value']);
+
+        // A tampered token → an auth error payload, no change.
+        $bad = $this->execute($document, ['simpleFormSubmissions:edit'], [
+            'id' => (int) $submission->id,
+            'token' => $token . 'tamper',
+            'values' => [['fieldId' => $nameId, 'value' => 'Hacked']],
+        ]);
+        $this->assertFalse($bad['data']['updateSubmission']['success']);
+        $this->assertSame('auth', $bad['data']['updateSubmission']['errors'][0]['key']);
+        $unchanged = Submission::find()->id($submission->id)->one();
+        $this->assertSame('Grace', $unchanged->data['field_' . $nameId]['value']);
     }
 }

@@ -1,0 +1,12 @@
+{#
+  Default Simple Form theme — the asset slot (#137).
+
+  `assets` is pre-rendered Markup: '' when the FormAsset bundle was registered
+  (the default), or inline <style>/<script> when `inlineFormAssets` is on. A
+  fully-themed build that ships its own CSS/JS can suppress the plugin assets by
+  overriding this partial with an empty file.
+
+  Variables:
+    assets   Markup|'' — inline CSS/JS, or '' when bundled
+-#}
+{{- assets -}}

@@ -2,17 +2,35 @@
 
 namespace fabianhaef\simpleform\services;
 
+use fabianhaef\simpleform\fields\AddressFieldType;
+use fabianhaef\simpleform\fields\AssetRelationFieldType;
+use fabianhaef\simpleform\fields\CalculationFieldType;
+use fabianhaef\simpleform\fields\CategoryRelationFieldType;
 use fabianhaef\simpleform\fields\CheckboxFieldType;
+use fabianhaef\simpleform\fields\ConsentFieldType;
 use fabianhaef\simpleform\fields\DateFieldType;
+use fabianhaef\simpleform\fields\DividerFieldType;
 use fabianhaef\simpleform\fields\EmailFieldType;
+use fabianhaef\simpleform\fields\EntryRelationFieldType;
 use fabianhaef\simpleform\fields\FieldType;
 use fabianhaef\simpleform\fields\FileFieldType;
+use fabianhaef\simpleform\fields\HeadingFieldType;
+use fabianhaef\simpleform\fields\HiddenFieldType;
+use fabianhaef\simpleform\fields\HtmlFieldType;
+use fabianhaef\simpleform\fields\NameFieldType;
 use fabianhaef\simpleform\fields\NumberFieldType;
+use fabianhaef\simpleform\fields\OpinionScaleFieldType;
 use fabianhaef\simpleform\fields\PaymentFieldType;
+use fabianhaef\simpleform\fields\PhoneFieldType;
 use fabianhaef\simpleform\fields\RadioFieldType;
+use fabianhaef\simpleform\fields\RatingFieldType;
+use fabianhaef\simpleform\fields\RepeaterFieldType;
 use fabianhaef\simpleform\fields\SelectFieldType;
+use fabianhaef\simpleform\fields\SignatureFieldType;
+use fabianhaef\simpleform\fields\TagRelationFieldType;
 use fabianhaef\simpleform\fields\TextareaFieldType;
 use fabianhaef\simpleform\fields\TextFieldType;
+use fabianhaef\simpleform\fields\UserRelationFieldType;
 use yii\base\Component;
 
 class FieldTypeRegistry extends Component
@@ -25,6 +43,23 @@ class FieldTypeRegistry extends Component
      * @var list<string>
      */
     public const OPTION_TYPES = ['select', 'checkbox', 'radio'];
+
+    /**
+     * Numeric scale field types: they store an integer over a bounded range and
+     * are the types analytics aggregates as numbers (average + distribution)
+     * rather than grouping as opaque option strings.
+     *
+     * @var list<string>
+     */
+    public const SCALE_TYPES = ['rating', 'opinion'];
+
+    /**
+     * Field types that store related Craft element ids in the submission data
+     * and resolve to live elements at read time (submission detail, export).
+     *
+     * @var list<string>
+     */
+    public const RELATION_TYPES = ['entry', 'category', 'tag', 'user', 'asset'];
 
     /** @var array<string, class-string<FieldType>> */
     private array $fieldTypes = [];
@@ -41,8 +76,45 @@ class FieldTypeRegistry extends Component
         $this->registerFieldType(RadioFieldType::class);
         $this->registerFieldType(DateFieldType::class);
         $this->registerFieldType(NumberFieldType::class);
+        $this->registerFieldType(PhoneFieldType::class);
         $this->registerFieldType(FileFieldType::class);
+        $this->registerFieldType(SignatureFieldType::class);
         $this->registerFieldType(PaymentFieldType::class);
+        $this->registerFieldType(HiddenFieldType::class);
+        $this->registerFieldType(ConsentFieldType::class);
+        $this->registerFieldType(RatingFieldType::class);
+        $this->registerFieldType(OpinionScaleFieldType::class);
+        $this->registerFieldType(EntryRelationFieldType::class);
+        $this->registerFieldType(CategoryRelationFieldType::class);
+        $this->registerFieldType(TagRelationFieldType::class);
+        $this->registerFieldType(UserRelationFieldType::class);
+        $this->registerFieldType(AssetRelationFieldType::class);
+        $this->registerFieldType(CalculationFieldType::class);
+        $this->registerFieldType(RepeaterFieldType::class);
+        $this->registerFieldType(NameFieldType::class);
+        $this->registerFieldType(AddressFieldType::class);
+
+        // Presentational/layout blocks (value-less; isInput() === false).
+        $this->registerFieldType(HeadingFieldType::class);
+        $this->registerFieldType(DividerFieldType::class);
+        $this->registerFieldType(HtmlFieldType::class);
+    }
+
+    /**
+     * The registered non-input (presentational/layout) field-type handles —
+     * heading, divider, html. Skipped by validation, storage, and export.
+     *
+     * @return list<string>
+     */
+    public function layoutTypeHandles(): array
+    {
+        $handles = [];
+        foreach ($this->fieldTypes as $type => $class) {
+            if (!(new $class())->isInput()) {
+                $handles[] = $type;
+            }
+        }
+        return $handles;
     }
 
     /**

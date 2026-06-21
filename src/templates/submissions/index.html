@@ -13,8 +13,8 @@
    noise, so they only appear once at least one submission exists (#102). #}
 {% set hasAnySubmissions = (stats.total ?? 0) > 0 %}
 {% if hasAnySubmissions %}
-    {# Stats summary, ported from the old list.html. Each card is a status
-       filter link; the card matching the active status is highlighted. #}
+    {# Stats summary. Each card is a status filter link; the card matching the
+       active status is highlighted. #}
     <div class="submission-stats">
         {% set cards = [
             { key: '', label: 'Total'|t('simple-form'), value: stats.total ?? 0 },
@@ -89,8 +89,14 @@
                     </td>
                     {% if status == 'spam' %}
                         <td class="light">
-                            {%- if submission.spamReason == 'akismet' -%}{{ 'Akismet'|t('simple-form') }}
-                            {%- elseif submission.spamReason == 'manual' -%}{{ 'Marked manually'|t('simple-form') }}
+                            {%- set reason = submission.spamReason -%}
+                            {%- if reason == 'akismet' -%}{{ 'Akismet'|t('simple-form') }}
+                            {%- elseif reason == 'manual' -%}{{ 'Marked manually'|t('simple-form') }}
+                            {%- elseif reason == 'duplicate' -%}{{ 'Duplicate submission'|t('simple-form') }}
+                            {%- elseif reason starts with 'keyword:' -%}{{ 'Blocked keyword: {keyword}'|t('simple-form', { keyword: reason[8:] }) }}
+                            {%- elseif reason starts with 'email:' -%}{{ 'Blocked email: {email}'|t('simple-form', { email: reason[6:] }) }}
+                            {%- elseif reason starts with 'ip:' -%}{{ 'Blocked IP: {ip}'|t('simple-form', { ip: reason[3:] }) }}
+                            {%- elseif reason -%}{{ reason }}
                             {%- else -%}—{%- endif -%}
                         </td>
                     {% endif %}

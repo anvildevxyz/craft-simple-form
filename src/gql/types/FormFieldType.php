@@ -16,9 +16,10 @@ class FormFieldType extends SimpleFormObjectType
     {
         return 'A single field in a Simple Form schema. All field variants share '
             . 'this shape; the `type` discriminator (`text`, `email`, `textarea`, '
-            . '`select`, `checkbox`, `radio`, `date`, `number`) tells a client how '
-            . 'to render it, and `options`/`validation` carry the variant-specific '
-            . 'detail.';
+            . '`select`, `checkbox`, `radio`, `date`, `number`, `rating`, `opinion`, '
+            . '`file`, `payment`, and the element-relation types `entry`, '
+            . '`category`, `tag`, `user`, `asset`) tells a client how to render it, '
+            . 'and `options`/`validation`/`relation` carry the variant-specific detail.';
     }
 
     /** @return GqlFieldDefinitionMap */
@@ -36,7 +37,7 @@ class FormFieldType extends SimpleFormObjectType
             'type' => [
                 'type' => Type::nonNull(Type::string()),
                 'description' => 'The field-type discriminator: one of text, email, '
-                    . 'textarea, select, checkbox, radio, date, number.',
+                    . 'textarea, select, checkbox, radio, date, number, rating, opinion.',
             ],
             'label' => [
                 'type' => Type::nonNull(Type::string()),
@@ -77,6 +78,13 @@ class FormFieldType extends SimpleFormObjectType
                 'description' => 'Conditional show/hide and conditional-required logic '
                     . 'for this field, or null when the field is always visible and '
                     . 'statically required/optional.',
+            ],
+            'relation' => [
+                'type' => FieldRelationType::getType(),
+                'description' => 'Element-relation configuration (element type, allowed '
+                    . 'sources, single/multi, limit, resolved options) for the '
+                    . 'relation field types (entry, category, tag, user, asset); '
+                    . 'null for every other field type.',
             ],
         ];
     }

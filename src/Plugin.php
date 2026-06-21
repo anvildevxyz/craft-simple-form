@@ -10,6 +10,7 @@ use craft\events\RegisterGqlMutationsEvent;
 use craft\events\RegisterGqlQueriesEvent;
 use craft\events\RegisterGqlSchemaComponentsEvent;
 use craft\events\RegisterGqlTypesEvent;
+use craft\events\RegisterTemplateRootsEvent;
 use craft\events\RegisterUrlRulesEvent;
 use craft\events\RegisterUserPermissionsEvent;
 use craft\services\Dashboard;
@@ -19,6 +20,7 @@ use craft\services\Gql;
 use craft\services\UserPermissions;
 use craft\web\twig\variables\CraftVariable;
 use craft\web\UrlManager;
+use craft\web\View;
 use fabianhaef\simpleform\events\SubmissionEvent;
 use fabianhaef\simpleform\fields\FormField;
 use fabianhaef\simpleform\gql\mutations\FormMutations;
@@ -40,17 +42,26 @@ use fabianhaef\simpleform\services\AssetUploadService;
 use fabianhaef\simpleform\services\AuditService;
 use fabianhaef\simpleform\services\CaptchaProviderRegistry;
 use fabianhaef\simpleform\services\CaptchaService;
+use fabianhaef\simpleform\services\DenylistService;
 use fabianhaef\simpleform\services\DraftService;
 use fabianhaef\simpleform\services\EmailService;
+use fabianhaef\simpleform\services\FieldSyncService;
 use fabianhaef\simpleform\services\FieldTypeRegistry;
+use fabianhaef\simpleform\services\FormCloneService;
+use fabianhaef\simpleform\services\FormPortabilityService;
+use fabianhaef\simpleform\services\FormRenderService;
 use fabianhaef\simpleform\services\FormStructureService;
 use fabianhaef\simpleform\services\IntegrationsService;
 use fabianhaef\simpleform\services\IntegrationTypeRegistry;
 use fabianhaef\simpleform\services\NotificationsService;
 use fabianhaef\simpleform\services\PaymentsService;
+use fabianhaef\simpleform\services\PdfService;
 use fabianhaef\simpleform\services\ReportsService;
 use fabianhaef\simpleform\services\RetentionService;
+use fabianhaef\simpleform\services\SafeRenderService;
+use fabianhaef\simpleform\services\SubmissionEditTokenService;
 use fabianhaef\simpleform\services\SubmissionService;
+use fabianhaef\simpleform\stencils\StencilLibrary;
 use fabianhaef\simpleform\web\twig\variables\SimpleFormVariable;
 use fabianhaef\simpleform\widgets\RecentSubmissionsWidget;
 use fabianhaef\simpleform\widgets\SubmissionCountWidget;
@@ -76,10 +87,16 @@ class Plugin extends BasePlugin
      */
     public const EVENT_REGISTER_CAPTCHA_PROVIDERS = 'registerCaptchaProviders';
 
+    /**
+     * @event RegisterStencilsEvent Fired so third parties can contribute form
+     * stencils (see RegisterStencilsEvent).
+     */
+    public const EVENT_REGISTER_STENCILS = 'registerStencils';
+
     /** The plugin's single commercial edition. */
     public const EDITION_PRO = 'pro';
 
-    public string $schemaVersion = '2.10.0';
+    public string $schemaVersion = '2.11.0';
     public bool $hasCpSection = true;
     public bool $hasCpSettings = false;
     public bool $hasCpPermissions = true;
@@ -105,14 +122,20 @@ class Plugin extends BasePlugin
 
         $this->setComponents([
             'fieldTypeRegistry' => FieldTypeRegistry::class,
+            'safeRender' => SafeRenderService::class,
             'emailService' => EmailService::class,
             'submissionService' => SubmissionService::class,
+            'submissionEditTokens' => SubmissionEditTokenService::class,
             'drafts' => DraftService::class,
             'captchaService' => CaptchaService::class,
             'captchaProviderRegistry' => CaptchaProviderRegistry::class,
             'akismetService' => AkismetService::class,
+            'denylistService' => DenylistService::class,
             'assetUploadService' => AssetUploadService::class,
             'formStructure' => FormStructureService::class,
+            'formRender' => FormRenderService::class,
+            'formClone' => FormCloneService::class,
+            'stencilLibrary' => StencilLibrary::class,
             'mcpTokenManager' => TokenManager::class,
             'integrationTypeRegistry' => IntegrationTypeRegistry::class,
             'integrations' => IntegrationsService::class,
@@ -121,6 +144,9 @@ class Plugin extends BasePlugin
             'notifications' => NotificationsService::class,
             'audit' => AuditService::class,
             'payments' => PaymentsService::class,
+            'fieldSync' => FieldSyncService::class,
+            'portability' => FormPortabilityService::class,
+            'pdf' => PdfService::class,
         ]);
 
         Craft::$app->getI18n()->translations['simple-form'] ??= [
@@ -135,6 +161,17 @@ class Plugin extends BasePlugin
         if (!Craft::$app->getRequest()->getIsConsoleRequest()) {
             Craft::$app->getView()->registerTwigExtension(new TwigExtension());
         }
+
+        // Register the plugin's built-in form partials as a SITE template root so
+        // the front-end render path can address them (e.g. `simple-form/form`) and
+        // so a site theme's own `templates/<path>/*.twig` overrides win first (#137).
+        Event::on(
+            View::class,
+            View::EVENT_REGISTER_SITE_TEMPLATE_ROOTS,
+            static function(RegisterTemplateRootsEvent $event): void {
+                $event->roots['simple-form'] = __DIR__ . '/templates/_form';
+            }
+        );
 
         // craft.simpleForm.* template API (complements the simpleForm() function).
         Event::on(
@@ -180,6 +217,10 @@ class Plugin extends BasePlugin
 
         Craft::$app->getUrlManager()->addRules([
             'simple-form/submit' => 'simple-form/submit/index',
+            // Front-end submission editing (#144): the public update transport.
+            // Authorization (token/owner + window + allowEditing) is enforced in
+            // the controller; an unauthorized request 403s cleanly.
+            'simple-form/submission-edit/update' => 'simple-form/submission-edit/update',
             // MCP transport endpoint (token-authenticated machine API). Mapped
             // unconditionally; the controller itself enforces the off-by-default
             // toggle and bearer auth, so a disabled server still 404s cleanly.
@@ -277,9 +318,12 @@ class Plugin extends BasePlugin
                     'simpleForms:read' => ['label' => Craft::t('simple-form', 'View form schemas')],
                 ];
 
-                // Create a submission via the submitForm mutation.
+                // Create a submission via the submitForm mutation; edit an existing
+                // one via the updateSubmission mutation (#144). Both are scoped
+                // separately so an operator can grant submit without granting edit.
                 $event->mutations[$label] = [
                     'simpleFormSubmissions:create' => ['label' => Craft::t('simple-form', 'Submit forms')],
+                    'simpleFormSubmissions:edit' => ['label' => Craft::t('simple-form', 'Edit submissions')],
                 ];
             }
         );
@@ -311,6 +355,13 @@ class Plugin extends BasePlugin
         return $service;
     }
 
+    public function getDenylistService(): DenylistService
+    {
+        /** @var DenylistService $service */
+        $service = $this->get('denylistService');
+        return $service;
+    }
+
     public function getAssetUploadService(): AssetUploadService
     {
         /** @var AssetUploadService $service */
@@ -332,6 +383,13 @@ class Plugin extends BasePlugin
         return $service;
     }
 
+    public function getSubmissionEditTokens(): SubmissionEditTokenService
+    {
+        /** @var SubmissionEditTokenService $service */
+        $service = $this->get('submissionEditTokens');
+        return $service;
+    }
+
     public function getDrafts(): DraftService
     {
         /** @var DraftService $service */
@@ -346,11 +404,39 @@ class Plugin extends BasePlugin
         return $registry;
     }
 
+    public function getSafeRender(): SafeRenderService
+    {
+        /** @var SafeRenderService $service */
+        $service = $this->get('safeRender');
+        return $service;
+    }
+
     public function getFormStructure(): FormStructureService
     {
         /** @var FormStructureService $service */
         $service = $this->get('formStructure');
         return $service;
+    }
+
+    public function getFormRender(): FormRenderService
+    {
+        /** @var FormRenderService $service */
+        $service = $this->get('formRender');
+        return $service;
+    }
+
+    public function getFormClone(): FormCloneService
+    {
+        /** @var FormCloneService $service */
+        $service = $this->get('formClone');
+        return $service;
+    }
+
+    public function getStencilLibrary(): StencilLibrary
+    {
+        /** @var StencilLibrary $library */
+        $library = $this->get('stencilLibrary');
+        return $library;
     }
 
     public function getMcpTokenManager(): TokenManager
@@ -395,6 +481,13 @@ class Plugin extends BasePlugin
         return $service;
     }
 
+    public function getPdf(): PdfService
+    {
+        /** @var PdfService $service */
+        $service = $this->get('pdf');
+        return $service;
+    }
+
     public function getAudit(): AuditService
     {
         /** @var AuditService $service */
@@ -406,6 +499,20 @@ class Plugin extends BasePlugin
     {
         /** @var PaymentsService $service */
         $service = $this->get('payments');
+        return $service;
+    }
+
+    public function getFieldSync(): FieldSyncService
+    {
+        /** @var FieldSyncService $service */
+        $service = $this->get('fieldSync');
+        return $service;
+    }
+
+    public function getPortability(): FormPortabilityService
+    {
+        /** @var FormPortabilityService $service */
+        $service = $this->get('portability');
         return $service;
     }
 
@@ -449,9 +556,13 @@ class Plugin extends BasePlugin
         $event->rules['simple-form/forms/new'] = 'simple-form/forms/edit';
         $event->rules['simple-form/forms/edit/<formId:\d+>'] = 'simple-form/forms/edit';
         $event->rules['simple-form/forms/save'] = 'simple-form/forms/save';
+        $event->rules['simple-form/forms/duplicate'] = 'simple-form/forms/duplicate';
+        $event->rules['simple-form/forms/new-from-stencil'] = 'simple-form/forms/new-from-stencil';
         $event->rules['simple-form/forms/delete/<formId:\d+>'] = 'simple-form/forms/delete';
+        // Portable form definition import/export (#139).
+        $event->rules['simple-form/forms/export/<formId:\d+>'] = 'simple-form/forms/export';
+        $event->rules['simple-form/forms/import'] = 'simple-form/forms/import';
         // Integrations: global definitions managed under Settings, enabled per form.
-        $event->rules['simple-form/integrations'] = 'simple-form/integrations/global-index';
         $event->rules['simple-form/integrations/save'] = 'simple-form/integrations/save';
         $event->rules['simple-form/integrations/delete'] = 'simple-form/integrations/delete';
         $event->rules['simple-form/integrations/toggle'] = 'simple-form/integrations/toggle';
@@ -473,6 +584,7 @@ class Plugin extends BasePlugin
         $event->rules['simple-form/submissions'] = 'simple-form/submissions/index';
         $event->rules['simple-form/submissions/analytics'] = 'simple-form/submissions/analytics';
         $event->rules['simple-form/submissions/export'] = 'simple-form/submissions/export';
+        $event->rules['simple-form/submissions/<submissionId:\d+>/pdf'] = 'simple-form/submissions/pdf';
         $event->rules['simple-form/submissions/<submissionId:\d+>'] = 'simple-form/submissions/view';
         $event->rules['simple-form/submissions/toggle-status'] = 'simple-form/submissions/toggle-status';
         $event->rules['simple-form/settings'] = 'simple-form/settings/index';

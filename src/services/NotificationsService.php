@@ -10,6 +10,7 @@ use craft\helpers\StringHelper;
 use fabianhaef\simpleform\elements\Form;
 use fabianhaef\simpleform\elements\Submission;
 use fabianhaef\simpleform\helpers\ConditionalEvaluator;
+use fabianhaef\simpleform\integrations\support\SubmissionValues;
 use fabianhaef\simpleform\models\NotificationModel;
 use fabianhaef\simpleform\Plugin;
 use yii\base\Component;
@@ -18,6 +19,8 @@ use yii\base\Component;
  * Per-form email notifications (#112): CRUD plus resolution of which
  * notifications fire for a given submission (condition gating + recipient
  * resolution, including autoresponders that read the submitter's email field).
+ *
+ * @phpstan-import-type SubmissionData from Submission
  */
 class NotificationsService extends Component
 {
@@ -60,6 +63,8 @@ class NotificationsService extends Component
             'subject' => $notification->subject,
             'replyTo' => $notification->replyTo,
             'body' => $notification->body,
+            'attachPdf' => $notification->attachPdf,
+            'attachUploads' => $notification->attachUploads,
             'conditional' => $notification->conditional,
             'sortOrder' => $notification->sortOrder,
             'dateUpdated' => $now,
@@ -114,7 +119,7 @@ class NotificationsService extends Component
      * satisfied, and resolving to at least one recipient. Returns each model
      * paired with its resolved recipient list.
      *
-     * @param array<string, mixed> $data submission data keyed by field_<id>
+     * @param SubmissionData $data submission data keyed by field_<id>
      * @return list<array{notification: NotificationModel, recipients: list<string>}>
      */
     public function resolveForSubmission(Form $form, Submission $submission, array $data): array
@@ -181,7 +186,7 @@ class NotificationsService extends Component
      * conditions (which reference field handles) and field-based recipients can
      * be resolved.
      *
-     * @param array<string, mixed> $data
+     * @param SubmissionData $data
      * @return array<string, mixed>
      */
     private function valuesByHandle(int $formId, int $siteId, array $data): array
@@ -196,7 +201,7 @@ class NotificationsService extends Component
         foreach ($data as $key => $entry) {
             $handle = $handleById[$key] ?? null;
             if ($handle !== null) {
-                $values[$handle] = is_array($entry) ? ($entry['value'] ?? null) : $entry;
+                $values[$handle] = SubmissionValues::value($entry);
             }
         }
 
@@ -218,6 +223,8 @@ class NotificationsService extends Component
         $model->subject = $row['subject'] !== null ? (string) $row['subject'] : null;
         $model->replyTo = $row['replyTo'] !== null ? (string) $row['replyTo'] : null;
         $model->body = $row['body'] !== null ? (string) $row['body'] : null;
+        $model->attachPdf = (bool) ($row['attachPdf'] ?? false);
+        $model->attachUploads = (bool) ($row['attachUploads'] ?? false);
         $conditional = $row['conditional'] ?? null;
         if (is_array($conditional)) {
             $model->conditional = $conditional;

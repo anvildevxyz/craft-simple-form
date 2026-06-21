@@ -64,6 +64,15 @@ class IntegrationTypeRegistryTest extends TestCase
         );
     }
 
+    public function testCraftElementIsRegisteredByDefault(): void
+    {
+        $registry = new IntegrationTypeRegistry();
+        $this->assertInstanceOf(
+            \fabianhaef\simpleform\integrations\CraftElementIntegration::class,
+            $registry->getType('craft-element'),
+        );
+    }
+
     public function testGetUnknownTypeReturnsNull(): void
     {
         $registry = new IntegrationTypeRegistry();

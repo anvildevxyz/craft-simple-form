@@ -24,6 +24,8 @@ use yii\caching\TagDependency;
  * Invalidation is tag-based: every form's entries (across all sites) share the
  * tag returned by {@see self::tagForForm()}, so a single save/delete can clear
  * every cached site for that form in one call.
+ *
+ * @phpstan-import-type ResolvedFieldRow from FieldQueryHelper
  */
 class FormStructureService extends Component
 {
@@ -34,7 +36,7 @@ class FormStructureService extends Component
      * Return the resolved field set for a form/site, serving it from cache when
      * caching is enabled, otherwise reading it straight from the DB.
      *
-     * @return array<int,array<string,mixed>>
+     * @return list<ResolvedFieldRow>
      */
     public function getFieldSet(int $formId, ?int $siteId = null): array
     {
@@ -70,7 +72,7 @@ class FormStructureService extends Component
      * the cache (tagged per form) so subsequent renders hit the cache.
      *
      * @param int[] $formIds
-     * @return array<int,array<int,array<string,mixed>>> formId => field rows
+     * @return array<int,list<ResolvedFieldRow>> formId => field rows
      */
     public function getFieldSets(array $formIds, ?int $siteId = null): array
     {

@@ -9,9 +9,23 @@ use fabianhaef\simpleform\models\FormModel;
  * Shared read helpers that turn a submission's stored `field_<id> => {label,
  * type, value}` data into connector-friendly shapes. Used by the Webhook and
  * chat connectors so handle/label resolution lives in one place.
+ *
+ * @phpstan-import-type SubmissionData from Submission
  */
 final class SubmissionValues
 {
+    /**
+     * Extract the stored value from one submission-data entry. An entry is either
+     * the `{label, type, value}` shape (return its `value`, or `$default` when the
+     * value is absent) or a raw scalar (returned as-is). Single-sources the
+     * knowledge of that stored shape; callers pass `$default` (`''` vs `null`) to
+     * keep their own missing-value behaviour.
+     */
+    public static function value(mixed $entry, mixed $default = null): mixed
+    {
+        return is_array($entry) ? ($entry['value'] ?? $default) : $entry;
+    }
+
     /**
      * Flatten the submission to a `handle => value` map. Falls back to the raw
      * `field_<id>` key when the field handle can't be resolved.
@@ -30,8 +44,7 @@ final class SubmissionValues
 
         $out = [];
         foreach ($submission->data ?? [] as $key => $entry) {
-            $value = is_array($entry) ? ($entry['value'] ?? null) : $entry;
-            $out[$handleByKey[$key] ?? $key] = $value;
+            $out[$handleByKey[$key] ?? $key] = self::value($entry);
         }
         return $out;
     }
@@ -45,11 +58,8 @@ final class SubmissionValues
     {
         $lines = [];
         foreach ($submission->data ?? [] as $entry) {
-            if (!is_array($entry)) {
-                continue;
-            }
-            $label = (string) ($entry['label'] ?? '');
-            $value = $entry['value'] ?? '';
+            $label = $entry['label'];
+            $value = $entry['value'];
             if (is_array($value)) {
                 $value = implode(', ', array_map('strval', $value));
             }

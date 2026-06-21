@@ -11,6 +11,8 @@ overview and installation live in the [project README](../README.md).)
 - **[Outbound integrations](integrations.md)** — push submissions to webhooks and
   pluggable connectors asynchronously, with retries, dispatch logs, resend, and a
   read-only GraphQL/MCP surface. Includes how to write a custom connector.
+- **[Import / export](import-export.md)** — move a form's full definition between
+  installs as a portable, versioned, secret-free JSON file, via console or the CP.
 
 ## Testing
 

@@ -7,6 +7,7 @@ use Craft;
 class SimpleFormPermissions
 {
     public const MANAGE_FORMS = 'simple-form:manageForms';
+    public const EDIT_HTML_BLOCKS = 'simple-form:editHtmlBlocks';
     public const VIEW_SUBMISSIONS = 'simple-form:viewSubmissions';
     public const MANAGE_SUBMISSIONS = 'simple-form:manageSubmissions';
     public const MANAGE_INTEGRATIONS = 'simple-form:manageIntegrations';
@@ -24,6 +25,7 @@ class SimpleFormPermissions
                     'label' => Craft::t('simple-form', 'Manage forms and fields'),
                     'nested' => [
                         self::MANAGE_INTEGRATIONS => ['label' => Craft::t('simple-form', 'Manage form integrations')],
+                        self::EDIT_HTML_BLOCKS => ['label' => Craft::t('simple-form', 'Edit HTML layout blocks')],
                     ],
                 ],
                 self::VIEW_SUBMISSIONS => [

@@ -9,6 +9,7 @@ use fabianhaef\simpleform\elements\Submission;
 use fabianhaef\simpleform\integrations\DispatchStatus;
 use fabianhaef\simpleform\models\IntegrationModel;
 use fabianhaef\simpleform\Plugin;
+use fabianhaef\simpleform\services\AssetUploadService;
 
 /**
  * Data-retention sweeps (#107): submission purge/anonymize + integration-log
@@ -84,6 +85,68 @@ class RetentionServiceTest extends SimpleFormTestCase
 
         $this->assertSame(0, $service->purgeSubmissions(0, false));
         $this->assertTrue($this->submissionExists($old), 'nothing pruned when days = 0');
+    }
+
+    /** A stub asset service that records which asset ids it was asked to delete. */
+    private function recordingAssetStub(): AssetUploadService
+    {
+        return new class extends AssetUploadService {
+            /** @var list<int> */
+            public array $deleted = [];
+            public function deleteAssets(int ...$ids): void
+            {
+                $this->deleted = array_merge($this->deleted, $ids);
+            }
+        };
+    }
+
+    public function testHardDeleteRemovesSignatureAsset(): void
+    {
+        $this->requireCraft();
+        $form = $this->createForm('Sig Delete', 'retention_sig_delete');
+
+        $stub = $this->recordingAssetStub();
+        Plugin::getInstance()->set('assetUploadService', $stub);
+
+        // A submission whose stored data references a signature asset (id 4321).
+        $id = $this->makeSubmission((int) $form->id, [
+            'field_1' => ['label' => 'Signature', 'type' => 'signature', 'value' => [4321]],
+        ], 100);
+
+        try {
+            $affected = Plugin::getInstance()->getRetention()->purgeSubmissions(30, false);
+        } finally {
+            Plugin::getInstance()->set('assetUploadService', AssetUploadService::class);
+        }
+
+        $this->assertSame(1, $affected);
+        $this->assertFalse($this->submissionExists($id));
+        $this->assertContains(4321, $stub->deleted, 'hard delete must remove the signature asset');
+    }
+
+    public function testAnonymizeScrubsAndRemovesSignatureAsset(): void
+    {
+        $this->requireCraft();
+        $form = $this->createForm('Sig Anon', 'retention_sig_anon');
+
+        $stub = $this->recordingAssetStub();
+        Plugin::getInstance()->set('assetUploadService', $stub);
+
+        $id = $this->makeSubmission((int) $form->id, [
+            'field_1' => ['label' => 'Signature', 'type' => 'signature', 'value' => [9911]],
+        ], 100);
+
+        try {
+            $affected = Plugin::getInstance()->getRetention()->purgeSubmissions(30, true);
+        } finally {
+            Plugin::getInstance()->set('assetUploadService', AssetUploadService::class);
+        }
+
+        $this->assertSame(1, $affected);
+        $this->assertTrue($this->submissionExists($id), 'anonymized row should remain');
+        $row = (new Query())->from('{{%simpleform_submissions}}')->where(['id' => $id])->one();
+        $this->assertNull($row['data'], 'signature reference should be scrubbed from data');
+        $this->assertContains(9911, $stub->deleted, 'anonymize must delete the signature asset');
     }
 
     public function testPruneIntegrationLogs(): void

@@ -27,8 +27,17 @@ class IntegrationsService extends Component
     private const LOG_TABLE = '{{%simpleform_integration_logs}}';
     private const PIVOT_TABLE = '{{%simpleform_form_integrations}}';
 
-    /** Settings keys holding third-party secrets, encrypted at rest (F4). */
-    private const SECRET_KEYS = ['apiKey', 'apiToken', 'secret', 'token'];
+    /**
+     * Settings keys holding third-party secrets, encrypted at rest (F4) and
+     * redacted on portability export (#139). Public so the portability service
+     * shares this single source of truth rather than re-listing secret keys.
+     *
+     * @var list<string>
+     */
+    public const SECRET_KEYS = ['apiKey', 'apiToken', 'secret', 'token', 'serviceAccountKey', 'refreshToken', 'clientSecret'];
+
+    /** Placeholder written in place of a secret in a portability export (#139). */
+    public const REDACTED = '__REDACTED__';
 
     /** Marks a settings value as ciphertext produced by {@see encryptSettings()}. */
     private const ENC_PREFIX = 'sfenc:';
@@ -234,6 +243,10 @@ class IntegrationsService extends Component
         }
 
         $settings = $this->parseEnvSettings($integration->settings);
+        // Expose the dispatching integration id to connectors that need it (e.g.
+        // the element connector's resend-idempotency lookup). Underscore-prefixed
+        // so it never collides with a real setting.
+        $settings['__integrationId'] = $integrationId;
 
         try {
             $result = $type->send($submission, $settings);
@@ -251,9 +264,40 @@ class IntegrationsService extends Component
             // F7: a remote error body may echo our own secret — redact it before
             // it is written to the diagnostic log.
             $this->scrubSecrets($result->message, $settings),
+            $result->elementId,
+            $result->elementType,
         );
 
         return $result;
+    }
+
+    /**
+     * The element a previous successful dispatch of this integration created for
+     * this submission, if any. Used by the element connector for resend
+     * idempotency so a re-queued dispatch links the existing element rather than
+     * silently creating a duplicate (#142).
+     *
+     * @return array{id: int, type: string}|null
+     */
+    public function getLinkedElement(int $integrationId, int $submissionId): ?array
+    {
+        $row = (new \craft\db\Query())
+            ->select(['elementId', 'elementType'])
+            ->from(self::LOG_TABLE)
+            ->where([
+                'integrationId' => $integrationId,
+                'submissionId' => $submissionId,
+                'status' => DispatchStatus::SUCCESS,
+            ])
+            ->andWhere(['not', ['elementId' => null]])
+            ->orderBy(['id' => SORT_DESC])
+            ->one();
+
+        if ($row === null || $row['elementId'] === null || $row['elementType'] === null) {
+            return null;
+        }
+
+        return ['id' => (int) $row['elementId'], 'type' => (string) $row['elementType']];
     }
 
     /**
@@ -312,6 +356,8 @@ class IntegrationsService extends Component
         int $attempts = 1,
         ?int $responseCode = null,
         string $message = '',
+        ?int $elementId = null,
+        ?string $elementType = null,
     ): int {
         $status = DispatchStatus::isValid($status) ? $status : DispatchStatus::PENDING;
         $db = Craft::$app->getDb();
@@ -323,6 +369,9 @@ class IntegrationsService extends Component
             'status' => $status,
             'attempts' => $attempts,
             'responseCode' => $responseCode,
+            // The local Craft element this attempt created, if any (#142).
+            'elementId' => $elementId,
+            'elementType' => $elementType,
             // Keep the stored response bounded — log rows are diagnostic, not archival.
             'message' => StringHelper::safeTruncate($message, 1000),
             'dateCreated' => $now,
@@ -622,6 +671,26 @@ class IntegrationsService extends Component
             ->where(['l.id' => $latestIds])
             ->andWhere(['l.status' => DispatchStatus::FAILED])
             ->count();
+    }
+
+    /**
+     * Replace every secret-key value in a settings array with {@see self::REDACTED}
+     * so an integration reference can travel in a portability export (#139) without
+     * carrying any third-party credential. Non-secret keys pass through untouched;
+     * empty secrets are still redacted so their presence/shape never leaks.
+     *
+     * @param array<string, mixed> $settings
+     * @return array<string, mixed>
+     */
+    public static function redactSecrets(array $settings): array
+    {
+        foreach (self::SECRET_KEYS as $secretKey) {
+            if (array_key_exists($secretKey, $settings)) {
+                $settings[$secretKey] = self::REDACTED;
+            }
+        }
+
+        return $settings;
     }
 
     /**

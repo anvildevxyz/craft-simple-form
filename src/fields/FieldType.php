@@ -22,6 +22,20 @@ abstract class FieldType
     abstract public static function getLabel(): string;
 
     /**
+     * Whether this field collects a submission value.
+     *
+     * Presentational/layout blocks (heading, divider, html) return false: they
+     * render on the public form but are never validated, stored, or exported.
+     * The rest of the pipeline keys off this one seam, so a non-input field
+     * never lands in {@see \fabianhaef\simpleform\elements\Submission::$data},
+     * never produces a column, and can never block submission.
+     */
+    public function isInput(): bool
+    {
+        return true;
+    }
+
+    /**
      * @return array<string, mixed>
      */
     public function getConfig(): array
@@ -38,7 +52,7 @@ abstract class FieldType
 
         if ($this->config['required'] ?? false) {
             if (empty($value)) {
-                $errors[] = Craft::t('simple-form', 'This field is required.');
+                $errors[] = $this->t('This field is required.');
             }
         }
 
@@ -48,6 +62,93 @@ abstract class FieldType
     protected function hasValue(mixed $value): bool
     {
         return $value !== null && $value !== '';
+    }
+
+    /**
+     * Transform a posted value into the shape that is persisted in the
+     * submission `data` payload. Most field types store the value verbatim, so
+     * the base is a passthrough; types that normalize (e.g. Phone, which stores
+     * a `{raw, e164, country}` map) override this. Runs in
+     * {@see \fabianhaef\simpleform\services\SubmissionService::submit()} after
+     * validation passes, so both the AJAX and GraphQL paths persist the same
+     * normalized shape.
+     */
+    public function normalizeStoredValue(mixed $value): mixed
+    {
+        return $value;
+    }
+
+    /**
+     * Render a stored value to a single scalar for CSV/element exports. The base
+     * passes scalars through and pipe-joins lists; types with a structured
+     * stored value (e.g. Phone) override this to pick the export-friendly form.
+     */
+    public function exportValue(mixed $value): string
+    {
+        if ($value === null || $value === false) {
+            return '';
+        }
+        if ($value === true) {
+            return '1';
+        }
+        if (is_array($value)) {
+            return implode('|', array_map(fn(mixed $v): string => $this->exportValue($v), $value));
+        }
+
+        return (string) $value;
+    }
+
+    /**
+     * Translate a `simple-form` message, falling back to a local placeholder
+     * interpolation when no Craft application is booted (e.g. the pure-source
+     * unit tests). Production always has the app, so strings stay translatable;
+     * the fallback only keeps render testable without a full boot.
+     *
+     * @param array<string, int|string> $params
+     */
+    protected function t(string $message, array $params = []): string
+    {
+        if (class_exists(Craft::class) && Craft::$app !== null) {
+            return Craft::t('simple-form', $message, $params);
+        }
+
+        $replace = [];
+        foreach ($params as $key => $value) {
+            $replace['{' . $key . '}'] = (string) $value;
+        }
+        return strtr($message, $replace);
+    }
+
+    /**
+     * Coerce a submitted value into the canonical form stored in
+     * `submission.data`. The default is a pass-through; numeric scale types
+     * (rating/opinion) override this to cast to an int so analytics and the
+     * exporter treat the column numerically rather than as a string.
+     */
+    public function normalizeValue(mixed $value): mixed
+    {
+        return $value;
+    }
+
+    /**
+     * Integer-range membership check shared by the numeric scale types
+     * (rating/opinion). The analogue of {@see self::validateOptionMembership()}:
+     * a forged out-of-range or non-integer POST is rejected server-side
+     * regardless of client JS.
+     *
+     * @param list<int> $allowed the inclusive set of permitted integers
+     * @return string[]
+     */
+    protected function validateRangeMembership(mixed $value, array $allowed): array
+    {
+        // Accept only an exact integer (or its integer-string form) — a
+        // fractional or non-numeric value never matches the discrete options.
+        if (is_int($value) || (is_string($value) && $value !== '' && (string) (int) $value === $value)) {
+            if (in_array((int) $value, $allowed, true)) {
+                return [];
+            }
+        }
+        return [$this->t('Please select a valid option.')];
     }
 
     /**
@@ -119,6 +220,23 @@ abstract class FieldType
     abstract public function renderInput(string $name, mixed $value = null): string;
 
     /**
+     * Transform a validated posted value into the shape persisted in the
+     * submission's `data` payload. The default is an identity pass-through — the
+     * stored value is exactly what was posted.
+     *
+     * The Consent field overrides this to replace the raw `"1"` with an auditable
+     * consent record (boolean + server-stamped timestamp + text snapshot/hash),
+     * so the proof of what was agreed to lives in the existing submission-data
+     * model with no new table.
+     *
+     * @param array<string, mixed> $context per-submission context (e.g. `siteId`)
+     */
+    public function persistValue(mixed $value, array $context = []): mixed
+    {
+        return $value;
+    }
+
+    /**
      * The value-less control attributes (name, required, placeholder) shared by
      * every field control. Inputs add a value via {@see self::getInputAttributes()};
      * <textarea>/<select> carry the value in their markup, so they use this directly.
@@ -129,6 +247,31 @@ abstract class FieldType
      * group's <label for> can point at. Overridden by the choice types.
      */
     public function isChoiceGroup(): bool
+    {
+        return false;
+    }
+
+    /**
+     * Whether this type renders a visitor-facing control that belongs inside the
+     * standard labelled field group (label + help text + wrapper).
+     *
+     * Distinct from {@see self::isInput()} (which is about whether the field
+     * collects a stored value): the Hidden field (#124) collects a value yet
+     * returns false here, so the front-end template emits its bare markup with
+     * no label or wrapper. Presentational layout blocks also return false but
+     * are additionally non-input.
+     */
+    public function rendersInGroup(): bool
+    {
+        return true;
+    }
+
+    /**
+     * Whether this type renders its own `<label>` inside {@see self::renderInput()}
+     * (so the surrounding field group must not emit a duplicate one). The Consent
+     * field does this — its rich, linked consent text *is* the input's label.
+     */
+    public function rendersOwnLabel(): bool
     {
         return false;
     }

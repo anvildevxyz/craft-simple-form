@@ -17,8 +17,8 @@ class SettingsController extends Controller
 
     /** Settings fields grouped by tab. Drives both rendering and the per-tab save. */
     private const TAB_FIELDS = [
-        'general' => ['submitMessage', 'errorMessage', 'storageLocation'],
-        'email' => ['defaultEmailSender', 'defaultEmailSenderName'],
+        'general' => ['submitMessage', 'errorMessage', 'storageLocation', 'templatePath'],
+        'email' => ['defaultEmailSender', 'defaultEmailSenderName', 'pdfStorageVolume', 'maxAttachmentSizeMb'],
         'spam' => [
             'enableHoneypot',
             'enableCaptcha',
@@ -36,6 +36,11 @@ class SettingsController extends Controller
             'enableAkismet',
             'akismetApiKey',
             'akismetMode',
+            'enableDenylists',
+            'denylistMode',
+            'blockedKeywords',
+            'blockedEmails',
+            'blockedIps',
             'submitRateLimitPerMinute',
             'allowGraphqlCaptchaBypass',
         ],
@@ -45,9 +50,9 @@ class SettingsController extends Controller
         'mcp' => ['enableMcp'],
     ];
 
-    private const BOOL_FIELDS = ['enableHoneypot', 'enableCaptcha', 'enableMcp', 'enableAkismet', 'anonymizeInsteadOfDelete', 'allowGraphqlCaptchaBypass'];
+    private const BOOL_FIELDS = ['enableHoneypot', 'enableCaptcha', 'enableMcp', 'enableAkismet', 'enableDenylists', 'anonymizeInsteadOfDelete', 'allowGraphqlCaptchaBypass'];
     private const FLOAT_FIELDS = ['recaptchaV3MinScore'];
-    private const INT_FIELDS = ['retainSubmissionsDays', 'retainIntegrationLogsDays', 'retainAuditLogDays', 'submitRateLimitPerMinute'];
+    private const INT_FIELDS = ['retainSubmissionsDays', 'retainIntegrationLogsDays', 'retainAuditLogDays', 'submitRateLimitPerMinute', 'maxAttachmentSizeMb'];
 
     public function actionIndex(): Response
     {

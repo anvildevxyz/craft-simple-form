@@ -36,11 +36,19 @@ parameters:
             paths:
                 - src/Plugin.php
                 - src/services/PaymentsService.php
-        # Yii rebinds an inline-validator Closure's `$this` to the model being
-        # validated (DynamicModel in IntegrationsService::validateSettings), so
-        # `$this->addError()` resolves at runtime even though it is lexically
-        # inside the connector class. PHPStan can't see the rebind. This is the
-        # documented Yii pattern for the SSRF URL save-time check (F3).
+        # Yii's InlineValidator rebinds the rule Closure's `$this` to the model
+        # being validated (the DynamicModel in IntegrationsService::validateSettings)
+        # via Closure::bindTo, so `$this->addError()` resolves at runtime even
+        # though the closure is lexically a static factory. PHPStan can't see the
+        # rebind. This is the documented Yii pattern for the SSRF URL save-time
+        # check (F3), single-sourced in SafeUrl::settingUrlRule().
+        -
+            message: '#Undefined variable: \$this#'
+            path: src/helpers/SafeUrl.php
+        # Same Yii InlineValidator `$this` rebind, for connectors that keep their
+        # own non-URL save-time validators (e.g. GoogleSheetsIntegration's
+        # service-account-key / column-mapping rules call `$this->addError()` on
+        # the rebound DynamicModel). PHPStan can't see the rebind here either.
         -
             message: '#Call to an undefined method fabianhaef\\simpleform\\integrations\\.+::addError\(\)#'
             path: src/integrations/

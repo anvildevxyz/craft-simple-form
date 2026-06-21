@@ -50,6 +50,22 @@ modules:
           params: {}
         - class: fabianhaef\simpleform\migrations\m260620_000004_form_drafts
           params: {}
+        - class: fabianhaef\simpleform\migrations\m260620_000005_form_post_submit
+          params: {}
+        - class: fabianhaef\simpleform\migrations\m260620_000005_form_scheduling
+          params: {}
+        - class: fabianhaef\simpleform\migrations\m260620_000006_form_user_limits
+          params: {}
+        - class: fabianhaef\simpleform\migrations\m260620_000005_form_template_path
+          params: {}
+        - class: fabianhaef\simpleform\migrations\m260620_000005_form_prevent_duplicates
+          params: {}
+        - class: fabianhaef\simpleform\migrations\m260621_000001_integration_log_element_link
+          params: {}
+        - class: fabianhaef\simpleform\migrations\m260621_000001_notification_attachments
+          params: {}
+        - class: fabianhaef\simpleform\migrations\m260621_000001_form_allow_editing
+          params: {}
       plugins:
         - handle: simple-form
           class: fabianhaef\simpleform\Plugin

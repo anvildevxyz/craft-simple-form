@@ -19,6 +19,15 @@ class SimpleFormPermissionsTest extends SimpleFormTestCase
         $this->assertSame('simple-form:manageSubmissions', SimpleFormPermissions::MANAGE_SUBMISSIONS);
         $this->assertSame('simple-form:manageIntegrations', SimpleFormPermissions::MANAGE_INTEGRATIONS);
         $this->assertSame('simple-form:manageSettings', SimpleFormPermissions::MANAGE_SETTINGS);
+        $this->assertSame('simple-form:editHtmlBlocks', SimpleFormPermissions::EDIT_HTML_BLOCKS);
+    }
+
+    public function testEditHtmlBlocksIsNestedUnderManageForms(): void
+    {
+        $this->requireCraft();
+        $manageForms = SimpleFormPermissions::definitions()['permissions'][SimpleFormPermissions::MANAGE_FORMS];
+
+        $this->assertArrayHasKey(SimpleFormPermissions::EDIT_HTML_BLOCKS, $manageForms['nested']);
     }
 
     public function testDefinitionsReturnsValidStructure(): void

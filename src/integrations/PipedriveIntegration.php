@@ -31,11 +31,7 @@ class PipedriveIntegration extends AbstractCrmIntegration
         return array_merge(parent::defineSettingsRules(), [
             [['apiDomain'], 'required'],
             [['apiDomain', 'nameField', 'emailField'], 'string'],
-            [['apiDomain'], function($attribute, $params, $validator, $value): void {
-                if (is_string($value) && !SafeUrl::isAcceptableSettingUrl($value)) {
-                    $this->addError($attribute, Craft::t('simple-form', 'The URL must be a public http(s) address.'));
-                }
-            }],
+            SafeUrl::settingUrlRule('apiDomain'),
         ]);
     }
 
@@ -45,11 +41,6 @@ class PipedriveIntegration extends AbstractCrmIntegration
         $domain = rtrim(trim((string) ($settings['apiDomain'] ?? '')), '/');
         if ($token === '' || $domain === '') {
             return IntegrationResult::failure(null, 'Pipedrive API domain and token are required');
-        }
-
-        // SSRF guard (F3).
-        if (!SafeUrl::isPublicHttpUrl($domain)) {
-            return IntegrationResult::failure(null, 'Blocked request to a non-public address');
         }
 
         $email = $this->resolveEmail($submission, $settings);
@@ -64,17 +55,10 @@ class PipedriveIntegration extends AbstractCrmIntegration
         }
         $body += $this->mappedFields($submission, $settings, 'fieldMap');
 
-        try {
-            $response = $this->httpClient()->request('POST', "$domain/v1/persons", [
-                'headers' => ['x-api-token' => $token],
-                'json' => $body,
-                'http_errors' => false,
-            ]);
-        } catch (\Throwable $e) {
-            return IntegrationResult::failure(null, $e->getMessage());
-        }
-
-        return $this->resultFromResponse($response);
+        return $this->request('POST', "$domain/v1/persons", [
+            'headers' => ['x-api-token' => $token],
+            'json' => $body,
+        ]);
     }
 
     /**

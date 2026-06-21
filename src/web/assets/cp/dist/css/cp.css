@@ -251,6 +251,12 @@
 .sf-field-del:hover { color: #cf2c2c; }
 .sf-grip { color: #b3bcc6; cursor: grab; user-select: none; letter-spacing: -2px; }
 
+/* Layout blocks read as presentational, not as input rows. */
+.sf-field--layout { background: #f7f9fc; border-style: dashed; }
+.sf-field--layout .sf-field-label { font-weight: 500; color: #596673; font-style: italic; }
+.sf-palette-item--layout { background: #fbf7f2; }
+.sf-panel-title--group { margin-top: 16px; }
+
 .sf-panel {
     border: 1px solid #dfe5ec;
     border-radius: 5px;

@@ -2,15 +2,26 @@
 
 namespace fabianhaef\simpleform\services;
 
+use Carbon\Carbon;
 use Craft;
+use craft\elements\Entry;
+use craft\helpers\Db;
 use craft\web\Request;
 use craft\web\UploadedFile;
 use fabianhaef\simpleform\elements\Form;
 use fabianhaef\simpleform\elements\Submission;
 use fabianhaef\simpleform\elements\SubmissionStatus;
 use fabianhaef\simpleform\events\SubmissionEvent;
+use fabianhaef\simpleform\fields\CalculationFieldType;
+use fabianhaef\simpleform\fields\CompositeFieldType;
+use fabianhaef\simpleform\fields\EmailFieldType;
 use fabianhaef\simpleform\fields\FileFieldType;
+use fabianhaef\simpleform\fields\HiddenFieldType;
+use fabianhaef\simpleform\fields\RepeaterFieldType;
+use fabianhaef\simpleform\fields\SignatureFieldType;
 use fabianhaef\simpleform\helpers\RateLimiter;
+use fabianhaef\simpleform\helpers\SignaturePng;
+use fabianhaef\simpleform\models\FieldModel;
 use fabianhaef\simpleform\models\FormModel;
 use fabianhaef\simpleform\models\Settings;
 use fabianhaef\simpleform\Plugin;
@@ -30,9 +41,9 @@ class SubmissionService extends Component
      *
      * @param FormModel|Form|string $form Form instance, element, or handle
      * @param Request|null $request Request object (uses Craft request if null)
-     * @return array{submission: Submission|null, errors: array<string, mixed>|null}
+     * @return array{submission: Submission|null, errors: array<string, mixed>|null, data?: array<string, mixed>}
      */
-    public function createFromRequest($form, ?Request $request = null): array
+    public function createFromRequest(FormModel|Form|string $form, ?Request $request = null): array
     {
         if ($request === null) {
             /** @var Request $request */
@@ -47,28 +58,50 @@ class SubmissionService extends Component
         $formModel = new FormModel($formElement);
 
         // Pull each field's posted value (field_<id>) out of the request body.
-        // File fields are special: their uploads are validated here and turned
-        // into Asset ids, which become the field's value.
+        // File and Signature fields are special: their uploads / decoded PNG data
+        // URLs are validated here and turned into Asset ids, which become the
+        // field's value.
         $values = [];
         $pendingUploads = [];
+        $pendingSignatures = [];
+        $tempFiles = [];
         $fileErrors = [];
         foreach ($formModel->getFields() as $fieldId => $field) {
+            // Presentational/layout blocks (heading, divider, html) capture no
+            // value: never collect a posted value for them, so a crafted
+            // field_<id> POST against a layout block is ignored.
+            if (!$field->isInputType()) {
+                continue;
+            }
+
+            $config = $field->getConfig();
+            $config['required'] = $field->isRequired();
+
             if ($field->getType() === FileFieldType::getType()) {
                 $files = UploadedFile::getInstancesByName('field_' . $fieldId);
-                $config = $field->getConfig();
-                $config['required'] = $field->isRequired();
                 $errors = (new FileFieldType($config))->validateUpload($files);
                 if ($errors !== []) {
                     $fileErrors['field_' . $fieldId] = $errors;
                 }
                 $pendingUploads[$fieldId] = ['files' => $files, 'config' => $config];
                 $values[$fieldId] = [];
+            } elseif ($field->getType() === SignatureFieldType::getType()) {
+                // The signature posts as a PNG data URL string. Validate it here
+                // (required + decodable PNG) before any temp file is written.
+                $dataUrl = $request->getBodyParam('field_' . $fieldId);
+                $errors = (new SignatureFieldType($config))->validate($dataUrl);
+                if ($errors !== []) {
+                    $fileErrors['field_' . $fieldId] = $errors;
+                }
+                $pendingSignatures[$fieldId] = ['dataUrl' => $dataUrl, 'config' => $config];
+                $values[$fieldId] = [];
             } else {
                 $values[$fieldId] = $request->getBodyParam('field_' . $fieldId);
             }
         }
 
-        // Reject before creating any asset if a file failed validation.
+        // Reject before creating any asset if a file/signature failed validation.
+        // No temp files exist yet (signatures are decoded only past this gate).
         if ($fileErrors !== []) {
             return ['submission' => null, 'errors' => $fileErrors];
         }
@@ -82,6 +115,27 @@ class SubmissionService extends Component
             $createdAssetIds = array_merge($createdAssetIds, $ids);
         }
 
+        // Signatures: decode each validated data URL to a temp PNG, then save it
+        // through the same asset pipeline so the id list becomes the field value.
+        foreach ($pendingSignatures as $fieldId => $info) {
+            $bytes = SignaturePng::decode($info['dataUrl']);
+            if ($bytes === null) {
+                // Empty/optional signature → no asset, empty value.
+                continue;
+            }
+            $tempPath = $this->writeSignatureTempFile($bytes);
+            if ($tempPath === null) {
+                continue;
+            }
+            $tempFiles[] = $tempPath;
+            $ids = $uploadService->saveTempFiles(
+                [['path' => $tempPath, 'filename' => 'signature-' . $fieldId . '-' . time() . '.png']],
+                $info['config'],
+            );
+            $values[$fieldId] = $ids;
+            $createdAssetIds = array_merge($createdAssetIds, $ids);
+        }
+
         $userId = Craft::$app->getUser()->getId();
 
         $result = $this->submit($formElement, $values, [
@@ -90,6 +144,10 @@ class SubmissionService extends Component
             'userId' => $userId !== null ? (int) $userId : null,
         ]);
 
+        // Temp PNGs are copied into the volume by saveTempFiles(); remove the
+        // staging files regardless of outcome.
+        $this->cleanupTempFiles($tempFiles);
+
         // No row persisted (validation error, honeypot/captcha/spam drop) → don't
         // leave orphaned assets behind.
         if ($result['submission'] === null && $createdAssetIds !== []) {
@@ -97,6 +155,37 @@ class SubmissionService extends Component
         }
 
         return $result;
+    }
+
+    /**
+     * Write decoded signature PNG bytes to a uniquely named temp file, returning
+     * its path or null if the file can't be written.
+     */
+    private function writeSignatureTempFile(string $bytes): ?string
+    {
+        $path = tempnam(sys_get_temp_dir(), 'sfsig');
+        if ($path === false) {
+            return null;
+        }
+        if (file_put_contents($path, $bytes) === false) {
+            @unlink($path);
+            return null;
+        }
+        return $path;
+    }
+
+    /**
+     * Remove the staging temp files written for signature decoding.
+     *
+     * @param list<string> $paths
+     */
+    private function cleanupTempFiles(array $paths): void
+    {
+        foreach ($paths as $path) {
+            if ($path !== '' && is_file($path)) {
+                @unlink($path);
+            }
+        }
     }
 
     /**
@@ -150,9 +239,181 @@ class SubmissionService extends Component
      * @param Form $form
      * @param array<int|string, mixed> $values posted values keyed by field id (or `field_<id>`)
      * @param array{honeypot?: string, captchaToken?: ?string, skipCaptcha?: bool, userId?: ?int, siteId?: ?int} $context
-     * @return array{submission: Submission|null, errors: array<string, mixed>|null}
+     * @return array{submission: Submission|null, errors: array<string, mixed>|null, data?: array<string, mixed>}
      */
     public function submit(Form $form, array $values, array $context = []): array
+    {
+        // Spam protection + validation + the persisted data payload are produced
+        // by the shared core so create and edit can never drift apart.
+        $core = $this->processSubmission($form, $values, $context);
+        if ($core['result'] !== null) {
+            // Honeypot/captcha/blocked-spam drop or a validation error: nothing to
+            // persist, return the early result the core decided on.
+            return $core['result'];
+        }
+
+        /** @var array<string, mixed> $data */
+        $data = $core['data'];
+        $isSpam = $core['isSpam'];
+        $spamReason = $core['spamReason'] ?? ($isSpam ? 'akismet' : null);
+
+        // Build + save the submission element.
+        $siteId = $context['siteId'] ?? $form->siteId ?? Craft::$app->getSites()->getCurrentSite()->id;
+
+        $submission = new Submission();
+        $submission->formId = (int) $form->id;
+        $submission->siteId = (int) $siteId;
+        $submission->data = $data;
+        // Always associate the submission with the logged-in user (#135).
+        $submission->userId = isset($context['userId']) ? (int) $context['userId'] : null;
+        $submission->readStatus = $isSpam ? SubmissionStatus::SPAM : SubmissionStatus::NEW;
+        $submission->spamReason = $spamReason;
+        $submission->sourceIp = $this->sourceIp();
+
+        // Fire the before-save event (same as the Twig path).
+        $beforeEvent = new SubmissionEvent($submission, $form, $data, true);
+        Plugin::getInstance()->trigger(Plugin::EVENT_BEFORE_SUBMISSION_SAVE, $beforeEvent);
+
+        if (!Craft::$app->getElements()->saveElement($submission)) {
+            return ['submission' => null, 'errors' => ['submission' => ['Failed to save submission']]];
+        }
+
+        // If the form collects payment, create the pending order now (before the
+        // after-save dispatch) so integrations + email are withheld until the
+        // payment completes. Skipped for spam.
+        $awaitingPayment = !$isSpam
+            && Plugin::getInstance()->getPayments()->prepare($form, $submission, $data);
+
+        // Fire the after-save event. The integration dispatch listener self-skips
+        // while a submission is awaiting payment.
+        $afterEvent = new SubmissionEvent($submission, $form, $data, true);
+        Plugin::getInstance()->trigger(Plugin::EVENT_AFTER_SUBMISSION_SAVE, $afterEvent);
+
+        // Send notifications (queued so a PDF render / upload reads run off-request;
+        // #143). Skipped for spam and while awaiting payment — the email fires once
+        // the order completes.
+        if (!$isSpam && !$awaitingPayment) {
+            Plugin::getInstance()->getEmailService()->queueForSubmission($form, $submission, $data);
+        }
+
+        // `data` is returned so post-submit resolution (the success message and a
+        // templated redirect URL) can interpolate the submitted values without
+        // re-reading the persisted row.
+        return ['submission' => $submission, 'errors' => null, 'data' => $data];
+    }
+
+    /**
+     * Re-validate and re-save an existing submission through the same shared core
+     * as {@see self::submit()} (#144). Authorization (token / owner / window /
+     * allowEditing) is the caller's responsibility — see {@see self::authorizeEdit()}.
+     *
+     * The same element is updated in place: its id, dateCreated, siteId and userId
+     * are preserved. The after-save event fires with `isNew = false` so integration
+     * listeners can distinguish an edit from a create and self-skip if they should
+     * not re-dispatch.
+     *
+     * @param Submission $submission the existing submission to edit
+     * @param array<int|string, mixed> $values posted values keyed by field id (or `field_<id>`)
+     * @param array{honeypot?: string, captchaToken?: ?string, skipCaptcha?: bool, actor?: string} $context
+     * @return array{submission: Submission|null, errors: array<string, mixed>|null}
+     * @throws \yii\base\InvalidConfigException
+     */
+    public function update(Submission $submission, array $values, array $context = []): array
+    {
+        $form = $submission->getForm();
+        if (!$form instanceof Form) {
+            return ['submission' => null, 'errors' => ['form' => ['Form not found']]];
+        }
+
+        // An edit runs through the identical spam + validation + conditional-logic
+        // core as a create, so an edit can never be a spam-laundering bypass.
+        $core = $this->processSubmission($form, $values, $context);
+        if ($core['result'] !== null) {
+            return $core['result'];
+        }
+
+        /** @var array<string, mixed> $data */
+        $data = $core['data'];
+        $isSpam = $core['isSpam'];
+        $spamReason = $core['spamReason'] ?? ($isSpam ? 'akismet' : null);
+
+        // Preserve id/dateCreated/siteId/userId — only the content + spam state
+        // change. A spam verdict on edit flags the submission like a new one.
+        $submission->data = $data;
+        if ($isSpam) {
+            $submission->readStatus = SubmissionStatus::SPAM;
+            $submission->spamReason = $spamReason;
+        }
+
+        $beforeEvent = new SubmissionEvent($submission, $form, $data, false);
+        Plugin::getInstance()->trigger(Plugin::EVENT_BEFORE_SUBMISSION_SAVE, $beforeEvent);
+
+        if (!Craft::$app->getElements()->saveElement($submission)) {
+            return ['submission' => null, 'errors' => ['submission' => ['Failed to save submission']]];
+        }
+
+        // isNew = false lets integration/notification listeners self-skip an edit.
+        $afterEvent = new SubmissionEvent($submission, $form, $data, false);
+        Plugin::getInstance()->trigger(Plugin::EVENT_AFTER_SUBMISSION_SAVE, $afterEvent);
+
+        $actor = (string) ($context['actor'] ?? 'token');
+        Plugin::getInstance()->getAudit()->log(
+            'submission.edit',
+            'submission',
+            (int) $submission->id,
+            'edited via front-end (' . $actor . ')',
+        );
+
+        return ['submission' => $submission, 'errors' => null];
+    }
+
+    /**
+     * Decide whether an edit of $submission is authorized (#144). An edit is
+     * allowed iff the form opted into editing AND the edit window is open AND
+     * either a valid token is supplied OR the current user owns the submission.
+     *
+     * Returns the actor label ('token' | 'user') on success, or null when the
+     * edit must be refused. Never trusts the client: every gate is server-side.
+     */
+    public function authorizeEdit(Submission $submission, ?string $token, ?int $currentUserId): ?string
+    {
+        $form = $submission->getForm();
+        if (!$form instanceof Form || !$form->allowEditing) {
+            return null;
+        }
+
+        // The window is authoritative even when a token's intrinsic expiry is longer.
+        $editTokens = Plugin::getInstance()->getSubmissionEditTokens();
+        if (!$editTokens->isWithinEditWindow($submission, (int) $form->editWindowMinutes)) {
+            return null;
+        }
+
+        // A logged-in owner needs no token.
+        if ($currentUserId !== null && $submission->userId !== null && $submission->userId === $currentUserId) {
+            return 'user';
+        }
+
+        // Otherwise a valid, unexpired token for THIS submission is required.
+        if ($editTokens->verify($submission, $token)) {
+            return 'token';
+        }
+
+        return null;
+    }
+
+    /**
+     * Shared create/edit core: honeypot + captcha + per-field validation +
+     * conditional-logic visibility + content spam scoring, producing the persisted
+     * `data` payload. Returns either an early `result` (a drop or validation error
+     * the caller should return verbatim) or the validated `data` + `isSpam` verdict
+     * for the caller to persist. Routing both submit() and update() through here
+     * guarantees identical validation/spam/conditional behavior.
+     *
+     * @param array<int|string, mixed> $values
+     * @param array{honeypot?: string, captchaToken?: ?string, skipCaptcha?: bool, userId?: ?int, siteId?: ?int} $context
+     * @return array{result: array{submission: null, errors: array<string, mixed>|null}|null, data: array<string, mixed>, isSpam: bool, spamReason?: ?string}
+     */
+    private function processSubmission(Form $form, array $values, array $context): array
     {
         $settings = Plugin::getInstance()->getSettings();
 
@@ -160,14 +421,59 @@ class SubmissionService extends Component
         // is a bot: drop it silently (no persisted row, no error surfaced) so the
         // client gets no signal about the trap.
         if ($settings->enableHoneypot && trim((string) ($context['honeypot'] ?? '')) !== '') {
-            return ['submission' => null, 'errors' => null];
+            return ['result' => ['submission' => null, 'errors' => null], 'data' => [], 'isSpam' => false];
+        }
+
+        // (1b) Scheduling window + quota — enforced here so the AJAX path, the
+        // no-JS POST path, and the GraphQL mutation are all rejected by one
+        // check (a crafted POST or a stale cached page cannot sneak past the
+        // rendered form). Placed after the honeypot so bots still get no signal,
+        // but before captcha/validation so a closed form does no extra work.
+        // The cap is a soft business limit; see Form::getSubmissionCount() for
+        // the documented race-safety note.
+        if (!$form->isAcceptingSubmissions()) {
+            return [
+                'result' => ['submission' => null, 'errors' => ['form' => [$form->getResolvedClosedMessage()]]],
+                'data' => [],
+                'isSpam' => false,
+            ];
+        }
+
+        // (1c) Access gates (#135). Enforced here so every transport (AJAX, no-JS
+        // POST, GraphQL) shares one code path — a crafted POST cannot bypass the
+        // template-level guards in TwigExtension::renderForm. Runs after the
+        // honeypot (bots get no signal) and before captcha/validation.
+        $userId = isset($context['userId']) ? (int) $context['userId'] : null;
+
+        // Require login: reject anonymous submissions outright.
+        if ($form->requireLogin && $userId === null) {
+            return [
+                'result' => ['submission' => null, 'errors' => ['form' => [$form->getLoginRequiredMessage()]]],
+                'data' => [],
+                'isSpam' => false,
+            ];
+        }
+
+        // Per-user limit: block a user at/over their cap. Guests are only limited
+        // when the form opts into a guest key (email); spam rows never count.
+        if ($form->submissionsPerUser !== null
+            && $this->userSubmissionCount($form, $userId, $values) >= $form->submissionsPerUser) {
+            return [
+                'result' => ['submission' => null, 'errors' => ['form' => [$form->getUserLimitMessage()]]],
+                'data' => [],
+                'isSpam' => false,
+            ];
         }
 
         // (2) Captcha — skippable only for explicitly trusted channels.
         if (empty($context['skipCaptcha'])) {
             $token = $context['captchaToken'] ?? null;
             if (!Plugin::getInstance()->getCaptchaService()->verify($token)) {
-                return ['submission' => null, 'errors' => ['captcha' => ['Captcha verification failed']]];
+                return [
+                    'result' => ['submission' => null, 'errors' => ['captcha' => ['Captcha verification failed']]],
+                    'data' => [],
+                    'isSpam' => false,
+                ];
             }
         }
 
@@ -178,6 +484,9 @@ class SubmissionService extends Component
         // snapshot (a field's visibility may depend on any other field).
         $valuesByHandle = [];
         foreach ($formModel->getFields() as $fieldId => $field) {
+            if (!$field->isInputType()) {
+                continue;
+            }
             $valuesByHandle[$field->getName()] = $this->valueForField($values, (int) $fieldId);
         }
 
@@ -189,75 +498,191 @@ class SubmissionService extends Component
         $data = [];
         $errors = [];
 
+        // Site the submission is attributed to; passed to fields whose persisted
+        // value depends on the site (e.g. the Consent record's localized snapshot).
+        $siteId = $context['siteId'] ?? $form->siteId ?? Craft::$app->getSites()->getCurrentSite()->id;
+
         foreach ($formModel->getFields() as $fieldId => $field) {
+            // Layout blocks are never validated and never written to
+            // submission.data — no phantom field_<id> entry, no column, no
+            // validation error even if a `required` config is forged.
+            if (!$field->isInputType()) {
+                continue;
+            }
+
             if (!$field->isVisible($valuesByHandle)) {
                 continue;
             }
 
             $value = $valuesByHandle[$field->getName()];
 
+            // Hidden fields (#124) are captured from a configured source, not
+            // typed by the visitor. Re-resolve server-side: `user` sources
+            // ignore the posted value entirely (anti-spoofing), and
+            // static/query/cookie values are sanitized to bounded plain text.
+            if ($field->getType() === HiddenFieldType::getType()) {
+                $value = (new HiddenFieldType($field->getConfig()))
+                    ->resolveForSubmit($value, ['userId' => $context['userId'] ?? null]);
+            }
+
             $fieldErrors = $field->validateValue($value, $valuesByHandle);
             if (!empty($fieldErrors)) {
                 $errors['field_' . $fieldId] = $fieldErrors;
             }
 
+            // A repeater's posted value is a nested array keyed by row index and
+            // inner handle; normalize it to an ordered list of row objects so the
+            // stored shape matches the validated one (unknown inner keys dropped,
+            // empty trailing rows removed, gaps re-keyed).
+            if ($field->getType() === RepeaterFieldType::getType()) {
+                $repeater = new RepeaterFieldType($field->getConfig());
+                $value = RepeaterFieldType::normalizeRows($value, $repeater->innerFields());
+            }
+
+            // Composite fields (Name/Address) store an associative sub-part map
+            // limited to their enabled sub-keys, so a crafted POST cannot inject
+            // keys the field never rendered.
+            $value = $this->serializeFieldValue($field, $value);
+
+            // Let the field type shape its persisted value (identity for most;
+            // the Consent field stamps an auditable record here). Skipped when the
+            // field already failed validation — the submission won't be saved.
+            $persisted = empty($fieldErrors)
+                ? $field->persistValue($value, ['siteId' => (int) $siteId])
+                : $value;
+
+            // Persist the field type's normalized shape (a passthrough for most
+            // types; e.g. Phone stores a {raw, e164, country} map) so exports and
+            // integrations get the canonical value on both transports.
+            $storedValue = $this->normalizedValueForField($field, $persisted);
+
+            // Coerce to the field type's canonical storage form (e.g. an int for
+            // rating/opinion) so analytics and the exporter treat the column
+            // numerically rather than as a string.
+            $storedValue = $field->normalizeValue($storedValue);
+
             $data['field_' . $fieldId] = [
                 'label' => $field->getLabel() ?? $field->getName(),
                 'type' => $field->getType(),
-                'value' => $value,
+                'value' => $storedValue,
             ];
         }
 
         if (!empty($errors)) {
-            return ['submission' => null, 'errors' => $errors];
+            return ['result' => ['submission' => null, 'errors' => $errors], 'data' => [], 'isSpam' => false];
         }
 
-        // (5) Content spam scoring (Akismet). A spam verdict either drops the
+        // (4b) Authoritative server-side recompute of every calculation field
+        // (#131). Runs after ordinary fields are resolved so references are
+        // populated, and re-inserts each result into $valuesByHandle so a later
+        // calculation (or a linked Payment field's amountField) reads the server
+        // truth — never the client-posted value, which is discarded. Fields
+        // hidden by conditional logic are skipped, so they neither compute nor
+        // store, exactly like ordinary fields.
+        $fieldTypeRegistry = Plugin::getInstance()->getFieldTypeRegistry();
+        foreach ($formModel->getFields() as $fieldId => $field) {
+            if ($field->getType() !== CalculationFieldType::getType()) {
+                continue;
+            }
+            if (!$field->isVisible($valuesByHandle)) {
+                continue;
+            }
+
+            /** @var CalculationFieldType $fieldType */
+            $fieldType = $fieldTypeRegistry->getFieldType(CalculationFieldType::getType(), $field->getConfig());
+            $result = $fieldType->compute($valuesByHandle);
+            $valuesByHandle[$field->getName()] = $result;
+
+            $data['field_' . $fieldId] = [
+                'label' => $field->getLabel() ?? $field->getName(),
+                'type' => CalculationFieldType::getType(),
+                'value' => $result,
+                'display' => $fieldType->format($result),
+            ];
+        }
+
+        // (5a) Deterministic denylists (#140): blocked keywords, emails/domains,
+        // and IPs/CIDR ranges. A hit either drops the submission silently (block —
+        // like the honeypot) or flags it as spam for review (flag, the default),
+        // mirroring the Akismet fork. The reason (e.g. "keyword:casino") becomes
+        // the submission's spamReason.
+        $quarantineReason = null;
+        $denylistHit = Plugin::getInstance()->getDenylistService()->match($form, $data);
+        if ($denylistHit !== null) {
+            if ($settings->denylistMode === Settings::DENYLIST_BLOCK) {
+                return ['result' => ['submission' => null, 'errors' => null], 'data' => [], 'isSpam' => false];
+            }
+            $quarantineReason = $denylistHit;
+        }
+
+        // (5b) Per-form duplicate prevention (#140): the same payload/email/ip
+        // hitting the form again inside the configured window. Like denylists, a
+        // hit either drops silently (block) or flags as spam (flag). The first
+        // matching reason wins, so a denylist hit takes precedence.
+        if ($quarantineReason === null && $this->isDuplicate($form, $data)) {
+            if ($settings->denylistMode === Settings::DENYLIST_BLOCK) {
+                return ['result' => ['submission' => null, 'errors' => null], 'data' => [], 'isSpam' => false];
+            }
+            $quarantineReason = 'duplicate';
+        }
+
+        // (5c) Content spam scoring (Akismet). A spam verdict either drops the
         // submission silently (block — like the honeypot, no signal to the bot)
         // or saves it flagged as spam for review (flag, the default).
-        $isSpam = Plugin::getInstance()->getAkismetService()->isSpam($form, $data);
-        if ($isSpam && Plugin::getInstance()->getSettings()->akismetMode === Settings::AKISMET_BLOCK) {
-            return ['submission' => null, 'errors' => null];
+        $akismetSpam = Plugin::getInstance()->getAkismetService()->isSpam($form, $data);
+        if ($akismetSpam && $settings->akismetMode === Settings::AKISMET_BLOCK) {
+            return ['result' => ['submission' => null, 'errors' => null], 'data' => [], 'isSpam' => false];
         }
 
-        // (6) Build + save the submission element.
-        $siteId = $context['siteId'] ?? $form->siteId ?? Craft::$app->getSites()->getCurrentSite()->id;
+        // A submission is quarantined if any deterministic filter flagged it or
+        // Akismet scored it spam; spamReason records the first/most specific cause.
+        $isSpam = $quarantineReason !== null || $akismetSpam;
+        $spamReason = $quarantineReason ?? ($akismetSpam ? 'akismet' : null);
 
-        $submission = new Submission();
-        $submission->formId = (int) $form->id;
-        $submission->siteId = (int) $siteId;
-        $submission->data = $data;
-        $submission->userId = isset($context['userId']) ? (int) $context['userId'] : null;
-        $submission->readStatus = $isSpam ? SubmissionStatus::SPAM : SubmissionStatus::NEW;
-        $submission->spamReason = $isSpam ? 'akismet' : null;
+        // The validated payload + spam verdict are returned for the caller
+        // (submit() / update()) to persist as a create or an edit. Routing both
+        // through this one core guarantees identical validation, conditional-logic
+        // visibility, denylist/duplicate and Akismet behavior on every transport.
+        return ['result' => null, 'data' => $data, 'isSpam' => $isSpam, 'spamReason' => $spamReason];
+    }
 
-        // (7) Fire the before-save event (same as the Twig path).
-        $beforeEvent = new SubmissionEvent($submission, $form, $data, true);
-        Plugin::getInstance()->trigger(Plugin::EVENT_BEFORE_SUBMISSION_SAVE, $beforeEvent);
+    /**
+     * Resolve the post-submit behavior for a completed submission: the success
+     * message to show and the URL to redirect to (or null for an inline message).
+     *
+     * Single source of truth shared by every transport (the front-end controller
+     * and the GraphQL mutation) so they always agree on the final message/redirect.
+     *
+     * - `message` falls back to the global {@see Settings::$submitMessage} when the
+     *   per-form override is blank, with `{handle}`/`{submissionId}` placeholders
+     *   interpolated from the submitted values.
+     * - `redirectUrl` is null for the `message` action; for `url` the placeholders
+     *   are interpolated and each substituted value is `rawurlencode()`d; for
+     *   `entry` the form's `redirectEntryId` resolves to an entry on the
+     *   submission's site and its URL is used (null when missing/disabled).
+     *
+     * @param array<string, mixed> $data the persisted submission data map (field_<id> => [..., 'value' => mixed])
+     * @return array{message: string, redirectUrl: ?string}
+     */
+    public function resolvePostSubmit(Form $form, Submission $submission, array $data): array
+    {
+        $settings = Plugin::getInstance()->getSettings();
+        $placeholders = $this->buildPlaceholders($form, $submission, $data);
 
-        if (!Craft::$app->getElements()->saveElement($submission)) {
-            return ['submission' => null, 'errors' => ['submission' => ['Failed to save submission']]];
-        }
+        $rawMessage = ($form->submitMessage !== null && trim($form->submitMessage) !== '')
+            ? $form->submitMessage
+            : $settings->submitMessage;
+        $message = $this->interpolate($rawMessage, $placeholders, false);
 
-        // (8) If the form collects payment, create the pending order now (before
-        // the after-save dispatch) so integrations + email are withheld until the
-        // payment completes. Skipped for spam.
-        $awaitingPayment = !$isSpam
-            && Plugin::getInstance()->getPayments()->prepare($form, $submission, $data);
+        $redirectUrl = match ($form->postSubmitAction) {
+            'url' => $form->redirectUrl !== null && trim($form->redirectUrl) !== ''
+                ? $this->interpolate($form->redirectUrl, $placeholders, true)
+                : null,
+            'entry' => $this->resolveEntryUrl($form, $submission),
+            default => null,
+        };
 
-        // (9) Fire the after-save event. The integration dispatch listener
-        // self-skips while a submission is awaiting payment.
-        $afterEvent = new SubmissionEvent($submission, $form, $data, true);
-        Plugin::getInstance()->trigger(Plugin::EVENT_AFTER_SUBMISSION_SAVE, $afterEvent);
-
-        // (10) Send notifications (notification rows or the legacy email columns;
-        // EmailService no-ops when neither is configured). Skipped for spam and
-        // while awaiting payment — the email fires once the order completes.
-        if (!$isSpam && !$awaitingPayment) {
-            Plugin::getInstance()->getEmailService()->sendSubmissionEmail($form, $submission, $data);
-        }
-
-        return ['submission' => $submission, 'errors' => null];
+        return ['message' => $message, 'redirectUrl' => $redirectUrl];
     }
 
     public function getSubmission(int $submissionId): ?Submission
@@ -276,10 +701,14 @@ class SubmissionService extends Component
             return false;
         }
 
+        // Capture the prior status so an approve transition (SPAM → non-spam) can
+        // release the side effects that were withheld at submit time, exactly once.
+        $wasSpam = $submission->readStatus === SubmissionStatus::SPAM;
+
         $submission->readStatus = $status;
         // Keep spamReason in step with the status: marking spam by hand records
-        // 'manual' (unless Akismet already set a reason); moving out of spam
-        // (e.g. "Mark as not spam") clears it.
+        // 'manual' (unless a denylist/Akismet reason already set it); moving out
+        // of spam (e.g. "Mark as not spam") clears it.
         if ($status === SubmissionStatus::SPAM) {
             $submission->spamReason ??= 'manual';
         } else {
@@ -287,10 +716,248 @@ class SubmissionService extends Component
         }
 
         $saved = Craft::$app->getElements()->saveElement($submission);
-        if ($saved) {
-            Plugin::getInstance()->getAudit()->log('submission.status', 'submission', $submissionId, 'status → ' . $status);
+        if (!$saved) {
+            return false;
         }
-        return $saved;
+
+        Plugin::getInstance()->getAudit()->log('submission.status', 'submission', $submissionId, 'status → ' . $status);
+
+        // Approving a quarantined false-positive completes its journey: fire the
+        // integration dispatch + notification email that were suppressed while it
+        // sat in spam. Guarded on the SPAM → non-spam edge so re-approving an
+        // already-approved submission is a no-op (idempotent).
+        if ($wasSpam && $status !== SubmissionStatus::SPAM) {
+            $this->releaseWithheldSideEffects($submission);
+        }
+
+        return true;
+    }
+
+    /**
+     * Fire the integration dispatch and notification email that were withheld
+     * while a submission sat in the spam quarantine. Called once, on the approve
+     * transition out of SPAM (see {@see self::updateStatus()}).
+     */
+    private function releaseWithheldSideEffects(Submission $submission): void
+    {
+        $form = $submission->getForm();
+        if (!$form instanceof Form) {
+            return;
+        }
+
+        $data = is_array($submission->data) ? $submission->data : [];
+
+        // Integration dispatch (the after-save listener routes to IntegrationsService).
+        $afterEvent = new SubmissionEvent($submission, $form, $data, true);
+        Plugin::getInstance()->trigger(Plugin::EVENT_AFTER_SUBMISSION_SAVE, $afterEvent);
+
+        // Notification + autoresponder emails (no-ops when neither is configured).
+        // Sent inline: this is a CP approve action (not a visitor request), so the
+        // withheld email — including any PDF/upload attachments (#143) — fires
+        // immediately rather than being deferred to the queue.
+        Plugin::getInstance()->getEmailService()->sendSubmissionEmail($form, $submission, $data);
+    }
+
+    /**
+     * Whether this submission duplicates an earlier one on the same form within
+     * the form's configured window (#140). The dedupe key is the form's
+     * `duplicateKey`: the first email value (`email`), a hash of the data payload
+     * (`content`), or the submitter's IP (`ip`). A window of 0 means "ever".
+     * Returns false when prevention is off or the key cannot be resolved (e.g.
+     * the `email` key but no email submitted).
+     *
+     * Candidate rows in the window are loaded and compared in PHP so the match is
+     * exact (a JSON-blob LIKE would be brittle) and multi-site safe (`site('*')`).
+     *
+     * @param array<string, mixed> $data
+     */
+    private function isDuplicate(Form $form, array $data): bool
+    {
+        if (!$form->preventDuplicates || $form->id === null) {
+            return false;
+        }
+
+        $fingerprint = $this->dedupeFingerprint($form, $data, $this->sourceIp());
+        if ($fingerprint === null) {
+            return false;
+        }
+
+        $query = Submission::find()
+            ->site('*')
+            ->formId((int) $form->id);
+
+        if ($form->duplicateWindowMinutes > 0) {
+            $threshold = Carbon::now()->subMinutes($form->duplicateWindowMinutes);
+            $query->andWhere(['>=', 'elements.dateCreated', Db::prepareDateForDb($threshold)]);
+        }
+
+        foreach ($query->all() as $existing) {
+            $existingData = is_array($existing->data) ? $existing->data : [];
+            if ($this->dedupeFingerprint($form, $existingData, $existing->sourceIp) === $fingerprint) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * The dedupe fingerprint for a submission under the form's key, or null when
+     * it cannot be computed (so no false "duplicate" is reported).
+     *
+     * @param array<string, mixed> $data
+     */
+    private function dedupeFingerprint(Form $form, array $data, ?string $sourceIp): ?string
+    {
+        if ($form->duplicateKey === Form::DUPLICATE_KEY_CONTENT) {
+            return 'content:' . $this->contentHash($data);
+        }
+
+        if ($form->duplicateKey === Form::DUPLICATE_KEY_IP) {
+            return ($sourceIp !== null && $sourceIp !== '') ? 'ip:' . $sourceIp : null;
+        }
+
+        $email = $this->firstEmail($data);
+        return $email !== null ? 'email:' . strtolower($email) : null;
+    }
+
+    /**
+     * A stable hash of the submitted values, independent of key/field ordering or
+     * the JSON round-trip, so two identical payloads fingerprint the same.
+     *
+     * @param array<string, mixed> $data
+     */
+    private function contentHash(array $data): string
+    {
+        $values = [];
+        foreach ($data as $key => $entry) {
+            $values[$key] = is_array($entry) ? ($entry['value'] ?? null) : $entry;
+        }
+        ksort($values);
+
+        return md5(json_encode($values) ?: '');
+    }
+
+    /**
+     * The submitter's source IP, or null on the console / when unresolvable.
+     */
+    private function sourceIp(): ?string
+    {
+        /** @var \craft\web\Request $request */
+        $request = Craft::$app->getRequest();
+        if ($request->getIsConsoleRequest()) {
+            return null;
+        }
+        $ip = $request->getUserIP();
+        return ($ip === null || $ip === '') ? null : $ip;
+    }
+
+    /**
+     * The first email value in a submission's data payload, or null.
+     *
+     * @param array<string, mixed> $data
+     */
+    private function firstEmail(array $data): ?string
+    {
+        foreach ($data as $entry) {
+            if (!is_array($entry)) {
+                continue;
+            }
+            $value = $entry['value'] ?? null;
+            if (is_string($value) && $value !== '' && ($entry['type'] ?? '') === 'email') {
+                return $value;
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * Whether a logged-in user has already hit the form's per-user submission cap.
+     *
+     * Used by the public render (TwigExtension) to show the limit message instead
+     * of the form. Guests are never pre-blocked at render time — there is no
+     * posted value to key on yet — but the server still enforces guest keying on
+     * submit. Returns false when the form has no per-user cap.
+     */
+    public function userHasReachedLimit(Form $form, ?int $userId): bool
+    {
+        if ($form->submissionsPerUser === null || $userId === null) {
+            return false;
+        }
+
+        return $this->userSubmissionCount($form, $userId, []) >= $form->submissionsPerUser;
+    }
+
+    /**
+     * Count prior, non-spam submissions that count toward a submitter's per-user
+     * allowance for the given form.
+     *
+     * Logged-in users key on their stable `userId`. Guests are keyed only when the
+     * form opts in: `email` matches the submitted value of the form's first email
+     * field; `none` (and `ip`, reserved until an IP column exists) never limits a
+     * guest, so the cap simply does not apply.
+     *
+     * @param array<int|string, mixed> $values posted values keyed by field id (or `field_<id>`)
+     */
+    private function userSubmissionCount(Form $form, ?int $userId, array $values): int
+    {
+        // Count every status except spam: a spam row must never burn a user's
+        // allowance. status(null) keeps soft-delete handling; the readStatus
+        // filter then excludes spam.
+        $query = Submission::find()
+            ->formId((int) $form->id)
+            ->siteId('*')
+            ->status(null)
+            ->andWhere(['not', ['[[simpleform_submissions.readStatus]]' => SubmissionStatus::SPAM]]);
+
+        if ($userId !== null) {
+            $query->userId($userId);
+
+            return (int) $query->count();
+        }
+
+        if ($form->guestLimitKey === Form::GUEST_LIMIT_EMAIL) {
+            $email = $this->guestEmailValue($form, $values);
+            if ($email === null) {
+                return 0;
+            }
+
+            // Best-effort guest dedup: count prior submissions whose stored email
+            // field value matches. Documented as advisory, not a security control.
+            return (int) $query
+                ->andWhere(Db::parseParam('simpleform_submissions.userId', ':empty:'))
+                ->andWhere(['like', '[[simpleform_submissions.data]]', $email])
+                ->count();
+        }
+
+        // 'none' (and the reserved 'ip' key) never limit guests.
+        return 0;
+    }
+
+    /**
+     * Resolve the submitted value of the form's first email-type field, used to
+     * key the per-user limit for guests. Returns null when the form has no email
+     * field or the value is blank.
+     *
+     * @param array<int|string, mixed> $values posted values keyed by field id (or `field_<id>`)
+     */
+    private function guestEmailValue(Form $form, array $values): ?string
+    {
+        $formModel = new FormModel($form);
+
+        foreach ($formModel->getFields() as $fieldId => $field) {
+            if ($field->getType() !== EmailFieldType::getType()) {
+                continue;
+            }
+
+            $value = $this->valueForField($values, (int) $fieldId);
+            $value = is_string($value) ? trim($value) : '';
+
+            return $value !== '' ? $value : null;
+        }
+
+        return null;
     }
 
     /**
@@ -298,7 +965,7 @@ class SubmissionService extends Component
      *
      * @param FormModel|Form|string $form
      */
-    private function resolveForm($form): ?Form
+    private function resolveForm(FormModel|Form|string $form): ?Form
     {
         if ($form instanceof Form) {
             return $form;
@@ -316,6 +983,108 @@ class SubmissionService extends Component
     }
 
     /**
+     * Normalize a field's value for storage. Composite field types
+     * ({@see CompositeFieldType}) clamp the posted associative array to their
+     * enabled sub-keys; every other field type stores its value untouched.
+     *
+     * @param FieldModel $field
+     */
+    private function serializeFieldValue(FieldModel $field, mixed $value): mixed
+    {
+        $fieldType = Plugin::getInstance()
+            ->getFieldTypeRegistry()
+            ->getFieldType($field->getType(), $field->getConfig());
+
+        if ($fieldType instanceof CompositeFieldType) {
+            return $fieldType->serializeValue($value);
+        }
+
+        return $value;
+    }
+
+    /**
+     * Build the placeholder map for post-submit interpolation: each field handle
+     * maps to its submitted scalar value (arrays join with ", "), plus the
+     * `submissionId` built-in.
+     *
+     * @param array<string, mixed> $data the persisted submission data map
+     * @return array<string, string>
+     */
+    private function buildPlaceholders(Form $form, Submission $submission, array $data): array
+    {
+        $placeholders = [
+            'submissionId' => $submission->id !== null ? (string) $submission->id : '',
+        ];
+
+        $formModel = new FormModel($form);
+        foreach ($formModel->getFields() as $fieldId => $field) {
+            $value = $data['field_' . $fieldId]['value'] ?? null;
+            $placeholders[$field->getName()] = $this->stringifyValue($value);
+        }
+
+        return $placeholders;
+    }
+
+    /**
+     * Reduce a submitted value to a single string for placeholder substitution.
+     * Arrays (e.g. checkbox groups, file fields) join their scalar members with
+     * ", "; null/bool/scalars stringify directly.
+     */
+    private function stringifyValue(mixed $value): string
+    {
+        if (is_array($value)) {
+            $scalars = array_filter($value, static fn($v): bool => is_scalar($v));
+            return implode(', ', array_map('strval', $scalars));
+        }
+
+        if (is_bool($value)) {
+            return $value ? '1' : '';
+        }
+
+        return $value === null ? '' : (string) $value;
+    }
+
+    /**
+     * Substitute `{token}` placeholders in a template string. Unknown tokens
+     * resolve to an empty string. For URLs each substituted value is
+     * `rawurlencode()`d so it is safe inside a query string/path; for messages the
+     * raw value is used (the front-end sets it via `textContent`, so there is no
+     * markup-injection risk).
+     *
+     * @param array<string, string> $placeholders
+     */
+    private function interpolate(string $template, array $placeholders, bool $encode): string
+    {
+        return (string) preg_replace_callback(
+            '/\{([a-zA-Z_][a-zA-Z0-9_]*)\}/',
+            static function(array $matches) use ($placeholders, $encode): string {
+                $value = $placeholders[$matches[1]] ?? '';
+                return $encode ? rawurlencode($value) : $value;
+            },
+            $template,
+        );
+    }
+
+    /**
+     * Resolve the form's redirect entry to its URL on the submission's site.
+     * Returns null when no entry is configured or the entry is missing/disabled
+     * (no live URL) so the caller falls back to the inline message.
+     */
+    private function resolveEntryUrl(Form $form, Submission $submission): ?string
+    {
+        if ($form->redirectEntryId === null) {
+            return null;
+        }
+
+        $entry = Entry::find()
+            ->id($form->redirectEntryId)
+            ->siteId((int) $submission->siteId)
+            ->one();
+
+        return $entry instanceof Entry ? $entry->getUrl() : null;
+    }
+
+    /**
      * Read a field's value from a posted map keyed by either the bare field id
      * (123) or the prefixed input name (`field_123`).
      *
@@ -328,5 +1097,24 @@ class SubmissionService extends Component
         }
 
         return $values['field_' . $fieldId] ?? null;
+    }
+
+    /**
+     * Resolve a field's persisted value through its field type's
+     * {@see \fabianhaef\simpleform\fields\FieldType::normalizeStoredValue()}
+     * hook (a passthrough for most types). Falls back to the raw value if the
+     * type is unknown so an unregistered type never drops the submitted value.
+     */
+    private function normalizedValueForField(FieldModel $field, mixed $value): mixed
+    {
+        $fieldType = Plugin::getInstance()
+            ->getFieldTypeRegistry()
+            ->getFieldType($field->getType(), $field->getConfig());
+
+        if ($fieldType === null) {
+            return $value;
+        }
+
+        return $fieldType->normalizeStoredValue($value);
     }
 }

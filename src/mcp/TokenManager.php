@@ -125,7 +125,7 @@ class TokenManager
      *
      * NOTE: this is the natural seam for rate-limiting / brute-force defence
      * (e.g. a per-IP attempt counter keyed in Craft's cache). It is deliberately
-     * deferred for this foundation; secrets are 256-bit random, so online
+     * deferred; secrets are 256-bit random, so online
      * guessing is infeasible, but a future slice should add a throttle here.
      */
     public function validateSecret(?string $secret): ?McpToken

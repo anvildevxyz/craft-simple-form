@@ -5,6 +5,7 @@ namespace fabianhaef\simpleform\services;
 use Craft;
 use fabianhaef\simpleform\elements\Form;
 use fabianhaef\simpleform\elements\Submission;
+use fabianhaef\simpleform\integrations\support\SubmissionValues;
 use fabianhaef\simpleform\Plugin;
 use yii\base\Component;
 
@@ -17,6 +18,8 @@ use yii\base\Component;
  * The orchestration here (amount resolution, gating, status transitions) is
  * Commerce-agnostic and unit-tested; the order creation + completion path is
  * guarded behind {@see commerceAvailable()}.
+ *
+ * @phpstan-import-type SubmissionData from Submission
  */
 class PaymentsService extends Component
 {
@@ -37,8 +40,8 @@ class PaymentsService extends Component
     {
         $fields = Plugin::getInstance()->getFormStructure()->getFieldSet((int) $form->id, (int) $form->siteId);
         foreach ($fields as $field) {
-            if (($field['type'] ?? null) === 'payment') {
-                return is_array($field['config'] ?? null) ? $field['config'] : [];
+            if ($field['type'] === 'payment') {
+                return $field['config'];
             }
         }
 
@@ -59,7 +62,7 @@ class PaymentsService extends Component
      * a fixed amount, or the value of another field (by handle). Returns null
      * when no positive amount is configured.
      *
-     * @param array<string, mixed> $data submission data keyed by field_<id>
+     * @param SubmissionData $data submission data keyed by field_<id>
      */
     public function resolveAmount(Form $form, array $data): ?float
     {
@@ -89,7 +92,7 @@ class PaymentsService extends Component
      * pending Commerce order, and store it on the submission. Returns true when
      * the submission is now awaiting payment (so the caller gates email).
      *
-     * @param array<string, mixed> $data
+     * @param SubmissionData $data
      */
     public function prepare(Form $form, Submission $submission, array $data): bool
     {
@@ -139,7 +142,7 @@ class PaymentsService extends Component
         // Integration dispatch and the notification email are withheld until
         // payment clears (see IntegrationsService/NotificationsService gating).
         Plugin::getInstance()->getIntegrations()->dispatchForSubmission($submission);
-        Plugin::getInstance()->getEmailService()->sendSubmissionEmail($form, $submission, $submission->data ?? []);
+        Plugin::getInstance()->getEmailService()->queueForSubmission($form, $submission, $submission->data ?? []);
     }
 
     /**
@@ -196,15 +199,14 @@ class PaymentsService extends Component
     /**
      * Best-effort submitter email: the first email-type field's value.
      *
-     * @param array<string, mixed> $data
+     * @param SubmissionData $data
      */
     private function submitterEmail(Form $form, array $data): ?string
     {
         $fields = Plugin::getInstance()->getFormStructure()->getFieldSet((int) $form->id, (int) $form->siteId);
         foreach ($fields as $field) {
-            if (($field['type'] ?? null) === 'email') {
-                $entry = $data['field_' . $field['id']] ?? null;
-                $value = is_array($entry) ? ($entry['value'] ?? null) : $entry;
+            if ($field['type'] === 'email') {
+                $value = SubmissionValues::value($data['field_' . $field['id']] ?? null);
                 if (is_string($value) && filter_var($value, FILTER_VALIDATE_EMAIL)) {
                     return $value;
                 }
@@ -215,7 +217,7 @@ class PaymentsService extends Component
     }
 
     /**
-     * @param array<string, mixed> $data
+     * @param SubmissionData $data
      * @return array<string, mixed>
      */
     private function valuesByHandle(Form $form, array $data): array
@@ -223,8 +225,7 @@ class PaymentsService extends Component
         $fields = Plugin::getInstance()->getFormStructure()->getFieldSet((int) $form->id, (int) $form->siteId);
         $values = [];
         foreach ($fields as $field) {
-            $entry = $data['field_' . $field['id']] ?? null;
-            $values[(string) $field['name']] = is_array($entry) ? ($entry['value'] ?? null) : $entry;
+            $values[(string) $field['name']] = SubmissionValues::value($data['field_' . $field['id']] ?? null);
         }
 
         return $values;

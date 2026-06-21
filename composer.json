@@ -15,11 +15,13 @@
     "craftcms/ecs": "dev-main",
     "codeception/codeception": "^5.2",
     "codeception/module-asserts": "^3.0",
-    "codeception/module-yii2": "^1.1"
+    "codeception/module-yii2": "^1.1",
+    "dompdf/dompdf": "^2.0 || ^3.0"
   },
   "suggest": {
     "stimmt/craft-mcp": "Exposes Simple Form's read-only integration tools (plus form/submission tools) over the Model Context Protocol so AI agents can introspect forms and integration dispatch health.",
-    "craftcms/commerce": "Enables the Payment field — collect a payment on submit via a Commerce order; notifications/integrations are held until the order is paid."
+    "craftcms/commerce": "Enables the Payment field — collect a payment on submit via a Commerce order; notifications/integrations are held until the order is paid.",
+    "dompdf/dompdf": "Enables submission PDF generation — attach a print-ready PDF of a submission to notification emails and download it from the CP submission detail."
   },
   "autoload": {
     "psr-4": {
@@ -47,7 +49,12 @@
   "scripts": {
     "test": "phpunit",
     "test:integration": "codecept run integration",
-    "test:js": "node tests/js/conditional-evaluator.test.js",
+    "test:js": [
+      "node tests/js/conditional-evaluator.test.js",
+      "node tests/js/formula.test.js",
+      "node tests/js/success-action.test.js",
+      "node tests/js/row-grouping.test.js"
+    ],
     "test:all": ["@test", "@test:js", "@test:integration"],
     "ecs": "ecs check",
     "ecs-fix": "ecs check --fix",

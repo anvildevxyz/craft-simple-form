@@ -58,17 +58,10 @@ class HubSpotIntegration extends AbstractCrmIntegration
             return IntegrationResult::failure(null, 'No properties mapped for the HubSpot object');
         }
 
-        try {
-            $response = $this->httpClient()->request('POST', "https://api.hubapi.com/crm/v3/objects/$objectType", [
-                'headers' => ['Authorization' => "Bearer $token"],
-                'json' => ['properties' => $properties],
-                'http_errors' => false,
-            ]);
-        } catch (\Throwable $e) {
-            return IntegrationResult::failure(null, $e->getMessage());
-        }
-
-        return $this->resultFromResponse($response);
+        return $this->request('POST', "https://api.hubapi.com/crm/v3/objects/$objectType", [
+            'headers' => ['Authorization' => "Bearer $token"],
+            'json' => ['properties' => $properties],
+        ]);
     }
 
     public function settingsHtml(array $settings): string

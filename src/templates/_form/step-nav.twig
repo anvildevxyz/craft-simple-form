@@ -1,0 +1,20 @@
+{#
+  Default Simple Form theme — multi-step Back / Next / submit / save-resume
+  controls + progress region (#137). Rendered only for multi-step forms.
+
+  Variables:
+    steps       list of field groups (count drives data-sf-multistep)
+    submitText  translated submit-button text
+    resume      { enabled, … } or null
+-#}
+{%- apply spaceless -%}
+<div class="simple-form-step-nav" data-sf-multistep="{{ steps|length }}">
+<button type="button" class="simple-form-step-back" hidden>{{ 'Back'|t('simple-form') }}</button>
+<button type="button" class="simple-form-step-next">{{ 'Next'|t('simple-form') }}</button>
+<button type="submit" class="simple-form-submit-btn" hidden>{{ submitText }}</button>
+{%- if resume and resume.enabled -%}
+<button type="button" class="simple-form-save-resume">{{ resume.labels.button }}</button>
+{%- endif -%}
+<span class="simple-form-step-progress" role="status" aria-live="polite"></span>
+</div>
+{%- endapply -%}

@@ -61,6 +61,22 @@ class FieldModel extends Model
     }
 
     /**
+     * Whether this field collects a submission value.
+     *
+     * Resolves the field type via the registry and delegates to
+     * {@see \fabianhaef\simpleform\fields\FieldType::isInput()}, mirroring how
+     * {@see self::isVisible()}/{@see self::isRequired()} delegate. Presentational
+     * layout blocks (heading, divider, html) return false: they render but are
+     * never validated, stored, or exported. An unknown type is treated as an
+     * input so a typo can never silently drop a value.
+     */
+    public function isInputType(): bool
+    {
+        $fieldType = Plugin::getInstance()->getFieldTypeRegistry()->getFieldType($this->type, $this->config);
+        return $fieldType === null || $fieldType->isInput();
+    }
+
+    /**
      * Is this field visible given the full set of submitted values?
      *
      * Fields with no conditional logic are always visible, so this is a no-op
@@ -105,25 +121,60 @@ class FieldModel extends Model
             return [];
         }
 
+        $fieldTypeRegistry = Plugin::getInstance()->getFieldTypeRegistry();
+
+        // Resolve effective required-ness (static OR conditional) and let the
+        // field type enforce it, so there is a single required code path.
+        $config = $this->config;
+        $config['required'] = $this->isRequired($formData);
+
+        $fieldType = $fieldTypeRegistry->getFieldType($this->type, $config);
+
+        // An unregistered type is a recoverable data state (e.g. a field whose
+        // type was removed from the plugin), so it degrades to a validation
+        // error rather than a thrown exception. A genuine programmer/data
+        // defect (a malformed stored config tripping a TypeError, say) is
+        // deliberately left to propagate to the controller/Twig boundary, just
+        // as it already does on the render path in TwigExtension — surfacing the
+        // real bug instead of papering over it with a vague message.
+        if (!$fieldType) {
+            Craft::warning(sprintf('Unknown field type: %s', $this->type), 'simple-form');
+            return ['Unknown field type: ' . $this->type];
+        }
+
+        return self::applyOverride($fieldType->validate($value), $this->errorMessage);
+    }
+
+    /**
+     * Transform a validated value into the shape persisted in the submission's
+     * `data` payload. For most field types this is an identity pass-through; the
+     * Consent field replaces the raw `"1"` with its auditable consent record.
+     *
+     * @param array<string, mixed> $context per-submission context (e.g. `siteId`)
+     */
+    public function persistValue(mixed $value, array $context = []): mixed
+    {
+        $fieldType = Plugin::getInstance()->getFieldTypeRegistry()->getFieldType($this->type, $this->config);
+        if (!$fieldType) {
+            return $value;
+        }
+
+        return $fieldType->persistValue($value, $context);
+    }
+
+    /**
+     * Coerce a submitted value into the canonical form the field type stores
+     * (e.g. an int for the rating/opinion scale types). Unknown types or a
+     * resolution failure pass the value through unchanged.
+     */
+    public function normalizeValue(mixed $value): mixed
+    {
         try {
-            $fieldTypeRegistry = Plugin::getInstance()->getFieldTypeRegistry();
-
-            // Resolve effective required-ness (static OR conditional) and let the
-            // field type enforce it, so there is a single required code path.
-            $config = $this->config;
-            $config['required'] = $this->isRequired($formData);
-
-            $fieldType = $fieldTypeRegistry->getFieldType($this->type, $config);
-
-            if (!$fieldType) {
-                Craft::warning(sprintf('Unknown field type: %s', $this->type), 'simple-form');
-                return ['Unknown field type: ' . $this->type];
-            }
-
-            return self::applyOverride($fieldType->validate($value), $this->errorMessage);
+            $fieldType = Plugin::getInstance()->getFieldTypeRegistry()->getFieldType($this->type, $this->config);
+            return $fieldType !== null ? $fieldType->normalizeValue($value) : $value;
         } catch (\Throwable $e) {
-            Craft::warning(sprintf('Field validation error: %s', $e->getMessage()), 'simple-form');
-            return ['Validation error occurred'];
+            Craft::warning(sprintf('Field normalize error: %s', $e->getMessage()), 'simple-form');
+            return $value;
         }
     }
 

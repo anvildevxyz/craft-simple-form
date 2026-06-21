@@ -1,0 +1,107 @@
+<?php
+
+namespace fabianhaef\simpleform\tests\unit;
+
+use fabianhaef\simpleform\fields\DividerFieldType;
+use fabianhaef\simpleform\fields\HeadingFieldType;
+use fabianhaef\simpleform\fields\HtmlFieldType;
+use fabianhaef\simpleform\fields\TextFieldType;
+use PHPUnit\Framework\TestCase;
+
+/**
+ * #127 — the value-less presentational blocks. Pure render-string / escaping /
+ * purifier asserts, no Craft boot. The forced-sandbox Twig render of the HTML
+ * block (and its end-to-end skip from submission/export) is exercised in the
+ * integration suite, which boots a real Craft.
+ */
+class LayoutFieldTypesTest extends TestCase
+{
+    // =========================================================================
+    // isInput seam
+    // =========================================================================
+
+    public function testInputFieldsAreInputByDefault(): void
+    {
+        $this->assertTrue((new TextFieldType())->isInput());
+    }
+
+    public function testLayoutBlocksAreNotInput(): void
+    {
+        $this->assertFalse((new HeadingFieldType())->isInput());
+        $this->assertFalse((new DividerFieldType())->isInput());
+        $this->assertFalse((new HtmlFieldType())->isInput());
+    }
+
+    public function testLayoutBlocksNeverValidate(): void
+    {
+        // Even a forged `required` flag against an empty value yields no errors.
+        $this->assertSame([], (new HeadingFieldType(['required' => true]))->validate(''));
+        $this->assertSame([], (new DividerFieldType(['required' => true]))->validate(null));
+        $this->assertSame([], (new HtmlFieldType(['required' => true]))->validate(''));
+    }
+
+    // =========================================================================
+    // Heading
+    // =========================================================================
+
+    public function testHeadingRendersConfiguredLevelWithEscapedText(): void
+    {
+        $html = (new HeadingFieldType(['level' => 'h2', 'text' => 'Personal <b>details</b>']))->renderInput('field_1');
+        $this->assertStringContainsString('<h2 class="simple-form-heading">', $html);
+        $this->assertStringContainsString('Personal &lt;b&gt;details&lt;/b&gt;', $html);
+        $this->assertStringContainsString('</h2>', $html);
+        $this->assertStringNotContainsString('<b>details', $html);
+    }
+
+    public function testHeadingClampsInvalidLevelToDefault(): void
+    {
+        $this->assertSame('h3', (new HeadingFieldType(['level' => 'h1']))->level());
+        $this->assertSame('h3', (new HeadingFieldType(['level' => 'script']))->level());
+        $this->assertSame('h3', (new HeadingFieldType([]))->level());
+        $this->assertSame('h4', (new HeadingFieldType(['level' => 'h4']))->level());
+
+        // A forged level never reaches the markup.
+        $html = (new HeadingFieldType(['level' => 'h1', 'text' => 'Hi']))->renderInput('field_1');
+        $this->assertStringContainsString('<h3', $html);
+        $this->assertStringNotContainsString('<h1', $html);
+    }
+
+    public function testHeadingWithEmptyTextRendersNothing(): void
+    {
+        $this->assertSame('', (new HeadingFieldType(['level' => 'h2', 'text' => '   ']))->renderInput('field_1'));
+    }
+
+    // =========================================================================
+    // Divider
+    // =========================================================================
+
+    public function testDividerRendersPlainRuleWithoutLabel(): void
+    {
+        $this->assertSame('<hr class="simple-form-divider">', (new DividerFieldType([]))->renderInput('field_1'));
+    }
+
+    public function testDividerRendersEscapedLabel(): void
+    {
+        $html = (new DividerFieldType(['label' => 'Or & "more"']))->renderInput('field_1');
+        $this->assertStringContainsString('<hr>', $html);
+        $this->assertStringContainsString('simple-form-divider__label', $html);
+        $this->assertStringContainsString('Or &amp; &quot;more&quot;', $html);
+    }
+
+    // =========================================================================
+    // HTML block allowlist constants
+    // =========================================================================
+
+    public function testHtmlAllowlistExcludesScriptVectors(): void
+    {
+        // The documented allowlist never names script/style/iframe tags or a
+        // javascript:/data: scheme — the purifier pass (exercised in the
+        // integration suite, which boots Yii) enforces it at runtime.
+        $this->assertStringNotContainsString('script', HtmlFieldType::ALLOWED_TAGS);
+        $this->assertStringNotContainsString('style', HtmlFieldType::ALLOWED_TAGS);
+        $this->assertStringNotContainsString('iframe', HtmlFieldType::ALLOWED_TAGS);
+        $this->assertArrayNotHasKey('javascript', HtmlFieldType::ALLOWED_URI_SCHEMES);
+        $this->assertArrayNotHasKey('data', HtmlFieldType::ALLOWED_URI_SCHEMES);
+        $this->assertArrayHasKey('https', HtmlFieldType::ALLOWED_URI_SCHEMES);
+    }
+}

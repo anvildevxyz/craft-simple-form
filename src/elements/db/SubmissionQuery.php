@@ -18,6 +18,7 @@ class SubmissionQuery extends ElementQuery
 {
     public ?int $formId = null;
     public ?string $readStatus = null;
+    public mixed $userId = null;
 
     public function form(Form|string|null $value = null): static
     {
@@ -47,7 +48,17 @@ class SubmissionQuery extends ElementQuery
         return $this;
     }
 
-    public function status($value = null): static
+    /**
+     * Filter submissions by the associated user id. Accepts any value
+     * {@see Db::parseParam()} understands (int, list, ':empty:', etc.).
+     */
+    public function userId(mixed $value = null): static
+    {
+        $this->userId = $value;
+        return $this;
+    }
+
+    public function status(array|string|null $value = null): static
     {
         return $this->readStatus(is_array($value) ? ($value[0] ?? null) : $value);
     }
@@ -62,9 +73,12 @@ class SubmissionQuery extends ElementQuery
             'simpleform_submissions.userId',
             'simpleform_submissions.readStatus',
             'simpleform_submissions.spamReason',
+            'simpleform_submissions.sourceIp',
             'simpleform_submissions.paymentStatus',
             'simpleform_submissions.paymentAmount',
             'simpleform_submissions.orderId',
+            'simpleform_submissions.editTokenHash',
+            'simpleform_submissions.editTokenExpires',
         ]);
 
         if ($this->formId !== null) {
@@ -76,6 +90,12 @@ class SubmissionQuery extends ElementQuery
         if ($this->readStatus !== null) {
             $this->subQuery->andWhere(
                 Db::parseParam('simpleform_submissions.readStatus', $this->readStatus)
+            );
+        }
+
+        if ($this->userId !== null) {
+            $this->subQuery->andWhere(
+                Db::parseParam('simpleform_submissions.userId', $this->userId)
             );
         }
 

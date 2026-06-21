@@ -5,6 +5,7 @@ namespace fabianhaef\simpleform\services;
 use Craft;
 use craft\helpers\App;
 use fabianhaef\simpleform\elements\Form;
+use fabianhaef\simpleform\elements\Submission;
 use fabianhaef\simpleform\Plugin;
 use GuzzleHttp\Client;
 use yii\base\Component;
@@ -14,6 +15,8 @@ use yii\base\Component;
  * captcha: it inspects the submitted text (plus IP/UA) and returns a spam
  * verdict. Fails open — an Akismet outage or missing key never blocks a
  * legitimate submission.
+ *
+ * @phpstan-import-type SubmissionData from Submission
  */
 class AkismetService extends Component
 {
@@ -23,7 +26,7 @@ class AkismetService extends Component
      * Returns false (not spam) when Akismet is disabled, unconfigured, or the
      * API call fails — spam scoring must never reject on infrastructure trouble.
      *
-     * @param array<string, mixed> $data the built submission data (field_<id> => {label,type,value})
+     * @param SubmissionData $data the built submission data (field_<id> => {label,type,value})
      */
     public function isSpam(Form $form, array $data): bool
     {

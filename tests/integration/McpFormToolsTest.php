@@ -8,6 +8,7 @@ use craft\web\Response;
 use fabianhaef\simpleform\controllers\McpController;
 use fabianhaef\simpleform\elements\Form;
 use fabianhaef\simpleform\mcp\Scopes;
+use fabianhaef\simpleform\mcp\tools\support\FormPresenter;
 use fabianhaef\simpleform\Plugin;
 
 /**
@@ -234,6 +235,46 @@ class McpFormToolsTest extends SimpleFormTestCase
         $deleted = $this->callTool('delete_form', ['id' => $formId, 'confirm' => true], $token);
         $this->assertFalse($deleted['result']['isError']);
         $this->assertNull(Form::find()->siteId('*')->id($formId)->one());
+    }
+
+    public function testResolveByIdOrHandleFindsFormById(): void
+    {
+        $this->requireCraft();
+        $form = $this->createForm('Resolve By Id', 'resolveById');
+
+        $resolved = FormPresenter::resolveByIdOrHandle(['id' => (int)$form->id]);
+
+        $this->assertInstanceOf(Form::class, $resolved);
+        $this->assertSame((int)$form->id, (int)$resolved->id);
+    }
+
+    public function testResolveByIdOrHandleFindsFormByHandle(): void
+    {
+        $this->requireCraft();
+        $form = $this->createForm('Resolve By Handle', 'resolveByHandle');
+
+        $resolved = FormPresenter::resolveByIdOrHandle(['handle' => 'resolveByHandle']);
+
+        $this->assertInstanceOf(Form::class, $resolved);
+        $this->assertSame((int)$form->id, (int)$resolved->id);
+    }
+
+    public function testResolveByIdOrHandleReturnsErrorWhenNeitherGiven(): void
+    {
+        $this->requireCraft();
+
+        $result = FormPresenter::resolveByIdOrHandle([]);
+
+        $this->assertSame(['isError' => true, 'error' => 'Provide either "id" or "handle".'], $result);
+    }
+
+    public function testResolveByIdOrHandleReturnsNotFoundError(): void
+    {
+        $this->requireCraft();
+
+        $result = FormPresenter::resolveByIdOrHandle(['handle' => 'definitelyMissingForm']);
+
+        $this->assertSame(['isError' => true, 'error' => 'Form not found.'], $result);
     }
 
     public function testTokenWithoutFormsManageIsRejected(): void

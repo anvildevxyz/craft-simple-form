@@ -2,9 +2,11 @@
 
 namespace fabianhaef\simpleform\models;
 
+use Craft;
 use craft\base\Model;
 use craft\behaviors\EnvAttributeParserBehavior;
 use craft\helpers\App;
+use fabianhaef\simpleform\services\DenylistService;
 
 /**
  * Simple Form plugin settings.
@@ -52,6 +54,26 @@ class Settings extends Model
     public const AKISMET_FLAG = 'flag';
     public const AKISMET_BLOCK = 'block';
 
+    public const DENYLIST_FLAG = 'flag';
+    public const DENYLIST_BLOCK = 'block';
+
+    /**
+     * Deterministic, owner-controlled denylists (#140) that run before Akismet:
+     * blocked keywords, emails/domains, and IPs/CIDR ranges. Off by default so
+     * existing installs are unchanged. A hit either flags the submission as spam
+     * for review (flag, the default) or silently drops it (block), mirroring the
+     * Akismet flag/block fork.
+     */
+    public bool $enableDenylists = false;
+    public string $denylistMode = self::DENYLIST_FLAG;
+
+    /** Newline-separated keywords; '*' wildcard. Matched case-insensitively against text values. */
+    public ?string $blockedKeywords = null;
+    /** Newline-separated emails, '@domain.tld', or '*.domain.tld'. */
+    public ?string $blockedEmails = null;
+    /** Newline-separated single IPs or CIDR ranges (v4/v6). */
+    public ?string $blockedIps = null;
+
     /**
      * Max public form submissions accepted per visitor IP per minute, an abuse
      * throttle shared by the front-end submit endpoint and the GraphQL submit
@@ -66,9 +88,28 @@ class Settings extends Model
     public ?string $akismetApiKey = null;
     /** What to do with a spam verdict: flag (save as spam) or block (drop). */
     public string $akismetMode = self::AKISMET_FLAG;
+    /**
+     * Global default render-template path (#137): a site-templates directory of
+     * Twig partials (e.g. `_simple-form`) overriding the plugin's built-in form
+     * markup for every form. A per-form {@see \fabianhaef\simpleform\elements\Form::$templatePath}
+     * takes precedence; an empty value (the default) uses the plugin's built-in
+     * partials. Resolution is per partial — a theme may ship only `field.twig`
+     * and fall through to the built-in `form.twig`.
+     */
+    public ?string $templatePath = null;
     public string $storageLocation = 'database';
     public string $submitMessage = 'Thank you! Your submission has been received.';
     public string $errorMessage = 'There was an error submitting your form. Please try again.';
+
+    /**
+     * Site path where the front-end edit page lives (the template that renders
+     * `craft.simpleForm.editForm(...)`), e.g. `forms/edit-submission`. Used by
+     * `craft.simpleForm.editUrl(submission)` to build the tokenized edit link an
+     * autoresponder/email embeds. Empty = no default; pass a path explicitly to
+     * `editUrl(submission, path)` instead. The submission id (`id`) and token
+     * (`t`) are appended as query params.
+     */
+    public string $editPath = '';
 
     /**
      * Whether the resolved form structure (decoded field config + per-site
@@ -139,6 +180,22 @@ class Settings extends Model
     public bool $anonymizeInsteadOfDelete = false;
 
     /**
+     * Handle of the volume in which generated submission PDFs are stored (#143).
+     * When set, {@see \fabianhaef\simpleform\services\PdfService::store()} persists
+     * the rendered PDF as an Asset; the CP detail view links to it instead of
+     * re-rendering on demand. Empty = render on demand, never store.
+     */
+    public ?string $pdfStorageVolume = null;
+
+    /**
+     * Total cap (in megabytes) on a notification's combined attachments (#143). A
+     * notification whose PDF + uploaded files exceed this falls back to in-body
+     * download links for the uploads (and logs the skip) to protect deliverability.
+     * 0 disables the cap.
+     */
+    public int $maxAttachmentSizeMb = 10;
+
+    /**
      * Configured MCP access tokens, stored as hash-only arrays (see
      * {@see \fabianhaef\simpleform\mcp\McpToken}). The plaintext secret is NEVER
      * stored here — only its keyed hash. Shape per entry:
@@ -186,15 +243,22 @@ class Settings extends Model
                 'email',
                 'when' => fn(): bool => !$this->isEnvReference($this->defaultEmailSender),
             ],
-            [['enableHoneypot', 'enableCaptcha', 'cacheFormStructure', 'inlineFormAssets', 'enableMcp', 'dispatchIntegrationsSynchronously', 'enableAkismet', 'anonymizeInsteadOfDelete', 'allowGraphqlCaptchaBypass'], 'boolean'],
-            [['retainSubmissionsDays', 'retainIntegrationLogsDays', 'retainAuditLogDays', 'submitRateLimitPerMinute'], 'integer', 'min' => 0],
+            [['enableHoneypot', 'enableCaptcha', 'cacheFormStructure', 'inlineFormAssets', 'enableMcp', 'dispatchIntegrationsSynchronously', 'enableAkismet', 'anonymizeInsteadOfDelete', 'allowGraphqlCaptchaBypass', 'enableDenylists'], 'boolean'],
+            [['retainSubmissionsDays', 'retainIntegrationLogsDays', 'retainAuditLogDays', 'submitRateLimitPerMinute', 'maxAttachmentSizeMb'], 'integer', 'min' => 0],
+            [['pdfStorageVolume'], 'string'],
             [['draftRetentionDays'], 'integer', 'min' => 1],
             [['akismetMode'], 'in', 'range' => [self::AKISMET_FLAG, self::AKISMET_BLOCK]],
+            [['denylistMode'], 'in', 'range' => [self::DENYLIST_FLAG, self::DENYLIST_BLOCK]],
+            [['blockedKeywords', 'blockedEmails', 'blockedIps'], 'string'],
+            // Reject malformed IP/CIDR entries at save so they never fail silently
+            // at submit time (a bad line would simply never match).
+            [['blockedIps'], 'validateBlockedIps'],
             [['akismetApiKey'], 'required', 'when' => fn(): bool => $this->enableAkismet],
             [['mcpTokens'], 'safe'],
             [['captchaType'], 'in', 'range' => [self::CAPTCHA_V3, self::CAPTCHA_V2]],
             [['selectedCaptchaProvider'], 'string'],
             [['storageLocation'], 'in', 'range' => ['database']],
+            [['templatePath'], 'string'],
             [['recaptchaV3MinScore'], 'number', 'min' => 0, 'max' => 1],
             [
                 ['recaptchaV3SiteKey', 'recaptchaV3SecretKey'],
@@ -265,6 +329,31 @@ class Settings extends Model
     public function getParsedSecretKey(): ?string
     {
         return $this->parseValue($this->getActiveSecretKey());
+    }
+
+    /**
+     * Validate every non-empty line of the blocked-IPs list is either a single
+     * IPv4/IPv6 address or a CIDR range. Surfaces a specific inline error naming
+     * the offending entry so it can be fixed at save time rather than failing
+     * silently (an unparseable line would otherwise just never match).
+     */
+    public function validateBlockedIps(string $attribute): void
+    {
+        $value = $this->$attribute;
+        if (!is_string($value) || trim($value) === '') {
+            return;
+        }
+
+        foreach (preg_split('/\R/', $value) ?: [] as $line) {
+            $entry = trim((string) $line);
+            if ($entry === '') {
+                continue;
+            }
+
+            if (!DenylistService::isValidIpEntry($entry)) {
+                $this->addError($attribute, Craft::t('simple-form', 'Invalid IP or CIDR range: {entry}', ['entry' => $entry]));
+            }
+        }
     }
 
     private function parseValue(?string $value): ?string

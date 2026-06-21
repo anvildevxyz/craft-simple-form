@@ -106,13 +106,11 @@ class SubmissionsController extends Controller
 
         $submissions = $query->all();
 
-        // Get all forms for filter dropdown
         $allForms = Form::find()
             ->siteId($siteId)
             ->orderBy(['title' => SORT_ASC])
             ->all();
 
-        // Get submission statistics
         $stats = $this->getSubmissionStats($siteId, $formId !== null ? (int) $formId : null);
 
         return $this->renderTemplate('simple-form/submissions/index', [
@@ -136,6 +134,39 @@ class SubmissionsController extends Controller
     private function getSubmissionStats(int $siteId, ?int $formId = null): array
     {
         return Plugin::getInstance()->getReports()->statusBreakdown($siteId, $formId);
+    }
+
+    /**
+     * The CP edit URL + label for the Craft element an element-integration
+     * dispatch created (#142), or null when the log row carries no element or it
+     * has since been deleted.
+     *
+     * @param array<string, mixed> $log a dispatch-log row
+     * @return array{url: string, label: string}|null
+     */
+    private function elementLink(array $log): ?array
+    {
+        $elementId = $log['elementId'] ?? null;
+        $elementType = $log['elementType'] ?? null;
+        if ($elementId === null || !is_string($elementType)
+            || !is_subclass_of($elementType, \craft\base\ElementInterface::class)) {
+            return null;
+        }
+
+        $element = Craft::$app->getElements()->getElementById((int) $elementId, $elementType, '*');
+        if ($element === null) {
+            return null;
+        }
+
+        $url = $element->getCpEditUrl();
+        if ($url === null) {
+            return null;
+        }
+
+        return [
+            'url' => $url,
+            'label' => sprintf('%s #%d', $element::displayName(), (int) $elementId),
+        ];
     }
 
     /**
@@ -169,6 +200,8 @@ class SubmissionsController extends Controller
             'perDay' => $reports->submissionsPerDay($siteId, $days, $formId),
             'perForm' => $reports->perFormTotals($siteId),
             'dispatch' => $reports->dispatchHealth(),
+            // Rating/opinion numeric stats only apply to a single form's field set.
+            'scales' => $formId !== null ? $reports->scaleBreakdown($siteId, $formId) : [],
         ]);
     }
 
@@ -198,13 +231,70 @@ class SubmissionsController extends Controller
             $integrationNames[(int) $integration->id] = $integration->name;
         }
 
+        // Deep links to elements created by element-integration dispatches (#142),
+        // keyed by log id.
+        $elementLinks = [];
+        foreach ($logs as $log) {
+            $link = $this->elementLink($log);
+            if ($link !== null) {
+                $elementLinks[(int) $log['id']] = $link;
+            }
+        }
+
         return $this->renderTemplate('simple-form/submissions/view', [
             'submission' => $submission,
             'form' => $form,
             'data' => $data,
             'integrationLogs' => $logs,
             'integrationNames' => $integrationNames,
+            'elementLinks' => $elementLinks,
             'canManageIntegrations' => Craft::$app->getUser()->checkPermission(SimpleFormPermissions::MANAGE_INTEGRATIONS),
+            'pdfAvailable' => Plugin::getInstance()->getPdf()->isAvailable(),
+        ]);
+    }
+
+    /**
+     * Stream a PDF of one submission (#143). Serves the stored Asset when a PDF
+     * storage volume is configured, otherwise renders on demand. Gated by the
+     * base viewSubmissions permission (enforced in beforeAction). Degrades with a
+     * clear error when no PDF engine is installed.
+     */
+    public function actionPdf(int $submissionId): Response
+    {
+        $pdf = Plugin::getInstance()->getPdf();
+        if (!$pdf->isAvailable()) {
+            throw new \yii\web\ServerErrorHttpException(Craft::t('simple-form', 'Install the dompdf library to generate submission PDFs.'));
+        }
+
+        $siteId = Craft::$app->getSites()->getCurrentSite()->id;
+        $submission = Submission::find()->siteId($siteId)->id($submissionId)->one();
+        if (!$submission) {
+            throw new \yii\web\NotFoundHttpException('Submission not found');
+        }
+
+        $form = $submission->getForm();
+        if (!$form instanceof Form) {
+            throw new \yii\web\NotFoundHttpException('Form not found');
+        }
+
+        $data = is_array($submission->data) ? $submission->data : [];
+        $filename = $pdf->filename($form, $submission);
+
+        // Reuse a stored Asset when one exists, else render on demand.
+        $asset = $pdf->store($form, $submission, $data);
+        if ($asset !== null) {
+            return $this->response->sendStreamAsFile($asset->getStream(), $filename, [
+                'mimeType' => 'application/pdf',
+            ]);
+        }
+
+        $bytes = $pdf->render($form, $submission, $data, (int) $submission->siteId);
+        if ($bytes === null) {
+            throw new \yii\web\ServerErrorHttpException(Craft::t('simple-form', 'Couldn’t generate the submission PDF.'));
+        }
+
+        return $this->response->sendContentAsFile($bytes, $filename, [
+            'mimeType' => 'application/pdf',
         ]);
     }
 

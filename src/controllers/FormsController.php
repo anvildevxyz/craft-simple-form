@@ -4,14 +4,17 @@ namespace fabianhaef\simpleform\controllers;
 
 use Craft;
 use craft\enums\PropagationMethod;
+use craft\helpers\DateTimeHelper;
 use craft\models\Site;
 use craft\web\Controller;
 use fabianhaef\simpleform\elements\Form;
+use fabianhaef\simpleform\helpers\DialCodes;
 use fabianhaef\simpleform\helpers\FieldQueryHelper;
 use fabianhaef\simpleform\helpers\SimpleFormPermissions;
 use fabianhaef\simpleform\helpers\SiteHelper;
 use fabianhaef\simpleform\Plugin;
 use fabianhaef\simpleform\services\FieldSyncService;
+use fabianhaef\simpleform\services\FormPortabilityService;
 use yii\web\NotFoundHttpException;
 use yii\web\Response;
 
@@ -36,9 +39,19 @@ class FormsController extends Controller
         // any per-form field access in the listing stays N+1-free.
         Form::eagerLoadFields($forms);
 
+        $stencils = array_map(
+            static fn($stencil): array => [
+                'handle' => $stencil->handle,
+                'name' => $stencil->name,
+                'description' => $stencil->description,
+            ],
+            array_values(Plugin::getInstance()->getStencilLibrary()->getAll()),
+        );
+
         return $this->renderTemplate('simple-form/forms/index', [
             'forms' => $forms,
             'currentSite' => $site,
+            'stencils' => $stencils,
         ]);
     }
 
@@ -57,10 +70,7 @@ class FormsController extends Controller
 
             // Not present on this site — fall back to wherever it exists and redirect there.
             if (!$form) {
-                $form = Form::find()->siteId('*')->id($formId)->status(null)->one();
-                if (!$form) {
-                    throw new NotFoundHttpException('Form not found');
-                }
+                $form = $this->getFormOrFail((int)$formId);
                 $existingSite = Craft::$app->getSites()->getSiteById($form->siteId);
                 if ($existingSite) {
                     return $this->redirect("simple-form/forms/edit/{$formId}?site={$existingSite->handle}");
@@ -107,6 +117,59 @@ class FormsController extends Controller
         $form->emailReplyTo = $request->getBodyParam('emailReplyTo');
         $form->emailBody = $request->getBodyParam('emailBody');
         $form->allowSaveResume = (bool) $request->getBodyParam('allowSaveResume');
+
+        // Post-submit behavior (#133). The message/URL/error overrides are
+        // per-site translatable content; the action + entry id are shared.
+        $form->postSubmitAction = in_array(
+            (string) $request->getBodyParam('postSubmitAction', 'message'),
+            Form::POST_SUBMIT_ACTIONS,
+            true,
+        ) ? (string) $request->getBodyParam('postSubmitAction', 'message') : 'message';
+        $redirectEntryId = $request->getBodyParam('redirectEntryId');
+        if (is_array($redirectEntryId)) {
+            $redirectEntryId = reset($redirectEntryId) ?: null;
+        }
+        $form->redirectEntryId = $redirectEntryId !== null && $redirectEntryId !== ''
+            ? (int) $redirectEntryId
+            : null;
+        $form->submitMessage = $request->getBodyParam('submitMessage');
+        $form->errorMessage = $request->getBodyParam('errorMessage');
+        $form->redirectUrl = $request->getBodyParam('redirectUrl');
+
+        // Scheduling window + quota. Empty inputs clear the bound (open-ended /
+        // unlimited). forms.dateTimeField posts a {date, time, timezone} array,
+        // which DateTimeHelper::toDateTime normalises (returns false when blank).
+        $openDate = DateTimeHelper::toDateTime($request->getBodyParam('openDate')) ?: null;
+        $closeDate = DateTimeHelper::toDateTime($request->getBodyParam('closeDate')) ?: null;
+        $form->openDate = $openDate instanceof \DateTime ? $openDate : null;
+        $form->closeDate = $closeDate instanceof \DateTime ? $closeDate : null;
+        $submissionLimit = $request->getBodyParam('submissionLimit');
+        $form->submissionLimit = is_numeric($submissionLimit) && (int) $submissionLimit > 0
+            ? (int) $submissionLimit
+            : null;
+        $form->closedMessage = $request->getBodyParam('closedMessage') ?: null;
+
+        // Login + per-user limit (#135). Shared flags + per-site notice overrides.
+        $form->requireLogin = (bool) $request->getBodyParam('requireLogin');
+        $form->loginRequiredMessage = $request->getBodyParam('loginRequiredMessage');
+        $submissionsPerUser = trim((string) $request->getBodyParam('submissionsPerUser', ''));
+        $form->submissionsPerUser = $submissionsPerUser !== '' ? (int) $submissionsPerUser : null;
+        $form->guestLimitKey = (string) $request->getBodyParam('guestLimitKey', Form::GUEST_LIMIT_NONE);
+        $form->userLimitMessage = $request->getBodyParam('userLimitMessage');
+
+        // Custom render-template path (#137). Shared, structural; blank clears it.
+        $templatePath = trim((string) $request->getBodyParam('templatePath', ''));
+        $form->templatePath = $templatePath !== '' ? $templatePath : null;
+
+        // Duplicate prevention (#140). Shared flags + window.
+        $form->preventDuplicates = (bool) $request->getBodyParam('preventDuplicates');
+        $form->duplicateWindowMinutes = (int) $request->getBodyParam('duplicateWindowMinutes', 0);
+        $form->duplicateKey = (string) $request->getBodyParam('duplicateKey', Form::DUPLICATE_KEY_EMAIL);
+
+        // Front-end editing (#144). Shared flags + edit window.
+        $form->allowEditing = (bool) $request->getBodyParam('allowEditing');
+        $form->editWindowMinutes = max(0, (int) $request->getBodyParam('editWindowMinutes', 0));
+
         $form->propagationMethod = PropagationMethod::tryFrom(
             (string)$request->getBodyParam('propagationMethod', 'none')
         ) ?? PropagationMethod::None;
@@ -119,6 +182,23 @@ class FormsController extends Controller
         $fieldErrors = $fieldSync->validate($items);
         if ($fieldErrors) {
             Craft::$app->getSession()->setError(reset($fieldErrors));
+            return $this->renderEdit($form, $site, $this->encodeBuilderJson($items));
+        }
+
+        // Editing an HTML layout block's body requires a dedicated permission.
+        // Re-checked here (after parsing the posted set) so a forged HTML block
+        // cannot slip past the controller's MANAGE_FORMS gate. Reorder/delete of
+        // an existing block — and an unchanged body — are not gated.
+        $identity = Craft::$app->getUser()->getIdentity();
+        if (
+            $identity !== null
+            && !$identity->admin
+            && !$identity->can(SimpleFormPermissions::EDIT_HTML_BLOCKS)
+            && $fieldSync->htmlBlockBodyChanged($items, $site->id)
+        ) {
+            Craft::$app->getSession()->setError(
+                Craft::t('simple-form', 'You don’t have permission to edit HTML layout blocks.')
+            );
             return $this->renderEdit($form, $site, $this->encodeBuilderJson($items));
         }
 
@@ -142,6 +222,130 @@ class FormsController extends Controller
         return $this->redirect("simple-form/forms/edit/{$form->id}?site={$site->handle}");
     }
 
+    /**
+     * Deep-copy an existing form (the edit screen's "Save as a new form" button)
+     * and redirect to the copy's edit screen.
+     *
+     * @throws NotFoundHttpException if the source form does not exist
+     * @throws \Throwable if the copy cannot be saved
+     */
+    public function actionDuplicate(): Response
+    {
+        $this->requirePostRequest();
+        /** @var \craft\web\Request $request */
+        $request = Craft::$app->getRequest();
+        $formId = $request->getRequiredBodyParam('formId');
+
+        // Duplication is element-wide (all sites), so load from any site.
+        $source = Form::find()->siteId('*')->id($formId)->status(null)->one();
+        if (!$source) {
+            throw new NotFoundHttpException('Form not found');
+        }
+
+        try {
+            $copy = Plugin::getInstance()->getFormClone()->duplicate($source);
+        } catch (\Throwable $e) {
+            Craft::warning('Form duplicate failed: ' . $e->getMessage(), 'simple-form');
+            Craft::$app->getSession()->setError(Craft::t('simple-form', 'Couldn’t duplicate the form.'));
+            return $this->redirect("simple-form/forms/edit/{$formId}");
+        }
+
+        Craft::$app->getSession()->setNotice(Craft::t('simple-form', 'Form duplicated.'));
+        return $this->redirect("simple-form/forms/edit/{$copy->id}");
+    }
+
+    /**
+     * Create a new form pre-populated from a built-in stencil and redirect to its
+     * edit screen.
+     *
+     * @throws NotFoundHttpException if the stencil handle is unknown
+     * @throws \Throwable if the form cannot be saved
+     */
+    public function actionNewFromStencil(): Response
+    {
+        $this->requirePostRequest();
+        /** @var \craft\web\Request $request */
+        $request = Craft::$app->getRequest();
+        $handle = (string) $request->getRequiredBodyParam('stencil');
+
+        $stencil = Plugin::getInstance()->getStencilLibrary()->getByHandle($handle);
+        if ($stencil === null) {
+            throw new NotFoundHttpException('Stencil not found');
+        }
+
+        try {
+            $form = Plugin::getInstance()->getFormClone()->createFromStencil($stencil);
+        } catch (\Throwable $e) {
+            Craft::warning('Stencil create failed: ' . $e->getMessage(), 'simple-form');
+            Craft::$app->getSession()->setError(Craft::t('simple-form', 'Couldn’t create the form from the stencil.'));
+            return $this->redirect('simple-form/forms');
+        }
+
+        Craft::$app->getSession()->setNotice(Craft::t('simple-form', 'Form created.'));
+        return $this->redirect("simple-form/forms/edit/{$form->id}");
+    }
+
+    /**
+     * Stream a form's portable, secret-free definition as a JSON download (#139).
+     */
+    public function actionExport(int $formId): Response
+    {
+        $form = Form::find()->siteId('*')->id($formId)->status(null)->one();
+        if (!$form) {
+            throw new NotFoundHttpException('Form not found');
+        }
+
+        $json = Plugin::getInstance()->getPortability()->exportJson($form);
+        $filename = ($form->handle ?: 'form') . '.json';
+
+        Plugin::getInstance()->getAudit()->log('form.export', 'form', (int) $form->id, (string) ($form->title ?? $form->name));
+
+        /** @var \craft\web\Response $response */
+        $response = Craft::$app->getResponse();
+        return $response->sendContentAsFile(
+            $json,
+            $filename,
+            ['mimeType' => 'application/json'],
+        );
+    }
+
+    /**
+     * Import a form definition from an uploaded JSON file (#139), then redirect to
+     * the new form's edit screen with any warnings surfaced as a notice.
+     */
+    public function actionImport(): Response
+    {
+        $this->requirePostRequest();
+
+        $upload = \yii\web\UploadedFile::getInstanceByName('file');
+        if ($upload === null || $upload->tempName === '') {
+            Craft::$app->getSession()->setError(Craft::t('simple-form', 'Please choose a JSON file to import.'));
+            return $this->redirect('simple-form/forms');
+        }
+
+        /** @var \craft\web\Request $request */
+        $request = Craft::$app->getRequest();
+        $mode = (string) $request->getBodyParam('mode', FormPortabilityService::MODE_RENAME);
+        $json = (string) file_get_contents($upload->tempName);
+
+        try {
+            $result = Plugin::getInstance()->getPortability()->importJson($json, ['mode' => $mode]);
+        } catch (\Throwable $e) {
+            Craft::warning('Form import failed: ' . $e->getMessage(), 'simple-form');
+            Craft::$app->getSession()->setError($e->getMessage());
+            return $this->redirect('simple-form/forms');
+        }
+
+        $form = $result->form;
+        $notice = Craft::t('simple-form', 'Form imported.');
+        if ($result->warnings !== []) {
+            $notice .= ' ' . implode(' ', $result->warnings);
+        }
+        Craft::$app->getSession()->setNotice($notice);
+
+        return $this->redirect("simple-form/forms/edit/{$form?->id}");
+    }
+
     public function actionDelete(): Response
     {
         $this->requirePostRequest();
@@ -150,10 +354,7 @@ class FormsController extends Controller
         $formId = $request->getRequiredBodyParam('formId');
 
         // Deletion is element-wide (all sites), so load from any site.
-        $form = Form::find()->siteId('*')->id($formId)->status(null)->one();
-        if (!$form) {
-            throw new NotFoundHttpException('Form not found');
-        }
+        $form = $this->getFormOrFail((int)$formId);
 
         if (!Craft::$app->getElements()->deleteElement($form)) {
             return $this->asJsonErrors($form->getErrors());
@@ -173,22 +374,84 @@ class FormsController extends Controller
     {
         $supportedSites = $this->getSupportedSitesForForm($form);
 
-        $volumes = array_map(
-            static fn($v): array => ['handle' => $v->handle, 'name' => $v->name],
+        // Resolve the redirect entry (on the edited site) for the element select.
+        $redirectEntry = null;
+        if ($form->redirectEntryId !== null) {
+            $redirectEntry = \craft\elements\Entry::find()
+                ->id($form->redirectEntryId)
+                ->siteId($site->id)
+                ->status(null)
+                ->one();
+        }
+
+        /** @var list<array{handle: string, name: string}> $volumes */
+        $volumes = array_values(array_map(
+            static fn($v): array => ['handle' => (string) $v->handle, 'name' => (string) $v->name],
             Craft::$app->getVolumes()->getAllVolumes(),
-        );
+        ));
+
+        // Curated dial-code list for the Phone field's inspector controls,
+        // localized per site. Structural config (not content), so it ships to
+        // the builder as a flat list rather than through the translation path.
+        $phoneCountries = [];
+        foreach (DialCodes::all() as $iso => $meta) {
+            $phoneCountries[] = [
+                'iso' => $iso,
+                'dial' => $meta['dial'],
+                'label' => DialCodes::label($iso),
+            ];
+        }
+
+        $identity = Craft::$app->getUser()->getIdentity();
+        $canEditHtmlBlocks = $identity !== null
+            && ($identity->admin || $identity->can(SimpleFormPermissions::EDIT_HTML_BLOCKS));
 
         return $this->renderTemplate('simple-form/forms/edit', [
             'form' => $form,
             'currentSite' => $site,
             'supportedSites' => $supportedSites,
             'builderData' => $builderDataJson,
+            'redirectEntry' => $redirectEntry,
             'volumes' => array_values($volumes),
+            'phoneCountries' => $phoneCountries,
+            'canEditHtmlBlocks' => $canEditHtmlBlocks,
+            // Selectable sources per element-relation type (section/group/volume
+            // handles), so the field builder can offer a source picker scoped to
+            // the chosen element type.
+            'relationSources' => $this->relationSources(array_values($volumes)),
             // The source site authors canonical option labels; other sites only
             // translate them. Single-site forms are always their own source.
             'isSourceSite' => count($supportedSites) <= 1
                 || $site->id === Craft::$app->getSites()->getPrimarySite()->id,
         ]);
+    }
+
+    /**
+     * The selectable sources for each element-relation field type — section,
+     * category-group, tag-group, user-group, and volume handles + names — so the
+     * field builder can render a source picker scoped to the chosen element type.
+     * Volumes are reused from the file-field volume list already gathered.
+     *
+     * @param list<array{handle: string, name: string}> $volumes
+     * @return array<string, list<array{handle: string, name: string}>>
+     */
+    private function relationSources(array $volumes): array
+    {
+        /** @var \craft\web\Application $app */
+        $app = Craft::$app;
+
+        $map = static fn(array $items): array => array_values(array_map(
+            static fn($item): array => ['handle' => (string) $item->handle, 'name' => (string) $item->name],
+            $items,
+        ));
+
+        return [
+            'entry' => $map($app->getEntries()->getAllSections()),
+            'category' => $map($app->getCategories()->getAllGroups()),
+            'tag' => $map($app->getTags()->getAllTagGroups()),
+            'user' => $map($app->getUserGroups()->getAllGroups()),
+            'asset' => array_values($volumes),
+        ];
     }
 
     /**
