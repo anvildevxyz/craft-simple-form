@@ -27,6 +27,9 @@ installation live in the [project README](../README.md).)
   read-only GraphQL/MCP surface. Includes how to write a custom connector.
 - **[Submissions](submissions.md)** — CP management, export, trash/restore,
   retention/GDPR, analytics, audit log, and front-end editing.
+- **[Payments](payments.md)** — collect a payment on submit via Craft Commerce:
+  the embedded gateway form, pay-to-submit flow, offsite/3-D-Secure handling,
+  payment status + abandoned-checkout expiry, and the CP surfaces.
 - **[Theming / render templates](render-templates.md)** — override how forms and
   fields render with your own Twig partials.
 - **[Import / export](import-export.md)** — move a form's full definition between
@@ -43,4 +46,6 @@ installation live in the [project README](../README.md).)
 
 ## Reference
 
+- [Settings](reference/SETTINGS.md) — every plugin setting in one place: default,
+  purpose, and a link to the guide for each.
 - [PERMISSIONS.md](reference/PERMISSIONS.md) — user permissions the plugin registers.

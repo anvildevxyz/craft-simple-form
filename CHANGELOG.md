@@ -21,6 +21,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   (see LICENSE.md).
 
 ### Added
+- **Payments via Craft Commerce** ([guide](docs/payments.md)): a Payment field
+  collects a payment on submit through the configured gateway's embedded form
+  (pay-to-submit — a decline saves nothing). Notifications and integrations are
+  withheld until the payment settles; abandoned offsite checkouts expire to a
+  `canceled` status. Commerce stays a soft dependency. CP shows payment status,
+  amount, and a link to the order.
 - **18 new field types** ([guide](docs/field-types.md)): Phone (country code +
   validation), Hidden (dynamic defaults), Agree/Consent (GDPR), Name and Address
   (composite), Rating and Opinion Scale/NPS, Signature, Calculation (formula

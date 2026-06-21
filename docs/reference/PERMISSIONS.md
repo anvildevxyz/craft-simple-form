@@ -10,6 +10,21 @@ Controls access to:
 - Field management (add/edit/delete/reorder fields)
 - Access to FormsController and FieldsController
 
+Two finer-grained permissions nest under it:
+
+#### `simple-form:manageIntegrations` (nested under manageForms)
+Controls access to:
+- Creating, editing, enabling/disabling, and deleting outbound integrations
+- Attaching integrations to forms, and resending failed dispatches
+- Access to IntegrationsController
+
+#### `simple-form:editHtmlBlocks` (nested under manageForms)
+Controls access to:
+- Authoring the body of **HTML layout blocks** (which render through the Twig
+  sandbox). A form manager *without* this permission can place an HTML block but
+  cannot edit its raw HTML/Twig body — a privilege-separation guard so untrusted
+  form editors can't inject template code.
+
 ### `simple-form:viewSubmissions`
 Controls access to:
 - View submission list and individual submissions

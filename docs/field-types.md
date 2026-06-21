@@ -268,16 +268,24 @@ inner types.
 
 ### Payment (`payment`)
 
-Marks a form as requiring payment and defines the amount. **Requires Craft
-Commerce** — on submit a pending order is created and
-notifications/integrations are gated until payment completes. The field collects
-no posted value of its own.
+Collects a payment as part of the submission via **Craft Commerce** (a soft
+dependency). On the front end it renders the configured gateway's embedded
+payment form (card fields, etc.); the charge is processed **before the
+submission is saved** (a decline saves nothing), and notifications / integrations
+are withheld until it settles. Without Commerce the field degrades to an
+informational note. The field collects no posted value of its own.
 
 - `amountType` — `fixed` | `field` (default `fixed`).
 - `amount` — the fixed amount (when `amountType` = `fixed`).
 - `amountField` — handle of a numeric field holding the amount (when `field`).
+- `minAmount` / `maxAmount` — optional bounds on the resolved amount; an
+  out-of-range charge is rejected (most useful with `amountType: field`).
 - `currency` — ISO currency code (informational; the Commerce store currency is
   authoritative).
+
+> See the **[Payments guide](payments.md)** for setup (gateway + Donation
+> purchasable), the pay-to-submit flow, offsite/3-D-Secure handling, payment
+> status and abandoned-checkout expiry, and the CP surfaces.
 
 ---
 
