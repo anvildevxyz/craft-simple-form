@@ -36,13 +36,30 @@ transaction (see `codeception.yml`, `tests/integration/`). Requires the
 
 ```bash
 composer test:integration
-composer test:all          # unit + integration
+composer test:all          # unit + js + integration + smoke
 ```
 
 The integration suite covers form create/render, submission create + validation
 (with DB round-trip), email notification, and multi-site content resolution.
 
+## JavaScript tests
+
+Node parity tests for the client-side conditional-logic and formula evaluators:
+
+```bash
+composer test:js
+```
+
 ## Smoke tests
 
-Browser-driven manual/automated scenarios live under `tests/smoke/` and are
-documented in [../smoke-tests/SMOKE_TESTS.md](../smoke-tests/SMOKE_TESTS.md).
+A Codeception **functional** smoke suite (`tests/smoke/`, `tests/smoke.suite.yml`)
+drives the end-to-end front-end flows — render → submit → assert — headlessly:
+
+```bash
+composer test:smoke        # run inside DDEV, like the integration suite
+```
+
+CP-builder UI and browser-rendering scenarios that need a real browser are kept
+as a Playwright scenario library in
+[../smoke-tests/SMOKE_TESTS.md](../smoke-tests/SMOKE_TESTS.md) and run via the
+`/craft-smoke-test` skill.
