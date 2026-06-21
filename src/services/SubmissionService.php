@@ -12,6 +12,7 @@ use fabianhaef\simpleform\events\SubmissionEvent;
 use fabianhaef\simpleform\fields\CalculationFieldType;
 use fabianhaef\simpleform\fields\FileFieldType;
 use fabianhaef\simpleform\fields\HiddenFieldType;
+use fabianhaef\simpleform\fields\RepeaterFieldType;
 use fabianhaef\simpleform\fields\SignatureFieldType;
 use fabianhaef\simpleform\helpers\RateLimiter;
 use fabianhaef\simpleform\helpers\SignaturePng;
@@ -305,6 +306,15 @@ class SubmissionService extends Component
             $fieldErrors = $field->validateValue($value, $valuesByHandle);
             if (!empty($fieldErrors)) {
                 $errors['field_' . $fieldId] = $fieldErrors;
+            }
+
+            // A repeater's posted value is a nested array keyed by row index and
+            // inner handle; normalize it to an ordered list of row objects so the
+            // stored shape matches the validated one (unknown inner keys dropped,
+            // empty trailing rows removed, gaps re-keyed).
+            if ($field->getType() === RepeaterFieldType::getType()) {
+                $repeater = new RepeaterFieldType($field->getConfig());
+                $value = RepeaterFieldType::normalizeRows($value, $repeater->innerFields());
             }
 
             // Let the field type shape its persisted value (identity for most;

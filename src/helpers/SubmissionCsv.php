@@ -258,6 +258,14 @@ final class SubmissionCsv
             if (array_key_exists('consented', $value)) {
                 return self::consentScalar($value);
             }
+            // A repeater value is an ordered list of row objects (associative
+            // arrays). It can't map to one tidy cell, so serialize the whole
+            // value to JSON (lossless) — matching the PRD's v1 export shape.
+            // Flat multi-value fields (e.g. file-id or checkbox arrays) stay
+            // pipe-joined as before.
+            if (self::isRepeaterValue($value)) {
+                return self::neutralizeFormula((string) json_encode($value));
+            }
             return implode('|', array_map([self::class, 'scalar'], $value));
         }
         return self::neutralizeFormula((string) $value);
@@ -286,6 +294,21 @@ final class SubmissionCsv
         }
 
         return 'Yes' . $at;
+    }
+
+    /**
+     * Whether a value is a repeater value — an ordered list whose first element
+     * is an associative array (a row object). Flat multi-value arrays
+     * (checkbox/file lists of scalars) are not.
+     *
+     * @param array<int|string, mixed> $value
+     */
+    private static function isRepeaterValue(array $value): bool
+    {
+        if ($value === [] || array_keys($value) !== range(0, count($value) - 1)) {
+            return false;
+        }
+        return is_array($value[0]);
     }
 
     /**

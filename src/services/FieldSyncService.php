@@ -8,6 +8,7 @@ use craft\helpers\StringHelper;
 use fabianhaef\simpleform\elements\Form;
 use fabianhaef\simpleform\exceptions\FormulaException;
 use fabianhaef\simpleform\fields\CalculationFieldType;
+use fabianhaef\simpleform\fields\RepeaterFieldType;
 use fabianhaef\simpleform\helpers\ConditionalEvaluator;
 use fabianhaef\simpleform\helpers\Formula;
 use fabianhaef\simpleform\Plugin;
@@ -71,6 +72,11 @@ class FieldSyncService extends Component
                 if (empty($options) || !is_array($options)) {
                     $errors[] = Craft::t('simple-form', 'Field {name}: needs at least one option.', ['name' => $name]);
                 }
+            }
+
+            if ($type === RepeaterFieldType::getType()) {
+                $config = is_array($item['config'] ?? null) ? $item['config'] : [];
+                $errors = array_merge($errors, self::repeaterConfigErrors($config, $name));
             }
         }
 
@@ -145,6 +151,75 @@ class FieldSyncService extends Component
 
         if (self::hasCycle($graph)) {
             $errors[] = Craft::t('simple-form', 'Calculation formulas form a circular dependency between fields. Remove one of the references.');
+        }
+
+        return $errors;
+    }
+
+    /**
+     * Validate a repeater field's nested config: inner types must be in the
+     * allow-list, inner handles unique within the repeater and slug-safe,
+     * `minRows <= maxRows`, and select inner fields must carry options.
+     *
+     * Pure + static (no DB) so the MCP single-field write path can reuse the
+     * exact same rules as the CP batch save.
+     *
+     * @param array<string, mixed> $config the repeater container's config
+     * @param string $name the field's display name, for the error messages
+     * @return string[]
+     */
+    public static function repeaterConfigErrors(array $config, string $name): array
+    {
+        $errors = [];
+
+        $min = (int) ($config['minRows'] ?? 0);
+        $max = (int) ($config['maxRows'] ?? 0);
+        if ($min < 0) {
+            $errors[] = Craft::t('simple-form', 'Field {name}: minimum rows cannot be negative.', ['name' => $name]);
+        }
+        if ($max > 0 && $min > $max) {
+            $errors[] = Craft::t('simple-form', 'Field {name}: minimum rows cannot exceed maximum rows.', ['name' => $name]);
+        }
+
+        $inner = $config['fields'] ?? null;
+        if (empty($inner) || !is_array($inner)) {
+            $errors[] = Craft::t('simple-form', 'Field {name}: needs at least one inner field.', ['name' => $name]);
+            return $errors;
+        }
+
+        $seen = [];
+        foreach ($inner as $i => $def) {
+            $pos = $i + 1;
+            if (!is_array($def)) {
+                $errors[] = Craft::t('simple-form', 'Field {name}: inner field #{pos} is malformed.', ['name' => $name, 'pos' => $pos]);
+                continue;
+            }
+
+            $handle = trim((string) ($def['handle'] ?? ''));
+            $type = (string) ($def['type'] ?? '');
+
+            if ($handle === '') {
+                $errors[] = Craft::t('simple-form', 'Field {name}: inner field #{pos} needs a handle.', ['name' => $name, 'pos' => $pos]);
+            } elseif (!preg_match('/^[a-zA-Z_][a-zA-Z0-9_]*$/', $handle)) {
+                $errors[] = Craft::t('simple-form', 'Field {name}: inner handle “{handle}” is invalid.', ['name' => $name, 'handle' => $handle]);
+            } else {
+                $key = strtolower($handle);
+                if (isset($seen[$key])) {
+                    $errors[] = Craft::t('simple-form', 'Field {name}: duplicate inner handle “{handle}”.', ['name' => $name, 'handle' => $handle]);
+                }
+                $seen[$key] = true;
+            }
+
+            if (!in_array($type, RepeaterFieldType::ALLOWED_INNER_TYPES, true)) {
+                $errors[] = Craft::t('simple-form', 'Field {name}: inner field “{handle}” has an unsupported type.', ['name' => $name, 'handle' => $handle !== '' ? $handle : "#$pos"]);
+            }
+
+            if ($type === 'select') {
+                $options = $def['options'] ?? $def['config']['options'] ?? null;
+                if (empty($options) || !is_array($options)) {
+                    $errors[] = Craft::t('simple-form', 'Field {name}: inner select “{handle}” needs at least one option.', ['name' => $name, 'handle' => $handle !== '' ? $handle : "#$pos"]);
+                }
+            }
         }
 
         return $errors;

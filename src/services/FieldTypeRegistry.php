@@ -22,6 +22,7 @@ use fabianhaef\simpleform\fields\PaymentFieldType;
 use fabianhaef\simpleform\fields\PhoneFieldType;
 use fabianhaef\simpleform\fields\RadioFieldType;
 use fabianhaef\simpleform\fields\RatingFieldType;
+use fabianhaef\simpleform\fields\RepeaterFieldType;
 use fabianhaef\simpleform\fields\SelectFieldType;
 use fabianhaef\simpleform\fields\SignatureFieldType;
 use fabianhaef\simpleform\fields\TagRelationFieldType;
@@ -87,6 +88,7 @@ class FieldTypeRegistry extends Component
         $this->registerFieldType(UserRelationFieldType::class);
         $this->registerFieldType(AssetRelationFieldType::class);
         $this->registerFieldType(CalculationFieldType::class);
+        $this->registerFieldType(RepeaterFieldType::class);
 
         // Presentational/layout blocks (value-less; isInput() === false).
         $this->registerFieldType(HeadingFieldType::class);
