@@ -413,13 +413,13 @@ class FormsController extends Controller
             'supportedSites' => $supportedSites,
             'builderData' => $builderDataJson,
             'redirectEntry' => $redirectEntry,
-            'volumes' => array_values($volumes),
+            'volumes' => $volumes,
             'phoneCountries' => $phoneCountries,
             'canEditHtmlBlocks' => $canEditHtmlBlocks,
             // Selectable sources per element-relation type (section/group/volume
             // handles), so the field builder can offer a source picker scoped to
             // the chosen element type.
-            'relationSources' => $this->relationSources(array_values($volumes)),
+            'relationSources' => $this->relationSources($volumes),
             // The source site authors canonical option labels; other sites only
             // translate them. Single-site forms are always their own source.
             'isSourceSite' => count($supportedSites) <= 1

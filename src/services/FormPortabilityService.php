@@ -402,12 +402,11 @@ class FormPortabilityService extends Component
      */
     private function uniqueHandle(string $handle): string
     {
-        $base = $handle;
         $suffix = 2;
-        $candidate = "{$base}-{$suffix}";
+        $candidate = "{$handle}-{$suffix}";
         while (FormContentHelper::handleExists($candidate)) {
             $suffix++;
-            $candidate = "{$base}-{$suffix}";
+            $candidate = "{$handle}-{$suffix}";
         }
 
         return $candidate;

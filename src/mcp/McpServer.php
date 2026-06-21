@@ -375,10 +375,6 @@ class McpServer
     }
 
     /**
-     * @param array<string, mixed>|object $result
-     * @return array<string, mixed>
-     */
-    /**
      * @param string|int|null $id the JSON-RPC request id, echoed back verbatim
      * @param array<string, mixed>|object $result
      * @return array<string, mixed>

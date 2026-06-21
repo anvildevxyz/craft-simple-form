@@ -140,12 +140,12 @@ final class SubmissionCsv
         }
 
         // Asset fields resolve their id list to URLs before any other shaping.
-        if ($type !== '' && in_array($type, self::ASSET_TYPES, true)) {
+        if (in_array($type, self::ASSET_TYPES, true)) {
             return self::scalar(self::valueForExport($entry));
         }
 
         // Element-relation fields resolve their id list to element titles.
-        if ($type !== '' && in_array($type, FieldTypeRegistry::RELATION_TYPES, true)) {
+        if (in_array($type, FieldTypeRegistry::RELATION_TYPES, true)) {
             return self::scalar(self::cellValue($entry));
         }
 

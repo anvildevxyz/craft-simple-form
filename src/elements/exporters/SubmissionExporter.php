@@ -25,12 +25,10 @@ class SubmissionExporter extends ElementExporter
      */
     public function export(ElementQueryInterface $query): mixed
     {
-        $submissions = [];
-        foreach ($query->all() as $element) {
-            if ($element instanceof Submission) {
-                $submissions[] = $element;
-            }
-        }
+        $submissions = array_values(array_filter(
+            $query->all(),
+            static fn($element): bool => $element instanceof Submission,
+        ));
 
         return SubmissionCsv::toRows($submissions);
     }

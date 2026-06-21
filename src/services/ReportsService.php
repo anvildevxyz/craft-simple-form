@@ -145,14 +145,10 @@ class ReportsService extends Component
 
         // Accumulate sum + per-value counts per field across the form's
         // non-spam submissions, reading each field's stored integer value.
-        $sums = [];
-        $counts = [];
-        $dist = [];
-        foreach (array_keys($scaleFields) as $key) {
-            $sums[$key] = 0;
-            $counts[$key] = 0;
-            $dist[$key] = [];
-        }
+        $keys = array_keys($scaleFields);
+        $sums = array_fill_keys($keys, 0);
+        $counts = array_fill_keys($keys, 0);
+        $dist = array_fill_keys($keys, []);
 
         $submissions = Submission::find()
             ->siteId($siteId)

@@ -102,13 +102,16 @@ class DetectSpamPatternsTool implements ToolInterface
 
         // First pass: build each submission's combined text + duplicate index.
         $bodies = [];
+        $norms = [];
         $byNormalized = [];
         foreach ($submissions as $submission) {
+            $id = (int)$submission->id;
             $text = trim(implode("\n", InsightCorpus::textValues($submission, $textHandles)));
-            $bodies[(int)$submission->id] = $text;
+            $bodies[$id] = $text;
             $norm = $this->normalize($text);
+            $norms[$id] = $norm;
             if ($norm !== '') {
-                $byNormalized[$norm][] = (int)$submission->id;
+                $byNormalized[$norm][] = $id;
             }
         }
 
@@ -119,7 +122,7 @@ class DetectSpamPatternsTool implements ToolInterface
             $text = $bodies[$id];
             $signals = [];
 
-            $norm = $this->normalize($text);
+            $norm = $norms[$id];
             if ($norm !== '' && count($byNormalized[$norm]) > 1) {
                 $signals[] = 'duplicateContent';
             }

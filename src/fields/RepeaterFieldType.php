@@ -141,10 +141,7 @@ class RepeaterFieldType extends FieldType
             return [];
         }
 
-        $handles = [];
-        foreach ($innerDefs as $def) {
-            $handles[] = (string) $def['handle'];
-        }
+        $handles = array_map(static fn($def): string => (string) $def['handle'], $innerDefs);
 
         // Preserve submission order (the posted array may be keyed by row index
         // with gaps); ksort puts numeric row keys back in ascending order.

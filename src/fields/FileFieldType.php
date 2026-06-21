@@ -104,7 +104,7 @@ class FileFieldType extends FieldType
             // filename, so a script can masquerade as e.g. .jpg. Sniff the real
             // content type and reject anything that is server-executable. (Craft's
             // own asset pipeline validates again on save; this fails fast first.)
-            if ($file->error === UPLOAD_ERR_OK && $this->isExecutableContent($file->tempName)) {
+            if ($this->isExecutableContent($file->tempName)) {
                 $errors[] = Craft::t('simple-form', 'The contents of “{name}” are not an allowed file type.', ['name' => $file->name]);
             }
             if ($maxBytes !== null && $file->size > $maxBytes) {

@@ -136,22 +136,7 @@ class FormMutations extends BaseMutation
         }
 
         // Build the field-id => value map from the input list.
-        $values = [];
-        $inputValues = is_array($args['values'] ?? null) ? $args['values'] : [];
-        foreach ($inputValues as $entry) {
-            if (!is_array($entry)) {
-                continue;
-            }
-            $fieldId = (int) ($entry['fieldId'] ?? 0);
-            if ($fieldId <= 0) {
-                continue;
-            }
-            if (isset($entry['values']) && is_array($entry['values'])) {
-                $values[$fieldId] = $entry['values'];
-            } else {
-                $values[$fieldId] = $entry['value'] ?? null;
-            }
-        }
+        $values = self::buildValueMap($args['values'] ?? null);
 
         $userId = Craft::$app->getUser()->getId();
 
@@ -244,22 +229,7 @@ class FormMutations extends BaseMutation
         }
 
         // Build the field-id => value map from the input list.
-        $values = [];
-        $inputValues = is_array($args['values'] ?? null) ? $args['values'] : [];
-        foreach ($inputValues as $entry) {
-            if (!is_array($entry)) {
-                continue;
-            }
-            $fieldId = (int) ($entry['fieldId'] ?? 0);
-            if ($fieldId <= 0) {
-                continue;
-            }
-            if (isset($entry['values']) && is_array($entry['values'])) {
-                $values[$fieldId] = $entry['values'];
-            } else {
-                $values[$fieldId] = $entry['value'] ?? null;
-            }
-        }
+        $values = self::buildValueMap($args['values'] ?? null);
 
         $captchaToken = isset($args['captchaToken']) ? (string) $args['captchaToken'] : null;
         $skipCaptcha = Plugin::getInstance()->getSettings()->allowGraphqlCaptchaBypass;
@@ -284,6 +254,35 @@ class FormMutations extends BaseMutation
             'submissionId' => $result['submission']?->id !== null ? (int) $result['submission']->id : null,
             'errors' => [],
         ];
+    }
+
+    /**
+     * Build the field-id => value map from the GraphQL `values` input list.
+     * Entries without a positive `fieldId` are skipped; a present `values`
+     * array is preferred over the scalar `value`. Shared by the submit and
+     * update resolvers so both interpret the input identically.
+     *
+     * @param mixed $inputValues the raw `values` argument
+     * @return array<int, mixed>
+     */
+    private static function buildValueMap(mixed $inputValues): array
+    {
+        $values = [];
+        foreach (is_array($inputValues) ? $inputValues : [] as $entry) {
+            if (!is_array($entry)) {
+                continue;
+            }
+            $fieldId = (int) ($entry['fieldId'] ?? 0);
+            if ($fieldId <= 0) {
+                continue;
+            }
+            if (isset($entry['values']) && is_array($entry['values'])) {
+                $values[$fieldId] = $entry['values'];
+            } else {
+                $values[$fieldId] = $entry['value'] ?? null;
+            }
+        }
+        return $values;
     }
 
     /**
