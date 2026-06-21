@@ -391,6 +391,13 @@ class FormRenderService extends Component
      * Overlay this site's option labels and decode config into a render-ready row
      * (adds `decodedConfig`, `isChoice`, `fieldName`, `labelId`, `conditional`).
      *
+     * The `displayMode` key tells the `field` partial how to render the row:
+     *  - `layout` — a presentational block (heading/divider/html), pre-rendered
+     *    bare into `rawHtml`; no label/required/group wrapper.
+     *  - `bare` — a value field that renders its own control with no group wrapper
+     *    (e.g. Hidden, #124), pre-rendered into `rawHtml`.
+     *  - `group` — the normal labelled `.simple-form-group` field (default).
+     *
      * @param array<string, mixed> $row a resolved field row from FormStructureService
      * @param array<string, mixed> $prefill resume prefill (field_<id> => value)
      * @return array<string, mixed>
@@ -402,7 +409,8 @@ class FormRenderService extends Component
             is_array($row['optionLabels'] ?? null) ? $row['optionLabels'] : []
         );
 
-        $fieldType = Plugin::getInstance()->getFieldTypeRegistry()->getFieldType((string) ($row['type'] ?? ''), $config);
+        $type = (string) ($row['type'] ?? '');
+        $fieldType = Plugin::getInstance()->getFieldTypeRegistry()->getFieldType($type, $config);
         $fieldName = 'field_' . ($row['id'] ?? '');
         $conditional = is_array($config['conditional'] ?? null) && !empty($config['conditional']['enabled'])
             ? $config['conditional']
@@ -411,6 +419,7 @@ class FormRenderService extends Component
         $row['decodedConfig'] = $config;
         $row['required'] = !empty($config['required']);
         $row['isChoice'] = $fieldType !== null && $fieldType->isChoiceGroup();
+        $row['rendersOwnLabel'] = $fieldType !== null && $fieldType->rendersOwnLabel();
         $row['fieldName'] = $fieldName;
         $row['labelId'] = $fieldName . '-label';
         $row['conditional'] = $conditional;
@@ -418,7 +427,78 @@ class FormRenderService extends Component
         $row['helpText'] = $row['helpText'] ?? '';
         $row['input'] = Template::raw($fieldType !== null ? $fieldType->renderInput($fieldName, $prefill[$fieldName] ?? null) : '');
 
+        // Presentational/layout blocks (heading, divider, html) and bare value
+        // fields (Hidden) render outside the labelled group wrapper. Pre-render
+        // them here so the `field` partial can emit the markup verbatim and a
+        // theme override of the group wrapper never wraps a layout block.
+        if ($fieldType === null) {
+            $row['displayMode'] = 'group';
+            $row['rawHtml'] = Template::raw('');
+            return $row;
+        }
+
+        if (!$fieldType->isInput()) {
+            $row['displayMode'] = 'layout';
+            $row['rawHtml'] = Template::raw($this->_renderLayoutBlock($row, $config));
+            return $row;
+        }
+
+        if (!$fieldType->rendersInGroup()) {
+            $row['displayMode'] = 'bare';
+            $row['rawHtml'] = Template::raw($fieldType->renderInput($fieldName, $prefill[$fieldName] ?? null));
+            return $row;
+        }
+
+        $row['displayMode'] = 'group';
+        $row['rawHtml'] = Template::raw('');
+
         return $row;
+    }
+
+    /**
+     * Render a presentational/layout block (heading, divider, html) bare — no
+     * label, required marker or input wrapper. Its per-site translatable content
+     * lives in the label/helpText columns, threaded into the config keys the
+     * layout field types read. Returns '' when the block renders nothing.
+     *
+     * @param array<string, mixed> $row a resolved field row
+     * @param array<string, mixed> $config the decoded, option-labelled config
+     */
+    private function _renderLayoutBlock(array $row, array $config): string
+    {
+        $type = (string) ($row['type'] ?? '');
+        $label = (string) ($row['label'] ?? '');
+        $helpText = (string) ($row['helpText'] ?? '');
+
+        if ($type === 'heading') {
+            $config['text'] = $label;
+        } elseif ($type === 'divider') {
+            // A divider's label falls back to the handle in the field row, which
+            // we do not want to surface as visible copy — only use a label the
+            // editor actually translated for this site.
+            $config['label'] = ($label !== '' && $label !== (string) ($row['name'] ?? '')) ? $label : '';
+        } elseif ($type === 'html') {
+            $config['html'] = $helpText;
+        }
+
+        $fieldType = Plugin::getInstance()->getFieldTypeRegistry()->getFieldType($type, $config);
+        if ($fieldType === null) {
+            return '';
+        }
+
+        $inner = $fieldType->renderInput('field_' . ($row['id'] ?? ''));
+        if ($inner === '') {
+            return '';
+        }
+
+        $groupAttrs = ' data-sf-handle="' . htmlspecialchars((string) ($row['name'] ?? ''), ENT_QUOTES) . '"';
+        if (is_array($row['conditional'] ?? null)) {
+            $groupAttrs .= ' data-sf-conditional="'
+                . htmlspecialchars((string) json_encode($row['conditional']), ENT_QUOTES) . '"';
+        }
+
+        return '<div class="simple-form-layout simple-form-layout--' . htmlspecialchars($type, ENT_QUOTES) . '"'
+            . $groupAttrs . '>' . $inner . '</div>';
     }
 
     /**

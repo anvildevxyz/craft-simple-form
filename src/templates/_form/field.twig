@@ -4,16 +4,25 @@
   Variables:
     field      a resolved field row:
                { id, type, name (handle), label, helpText, required, isChoice,
-                 fieldName ("field_<id>"), labelId, conditional, input (Markup) }
+                 rendersOwnLabel, displayMode, rawHtml (Markup), fieldName
+                 ("field_<id>"), labelId, conditional, input (Markup) }
     partials   map of resolved partial template paths (for {% include partials.input %})
     values     resume prefill map (field_<id> => value)
+
+  `displayMode` selects the wrapper:
+    layout  presentational block (heading/divider/html) — emit rawHtml verbatim
+    bare    value field with its own control (Hidden) — emit rawHtml verbatim
+    group   normal labelled field group (default)
 
   A theme may override the wrapper/labels here and still inherit the control via
   the `input` partial.
 -#}
 {%- apply spaceless -%}
+{%- if field.displayMode == 'layout' or field.displayMode == 'bare' -%}
+{{ field.rawHtml }}
+{%- else -%}
 <div class="simple-form-group" data-sf-handle="{{ field.name }}"{% if field.conditional %} data-sf-conditional="{{ field.conditional|json_encode }}"{% endif %}>
-{%- if field.label -%}
+{%- if field.label and not field.rendersOwnLabel -%}
   {%- if field.isChoice -%}
     <span class="simple-form-label" id="{{ field.labelId }}">{{ field.label }}{% if field.required %} <span class="required" aria-hidden="true">*</span>{% endif %}</span>
   {%- else -%}
@@ -29,4 +38,5 @@
 {% include partials.input with { field: field, values: values } only %}
 </div>
 </div>
+{%- endif -%}
 {%- endapply -%}
