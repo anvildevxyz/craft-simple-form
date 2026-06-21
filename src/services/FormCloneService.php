@@ -238,15 +238,13 @@ class FormCloneService extends Component
             $orderedSiteIds = $this->orderSitesPrimaryFirst($siteIds, $primarySiteId);
             $idByHandle = [];
             foreach ($orderedSiteIds as $siteId) {
-                // Carry each non-primary site's translated form content (title +
-                // email settings). The primary site was saved above; re-saving in
-                // the sibling site context writes that site's _sites row.
+                // Carry each non-primary site's translated form content (email
+                // settings). Written directly to simpleform_forms_sites rather than
+                // via saveElement() to avoid Craft's propagation machinery, which
+                // can inadvertently clobber the already-correct primary-site row
+                // when it fans out from the secondary-site save (#198).
                 if ($siteId !== $primarySiteId && isset($contentBySite[$siteId])) {
-                    $siteForm = Form::find()->id($newId)->siteId($siteId)->status(null)->one();
-                    if ($siteForm !== null) {
-                        $this->applyContent($siteForm, $contentBySite[$siteId]);
-                        Craft::$app->getElements()->saveElement($siteForm);
-                    }
+                    $this->upsertFormSiteContent($newId, $siteId, $contentBySite[$siteId]);
                 }
 
                 $items = $this->stripIds($fieldsBySite[$siteId] ?? ($fieldsBySite[$primarySiteId] ?? []));
@@ -561,6 +559,47 @@ class FormCloneService extends Component
             return $primary;
         }
         return $siteIds[0] ?? $primary;
+    }
+
+    /**
+     * Write per-site translatable form content directly to simpleform_forms_sites,
+     * bypassing Craft's element save / propagation machinery. Used for non-primary
+     * sites so the primary site's already-correct row is never touched by a
+     * propagation fan-out (#198).
+     *
+     * @param array<string,mixed> $content
+     */
+    private function upsertFormSiteContent(int $formId, int $siteId, array $content): void
+    {
+        $db = Craft::$app->getDb();
+        $now = Db::prepareDateForDb(new \DateTime());
+
+        $row = [
+            'description' => $content['description'] ?? null,
+            'emailTo' => $content['emailTo'] ?? null,
+            'emailSubject' => $content['emailSubject'] ?? null,
+            'emailReplyTo' => $content['emailReplyTo'] ?? null,
+            'emailBody' => $content['emailBody'] ?? null,
+        ];
+
+        $exists = (new Query())
+            ->from('{{%simpleform_forms_sites}}')
+            ->where(['formId' => $formId, 'siteId' => $siteId])
+            ->exists();
+
+        if ($exists) {
+            $db->createCommand()->update('{{%simpleform_forms_sites}}', $row + [
+                'dateUpdated' => $now,
+            ], ['formId' => $formId, 'siteId' => $siteId])->execute();
+        } else {
+            $db->createCommand()->insert('{{%simpleform_forms_sites}}', $row + [
+                'formId' => $formId,
+                'siteId' => $siteId,
+                'dateCreated' => $now,
+                'dateUpdated' => $now,
+                'uid' => StringHelper::UUID(),
+            ])->execute();
+        }
     }
 
     /**

@@ -46,7 +46,11 @@ class CalculationSubmissionTest extends SimpleFormTestCase
         $this->assertInstanceOf(Submission::class, $result['submission']);
 
         $decoded = $this->storedData((int) $result['submission']->id);
-        $this->assertSame(30.0, $decoded['field_' . $totalId]['value']);
+        // The numeric value is correct (30 = 30.0); json_encode(30.0) → "30" in
+        // PHP's default flags (no JSON_PRESERVE_ZERO_FRACTION), so after a JSON
+        // round-trip the int 30 must be cast to float for an identical comparison.
+        // The display string is the canonical proof of correct precision (#197).
+        $this->assertSame(30.0, (float) $decoded['field_' . $totalId]['value']);
         $this->assertSame('CHF 30.00', $decoded['field_' . $totalId]['display']);
     }
 
@@ -73,7 +77,9 @@ class CalculationSubmissionTest extends SimpleFormTestCase
         $this->assertInstanceOf(Submission::class, $result['submission']);
 
         $decoded = $this->storedData((int) $result['submission']->id);
-        $this->assertSame(30.0, $decoded['field_' . $totalId]['value'], 'Forged client total must be discarded');
+        // Same float-cast rationale as testServerRecomputeStoresComputedValueWithDisplay (#197):
+        // json_encode(30.0) → "30"; the numeric equality is what matters here.
+        $this->assertSame(30.0, (float) $decoded['field_' . $totalId]['value'], 'Forged client total must be discarded');
     }
 
     public function testHiddenCalculationNeitherComputesNorStores(): void
