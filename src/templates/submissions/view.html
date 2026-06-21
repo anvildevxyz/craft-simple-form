@@ -10,6 +10,11 @@
     {% if form %}
         <a href="{{ cpUrl('simple-form/forms/edit/' ~ form.id) }}" class="btn">{{ 'Edit Form'|t('simple-form') }}</a>
     {% endif %}
+    {% if pdfAvailable %}
+        <a href="{{ cpUrl('simple-form/submissions/' ~ submission.id ~ '/pdf') }}" class="btn" data-icon="download">
+            {{ 'Download PDF'|t('simple-form') }}
+        </a>
+    {% endif %}
     <button id="toggle-status-btn" class="btn secondary"
             data-action="{{ cpUrl('simple-form/submissions/toggle-status') }}"
             data-submission-id="{{ submission.id }}"

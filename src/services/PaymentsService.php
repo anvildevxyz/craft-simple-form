@@ -139,7 +139,7 @@ class PaymentsService extends Component
         // Integration dispatch and the notification email are withheld until
         // payment clears (see IntegrationsService/NotificationsService gating).
         Plugin::getInstance()->getIntegrations()->dispatchForSubmission($submission);
-        Plugin::getInstance()->getEmailService()->sendSubmissionEmail($form, $submission, $submission->data ?? []);
+        Plugin::getInstance()->getEmailService()->queueForSubmission($form, $submission, $submission->data ?? []);
     }
 
     /**

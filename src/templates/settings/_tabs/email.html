@@ -21,3 +21,30 @@
     instructions: 'Display name for the sender email.'|t('simple-form'),
     errors: settings.getErrors('defaultEmailSenderName') ?? [],
 }) }}
+
+<hr>
+<h2>{{ 'Attachments'|t('simple-form') }}</h2>
+<p class="light">{{ 'Notifications can attach a rendered PDF of the submission and/or its uploaded files. PDF generation requires the dompdf library.'|t('simple-form') }}</p>
+
+{% set volumeOptions = [{ label: 'Render on demand (don’t store)'|t('simple-form'), value: '' }] %}
+{% for volume in craft.app.volumes.allVolumes %}
+    {% set volumeOptions = volumeOptions|merge([{ label: volume.name, value: volume.handle }]) %}
+{% endfor %}
+
+{{ forms.selectField({
+    label: 'PDF Storage Volume'|t('simple-form'),
+    name: 'pdfStorageVolume',
+    options: volumeOptions,
+    value: settings.pdfStorageVolume ?? '',
+    instructions: 'When set, generated submission PDFs are stored as Assets in this volume and reused; otherwise they are rendered on demand.'|t('simple-form'),
+    errors: settings.getErrors('pdfStorageVolume') ?? [],
+}) }}
+
+{{ forms.textField({
+    label: 'Max Attachment Size (MB)'|t('simple-form'),
+    name: 'maxAttachmentSizeMb',
+    type: 'number',
+    value: settings.maxAttachmentSizeMb ?? 10,
+    instructions: 'Total cap on a notification’s attachments. Uploaded files over this cap fall back to in-body download links. 0 disables the cap.'|t('simple-form'),
+    errors: settings.getErrors('maxAttachmentSizeMb') ?? [],
+}) }}

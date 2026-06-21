@@ -251,6 +251,52 @@ class SubmissionsController extends Controller
             'integrationNames' => $integrationNames,
             'elementLinks' => $elementLinks,
             'canManageIntegrations' => Craft::$app->getUser()->checkPermission(SimpleFormPermissions::MANAGE_INTEGRATIONS),
+            'pdfAvailable' => Plugin::getInstance()->getPdf()->isAvailable(),
+        ]);
+    }
+
+    /**
+     * Stream a PDF of one submission (#143). Serves the stored Asset when a PDF
+     * storage volume is configured, otherwise renders on demand. Gated by the
+     * base viewSubmissions permission (enforced in beforeAction). Degrades with a
+     * clear error when no PDF engine is installed.
+     */
+    public function actionPdf(int $submissionId): Response
+    {
+        $pdf = Plugin::getInstance()->getPdf();
+        if (!$pdf->isAvailable()) {
+            throw new \yii\web\ServerErrorHttpException(Craft::t('simple-form', 'Install the dompdf library to generate submission PDFs.'));
+        }
+
+        $siteId = Craft::$app->getSites()->getCurrentSite()->id;
+        $submission = Submission::find()->siteId($siteId)->id($submissionId)->one();
+        if (!$submission) {
+            throw new \yii\web\NotFoundHttpException('Submission not found');
+        }
+
+        $form = $submission->getForm();
+        if (!$form instanceof Form) {
+            throw new \yii\web\NotFoundHttpException('Form not found');
+        }
+
+        $data = is_array($submission->data) ? $submission->data : [];
+        $filename = $pdf->filename($form, $submission);
+
+        // Reuse a stored Asset when one exists, else render on demand.
+        $asset = $pdf->store($form, $submission, $data);
+        if ($asset !== null) {
+            return $this->response->sendStreamAsFile($asset->getStream(), $filename, [
+                'mimeType' => 'application/pdf',
+            ]);
+        }
+
+        $bytes = $pdf->render($form, $submission, $data, (int) $submission->siteId);
+        if ($bytes === null) {
+            throw new \yii\web\ServerErrorHttpException(Craft::t('simple-form', 'Couldn’t generate the submission PDF.'));
+        }
+
+        return $this->response->sendContentAsFile($bytes, $filename, [
+            'mimeType' => 'application/pdf',
         ]);
     }
 

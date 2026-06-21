@@ -39,8 +39,52 @@ class SafeRenderService extends Component
      */
     public function render(string $template, array $variables = [], array $allowedClasses = []): string
     {
+        return $this->withSandbox(
+            View::TEMPLATE_MODE_SITE,
+            $allowedClasses,
+            fn(View $view): string => $view->renderString($template, $variables, View::TEMPLATE_MODE_SITE),
+        );
+    }
+
+    /**
+     * Render an author-supplied Twig *template file* under the forced sandbox.
+     *
+     * Mirrors {@see render()} but resolves a template path (CP mode) instead of an
+     * inline string, so an overridable layout file (e.g. a form's `pdf.twig`)
+     * cannot reach `craft.app`, the database or the filesystem either.
+     *
+     * @param array<string, mixed> $variables template variables
+     * @param array<int, class-string> $allowedClasses classes the policy may
+     *   expose method/property access for, on top of Craft's defaults
+     * @throws \Throwable when the sandbox rejects the template or rendering fails
+     */
+    public function renderTemplate(string $template, array $variables = [], array $allowedClasses = []): string
+    {
+        return $this->withSandbox(
+            View::TEMPLATE_MODE_CP,
+            $allowedClasses,
+            fn(View $view): string => $view->renderTemplate($template, $variables, View::TEMPLATE_MODE_CP),
+        );
+    }
+
+    // =========================================================================
+    // Private Methods
+    // =========================================================================
+
+    /**
+     * Run $render with the Twig sandbox forced on for the given template mode and
+     * a security policy scoped to additionally allow $allowedClasses, restoring
+     * the original policy and sandbox state afterwards.
+     *
+     * @param string $mode a {@see View} TEMPLATE_MODE_* constant
+     * @param array<int, class-string> $allowedClasses
+     * @param callable(View): string $render
+     * @throws \Throwable when the sandbox rejects the template or rendering fails
+     */
+    private function withSandbox(string $mode, array $allowedClasses, callable $render): string
+    {
         $view = Craft::$app->getView();
-        $twig = $view->getTwig(View::TEMPLATE_MODE_SITE);
+        $twig = $view->getTwig($mode);
         /** @var SandboxExtension $sandbox */
         $sandbox = $twig->getExtension(SandboxExtension::class);
 
@@ -62,7 +106,7 @@ class SafeRenderService extends Component
         $sandbox->setSecurityPolicy($scoped);
         $sandbox->enableSandbox();
         try {
-            return $view->renderString($template, $variables, View::TEMPLATE_MODE_SITE);
+            return $render($view);
         } finally {
             if (!$wasSandboxed) {
                 $sandbox->disableSandbox();

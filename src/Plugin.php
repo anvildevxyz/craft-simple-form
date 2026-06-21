@@ -55,6 +55,7 @@ use fabianhaef\simpleform\services\IntegrationsService;
 use fabianhaef\simpleform\services\IntegrationTypeRegistry;
 use fabianhaef\simpleform\services\NotificationsService;
 use fabianhaef\simpleform\services\PaymentsService;
+use fabianhaef\simpleform\services\PdfService;
 use fabianhaef\simpleform\services\ReportsService;
 use fabianhaef\simpleform\services\RetentionService;
 use fabianhaef\simpleform\services\SafeRenderService;
@@ -143,6 +144,7 @@ class Plugin extends BasePlugin
             'payments' => PaymentsService::class,
             'fieldSync' => FieldSyncService::class,
             'portability' => FormPortabilityService::class,
+            'pdf' => PdfService::class,
         ]);
 
         Craft::$app->getI18n()->translations['simple-form'] ??= [
@@ -463,6 +465,13 @@ class Plugin extends BasePlugin
         return $service;
     }
 
+    public function getPdf(): PdfService
+    {
+        /** @var PdfService $service */
+        $service = $this->get('pdf');
+        return $service;
+    }
+
     public function getAudit(): AuditService
     {
         /** @var AuditService $service */
@@ -560,6 +569,7 @@ class Plugin extends BasePlugin
         $event->rules['simple-form/submissions'] = 'simple-form/submissions/index';
         $event->rules['simple-form/submissions/analytics'] = 'simple-form/submissions/analytics';
         $event->rules['simple-form/submissions/export'] = 'simple-form/submissions/export';
+        $event->rules['simple-form/submissions/<submissionId:\d+>/pdf'] = 'simple-form/submissions/pdf';
         $event->rules['simple-form/submissions/<submissionId:\d+>'] = 'simple-form/submissions/view';
         $event->rules['simple-form/submissions/toggle-status'] = 'simple-form/submissions/toggle-status';
         $event->rules['simple-form/settings'] = 'simple-form/settings/index';

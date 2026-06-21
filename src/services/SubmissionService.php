@@ -485,7 +485,7 @@ class SubmissionService extends Component
         // EmailService no-ops when neither is configured). Skipped for spam and
         // while awaiting payment — the email fires once the order completes.
         if (!$isSpam && !$awaitingPayment) {
-            Plugin::getInstance()->getEmailService()->sendSubmissionEmail($form, $submission, $data);
+            Plugin::getInstance()->getEmailService()->queueForSubmission($form, $submission, $data);
         }
 
         // `data` is returned so post-submit resolution (the success message and a
@@ -600,7 +600,9 @@ class SubmissionService extends Component
         Plugin::getInstance()->trigger(Plugin::EVENT_AFTER_SUBMISSION_SAVE, $afterEvent);
 
         // Notification + autoresponder emails (no-ops when neither is configured).
-        Plugin::getInstance()->getEmailService()->sendSubmissionEmail($form, $submission, $data);
+        // Queued so the withheld PDF render / upload reads (#143) run off-request,
+        // matching the post-submit dispatch path.
+        Plugin::getInstance()->getEmailService()->queueForSubmission($form, $submission, $data);
     }
 
     /**

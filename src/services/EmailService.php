@@ -6,7 +6,9 @@ use Craft;
 use craft\helpers\App;
 use fabianhaef\simpleform\elements\Form;
 use fabianhaef\simpleform\elements\Submission;
+use fabianhaef\simpleform\jobs\SendNotifications;
 use fabianhaef\simpleform\models\FieldModel;
+use fabianhaef\simpleform\models\NotificationModel;
 use fabianhaef\simpleform\models\Settings;
 use fabianhaef\simpleform\Plugin;
 use yii\base\Component;
@@ -36,11 +38,116 @@ class EmailService extends Component
                 $this->renderSubjectFor($notification->subject, $form),
                 $this->renderBodyFor($notification->body, $form, $submission, $data),
                 $notification->replyTo,
+                $this->attachmentsFor($notification, $form, $submission, $data),
             );
             $allSent = $allSent && $sent;
         }
 
         return $allSent;
+    }
+
+    /**
+     * Build the attachment set for one notification (#143): the rendered
+     * submission PDF when `attachPdf`, plus the submission's uploaded files when
+     * `attachUploads` and they fit under the configured total-size cap. Over the
+     * cap the uploads are skipped (and logged) — they remain available as in-body
+     * download links.
+     *
+     * @param array<string, mixed> $data
+     * @return list<array{content: string, fileName: string, contentType: string}>
+     */
+    private function attachmentsFor(NotificationModel $notification, Form $form, Submission $submission, array $data): array
+    {
+        $attachments = [];
+        $totalBytes = 0;
+        $capBytes = max(0, Plugin::getInstance()->getSettings()->maxAttachmentSizeMb) * 1024 * 1024;
+
+        if ($notification->attachPdf) {
+            $pdf = Plugin::getInstance()->getPdf()->render($form, $submission, $data, (int) $submission->siteId);
+            if ($pdf !== null) {
+                $attachments[] = [
+                    'content' => $pdf,
+                    'fileName' => Plugin::getInstance()->getPdf()->filename($form, $submission),
+                    'contentType' => 'application/pdf',
+                ];
+                $totalBytes += strlen($pdf);
+            }
+        }
+
+        if ($notification->attachUploads) {
+            foreach ($this->uploadAttachments($data) as $upload) {
+                $size = strlen($upload['content']);
+                if ($capBytes > 0 && $totalBytes + $size > $capBytes) {
+                    Craft::warning(sprintf(
+                        'Skipping upload attachment "%s" for submission %d: over the %d MB attachment cap; sent as an in-body link instead.',
+                        $upload['fileName'],
+                        (int) $submission->id,
+                        Plugin::getInstance()->getSettings()->maxAttachmentSizeMb,
+                    ), 'simple-form');
+                    continue;
+                }
+                $attachments[] = $upload;
+                $totalBytes += $size;
+            }
+        }
+
+        return $attachments;
+    }
+
+    /**
+     * Resolve the submission's file-field uploads to attachment payloads.
+     *
+     * @param array<string, mixed> $data
+     * @return list<array{content: string, fileName: string, contentType: string}>
+     */
+    private function uploadAttachments(array $data): array
+    {
+        $attachments = [];
+        foreach ($data as $fieldData) {
+            if (!is_array($fieldData) || ($fieldData['type'] ?? null) !== 'file') {
+                continue;
+            }
+            $ids = is_array($fieldData['value'] ?? null) ? $fieldData['value'] : [];
+            foreach ($ids as $id) {
+                $asset = \craft\elements\Asset::find()->id((int) $id)->one();
+                if (!$asset instanceof \craft\elements\Asset) {
+                    continue;
+                }
+                try {
+                    $contents = $asset->getContents();
+                } catch (\Throwable $e) {
+                    Craft::warning('Failed to read upload for attachment: ' . $e->getMessage(), 'simple-form');
+                    continue;
+                }
+                $attachments[] = [
+                    'content' => $contents,
+                    'fileName' => (string) $asset->getFilename(),
+                    'contentType' => $asset->getMimeType() ?? 'application/octet-stream',
+                ];
+            }
+        }
+
+        return $attachments;
+    }
+
+    /**
+     * Queue a submission's notification emails for off-request sending (#143).
+     * Composing can render a PDF / read uploaded files, so it must not run inline
+     * in the visitor's submit request. Falls back to inline sending only when the
+     * `dispatchIntegrationsSynchronously` debug escape hatch is on.
+     *
+     * @param array<string, mixed> $data
+     */
+    public function queueForSubmission(Form $form, Submission $submission, array $data): void
+    {
+        if ($this->getSettings()->dispatchIntegrationsSynchronously || $submission->id === null) {
+            $this->sendSubmissionEmail($form, $submission, $data);
+            return;
+        }
+
+        Craft::$app->getQueue()->push(new SendNotifications([
+            'submissionId' => (int) $submission->id,
+        ]));
     }
 
     /**
@@ -66,8 +173,9 @@ class EmailService extends Component
      * Compose + send one email.
      *
      * @param list<string>|string $to
+     * @param list<array{content: string, fileName: string, contentType: string}> $attachments
      */
-    private function send(array|string $to, string $subject, string $body, ?string $replyTo): bool
+    private function send(array|string $to, string $subject, string $body, ?string $replyTo, array $attachments = []): bool
     {
         if ($to === [] || $to === '') {
             return false;
@@ -79,6 +187,13 @@ class EmailService extends Component
                 ->setTo($to)
                 ->setSubject($subject)
                 ->setHtmlBody($body);
+
+            foreach ($attachments as $attachment) {
+                $mail->attachContent($attachment['content'], [
+                    'fileName' => $attachment['fileName'],
+                    'contentType' => $attachment['contentType'],
+                ]);
+            }
 
             // Set from address: prefer the plugin's configured sender, falling
             // back to Craft's system email settings.
@@ -165,9 +280,31 @@ class EmailService extends Component
     }
 
     /**
+     * Render an overridable Twig *template file* (e.g. the PDF layout) with the
+     * Twig sandbox forced on, mirroring {@see renderSandboxed()} but resolving a
+     * template path instead of an inline string. Used by {@see PdfService} so a
+     * form author's `pdf.twig` override cannot reach the application or filesystem.
+     * Delegates to the shared {@see SafeRenderService} seam.
+     *
+     * @param array<string, mixed> $variables
+     * @throws \Throwable when the sandbox rejects the template or rendering fails
+     */
+    public function renderSandboxedTemplate(string $template, array $variables): string
+    {
+        return Plugin::getInstance()->getSafeRender()->renderTemplate(
+            $template,
+            $variables,
+            [Form::class, Submission::class, FieldModel::class],
+        );
+    }
+
+    /**
+     * Build the plugin's default submission HTML (a titled field-value table),
+     * reused by the notification body fallback and the PDF default layout (#143).
+     *
      * @param array<string, mixed> $data
      */
-    private function renderDefaultBody(Form $form, Submission $submission, array $data): string
+    public function renderDefaultBody(Form $form, Submission $submission, array $data): string
     {
         $html = '<html><body>';
         $html .= '<h2>' . Craft::t('simple-form', 'New Form Submission') . '</h2>';
