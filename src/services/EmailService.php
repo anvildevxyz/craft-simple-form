@@ -4,14 +4,11 @@ namespace fabianhaef\simpleform\services;
 
 use Craft;
 use craft\helpers\App;
-use craft\web\twig\SecurityPolicy;
-use craft\web\View;
 use fabianhaef\simpleform\elements\Form;
 use fabianhaef\simpleform\elements\Submission;
 use fabianhaef\simpleform\models\FieldModel;
 use fabianhaef\simpleform\models\Settings;
 use fabianhaef\simpleform\Plugin;
-use Twig\Extension\SandboxExtension;
 use yii\base\Component;
 
 class EmailService extends Component
@@ -150,51 +147,21 @@ class EmailService extends Component
      * Notification bodies are editable by CP users holding only `manageForms` —
      * a non-admin permission — so they must NOT be able to reach `craft.app.*`,
      * the database, the filesystem or arbitrary classes through the template.
-     * We cannot rely on Craft's `renderSandboxedString()`: it is a no-op unless
-     * the operator sets the global `enableTwigSandbox` config (default false).
-     *
-     * Instead we explicitly enable the SandboxExtension for this one render and
-     * swap in a policy derived from Craft's own twig-sandbox config (safe tags /
-     * filters / functions) but additionally allowing this plugin's own form,
-     * submission and field models so legitimate templates like
-     * `{{ submission.id }}` or `{% for f in form.fields %}` keep working. The
-     * original policy and sandbox state are always restored.
+     * The form, submission and field models are additionally allowed so
+     * legitimate templates like `{{ submission.id }}` or
+     * `{% for f in form.fields %}` keep working. Delegates to the shared
+     * {@see SafeRenderService} seam.
      *
      * @param array<string, mixed> $variables
+     * @throws \Throwable when the sandbox rejects the template or rendering fails
      */
     private function renderSandboxed(string $template, array $variables): string
     {
-        $view = Craft::$app->getView();
-        $twig = $view->getTwig(View::TEMPLATE_MODE_SITE);
-        /** @var SandboxExtension $sandbox */
-        $sandbox = $twig->getExtension(SandboxExtension::class);
-
-        $base = $sandbox->getSecurityPolicy();
-        $allowedClasses = [Form::class, Submission::class, FieldModel::class];
-        if ($base instanceof SecurityPolicy) {
-            $allowedClasses = array_merge($base->getAllowedClasses(), $allowedClasses);
-        }
-
-        $scoped = new SecurityPolicy(
-            $base instanceof SecurityPolicy ? $base->getAllowedTags() : [],
-            $base instanceof SecurityPolicy ? $base->getAllowedFilters() : [],
-            $base instanceof SecurityPolicy ? $base->getAllowedFunctions() : [],
-            $base instanceof SecurityPolicy ? $base->getAllowedMethods() : [],
-            $base instanceof SecurityPolicy ? $base->getAllowedProperties() : [],
-            $allowedClasses,
+        return Plugin::getInstance()->getSafeRender()->render(
+            $template,
+            $variables,
+            [Form::class, Submission::class, FieldModel::class],
         );
-
-        $wasSandboxed = $sandbox->isSandboxed();
-        $sandbox->setSecurityPolicy($scoped);
-        $sandbox->enableSandbox();
-        try {
-            return $view->renderString($template, $variables, View::TEMPLATE_MODE_SITE);
-        } finally {
-            if (!$wasSandboxed) {
-                $sandbox->disableSandbox();
-            }
-            $sandbox->setSecurityPolicy($base);
-        }
     }
 
     /**

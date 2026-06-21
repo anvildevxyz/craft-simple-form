@@ -73,6 +73,8 @@ return [
     'Export submissions (CSV / JSON)' => 'Export submissions (CSV / JSON)',
     'Manage forms and fields' => 'Manage forms and fields',
     'Manage form integrations' => 'Manage form integrations',
+    'Edit HTML layout blocks' => 'Edit HTML layout blocks',
+    'You don’t have permission to edit HTML layout blocks.' => 'You don’t have permission to edit HTML layout blocks.',
     'View submissions' => 'View submissions',
     'Toggle submission read status' => 'Toggle submission read status',
     'Manage plugin settings' => 'Manage plugin settings',

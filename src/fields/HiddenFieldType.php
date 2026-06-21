@@ -51,8 +51,10 @@ class HiddenFieldType extends FieldType
     /**
      * Hidden fields are non-visible, so they never participate in the standard
      * labelled field group — the front-end template emits the bare input only.
+     * They still collect a stored value, so {@see FieldType::isInput()} stays
+     * true and the value flows through validation, storage, and export.
      */
-    public function isInput(): bool
+    public function rendersInGroup(): bool
     {
         return false;
     }

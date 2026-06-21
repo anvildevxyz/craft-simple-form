@@ -22,6 +22,20 @@ abstract class FieldType
     abstract public static function getLabel(): string;
 
     /**
+     * Whether this field collects a submission value.
+     *
+     * Presentational/layout blocks (heading, divider, html) return false: they
+     * render on the public form but are never validated, stored, or exported.
+     * The rest of the pipeline keys off this one seam, so a non-input field
+     * never lands in {@see \fabianhaef\simpleform\elements\Submission::$data},
+     * never produces a column, and can never block submission.
+     */
+    public function isInput(): bool
+    {
+        return true;
+    }
+
+    /**
      * @return array<string, mixed>
      */
     public function getConfig(): array
@@ -185,14 +199,16 @@ abstract class FieldType
     }
 
     /**
-     * Whether this type renders a visitor-facing input that belongs inside the
+     * Whether this type renders a visitor-facing control that belongs inside the
      * standard labelled field group (label + help text + wrapper).
      *
-     * Value-less / non-visible types (e.g. the Hidden field, #124) return false
-     * so the front-end template emits their bare markup with no label or
-     * wrapper.
+     * Distinct from {@see self::isInput()} (which is about whether the field
+     * collects a stored value): the Hidden field (#124) collects a value yet
+     * returns false here, so the front-end template emits its bare markup with
+     * no label or wrapper. Presentational layout blocks also return false but
+     * are additionally non-input.
      */
-    public function isInput(): bool
+    public function rendersInGroup(): bool
     {
         return true;
     }

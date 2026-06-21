@@ -15,12 +15,17 @@
         text: 'Text', email: 'Email', textarea: 'Textarea', select: 'Select',
         checkbox: 'Checkbox', radio: 'Radio', date: 'Date', number: 'Number',
         phone: 'Phone', file: 'File Upload',
-        payment: 'Payment', hidden: 'Hidden', consent: 'Agree / Consent'
+        payment: 'Payment', hidden: 'Hidden', consent: 'Agree / Consent',
+        heading: 'Heading', divider: 'Section Divider', html: 'HTML Block'
     };
     var OPTION_TYPES = ['select', 'checkbox', 'radio'];
     // Non-visible types: the visitor never sees them, so the inspector suppresses
     // the Required / Help Text / Error Message rows (#124).
     var HIDDEN_TYPES = ['hidden'];
+    // Presentational/layout blocks: value-less, so the inspector omits
+    // Required / validation / conditions and the submit guard skips them.
+    var LAYOUT_TYPES = ['heading', 'divider', 'html'];
+    function isLayout(type) { return LAYOUT_TYPES.indexOf(type) !== -1; }
 
     var canvas = document.getElementById('sf-canvas');
     var palette = document.getElementById('sf-palette');
@@ -83,6 +88,9 @@
         if (type === 'consent') {
             return { consentText: 'I agree to the [privacy policy](https://example.com/privacy)' };
         }
+        if (type === 'heading') {
+            return { level: 'h3' };
+        }
         return {};
     }
 
@@ -120,13 +128,14 @@
     }
 
     function renderBlock(f) {
+        var layout = isLayout(f.type);
         var el = document.createElement('div');
-        el.className = 'sf-field' + (f.clientId === selectedId ? ' sel' : '');
+        el.className = 'sf-field' + (layout ? ' sf-field--layout' : '') + (f.clientId === selectedId ? ' sel' : '');
         el.setAttribute('draggable', 'true');
         // Keyboard-selectable: focusable + Enter/Space opens the inspector (#105).
         el.setAttribute('tabindex', '0');
         el.setAttribute('role', 'button');
-        el.setAttribute('aria-label', (f.label || '(untitled)') + ' — ' + (TYPE_LABELS[f.type] || f.type));
+        el.setAttribute('aria-label', blockPreviewText(f) + ' — ' + (TYPE_LABELS[f.type] || f.type));
         el.addEventListener('keydown', function(e) {
             if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); select(f.clientId); focusInspector(); }
         });
@@ -136,7 +145,7 @@
         grip.className = 'sf-grip'; grip.setAttribute('aria-hidden', 'true'); grip.textContent = '⋮⋮';
 
         var label = document.createElement('span');
-        label.className = 'sf-field-label'; label.textContent = f.label || '(untitled)';
+        label.className = 'sf-field-label'; label.textContent = blockPreviewText(f);
 
         var type = document.createElement('span');
         type.className = 'sf-field-type'; type.textContent = TYPE_LABELS[f.type] || f.type;
@@ -147,14 +156,27 @@
             type.title = 'Hidden — captured silently; never shown on the form.';
         }
 
-        var req = document.createElement('span');
-        req.className = 'sf-field-req'; req.textContent = f.required ? '*' : '';
-
         var del = document.createElement('button');
         del.type = 'button'; del.className = 'sf-field-del'; del.title = 'Remove'; del.textContent = '×';
 
-        el.appendChild(grip); el.appendChild(label); el.appendChild(req); el.appendChild(type); el.appendChild(del);
+        el.appendChild(grip); el.appendChild(label);
+        // Layout blocks are value-less, so the canvas never shows a required mark.
+        if (!layout) {
+            var req = document.createElement('span');
+            req.className = 'sf-field-req'; req.textContent = f.required ? '*' : '';
+            el.appendChild(req);
+        }
+        el.appendChild(type); el.appendChild(del);
         return el;
+    }
+
+    // The canvas-preview text for a block: its visible content for layout blocks
+    // (heading text / divider label / "HTML block"), its label otherwise.
+    function blockPreviewText(f) {
+        if (f.type === 'heading') { return (f.label && f.label.trim()) || '(heading)'; }
+        if (f.type === 'divider') { return (f.label && f.label.trim()) || '— divider —'; }
+        if (f.type === 'html') { return 'HTML block'; }
+        return f.label || '(untitled)';
     }
 
     // ---- mutation --------------------------------------------------------
@@ -180,10 +202,13 @@
     }
 
     function addField(type, atIndex) {
-        var label = TYPE_LABELS[type] || 'Field';
+        // Layout blocks have no user-facing label (heading text / divider label
+        // is the content); start them blank and seed the handle from the type so
+        // the row is still uniquely addressable for conditionals + persistence.
+        var label = isLayout(type) ? '' : (TYPE_LABELS[type] || 'Field');
         // Consent is, by design, normally a required tick — default it on.
         var f = normalize({ id: null, type: type, label: label, required: type === 'consent', config: defaultConfig(type) });
-        f.handle = uniqueHandle(slug(label), f.clientId);
+        f.handle = uniqueHandle(slug(label) || type, f.clientId);
         if (atIndex == null || atIndex >= fields.length) { fields.push(f); }
         else { fields.splice(Math.max(0, atIndex), 0, f); }
         commit();
@@ -255,6 +280,13 @@
         head.appendChild(title); head.appendChild(back);
         inspector.appendChild(head);
 
+        // Presentational/layout blocks: a tailored editor with no Required,
+        // validation message, or generic help-text — only their own content.
+        if (isLayout(f.type)) {
+            renderLayoutInspector(f);
+            return;
+        }
+
         // Label
         var labelRow = row('Label');
         labelRow._input.appendChild(textInput(f.label, function(v) {
@@ -324,6 +356,57 @@
         }));
 
         renderTypeConfig(f);
+        inspector.appendChild(conditionsSection(f));
+    }
+
+    // Tailored editor for the value-less layout blocks. The per-site
+    // translatable content rides on the field's label (heading text / divider
+    // label) and helpText (HTML body) so it persists with no schema change.
+    function renderLayoutInspector(f) {
+        var c = f.config || (f.config = {});
+
+        if (f.type === 'heading') {
+            var lvlRow = row('Heading Level');
+            lvlRow._input.appendChild(selectEl(
+                [{ value: 'h2', label: 'Heading 2' }, { value: 'h3', label: 'Heading 3' }, { value: 'h4', label: 'Heading 4' }],
+                c.level || 'h3',
+                function(v) { c.level = v; serialize(); }
+            ));
+            inspector.appendChild(lvlRow);
+
+            var textRow = row('Heading Text');
+            textRow._input.appendChild(textInput(f.label, function(v) { f.label = v; commit(); }));
+            inspector.appendChild(textRow);
+        } else if (f.type === 'divider') {
+            var labRow = row('Label (optional)');
+            labRow._input.appendChild(textInput(f.label, function(v) { f.label = v; commit(); }));
+            var labHint = document.createElement('div'); labHint.className = 'instructions';
+            var labHintP = document.createElement('p');
+            labHintP.textContent = 'Optional text shown over the divider line. Leave blank for a plain rule.';
+            labHint.appendChild(labHintP); labRow._input.appendChild(labHint);
+            inspector.appendChild(labRow);
+        } else if (f.type === 'html') {
+            var htmlRow = row('HTML / Twig');
+            var ta = document.createElement('textarea'); ta.className = 'text fullwidth code'; ta.rows = 8;
+            ta.value = f.helpText || '';
+            ta.addEventListener('input', function() { f.helpText = ta.value; commit(); });
+            htmlRow._input.appendChild(ta);
+            var htmlHint = document.createElement('div'); htmlHint.className = 'instructions';
+            var htmlHintP = document.createElement('p');
+            htmlHintP.textContent = 'Rendered safely on the form: Twig runs in a sandbox and the output is purified — '
+                + 'scripts, inline handlers and unsafe URLs are stripped.';
+            htmlHint.appendChild(htmlHintP); htmlRow._input.appendChild(htmlHint);
+            inspector.appendChild(htmlRow);
+        }
+
+        inspector.appendChild(numberRow('Step / Page', (f.config && f.config.page) || '', function(v) {
+            f.config = f.config || {};
+            var n = parseInt(v, 10);
+            if (v === '' || v == null || isNaN(n) || n < 1) { delete f.config.page; } else { f.config.page = n; }
+            serialize();
+        }));
+
+        // Layout blocks may still be shown/hidden by conditional logic.
         inspector.appendChild(conditionsSection(f));
     }
 
@@ -875,7 +958,11 @@
         var errs = [], seen = {};
         fields.forEach(function(f, i) {
             var name = f.label || f.handle || ('#' + (i + 1));
-            if (!f.label || !f.label.trim()) { errs.push('Field "' + name + '": label is required.'); }
+            var layout = isLayout(f.type);
+            // Layout blocks carry no user-facing label (their content is the
+            // heading text / divider label / HTML body), so a label is not
+            // required — but every block still needs a unique handle.
+            if (!layout && (!f.label || !f.label.trim())) { errs.push('Field "' + name + '": label is required.'); }
             if (!f.handle || !f.handle.trim()) { errs.push('Field "' + name + '": handle is required.'); }
             else if (!/^[a-zA-Z_][a-zA-Z0-9_]*$/.test(f.handle)) { errs.push('Field "' + name + '": invalid handle.'); }
             else { var k = f.handle.toLowerCase(); if (seen[k]) { errs.push('Duplicate handle "' + f.handle + '".'); } seen[k] = true; }

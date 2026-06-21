@@ -50,6 +50,7 @@ use fabianhaef\simpleform\services\NotificationsService;
 use fabianhaef\simpleform\services\PaymentsService;
 use fabianhaef\simpleform\services\ReportsService;
 use fabianhaef\simpleform\services\RetentionService;
+use fabianhaef\simpleform\services\SafeRenderService;
 use fabianhaef\simpleform\services\SubmissionService;
 use fabianhaef\simpleform\web\twig\variables\SimpleFormVariable;
 use fabianhaef\simpleform\widgets\RecentSubmissionsWidget;
@@ -105,6 +106,7 @@ class Plugin extends BasePlugin
 
         $this->setComponents([
             'fieldTypeRegistry' => FieldTypeRegistry::class,
+            'safeRender' => SafeRenderService::class,
             'emailService' => EmailService::class,
             'submissionService' => SubmissionService::class,
             'drafts' => DraftService::class,
@@ -344,6 +346,13 @@ class Plugin extends BasePlugin
         /** @var FieldTypeRegistry $registry */
         $registry = $this->get('fieldTypeRegistry');
         return $registry;
+    }
+
+    public function getSafeRender(): SafeRenderService
+    {
+        /** @var SafeRenderService $service */
+        $service = $this->get('safeRender');
+        return $service;
     }
 
     public function getFormStructure(): FormStructureService

@@ -73,6 +73,8 @@ return [
     'Export submissions (CSV / JSON)' => 'Inzendingen exporteren (CSV / JSON)',
     'Manage forms and fields' => 'Formulieren en velden beheren',
     'Manage form integrations' => 'Formulierintegraties beheren',
+    'Edit HTML layout blocks' => 'HTML-lay-outblokken bewerken',
+    'You don’t have permission to edit HTML layout blocks.' => 'Je hebt geen toestemming om HTML-lay-outblokken te bewerken.',
     'View submissions' => 'Inzendingen bekijken',
     'Toggle submission read status' => 'Leesstatus van inzending wisselen',
     'Manage plugin settings' => 'Plugin-instellingen beheren',

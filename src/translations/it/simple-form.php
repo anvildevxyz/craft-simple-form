@@ -79,6 +79,8 @@ return [
     'Export submissions (CSV / JSON)' => 'Esporta gli invii (CSV / JSON)',
     'Manage forms and fields' => 'Gestisci moduli e campi',
     'Manage form integrations' => 'Gestisci le integrazioni dei moduli',
+    'Edit HTML layout blocks' => 'Modifica i blocchi di layout HTML',
+    'You don’t have permission to edit HTML layout blocks.' => 'Non hai il permesso di modificare i blocchi di layout HTML.',
     'View submissions' => 'Visualizza gli invii',
     'Toggle submission read status' => 'Attiva/disattiva lo stato di lettura dell’invio',
     'Manage plugin settings' => 'Gestisci le impostazioni del plugin',

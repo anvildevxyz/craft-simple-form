@@ -22,7 +22,10 @@ class HiddenFieldTypeTest extends TestCase
 
     public function testIsNotAVisibleInput(): void
     {
-        $this->assertFalse((new HiddenFieldType([]))->isInput());
+        // Hidden collects a stored value (isInput stays true) but never renders
+        // inside the standard labelled field group.
+        $this->assertTrue((new HiddenFieldType([]))->isInput());
+        $this->assertFalse((new HiddenFieldType([]))->rendersInGroup());
     }
 
     public function testRenderInputEmitsBareHiddenInputWithNoLabel(): void

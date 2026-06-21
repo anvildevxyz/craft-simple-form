@@ -123,6 +123,23 @@ class FormsController extends Controller
             return $this->renderEdit($form, $site, $this->encodeBuilderJson($items));
         }
 
+        // Editing an HTML layout block's body requires a dedicated permission.
+        // Re-checked here (after parsing the posted set) so a forged HTML block
+        // cannot slip past the controller's MANAGE_FORMS gate. Reorder/delete of
+        // an existing block — and an unchanged body — are not gated.
+        $identity = Craft::$app->getUser()->getIdentity();
+        if (
+            $identity !== null
+            && !$identity->admin
+            && !$identity->can(SimpleFormPermissions::EDIT_HTML_BLOCKS)
+            && $fieldSync->htmlBlockBodyChanged($items, $site->id)
+        ) {
+            Craft::$app->getSession()->setError(
+                Craft::t('simple-form', 'You don’t have permission to edit HTML layout blocks.')
+            );
+            return $this->renderEdit($form, $site, $this->encodeBuilderJson($items));
+        }
+
         if (!Craft::$app->getElements()->saveElement($form)) {
             Craft::$app->getSession()->setError(Craft::t('simple-form', 'Unable to save form'));
             Craft::warning('Form save failed: ' . json_encode($form->getErrors()), 'simple-form');
@@ -191,6 +208,10 @@ class FormsController extends Controller
             ];
         }
 
+        $identity = Craft::$app->getUser()->getIdentity();
+        $canEditHtmlBlocks = $identity !== null
+            && ($identity->admin || $identity->can(SimpleFormPermissions::EDIT_HTML_BLOCKS));
+
         return $this->renderTemplate('simple-form/forms/edit', [
             'form' => $form,
             'currentSite' => $site,
@@ -198,6 +219,7 @@ class FormsController extends Controller
             'builderData' => $builderDataJson,
             'volumes' => array_values($volumes),
             'phoneCountries' => $phoneCountries,
+            'canEditHtmlBlocks' => $canEditHtmlBlocks,
             // The source site authors canonical option labels; other sites only
             // translate them. Single-site forms are always their own source.
             'isSourceSite' => count($supportedSites) <= 1

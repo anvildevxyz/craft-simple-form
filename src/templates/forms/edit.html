@@ -175,6 +175,7 @@
 
 <div class="sf-builder"
      data-source-site="{{ (isSourceSite ?? true) ? '1' : '' }}"
+     data-can-html="{{ (canEditHtmlBlocks ?? false) ? '1' : '' }}"
      data-volumes="{{ (volumes ?? [])|json_encode|e('html_attr') }}"
      data-phone-countries="{{ (phoneCountries ?? [])|json_encode|e('html_attr') }}"
      data-initial-fields="{{ (builderData ?? '[]')|e('html_attr') }}">
@@ -206,6 +207,20 @@
                 <button type="button" class="sf-palette-item" draggable="true" data-type="{{ p.type }}">
                     <span class="sf-grip" aria-hidden="true">⋮⋮</span>{{ p.label }}
                 </button>
+            {% endfor %}
+
+            <h3 class="sf-panel-title sf-panel-title--group">{{ 'Layout'|t('simple-form') }}</h3>
+            {% set layoutPalette = [
+                { type: 'heading', label: 'Heading'|t('simple-form'), html: false },
+                { type: 'divider', label: 'Section Divider'|t('simple-form'), html: false },
+                { type: 'html', label: 'HTML Block'|t('simple-form'), html: true },
+            ] %}
+            {% for p in layoutPalette %}
+                {% if not p.html or (canEditHtmlBlocks ?? false) %}
+                    <button type="button" class="sf-palette-item sf-palette-item--layout" draggable="true" data-type="{{ p.type }}">
+                        <span class="sf-grip" aria-hidden="true">⋮⋮</span>{{ p.label }}
+                    </button>
+                {% endif %}
             {% endfor %}
         </div>
 

@@ -79,6 +79,8 @@ return [
     'Export submissions (CSV / JSON)' => 'Exporter les soumissions (CSV / JSON)',
     'Manage forms and fields' => 'Gérer les formulaires et les champs',
     'Manage form integrations' => 'Gérer les intégrations de formulaires',
+    'Edit HTML layout blocks' => 'Modifier les blocs de mise en page HTML',
+    'You don’t have permission to edit HTML layout blocks.' => 'Vous n’avez pas la permission de modifier les blocs de mise en page HTML.',
     'View submissions' => 'Voir les soumissions',
     'Toggle submission read status' => 'Basculer le statut de lecture de la soumission',
     'Manage plugin settings' => 'Gérer les paramètres du plugin',

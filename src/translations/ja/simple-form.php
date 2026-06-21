@@ -73,6 +73,8 @@ return [
     'Export submissions (CSV / JSON)' => '送信内容のエクスポート（CSV / JSON）',
     'Manage forms and fields' => 'フォームとフィールドの管理',
     'Manage form integrations' => 'フォーム連携の管理',
+    'Edit HTML layout blocks' => 'HTMLレイアウトブロックを編集',
+    'You don’t have permission to edit HTML layout blocks.' => 'HTMLレイアウトブロックを編集する権限がありません。',
     'View submissions' => '送信内容を表示',
     'Toggle submission read status' => '送信内容の既読状態を切り替える',
     'Manage plugin settings' => 'プラグイン設定の管理',

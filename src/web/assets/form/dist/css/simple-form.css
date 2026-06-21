@@ -65,3 +65,15 @@
 .simple-form-resume-link p { margin: 0 0 .5em; }
 .simple-form-resume-row { display: flex; gap: .5em; }
 .simple-form-resume-url { flex: 1; }
+
+/* Presentational / layout blocks (heading, divider, html) */
+.simple-form-layout { margin: 18px 0; }
+.simple-form-heading { margin: 0 0 .25em; }
+.simple-form-divider { border: 0; border-top: 1px solid #d4d9df; margin: 0; }
+.simple-form-divider--labelled {
+    display: flex; align-items: center; gap: .75em; color: #6b7280;
+}
+.simple-form-divider--labelled hr { flex: 1; }
+.simple-form-divider__label { white-space: nowrap; font-size: .9em; }
+.simple-form-html :first-child { margin-top: 0; }
+.simple-form-html :last-child { margin-bottom: 0; }
