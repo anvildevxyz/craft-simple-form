@@ -178,6 +178,7 @@
      data-can-html="{{ (canEditHtmlBlocks ?? false) ? '1' : '' }}"
      data-volumes="{{ (volumes ?? [])|json_encode|e('html_attr') }}"
      data-phone-countries="{{ (phoneCountries ?? [])|json_encode|e('html_attr') }}"
+     data-relation-sources="{{ (relationSources ?? {})|json_encode|e('html_attr') }}"
      data-initial-fields="{{ (builderData ?? '[]')|e('html_attr') }}">
     <div class="sf-canvas-col">
         <div id="sf-canvas" class="sf-canvas">
@@ -204,6 +205,11 @@
                 { type: 'consent', label: 'Agree / Consent'|t('simple-form') },
                 { type: 'rating', label: 'Rating'|t('simple-form') },
                 { type: 'opinion', label: 'Opinion Scale'|t('simple-form') },
+                { type: 'entry', label: 'Entries'|t('simple-form') },
+                { type: 'category', label: 'Categories'|t('simple-form') },
+                { type: 'tag', label: 'Tags'|t('simple-form') },
+                { type: 'user', label: 'Users'|t('simple-form') },
+                { type: 'asset', label: 'Assets'|t('simple-form') },
             ] %}
             {% for p in palette %}
                 <button type="button" class="sf-palette-item" draggable="true" data-type="{{ p.type }}">

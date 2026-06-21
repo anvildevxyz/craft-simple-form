@@ -10,6 +10,8 @@
     var SF_SOURCE_SITE = sfData.sourceSite === '1';
     var SF_VOLUMES = JSON.parse(sfData.volumes || '[]');
     var SF_PHONE_COUNTRIES = JSON.parse(sfData.phoneCountries || '[]');
+    // Selectable sources per element-relation type (section/group/volume).
+    var SF_SOURCES = JSON.parse(sfData.relationSources || '{}');
 
     var TYPE_LABELS = {
         text: 'Text', email: 'Email', textarea: 'Textarea', select: 'Select',
@@ -17,6 +19,8 @@
         phone: 'Phone', file: 'File Upload',
         payment: 'Payment', hidden: 'Hidden', consent: 'Agree / Consent',
         rating: 'Rating', opinion: 'Opinion Scale',
+        entry: 'Entries', category: 'Categories', tag: 'Tags',
+        user: 'Users', asset: 'Assets',
         heading: 'Heading', divider: 'Section Divider', html: 'HTML Block'
     };
     var OPTION_TYPES = ['select', 'checkbox', 'radio'];
@@ -27,6 +31,7 @@
     // Required / validation / conditions and the submit guard skips them.
     var LAYOUT_TYPES = ['heading', 'divider', 'html'];
     function isLayout(type) { return LAYOUT_TYPES.indexOf(type) !== -1; }
+    var RELATION_TYPES = ['entry', 'category', 'tag', 'user', 'asset'];
 
     var canvas = document.getElementById('sf-canvas');
     var palette = document.getElementById('sf-palette');
@@ -94,6 +99,9 @@
         }
         if (type === 'opinion') {
             return { min: 0, max: 10 };
+        }
+        if (RELATION_TYPES.indexOf(type) !== -1) {
+            return { sources: [], multiple: false };
         }
         if (type === 'heading') {
             return { level: 'h3' };
@@ -615,6 +623,69 @@
                 if (v.trim() === '') { delete c.rightLabel; } else { c.rightLabel = v; } serialize();
             }));
             inspector.appendChild(rightRow);
+        } else if (RELATION_TYPES.indexOf(f.type) !== -1) {
+            renderRelationConfig(f);
+        }
+    }
+
+    // Source picker + single/multi + limit for the element-relation field types.
+    function renderRelationConfig(f) {
+        var c = f.config || (f.config = {});
+        var available = SF_SOURCES[f.type] || [];
+
+        // Allowed sources: a checkbox list (empty selection = any source). Stored
+        // as a list of handles; '*' / empty both mean "any".
+        if (!Array.isArray(c.sources)) { c.sources = []; }
+
+        var srcWrap = document.createElement('div'); srcWrap.className = 'field';
+        var srcHead = document.createElement('div'); srcHead.className = 'heading';
+        var srcLab = document.createElement('label'); srcLab.textContent = 'Allowed Sources';
+        srcHead.appendChild(srcLab); srcWrap.appendChild(srcHead);
+        var srcHint = document.createElement('div'); srcHint.className = 'instructions';
+        var srcHintP = document.createElement('p');
+        srcHintP.textContent = 'Leave all unchecked to allow any source of this element type.';
+        srcHint.appendChild(srcHintP); srcWrap.appendChild(srcHint);
+
+        if (available.length === 0) {
+            var none = document.createElement('p'); none.className = 'light';
+            none.textContent = 'No sources available for this element type.';
+            srcWrap.appendChild(none);
+        }
+
+        available.forEach(function(src) {
+            var line = document.createElement('div'); line.className = 'sf-source-row';
+            var cb = document.createElement('input'); cb.type = 'checkbox';
+            cb.id = 'sf-src-' + f.type + '-' + src.handle;
+            cb.checked = c.sources.indexOf(src.handle) !== -1;
+            cb.addEventListener('change', function() {
+                var i = c.sources.indexOf(src.handle);
+                if (cb.checked && i === -1) { c.sources.push(src.handle); }
+                else if (!cb.checked && i !== -1) { c.sources.splice(i, 1); }
+                serialize();
+            });
+            var lab = document.createElement('label'); lab.setAttribute('for', cb.id);
+            lab.textContent = ' ' + src.name;
+            line.appendChild(cb); line.appendChild(lab);
+            srcWrap.appendChild(line);
+        });
+        inspector.appendChild(srcWrap);
+
+        // Single vs. multiple.
+        var multRow = row('Allow Multiple');
+        var multCb = document.createElement('input'); multCb.type = 'checkbox'; multCb.checked = !!c.multiple;
+        multCb.addEventListener('change', function() {
+            c.multiple = multCb.checked;
+            if (!c.multiple) { delete c.limit; }
+            serialize();
+            // Re-render so the Limit row shows/hides with the toggle.
+            renderInspector();
+        });
+        multRow._input.appendChild(multCb);
+        inspector.appendChild(multRow);
+
+        // Limit only applies to multiple-select.
+        if (c.multiple) {
+            inspector.appendChild(numberRow('Limit', c.limit, function(v) { setNum(c, 'limit', v); }));
         }
     }
 

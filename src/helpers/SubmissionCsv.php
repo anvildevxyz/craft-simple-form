@@ -5,7 +5,9 @@ namespace fabianhaef\simpleform\helpers;
 use Craft;
 use craft\elements\Asset;
 use fabianhaef\simpleform\elements\Submission;
+use fabianhaef\simpleform\fields\ElementRelationFieldType;
 use fabianhaef\simpleform\Plugin;
+use fabianhaef\simpleform\services\FieldTypeRegistry;
 
 /**
  * Renders submissions to a human-friendly CSV for the Control Panel export:
@@ -122,11 +124,12 @@ final class SubmissionCsv
      *
      * Asset-bearing fields (file, signature) are resolved to asset URLs first via
      * {@see self::valueForExport()} so the export is a link, never raw base64 or
-     * an opaque id. Field types with a structured stored value (e.g. Phone's
-     * `{raw, e164, country}`) then decide their own export shape via
-     * {@see \fabianhaef\simpleform\fields\FieldType::exportValue()}; everything
-     * else falls back to the generic scalar/pipe-join. The cell is always passed
-     * through formula neutralization.
+     * an opaque id. Element-relation fields resolve their stored element ids to
+     * titles via {@see self::cellValue()}. Field types with a structured stored
+     * value (e.g. Phone's `{raw, e164, country}`) then decide their own export
+     * shape via {@see \fabianhaef\simpleform\fields\FieldType::exportValue()};
+     * everything else falls back to the generic scalar/pipe-join. The cell is
+     * always passed through formula neutralization.
      *
      * @param mixed $entry a stored data entry, or a bare value for legacy rows
      */
@@ -137,6 +140,11 @@ final class SubmissionCsv
         // Asset fields resolve their id list to URLs before any other shaping.
         if ($type !== '' && in_array($type, self::ASSET_TYPES, true)) {
             return self::scalar(self::valueForExport($entry));
+        }
+
+        // Element-relation fields resolve their id list to element titles.
+        if ($type !== '' && in_array($type, FieldTypeRegistry::RELATION_TYPES, true)) {
+            return self::scalar(self::cellValue($entry));
         }
 
         $value = is_array($entry) ? ($entry['value'] ?? '') : $entry;
@@ -190,6 +198,43 @@ final class SubmissionCsv
             }
         }
         return 'Asset #' . $assetId;
+    }
+
+    /**
+     * Extract a field's export value from its stored data entry. Element-relation
+     * fields store live element ids; resolve those to the elements' titles
+     * (multi-value cells are pipe-joined by {@see self::scalar()}), surviving
+     * disabled/other-site elements and falling back to `#<id>` for any element
+     * that no longer exists. All other fields export their raw stored value.
+     *
+     * @param mixed $entry a stored data entry ({label, type, value}) or a scalar
+     */
+    private static function cellValue(mixed $entry): mixed
+    {
+        if (!is_array($entry)) {
+            return $entry;
+        }
+
+        $value = $entry['value'] ?? '';
+        $type = $entry['type'] ?? null;
+
+        if (!is_string($type) || !in_array($type, FieldTypeRegistry::RELATION_TYPES, true)) {
+            return $value;
+        }
+
+        $field = Plugin::getInstance()->getFieldTypeRegistry()->getFieldType($type);
+        if (!$field instanceof ElementRelationFieldType) {
+            return $value;
+        }
+
+        $ids = is_array($value) ? $value : ($value === '' ? [] : [$value]);
+        $ids = array_values(array_filter(array_map('intval', $ids), static fn(int $id): bool => $id > 0));
+        if ($ids === []) {
+            return '';
+        }
+
+        // Reuse the field type's read-time resolution (titles, deleted fallback).
+        return array_values($field->labelsForIds($ids));
     }
 
     private static function scalar(mixed $value): string

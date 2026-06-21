@@ -295,6 +295,43 @@ and front-end UX checks.
 
 ---
 
+## M. Element-relation fields (#130)
+
+### S29 — Build a form with Entry / Category / User relation fields ⬜
+1. SETUP: a `products` entry section with ≥2 entries, a category group with ≥3 categories, and a user group exist.
+2. EXECUTE (UI): `/admin/simple-form/forms/edit/{id}?site=default` → the **Field Types** palette lists **Entries, Categories, Tags, Users, Assets**.
+3. EXECUTE (UI): click **Entries** → in the inspector, under **Allowed Sources** check only **Products**, leave **Allow Multiple** off → done.
+4. EXECUTE (UI): add **Categories** → check the category group, turn **Allow Multiple** on, set **Limit** = 2.
+5. EXECUTE (UI): add **Users** → leave sources unchecked (any group), single → Save the form.
+6. VERIFY (DB): `SELECT type,config FROM simpleform_fields WHERE formId={id} AND type IN ('entry','category','user');` → the entry field's `config.sources` = `["products"]`, the category field's `config.multiple`=true + `config.limit`=2.
+
+### S30 — Public form renders no-JS controls ⬜
+1. SETUP: S13 form exists.
+2. EXECUTE (UI): render the form on the front end (a template calling `craft.simpleForm.render('{handle}')`).
+3. VERIFY (UI): the **Entry** field is a `<select>` whose options are the **product titles** (id values), the **Category** field is a **checkbox group** of category titles (`name="field_{id}[]"`), each checkbox having a unique id + `<label for>`.
+4. VERIFY (UI): the choice group is wrapped with `role="group"` + `aria-labelledby`.
+
+### S31 — Submit a valid selection → linked titles in detail ⬜
+1. SETUP: S14 rendered.
+2. EXECUTE (UI): pick one product + two categories + a user → submit.
+3. VERIFY (DB): `SELECT data FROM simpleform_submissions WHERE formId={id} ORDER BY id DESC LIMIT 1;` → the relation fields store the selected element **ids**.
+4. VERIFY (UI): submission detail `/admin/simple-form/submissions/{sid}` shows each selection as a **linked title** pointing at the element's edit screen.
+
+### S32 — Forged id + over-limit are rejected server-side ⬜
+1. SETUP: S14 rendered; note an entry id from a **different** (disallowed) section.
+2. EXECUTE: POST the form with the Entry field set to the disallowed entry id (curl / devtools).
+3. VERIFY (UI/JSON): the submission is **rejected** with a validation error on that field; no row is stored.
+4. EXECUTE: POST 3 categories on the limit-2 field → VERIFY the “select no more than 2 options” error.
+
+### S33 — Export resolves ids to titles; deleted element falls back ⬜
+1. SETUP: S15 produced at least one submission.
+2. EXECUTE (UI): Submissions index → **Export** → CSV.
+3. VERIFY (CSV): the relation columns hold the element **titles** (multi pipe-joined), not raw ids.
+4. EXECUTE: delete one selected category, reopen the submission detail.
+5. VERIFY (UI): the deleted item renders the graceful **“(deleted #id)”** fallback; surviving items still link.
+
+---
+
 ## Runner index (execute individually later)
 ```
 /craft-smoke-test plugin:simple-form S1: add a Webhook integration to a form and verify the row + DB
@@ -322,6 +359,11 @@ and front-end UX checks.
 /craft-smoke-test plugin:simple-form S26: render the public form and verify the star radios + 0–10 anchored strip (keyboard + no-JS)
 /craft-smoke-test plugin:simple-form S27: submit rating/opinion, verify integer storage + detail, reject a forged out-of-range value
 /craft-smoke-test plugin:simple-form S28: verify analytics average/distribution and CSV integer columns for scale fields
+/craft-smoke-test plugin:simple-form S29: build a form with Entry/Category/User relation fields scoped to sources and verify the stored config
+/craft-smoke-test plugin:simple-form S30: render the public form and verify the relation select + checkbox-group a11y markup
+/craft-smoke-test plugin:simple-form S31: submit a valid relation selection and verify ids stored + linked titles in the submission detail
+/craft-smoke-test plugin:simple-form S32: forge a disallowed entry id + over-limit categories and verify both are rejected server-side
+/craft-smoke-test plugin:simple-form S33: export submissions CSV and verify relation titles; delete an element and verify the (deleted) fallback
 ```
 
 ## Coverage notes / known limits

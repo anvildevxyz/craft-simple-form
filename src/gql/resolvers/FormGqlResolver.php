@@ -2,7 +2,9 @@
 
 namespace fabianhaef\simpleform\gql\resolvers;
 
+use craft\base\ElementInterface;
 use fabianhaef\simpleform\elements\Form;
+use fabianhaef\simpleform\fields\ElementRelationFieldType;
 use fabianhaef\simpleform\fields\OpinionScaleFieldType;
 use fabianhaef\simpleform\fields\RatingFieldType;
 use fabianhaef\simpleform\helpers\ConditionalEvaluator;
@@ -33,7 +35,7 @@ final class FormGqlResolver
             'title' => $form->title,
             'description' => $form->description,
             'siteId' => $siteId,
-            'fields' => array_map([self::class, 'mapField'], $rawFields),
+            'fields' => array_map(static fn(array $row): array => self::mapField($row), $rawFields),
             'integrations' => self::mapIntegrations((int) $form->id),
         ];
     }
@@ -89,6 +91,41 @@ final class FormGqlResolver
             'options' => self::mapOptions($config['options'] ?? null),
             'validation' => self::mapValidation($config, $required, (string) $row['type']),
             'conditional' => self::mapConditional($config['conditional'] ?? null),
+            'relation' => self::mapRelation((string) $row['type'], $config),
+        ];
+    }
+
+    /**
+     * Map a relation field's element-relation config (element type, allowed
+     * sources, single/multi, limit, and the resolved option list) for the GraphQL
+     * schema, or null for any non-relation field type.
+     *
+     * @param array<string, mixed> $config
+     * @return array<string, mixed>|null
+     */
+    private static function mapRelation(string $type, array $config): ?array
+    {
+        $field = Plugin::getInstance()->getFieldTypeRegistry()->getFieldType($type, $config);
+        if (!$field instanceof ElementRelationFieldType) {
+            return null;
+        }
+
+        // Options resolve for the current site so titles match the requested
+        // form's language; the allowed set already excludes disabled/other-site
+        // elements (see ElementRelationFieldType::optionList()).
+        $options = [];
+        /** @var array<int, ElementInterface> $elements */
+        $elements = $field->allowedElementQuery()->indexBy('id')->all();
+        foreach ($elements as $id => $element) {
+            $options[] = ['id' => (int) $id, 'title' => (string) $element];
+        }
+
+        return [
+            'elementType' => $type,
+            'sources' => $field->sources(),
+            'multiple' => $field->isMultiple(),
+            'limit' => $field->limit(),
+            'options' => $options,
         ];
     }
 
