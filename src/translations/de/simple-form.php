@@ -210,7 +210,7 @@ return [
     'Couldn’t create the form from the stencil.' => 'Das Formular konnte nicht aus der Vorlage erstellt werden.',
     'Notification' => 'Benachrichtigung',
     'Admin notification' => 'Admin-Benachrichtigung',
-    'Autoresponder' => 'Autoresponder',
+    'Autoresponder' => 'Automatische Antwort',
     'Contact' => 'Kontakt',
     'Name, email and message — the classic contact form.' => 'Name, E-Mail und Nachricht — das klassische Kontaktformular.',
     'Newsletter signup' => 'Newsletter-Anmeldung',
