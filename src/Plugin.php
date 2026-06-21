@@ -45,6 +45,7 @@ use fabianhaef\simpleform\services\CaptchaService;
 use fabianhaef\simpleform\services\DraftService;
 use fabianhaef\simpleform\services\EmailService;
 use fabianhaef\simpleform\services\FieldTypeRegistry;
+use fabianhaef\simpleform\services\FormCloneService;
 use fabianhaef\simpleform\services\FormRenderService;
 use fabianhaef\simpleform\services\FormStructureService;
 use fabianhaef\simpleform\services\IntegrationsService;
@@ -55,6 +56,7 @@ use fabianhaef\simpleform\services\ReportsService;
 use fabianhaef\simpleform\services\RetentionService;
 use fabianhaef\simpleform\services\SafeRenderService;
 use fabianhaef\simpleform\services\SubmissionService;
+use fabianhaef\simpleform\stencils\StencilLibrary;
 use fabianhaef\simpleform\web\twig\variables\SimpleFormVariable;
 use fabianhaef\simpleform\widgets\RecentSubmissionsWidget;
 use fabianhaef\simpleform\widgets\SubmissionCountWidget;
@@ -79,6 +81,12 @@ class Plugin extends BasePlugin
      * captcha providers (see RegisterCaptchaProvidersEvent).
      */
     public const EVENT_REGISTER_CAPTCHA_PROVIDERS = 'registerCaptchaProviders';
+
+    /**
+     * @event RegisterStencilsEvent Fired so third parties can contribute form
+     * stencils (see RegisterStencilsEvent).
+     */
+    public const EVENT_REGISTER_STENCILS = 'registerStencils';
 
     /** The plugin's single commercial edition. */
     public const EDITION_PRO = 'pro';
@@ -119,6 +127,8 @@ class Plugin extends BasePlugin
             'assetUploadService' => AssetUploadService::class,
             'formStructure' => FormStructureService::class,
             'formRender' => FormRenderService::class,
+            'formClone' => FormCloneService::class,
+            'stencilLibrary' => StencilLibrary::class,
             'mcpTokenManager' => TokenManager::class,
             'integrationTypeRegistry' => IntegrationTypeRegistry::class,
             'integrations' => IntegrationsService::class,
@@ -384,6 +394,20 @@ class Plugin extends BasePlugin
         return $service;
     }
 
+    public function getFormClone(): FormCloneService
+    {
+        /** @var FormCloneService $service */
+        $service = $this->get('formClone');
+        return $service;
+    }
+
+    public function getStencilLibrary(): StencilLibrary
+    {
+        /** @var StencilLibrary $library */
+        $library = $this->get('stencilLibrary');
+        return $library;
+    }
+
     public function getMcpTokenManager(): TokenManager
     {
         /** @var TokenManager $manager */
@@ -480,6 +504,8 @@ class Plugin extends BasePlugin
         $event->rules['simple-form/forms/new'] = 'simple-form/forms/edit';
         $event->rules['simple-form/forms/edit/<formId:\d+>'] = 'simple-form/forms/edit';
         $event->rules['simple-form/forms/save'] = 'simple-form/forms/save';
+        $event->rules['simple-form/forms/duplicate'] = 'simple-form/forms/duplicate';
+        $event->rules['simple-form/forms/new-from-stencil'] = 'simple-form/forms/new-from-stencil';
         $event->rules['simple-form/forms/delete/<formId:\d+>'] = 'simple-form/forms/delete';
         // Integrations: global definitions managed under Settings, enabled per form.
         $event->rules['simple-form/integrations'] = 'simple-form/integrations/global-index';

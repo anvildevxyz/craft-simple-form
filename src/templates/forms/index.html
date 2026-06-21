@@ -5,9 +5,39 @@
 {% do craft.app.view.registerAssetBundle('fabianhaef\\simpleform\\web\\assets\\cp\\SimpleFormCpAsset') %}
 
 {% block actionButton %}
-    <a class="btn submit add icon" href="{{ cpUrl('simple-form/forms/new') }}">
-        {{ 'New Form'|t('simple-form') }}
-    </a>
+    {% if stencils|length %}
+        <div class="btngroup">
+            <a class="btn submit add icon" href="{{ cpUrl('simple-form/forms/new') }}">
+                {{ 'New Form'|t('simple-form') }}
+            </a>
+            <button type="button" class="btn submit menubtn" title="{{ 'New form from stencil'|t('simple-form') }}" aria-label="{{ 'New form from stencil'|t('simple-form') }}"></button>
+            <div class="menu">
+                <ul>
+                    <li>
+                        <a href="{{ cpUrl('simple-form/forms/new') }}">{{ 'Blank form'|t('simple-form') }}</a>
+                    </li>
+                </ul>
+                <hr>
+                <h6>{{ 'Start from a stencil'|t('simple-form') }}</h6>
+                <ul>
+                    {% for stencil in stencils %}
+                        <li>
+                            <a class="formsubmit"
+                               data-action="simple-form/forms/new-from-stencil"
+                               data-params="{{ { stencil: stencil.handle }|json_encode }}"
+                               title="{{ stencil.description }}">
+                                {{ stencil.name }}
+                            </a>
+                        </li>
+                    {% endfor %}
+                </ul>
+            </div>
+        </div>
+    {% else %}
+        <a class="btn submit add icon" href="{{ cpUrl('simple-form/forms/new') }}">
+            {{ 'New Form'|t('simple-form') }}
+        </a>
+    {% endif %}
 {% endblock %}
 
 {% block content %}
@@ -19,6 +49,7 @@
                 <th>{{ 'Handle'|t('simple-form') }}</th>
                 <th>{{ 'Email To'|t('simple-form') }}</th>
                 <th>{{ 'Date Created'|t('simple-form') }}</th>
+                <th></th>
                 <th></th>
                 <th></th>
             </tr>
@@ -38,6 +69,13 @@
                         <a class="btn small"
                            href="{{ cpUrl('simple-form/forms/' ~ form.id ~ '/integrations') }}">
                             {{ 'Integrations'|t('simple-form') }}
+                        </a>
+                    </td>
+                    <td class="thin">
+                        <a class="btn small formsubmit"
+                           data-action="simple-form/forms/duplicate"
+                           data-params="{{ { formId: form.id }|json_encode }}">
+                            {{ 'Duplicate'|t('simple-form') }}
                         </a>
                     </td>
                     <td class="thin">
