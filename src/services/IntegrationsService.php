@@ -34,7 +34,7 @@ class IntegrationsService extends Component
      *
      * @var list<string>
      */
-    public const SECRET_KEYS = ['apiKey', 'apiToken', 'secret', 'token'];
+    public const SECRET_KEYS = ['apiKey', 'apiToken', 'secret', 'token', 'serviceAccountKey', 'refreshToken', 'clientSecret'];
 
     /** Placeholder written in place of a secret in a portability export (#139). */
     public const REDACTED = '__REDACTED__';
