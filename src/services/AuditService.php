@@ -15,6 +15,25 @@ use yii\base\Component;
  */
 class AuditService extends Component
 {
+    public const ACTION_FORM_SAVE = 'form.save';
+    public const ACTION_FORM_EXPORT = 'form.export';
+    public const ACTION_FORM_DELETE = 'form.delete';
+    public const ACTION_FORM_DUPLICATE = 'form.duplicate';
+    public const ACTION_FORM_IMPORT = 'form.import';
+    public const ACTION_SUBMISSION_EDIT = 'submission.edit';
+    public const ACTION_SUBMISSION_STATUS = 'submission.status';
+    public const ACTION_INTEGRATION_CREATE = 'integration.create';
+    public const ACTION_INTEGRATION_SAVE = 'integration.save';
+    public const ACTION_INTEGRATION_DELETE = 'integration.delete';
+    public const ACTION_NOTIFICATION_CREATE = 'notification.create';
+    public const ACTION_NOTIFICATION_SAVE = 'notification.save';
+    public const ACTION_NOTIFICATION_DELETE = 'notification.delete';
+
+    public const TARGET_FORM = 'form';
+    public const TARGET_SUBMISSION = 'submission';
+    public const TARGET_INTEGRATION = 'integration';
+    public const TARGET_NOTIFICATION = 'notification';
+
     private const TABLE = '{{%simpleform_audit_log}}';
 
     /**

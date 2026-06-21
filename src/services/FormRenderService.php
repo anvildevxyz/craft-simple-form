@@ -7,6 +7,7 @@ use craft\helpers\Template;
 use craft\helpers\UrlHelper;
 use craft\web\View;
 use fabianhaef\simpleform\elements\Form;
+use fabianhaef\simpleform\fields\FileFieldType;
 use fabianhaef\simpleform\helpers\FieldQueryHelper;
 use fabianhaef\simpleform\helpers\FormRows;
 use fabianhaef\simpleform\helpers\FormSteps;
@@ -638,7 +639,7 @@ class FormRenderService extends Component
     private function _hasFileField(array $fields): bool
     {
         foreach ($fields as $field) {
-            if (($field['type'] ?? null) === 'file') {
+            if (($field['type'] ?? null) === FileFieldType::getType()) {
                 return true;
             }
         }

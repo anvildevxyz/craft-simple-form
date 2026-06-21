@@ -267,7 +267,7 @@ class FormCloneService extends Component
         }
 
         Plugin::getInstance()->getFormStructure()->invalidate((int) $form->id);
-        Plugin::getInstance()->getAudit()->log('form.duplicate', 'form', (int) $form->id, $name);
+        Plugin::getInstance()->getAudit()->log(AuditService::ACTION_FORM_DUPLICATE, AuditService::TARGET_FORM, (int) $form->id, $name);
 
         return $form;
     }

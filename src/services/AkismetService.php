@@ -6,6 +6,8 @@ use Craft;
 use craft\helpers\App;
 use fabianhaef\simpleform\elements\Form;
 use fabianhaef\simpleform\elements\Submission;
+use fabianhaef\simpleform\fields\EmailFieldType;
+use fabianhaef\simpleform\fields\TextFieldType;
 use fabianhaef\simpleform\Plugin;
 use GuzzleHttp\Client;
 use yii\base\Component;
@@ -115,9 +117,9 @@ class AkismetService extends Component
             if ($value === null || $value === '') {
                 continue;
             }
-            if ($email === null && ($entry['type'] ?? '') === 'email') {
+            if ($email === null && ($entry['type'] ?? '') === EmailFieldType::getType()) {
                 $email = $value;
-            } elseif ($name === null && ($entry['type'] ?? '') === 'text') {
+            } elseif ($name === null && ($entry['type'] ?? '') === TextFieldType::getType()) {
                 $name = $value;
             }
         }

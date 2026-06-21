@@ -4,6 +4,7 @@ namespace fabianhaef\simpleform\services;
 
 use Craft;
 use fabianhaef\simpleform\elements\Form;
+use fabianhaef\simpleform\fields\EmailFieldType;
 use fabianhaef\simpleform\Plugin;
 use yii\base\Component;
 
@@ -269,7 +270,7 @@ class DenylistService extends Component
             }
 
             $value = (string) $value;
-            if (($entry['type'] ?? '') === 'email' || filter_var($value, FILTER_VALIDATE_EMAIL) !== false) {
+            if (($entry['type'] ?? '') === EmailFieldType::getType() || filter_var($value, FILTER_VALIDATE_EMAIL) !== false) {
                 $emails[] = $value;
             }
         }

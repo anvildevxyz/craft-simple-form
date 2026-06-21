@@ -9,6 +9,7 @@ use fabianhaef\simpleform\elements\Form;
 use fabianhaef\simpleform\exceptions\FormulaException;
 use fabianhaef\simpleform\fields\CalculationFieldType;
 use fabianhaef\simpleform\fields\RepeaterFieldType;
+use fabianhaef\simpleform\fields\SelectFieldType;
 use fabianhaef\simpleform\helpers\ConditionalEvaluator;
 use fabianhaef\simpleform\helpers\Formula;
 use fabianhaef\simpleform\Plugin;
@@ -214,7 +215,7 @@ class FieldSyncService extends Component
                 $errors[] = Craft::t('simple-form', 'Field {name}: inner field “{handle}” has an unsupported type.', ['name' => $name, 'handle' => $handle !== '' ? $handle : "#$pos"]);
             }
 
-            if ($type === 'select') {
+            if ($type === SelectFieldType::getType()) {
                 $options = $def['options'] ?? $def['config']['options'] ?? null;
                 if (empty($options) || !is_array($options)) {
                     $errors[] = Craft::t('simple-form', 'Field {name}: inner select “{handle}” needs at least one option.', ['name' => $name, 'handle' => $handle !== '' ? $handle : "#$pos"]);

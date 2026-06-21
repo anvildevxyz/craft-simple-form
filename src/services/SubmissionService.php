@@ -358,8 +358,8 @@ class SubmissionService extends Component
 
         $actor = (string) ($context['actor'] ?? 'token');
         Plugin::getInstance()->getAudit()->log(
-            'submission.edit',
-            'submission',
+            AuditService::ACTION_SUBMISSION_EDIT,
+            AuditService::TARGET_SUBMISSION,
             (int) $submission->id,
             'edited via front-end (' . $actor . ')',
         );
@@ -720,7 +720,7 @@ class SubmissionService extends Component
             return false;
         }
 
-        Plugin::getInstance()->getAudit()->log('submission.status', 'submission', $submissionId, 'status → ' . $status);
+        Plugin::getInstance()->getAudit()->log(AuditService::ACTION_SUBMISSION_STATUS, AuditService::TARGET_SUBMISSION, $submissionId, 'status → ' . $status);
 
         // Approving a quarantined false-positive completes its journey: fire the
         // integration dispatch + notification email that were suppressed while it
@@ -864,7 +864,7 @@ class SubmissionService extends Component
                 continue;
             }
             $value = $entry['value'] ?? null;
-            if (is_string($value) && $value !== '' && ($entry['type'] ?? '') === 'email') {
+            if (is_string($value) && $value !== '' && ($entry['type'] ?? '') === EmailFieldType::getType()) {
                 return $value;
             }
         }

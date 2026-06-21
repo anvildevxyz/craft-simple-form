@@ -13,6 +13,7 @@ use fabianhaef\simpleform\helpers\FieldQueryHelper;
 use fabianhaef\simpleform\helpers\SimpleFormPermissions;
 use fabianhaef\simpleform\helpers\SiteHelper;
 use fabianhaef\simpleform\Plugin;
+use fabianhaef\simpleform\services\AuditService;
 use fabianhaef\simpleform\services\FieldSyncService;
 use fabianhaef\simpleform\services\FormPortabilityService;
 use yii\web\NotFoundHttpException;
@@ -216,7 +217,7 @@ class FormsController extends Controller
             return $this->redirect("simple-form/forms/edit/{$form->id}?site={$site->handle}");
         }
 
-        Plugin::getInstance()->getAudit()->log('form.save', 'form', (int) $form->id, (string) ($form->title ?? $form->name));
+        Plugin::getInstance()->getAudit()->log(AuditService::ACTION_FORM_SAVE, AuditService::TARGET_FORM, (int) $form->id, (string) ($form->title ?? $form->name));
 
         Craft::$app->getSession()->setNotice(Craft::t('simple-form', 'Form saved successfully'));
         return $this->redirect("simple-form/forms/edit/{$form->id}?site={$site->handle}");
@@ -298,7 +299,7 @@ class FormsController extends Controller
         $json = Plugin::getInstance()->getPortability()->exportJson($form);
         $filename = ($form->handle ?: 'form') . '.json';
 
-        Plugin::getInstance()->getAudit()->log('form.export', 'form', (int) $form->id, (string) ($form->title ?? $form->name));
+        Plugin::getInstance()->getAudit()->log(AuditService::ACTION_FORM_EXPORT, AuditService::TARGET_FORM, (int) $form->id, (string) ($form->title ?? $form->name));
 
         /** @var \craft\web\Response $response */
         $response = Craft::$app->getResponse();
@@ -360,7 +361,7 @@ class FormsController extends Controller
             return $this->asJsonErrors($form->getErrors());
         }
 
-        Plugin::getInstance()->getAudit()->log('form.delete', 'form', (int) $formId, (string) ($form->title ?? $form->name));
+        Plugin::getInstance()->getAudit()->log(AuditService::ACTION_FORM_DELETE, AuditService::TARGET_FORM, (int) $formId, (string) ($form->title ?? $form->name));
 
         return $this->asJsonSuccess();
     }

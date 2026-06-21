@@ -6,6 +6,7 @@ use Craft;
 use craft\helpers\App;
 use fabianhaef\simpleform\elements\Form;
 use fabianhaef\simpleform\elements\Submission;
+use fabianhaef\simpleform\fields\FileFieldType;
 use fabianhaef\simpleform\jobs\SendNotifications;
 use fabianhaef\simpleform\models\FieldModel;
 use fabianhaef\simpleform\models\NotificationModel;
@@ -107,7 +108,7 @@ class EmailService extends Component
     {
         $attachments = [];
         foreach ($data as $fieldData) {
-            if (!is_array($fieldData) || ($fieldData['type'] ?? null) !== 'file') {
+            if (!is_array($fieldData) || ($fieldData['type'] ?? null) !== FileFieldType::getType()) {
                 continue;
             }
             $ids = is_array($fieldData['value'] ?? null) ? $fieldData['value'] : [];

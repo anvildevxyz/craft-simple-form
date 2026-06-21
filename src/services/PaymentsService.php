@@ -5,6 +5,8 @@ namespace fabianhaef\simpleform\services;
 use Craft;
 use fabianhaef\simpleform\elements\Form;
 use fabianhaef\simpleform\elements\Submission;
+use fabianhaef\simpleform\fields\EmailFieldType;
+use fabianhaef\simpleform\fields\PaymentFieldType;
 use fabianhaef\simpleform\integrations\support\SubmissionValues;
 use fabianhaef\simpleform\Plugin;
 use yii\base\Component;
@@ -40,7 +42,7 @@ class PaymentsService extends Component
     {
         $fields = Plugin::getInstance()->getFormStructure()->getFieldSet((int) $form->id, (int) $form->siteId);
         foreach ($fields as $field) {
-            if ($field['type'] === 'payment') {
+            if ($field['type'] === PaymentFieldType::getType()) {
                 return $field['config'];
             }
         }
@@ -205,7 +207,7 @@ class PaymentsService extends Component
     {
         $fields = Plugin::getInstance()->getFormStructure()->getFieldSet((int) $form->id, (int) $form->siteId);
         foreach ($fields as $field) {
-            if ($field['type'] === 'email') {
+            if ($field['type'] === EmailFieldType::getType()) {
                 $value = SubmissionValues::value($data['field_' . $field['id']] ?? null);
                 if (is_string($value) && filter_var($value, FILTER_VALIDATE_EMAIL)) {
                     return $value;

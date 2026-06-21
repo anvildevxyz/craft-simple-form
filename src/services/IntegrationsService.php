@@ -181,8 +181,8 @@ class IntegrationsService extends Component
         }
 
         Plugin::getInstance()->getAudit()->log(
-            $isNew ? 'integration.create' : 'integration.save',
-            'integration',
+            $isNew ? AuditService::ACTION_INTEGRATION_CREATE : AuditService::ACTION_INTEGRATION_SAVE,
+            AuditService::TARGET_INTEGRATION,
             $integration->id,
             sprintf('%s (%s)', $integration->name, $integration->type),
         );
@@ -341,7 +341,7 @@ class IntegrationsService extends Component
             ->delete(self::TABLE, ['id' => $id])
             ->execute();
         if ($count > 0) {
-            Plugin::getInstance()->getAudit()->log('integration.delete', 'integration', $id);
+            Plugin::getInstance()->getAudit()->log(AuditService::ACTION_INTEGRATION_DELETE, AuditService::TARGET_INTEGRATION, $id);
         }
         return $count > 0;
     }

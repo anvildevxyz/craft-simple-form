@@ -144,7 +144,7 @@ class FormPortabilityService extends Component
         }
 
         $result->form = $newForm;
-        Plugin::getInstance()->getAudit()->log('form.import', 'form', (int)$newForm->id, (string)($newForm->title ?? $newForm->name));
+        Plugin::getInstance()->getAudit()->log(AuditService::ACTION_FORM_IMPORT, AuditService::TARGET_FORM, (int)$newForm->id, (string)($newForm->title ?? $newForm->name));
 
         return $result;
     }

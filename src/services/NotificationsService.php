@@ -83,8 +83,8 @@ class NotificationsService extends Component
         }
 
         Plugin::getInstance()->getAudit()->log(
-            $isNew ? 'notification.create' : 'notification.save',
-            'notification',
+            $isNew ? AuditService::ACTION_NOTIFICATION_CREATE : AuditService::ACTION_NOTIFICATION_SAVE,
+            AuditService::TARGET_NOTIFICATION,
             $notification->id,
             sprintf('%s → %s', $notification->name, $notification->recipient),
         );
@@ -98,7 +98,7 @@ class NotificationsService extends Component
             ->delete(self::TABLE, ['id' => $id])
             ->execute() > 0;
         if ($deleted) {
-            Plugin::getInstance()->getAudit()->log('notification.delete', 'notification', $id);
+            Plugin::getInstance()->getAudit()->log(AuditService::ACTION_NOTIFICATION_DELETE, AuditService::TARGET_NOTIFICATION, $id);
         }
         return $deleted;
     }
