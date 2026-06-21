@@ -47,11 +47,6 @@ class PipedriveIntegration extends AbstractCrmIntegration
             return IntegrationResult::failure(null, 'Pipedrive API domain and token are required');
         }
 
-        // SSRF guard (F3).
-        if (!SafeUrl::isPublicHttpUrl($domain)) {
-            return IntegrationResult::failure(null, 'Blocked request to a non-public address');
-        }
-
         $email = $this->resolveEmail($submission, $settings);
         $name = $this->resolveName($submission, $settings) ?? $email;
         if ($name === null) {
@@ -64,17 +59,10 @@ class PipedriveIntegration extends AbstractCrmIntegration
         }
         $body += $this->mappedFields($submission, $settings, 'fieldMap');
 
-        try {
-            $response = $this->httpClient()->request('POST', "$domain/v1/persons", [
-                'headers' => ['x-api-token' => $token],
-                'json' => $body,
-                'http_errors' => false,
-            ]);
-        } catch (\Throwable $e) {
-            return IntegrationResult::failure(null, $e->getMessage());
-        }
-
-        return $this->resultFromResponse($response);
+        return $this->request('POST', "$domain/v1/persons", [
+            'headers' => ['x-api-token' => $token],
+            'json' => $body,
+        ]);
     }
 
     /**
