@@ -7,12 +7,44 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- Duplicating a form now copies translated field labels for every site, not just
+  the primary site.
+- Calculation-field values that are whole numbers no longer compare unequal after
+  the submission-data round-trip.
+
 ### Changed
 - Simple Form is now commercial software with a single **Pro** edition
   (`Plugin::editions()`); the license changed from MIT to proprietary
   (see LICENSE.md).
 
 ### Added
+- **18 new field types** ([guide](docs/field-types.md)): Phone (country code +
+  validation), Hidden (dynamic defaults), Agree/Consent (GDPR), Name and Address
+  (composite), Rating and Opinion Scale/NPS, Signature, Calculation (formula
+  engine), Repeater, Entry/Category/Tag/User/Asset relations, and
+  Heading/Divider/HTML layout blocks.
+- **Spam denylists & review queue** ([guide](docs/spam-protection.md)): blocked
+  keywords/emails/IPs, per-form duplicate-submission prevention, and a spam
+  quarantine — flagged submissions are reviewable in the CP and approving a
+  false-positive re-fires its withheld notification + integration dispatch.
+- **Form availability** ([guide](docs/form-availability.md)): per-form open/close
+  windows, a total submission quota, login-required, and per-user submission
+  limits — all enforced server-side (AJAX, no-JS, and GraphQL).
+- **Per-form post-submit behaviour**: override the success/error message per form
+  and redirect to a URL or entry after submit, with submitted-value templating.
+- **Multi-column row layout** for the form builder, and **stencils** (start a
+  form from a built-in preset) plus a **duplicate-form** action.
+- **Custom render templates** ([guide](docs/render-templates.md)): override how
+  forms and fields render with your own Twig partials.
+- **PDF notifications** ([guide](docs/notifications.md)): attach a generated PDF
+  of the submission (optional dompdf dependency) and the submission's uploaded
+  files to notification emails.
+- **Google Sheets** integration and a **Create Craft Element** integration
+  (build an Entry or User from a submission) ([guide](docs/integrations.md)).
+- **Front-end submission editing** ([guide](docs/submissions.md)): let submitters
+  edit a submission via a secure tokenized link or `craft.simpleForm.editForm()`,
+  with a per-form toggle + edit window and a GraphQL `updateSubmission` mutation.
 - **Payment field** (requires Craft Commerce): add a Payment field to a form to
   collect a fixed or field-driven amount. On submit a pending Commerce order is
   created (a Donation line item for the amount) and the submission records its
