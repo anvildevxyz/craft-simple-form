@@ -31,11 +31,7 @@ class PipedriveIntegration extends AbstractCrmIntegration
         return array_merge(parent::defineSettingsRules(), [
             [['apiDomain'], 'required'],
             [['apiDomain', 'nameField', 'emailField'], 'string'],
-            [['apiDomain'], function($attribute, $params, $validator, $value): void {
-                if (is_string($value) && !SafeUrl::isAcceptableSettingUrl($value)) {
-                    $this->addError($attribute, Craft::t('simple-form', 'The URL must be a public http(s) address.'));
-                }
-            }],
+            SafeUrl::settingUrlRule('apiDomain'),
         ]);
     }
 

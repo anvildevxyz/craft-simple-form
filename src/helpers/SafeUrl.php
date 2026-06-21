@@ -2,6 +2,7 @@
 
 namespace fabianhaef\simpleform\helpers;
 
+use Craft;
 use craft\helpers\App;
 
 /**
@@ -83,6 +84,33 @@ final class SafeUrl
         // that positively resolves to a private/reserved address; a host that
         // doesn't resolve at save time is deferred to the request-time guard.
         return self::isPublicHttpUrl((string) $resolved);
+    }
+
+    /**
+     * Yii inline validation rule that rejects a setting URL which is a concrete,
+     * non-public http(s) address. Connectors reuse this for their own URL
+     * setting so the {@see isAcceptableSettingUrl} check and its translated error
+     * message live in one place.
+     *
+     * The returned closure relies on Yii's {@see \yii\validators\InlineValidator}
+     * re-binding `$this` to the validated model, so `$this->addError(...)`
+     * resolves against that model exactly as an inline closure declared in
+     * `defineSettingsRules()` would.
+     *
+     * @return array{0: list<string>, 1: \Closure}
+     */
+    public static function settingUrlRule(string $attribute): array
+    {
+        return [
+            [$attribute],
+            function($attr, $params, $validator, $value): void {
+                if (is_string($value) && !SafeUrl::isAcceptableSettingUrl($value)) {
+                    // $this is rebound to the validated model by Yii's
+                    // InlineValidator (Closure::bindTo); see settingUrlRule() doc.
+                    $this->addError($attr, Craft::t('simple-form', 'The URL must be a public http(s) address.'));
+                }
+            },
+        ];
     }
 
     /**

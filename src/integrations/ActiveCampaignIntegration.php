@@ -30,11 +30,7 @@ class ActiveCampaignIntegration extends AbstractMarketingIntegration
         return array_merge(parent::defineSettingsRules(), [
             [['apiUrl'], 'required'],
             [['apiUrl', 'listId', 'emailField'], 'string'],
-            [['apiUrl'], function($attribute, $params, $validator, $value): void {
-                if (is_string($value) && !SafeUrl::isAcceptableSettingUrl($value)) {
-                    $this->addError($attribute, Craft::t('simple-form', 'The URL must be a public http(s) address.'));
-                }
-            }],
+            SafeUrl::settingUrlRule('apiUrl'),
         ]);
     }
 

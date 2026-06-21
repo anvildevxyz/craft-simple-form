@@ -82,11 +82,7 @@ class WebhookIntegration implements IntegrationTypeInterface
         return [
             [['url'], 'required'],
             [['url'], 'string'],
-            [['url'], function($attribute, $params, $validator, $value): void {
-                if (is_string($value) && !SafeUrl::isAcceptableSettingUrl($value)) {
-                    $this->addError($attribute, Craft::t('simple-form', 'The URL must be a public http(s) address.'));
-                }
-            }],
+            SafeUrl::settingUrlRule('url'),
             [['method'], 'in', 'range' => ['POST', 'PUT']],
             [['format'], 'in', 'range' => ['json', 'form']],
         ];

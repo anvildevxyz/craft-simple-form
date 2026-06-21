@@ -184,6 +184,56 @@ class IntegrationsServiceTest extends SimpleFormTestCase
         $this->assertArrayHasKey('url', $errors);
     }
 
+    /**
+     * Every connector that uses {@see \fabianhaef\simpleform\helpers\SafeUrl::settingUrlRule()}
+     * must still reject a private/IMDS URL on its own URL setting, proving the
+     * shared closure's `$this->addError(...)` rebinds to each connector's
+     * validated model and flags the right attribute.
+     *
+     * @dataProvider settingUrlConnectors
+     */
+    public function testConnectorRejectsPrivateSettingUrl(string $handle, string $attribute, array $extra): void
+    {
+        $this->requireCraft();
+        $type = Plugin::getInstance()->getIntegrationTypeRegistry()->getType($handle);
+        $this->assertNotNull($type);
+
+        $settings = array_merge($extra, [$attribute => 'http://169.254.169.254/latest/meta-data/']);
+        $errors = Plugin::getInstance()->getIntegrations()->validateSettings($type, $settings);
+
+        $this->assertArrayHasKey($attribute, $errors);
+        $this->assertStringContainsString('public http(s)', $errors[$attribute][0]);
+    }
+
+    /**
+     * @return array<string, array{0: string, 1: string, 2: array<string, string>}>
+     */
+    public static function settingUrlConnectors(): array
+    {
+        return [
+            'webhook' => ['webhook', 'url', []],
+            'slack' => ['slack', 'url', []],
+            'discord' => ['discord', 'url', []],
+            'activecampaign' => ['activecampaign', 'apiUrl', ['apiKey' => 'x']],
+            'pipedrive' => ['pipedrive', 'apiDomain', ['apiToken' => 'x']],
+        ];
+    }
+
+    public function testConnectorAcceptsPublicSettingUrl(): void
+    {
+        $this->requireCraft();
+        $type = Plugin::getInstance()->getIntegrationTypeRegistry()->getType('activecampaign');
+        $this->assertNotNull($type);
+
+        // The shared rule must accept a public https URL on a non-`url` attribute
+        // (`apiUrl`), proving the factory validates the attribute it was given.
+        $errors = Plugin::getInstance()->getIntegrations()->validateSettings($type, [
+            'apiKey' => 'x',
+            'apiUrl' => 'https://1.1.1.1/api/3',
+        ]);
+        $this->assertArrayNotHasKey('apiUrl', $errors);
+    }
+
     public function testWebhookDispatchToInternalUrlIsBlocked(): void
     {
         $this->requireCraft();

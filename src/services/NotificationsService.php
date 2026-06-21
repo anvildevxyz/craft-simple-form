@@ -10,6 +10,7 @@ use craft\helpers\StringHelper;
 use fabianhaef\simpleform\elements\Form;
 use fabianhaef\simpleform\elements\Submission;
 use fabianhaef\simpleform\helpers\ConditionalEvaluator;
+use fabianhaef\simpleform\integrations\support\SubmissionValues;
 use fabianhaef\simpleform\models\NotificationModel;
 use fabianhaef\simpleform\Plugin;
 use yii\base\Component;
@@ -200,7 +201,7 @@ class NotificationsService extends Component
         foreach ($data as $key => $entry) {
             $handle = $handleById[$key] ?? null;
             if ($handle !== null) {
-                $values[$handle] = $entry['value'];
+                $values[$handle] = SubmissionValues::value($entry);
             }
         }
 

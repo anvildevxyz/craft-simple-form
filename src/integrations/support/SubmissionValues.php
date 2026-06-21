@@ -15,6 +15,18 @@ use fabianhaef\simpleform\models\FormModel;
 final class SubmissionValues
 {
     /**
+     * Extract the stored value from one submission-data entry. An entry is either
+     * the `{label, type, value}` shape (return its `value`, or `$default` when the
+     * value is absent) or a raw scalar (returned as-is). Single-sources the
+     * knowledge of that stored shape; callers pass `$default` (`''` vs `null`) to
+     * keep their own missing-value behaviour.
+     */
+    public static function value(mixed $entry, mixed $default = null): mixed
+    {
+        return is_array($entry) ? ($entry['value'] ?? $default) : $entry;
+    }
+
+    /**
      * Flatten the submission to a `handle => value` map. Falls back to the raw
      * `field_<id>` key when the field handle can't be resolved.
      *
@@ -32,7 +44,7 @@ final class SubmissionValues
 
         $out = [];
         foreach ($submission->data ?? [] as $key => $entry) {
-            $out[$handleByKey[$key] ?? $key] = $entry['value'];
+            $out[$handleByKey[$key] ?? $key] = self::value($entry);
         }
         return $out;
     }
