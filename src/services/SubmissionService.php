@@ -9,8 +9,10 @@ use fabianhaef\simpleform\elements\Form;
 use fabianhaef\simpleform\elements\Submission;
 use fabianhaef\simpleform\elements\SubmissionStatus;
 use fabianhaef\simpleform\events\SubmissionEvent;
+use fabianhaef\simpleform\fields\CompositeFieldType;
 use fabianhaef\simpleform\fields\FileFieldType;
 use fabianhaef\simpleform\helpers\RateLimiter;
+use fabianhaef\simpleform\models\FieldModel;
 use fabianhaef\simpleform\models\FormModel;
 use fabianhaef\simpleform\models\Settings;
 use fabianhaef\simpleform\Plugin;
@@ -201,10 +203,15 @@ class SubmissionService extends Component
                 $errors['field_' . $fieldId] = $fieldErrors;
             }
 
+            // Composite fields (Name/Address) store an associative sub-part map
+            // limited to their enabled sub-keys, so a crafted POST cannot inject
+            // keys the field never rendered.
+            $storedValue = $this->serializeFieldValue($field, $value);
+
             $data['field_' . $fieldId] = [
                 'label' => $field->getLabel() ?? $field->getName(),
                 'type' => $field->getType(),
-                'value' => $value,
+                'value' => $storedValue,
             ];
         }
 
@@ -313,6 +320,26 @@ class SubmissionService extends Component
             ->handle($form)
             ->siteId(Craft::$app->getSites()->getCurrentSite()->id)
             ->one();
+    }
+
+    /**
+     * Normalize a field's value for storage. Composite field types
+     * ({@see CompositeFieldType}) clamp the posted associative array to their
+     * enabled sub-keys; every other field type stores its value untouched.
+     *
+     * @param FieldModel $field
+     */
+    private function serializeFieldValue(FieldModel $field, mixed $value): mixed
+    {
+        $fieldType = Plugin::getInstance()
+            ->getFieldTypeRegistry()
+            ->getFieldType($field->getType(), $field->getConfig());
+
+        if ($fieldType instanceof CompositeFieldType) {
+            return $fieldType->serializeValue($value);
+        }
+
+        return $value;
     }
 
     /**

@@ -2,11 +2,13 @@
 
 namespace fabianhaef\simpleform\services;
 
+use fabianhaef\simpleform\fields\AddressFieldType;
 use fabianhaef\simpleform\fields\CheckboxFieldType;
 use fabianhaef\simpleform\fields\DateFieldType;
 use fabianhaef\simpleform\fields\EmailFieldType;
 use fabianhaef\simpleform\fields\FieldType;
 use fabianhaef\simpleform\fields\FileFieldType;
+use fabianhaef\simpleform\fields\NameFieldType;
 use fabianhaef\simpleform\fields\NumberFieldType;
 use fabianhaef\simpleform\fields\PaymentFieldType;
 use fabianhaef\simpleform\fields\RadioFieldType;
@@ -43,6 +45,8 @@ class FieldTypeRegistry extends Component
         $this->registerFieldType(NumberFieldType::class);
         $this->registerFieldType(FileFieldType::class);
         $this->registerFieldType(PaymentFieldType::class);
+        $this->registerFieldType(NameFieldType::class);
+        $this->registerFieldType(AddressFieldType::class);
     }
 
     /**
