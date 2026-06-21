@@ -11,8 +11,8 @@ use fabianhaef\simpleform\Plugin;
  * own `config` JSON (no new tables), and the submitted value is an ordered
  * array of row objects keyed by inner handle.
  *
- * v1 scope is deliberately constrained (PRD docs/prd/field-repeater.md):
- * inner types are limited to {@see self::ALLOWED_INNER_TYPES}, there are no
+ * v1 scope is deliberately constrained: inner types are limited to
+ * {@see self::ALLOWED_INNER_TYPES}, there are no
  * nested repeaters, no in-row conditional logic, and no file/payment inner
  * types.
  *
