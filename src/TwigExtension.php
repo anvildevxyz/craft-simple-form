@@ -201,10 +201,11 @@ class TwigExtension extends AbstractExtension
         // labelled with a role="group" + aria-labelledby pointing at a span;
         // single controls keep a <label for> tied to the input's id (#105).
         $isChoice = $fieldType->isChoiceGroup();
+        $rendersOwnLabel = $fieldType->rendersOwnLabel();
         $labelId = $fieldName . '-label';
 
         $html = '<div class="simple-form-group"' . $groupAttrs . '>';
-        if ($label) {
+        if ($label && !$rendersOwnLabel) {
             // The required marker is decorative — the control's `required`
             // attribute is what assistive tech announces.
             $required = !empty($fieldConfig['required'])

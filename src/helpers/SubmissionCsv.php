@@ -137,9 +137,39 @@ final class SubmissionCsv
             return '1';
         }
         if (is_array($value)) {
+            // A consent record flattens to a clear scalar; the full
+            // textVersion/textHash stay in the stored JSON.
+            if (array_key_exists('consented', $value)) {
+                return self::consentScalar($value);
+            }
             return implode('|', array_map([self::class, 'scalar'], $value));
         }
         return self::neutralizeFormula((string) $value);
+    }
+
+    /**
+     * Flatten a Consent field record (#125) to a human-readable cell, e.g.
+     * `Yes (2026-06-20 14:05)` or `No`. The exact timestamp comes from the
+     * server-stamped `consentedAt`; full text/hash stay in the JSON.
+     *
+     * @param array<string, mixed> $record
+     */
+    private static function consentScalar(array $record): string
+    {
+        if (empty($record['consented'])) {
+            return 'No';
+        }
+
+        $at = '';
+        if (!empty($record['consentedAt']) && is_string($record['consentedAt'])) {
+            try {
+                $at = ' (' . (new \DateTimeImmutable($record['consentedAt']))->format('Y-m-d H:i') . ')';
+            } catch (\Exception) {
+                $at = '';
+            }
+        }
+
+        return 'Yes' . $at;
     }
 
     /**

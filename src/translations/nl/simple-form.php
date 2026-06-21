@@ -116,4 +116,9 @@ return [
     'Submissions appear here once your forms are filled out.' => 'Inzendingen verschijnen hier zodra je formulieren zijn ingevuld.',
     'No submissions match your filters.' => 'Geen inzendingen komen overeen met je filters.',
     'Enable the MCP server above to issue and manage access tokens.' => 'Schakel de MCP-server hierboven in om toegangstokens uit te geven en te beheren.',
+    'Agree / Consent' => 'Akkoord / Toestemming',
+    'You must agree before submitting.' => 'U moet akkoord gaan voordat u verzendt.',
+    'Consented: Yes' => 'Toestemming: Ja',
+    'Consented: No' => 'Toestemming: Nee',
+    'Text:' => 'Tekst:',
 ];

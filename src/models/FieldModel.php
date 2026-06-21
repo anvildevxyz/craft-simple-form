@@ -128,6 +128,23 @@ class FieldModel extends Model
     }
 
     /**
+     * Transform a validated value into the shape persisted in the submission's
+     * `data` payload. For most field types this is an identity pass-through; the
+     * Consent field replaces the raw `"1"` with its auditable consent record.
+     *
+     * @param array<string, mixed> $context per-submission context (e.g. `siteId`)
+     */
+    public function persistValue(mixed $value, array $context = []): mixed
+    {
+        $fieldType = Plugin::getInstance()->getFieldTypeRegistry()->getFieldType($this->type, $this->config);
+        if (!$fieldType) {
+            return $value;
+        }
+
+        return $fieldType->persistValue($value, $context);
+    }
+
+    /**
      * Replace a field's default validation errors with the editor's per-site
      * override message when one is set, so a failed submission speaks in the
      * site's own wording. With no override (the common case) the localized

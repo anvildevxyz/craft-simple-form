@@ -116,4 +116,9 @@ return [
     'Submissions appear here once your forms are filled out.' => 'Submissions appear here once your forms are filled out.',
     'No submissions match your filters.' => 'No submissions match your filters.',
     'Enable the MCP server above to issue and manage access tokens.' => 'Enable the MCP server above to issue and manage access tokens.',
+    'Agree / Consent' => 'Agree / Consent',
+    'You must agree before submitting.' => 'You must agree before submitting.',
+    'Consented: Yes' => 'Consented: Yes',
+    'Consented: No' => 'Consented: No',
+    'Text:' => 'Text:',
 ];

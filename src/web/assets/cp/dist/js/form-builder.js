@@ -15,7 +15,7 @@
         text: 'Text', email: 'Email', textarea: 'Textarea', select: 'Select',
         checkbox: 'Checkbox', radio: 'Radio', date: 'Date', number: 'Number',
         phone: 'Phone', file: 'File Upload',
-        payment: 'Payment', hidden: 'Hidden'
+        payment: 'Payment', hidden: 'Hidden', consent: 'Agree / Consent'
     };
     var OPTION_TYPES = ['select', 'checkbox', 'radio'];
     // Non-visible types: the visitor never sees them, so the inspector suppresses
@@ -79,6 +79,9 @@
         }
         if (type === 'hidden') {
             return { source: 'static' };
+        }
+        if (type === 'consent') {
+            return { consentText: 'I agree to the [privacy policy](https://example.com/privacy)' };
         }
         return {};
     }
@@ -178,7 +181,8 @@
 
     function addField(type, atIndex) {
         var label = TYPE_LABELS[type] || 'Field';
-        var f = normalize({ id: null, type: type, label: label, config: defaultConfig(type) });
+        // Consent is, by design, normally a required tick — default it on.
+        var f = normalize({ id: null, type: type, label: label, required: type === 'consent', config: defaultConfig(type) });
         f.handle = uniqueHandle(slug(label), f.clientId);
         if (atIndex == null || atIndex >= fields.length) { fields.push(f); }
         else { fields.splice(Math.max(0, atIndex), 0, f); }
@@ -451,6 +455,42 @@
             inspector.appendChild(curRow);
         } else if (f.type === 'hidden') {
             renderHiddenConfig(f, c);
+        } else if (f.type === 'consent') {
+            // Consent text (rich label). One inline [label](url) link is rendered
+            // safely server-side; everything else is escaped.
+            var ctRow = row('Consent Text');
+            var ctTa = document.createElement('textarea');
+            ctTa.className = 'text fullwidth'; ctTa.rows = 3;
+            ctTa.value = c.consentText || '';
+            ctTa.addEventListener('input', function() { c.consentText = ctTa.value; serialize(); });
+            ctRow._input.appendChild(ctTa);
+
+            var addLink = document.createElement('button');
+            addLink.type = 'button'; addLink.className = 'btn small';
+            addLink.style.marginTop = '5px';
+            addLink.textContent = 'Add link';
+            addLink.addEventListener('click', function() {
+                var token = '[privacy policy](https://example.com/privacy)';
+                ctTa.value = (ctTa.value ? ctTa.value + ' ' : '') + token;
+                c.consentText = ctTa.value; serialize(); ctTa.focus();
+            });
+            ctRow._input.appendChild(addLink);
+
+            var ctHint = document.createElement('div'); ctHint.className = 'instructions';
+            var ctHintP = document.createElement('p');
+            ctHintP.textContent = 'Use [label](https://…) for a single inline link. Per-site translatable.';
+            ctHint.appendChild(ctHintP);
+            ctRow._input.appendChild(ctHint);
+            inspector.appendChild(ctRow);
+
+            // Required message override (the "must agree" error).
+            var rmRow = row('Required Message');
+            var rmInput = textInput(c.requiredMessage || '', function(v) {
+                if (v.trim() === '') { delete c.requiredMessage; } else { c.requiredMessage = v; } serialize();
+            });
+            rmInput.placeholder = 'You must agree before submitting.';
+            rmRow._input.appendChild(rmInput);
+            inspector.appendChild(rmRow);
         }
     }
 

@@ -67,7 +67,16 @@
                 <tr>
                     <td>{{ fieldData.label ?? fieldKey }}</td>
                     <td>
-                        {% if fieldData.type == 'file' %}
+                        {% if fieldData.type == 'consent' %}
+                            {% set consent = fieldData.value %}
+                            {% if consent.consented %}
+                                {{ 'Consented: Yes'|t('simple-form') }}
+                                {%- if consent.consentedAt %} — {{ consent.consentedAt|date('Y-m-d H:i') }}{% endif %}
+                                {%- if consent.textVersion %}<br><small class="light">{{ 'Text:'|t('simple-form') }} {{ consent.textVersion }}</small>{% endif %}
+                            {% else %}
+                                {{ 'Consented: No'|t('simple-form') }}
+                            {% endif %}
+                        {% elseif fieldData.type == 'file' %}
                             {% for assetId in fieldData.value %}
                                 {% set asset = craft.assets().id(assetId).one() %}
                                 {% if asset %}

@@ -191,6 +191,10 @@ class SubmissionService extends Component
         $data = [];
         $errors = [];
 
+        // Site the submission is attributed to; passed to fields whose persisted
+        // value depends on the site (e.g. the Consent record's localized snapshot).
+        $siteId = $context['siteId'] ?? $form->siteId ?? Craft::$app->getSites()->getCurrentSite()->id;
+
         foreach ($formModel->getFields() as $fieldId => $field) {
             if (!$field->isVisible($valuesByHandle)) {
                 continue;
@@ -212,10 +216,17 @@ class SubmissionService extends Component
                 $errors['field_' . $fieldId] = $fieldErrors;
             }
 
+            // Let the field type shape its persisted value (identity for most;
+            // the Consent field stamps an auditable record here). Skipped when the
+            // field already failed validation — the submission won't be saved.
+            $persisted = empty($fieldErrors)
+                ? $field->persistValue($value, ['siteId' => (int) $siteId])
+                : $value;
+
             // Persist the field type's normalized shape (a passthrough for most
             // types; e.g. Phone stores a {raw, e164, country} map) so exports and
             // integrations get the canonical value on both transports.
-            $storedValue = $this->normalizedValueForField($field, $value);
+            $storedValue = $this->normalizedValueForField($field, $persisted);
 
             $data['field_' . $fieldId] = [
                 'label' => $field->getLabel() ?? $field->getName(),
@@ -237,8 +248,6 @@ class SubmissionService extends Component
         }
 
         // (6) Build + save the submission element.
-        $siteId = $context['siteId'] ?? $form->siteId ?? Craft::$app->getSites()->getCurrentSite()->id;
-
         $submission = new Submission();
         $submission->formId = (int) $form->id;
         $submission->siteId = (int) $siteId;

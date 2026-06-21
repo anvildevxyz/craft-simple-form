@@ -153,6 +153,23 @@ abstract class FieldType
     abstract public function renderInput(string $name, mixed $value = null): string;
 
     /**
+     * Transform a validated posted value into the shape persisted in the
+     * submission's `data` payload. The default is an identity pass-through — the
+     * stored value is exactly what was posted.
+     *
+     * The Consent field overrides this to replace the raw `"1"` with an auditable
+     * consent record (boolean + server-stamped timestamp + text snapshot/hash),
+     * so the proof of what was agreed to lives in the existing submission-data
+     * model with no new table.
+     *
+     * @param array<string, mixed> $context per-submission context (e.g. `siteId`)
+     */
+    public function persistValue(mixed $value, array $context = []): mixed
+    {
+        return $value;
+    }
+
+    /**
      * The value-less control attributes (name, required, placeholder) shared by
      * every field control. Inputs add a value via {@see self::getInputAttributes()};
      * <textarea>/<select> carry the value in their markup, so they use this directly.
@@ -178,6 +195,16 @@ abstract class FieldType
     public function isInput(): bool
     {
         return true;
+    }
+
+    /**
+     * Whether this type renders its own `<label>` inside {@see self::renderInput()}
+     * (so the surrounding field group must not emit a duplicate one). The Consent
+     * field does this — its rich, linked consent text *is* the input's label.
+     */
+    public function rendersOwnLabel(): bool
+    {
+        return false;
     }
 
     protected function controlAttributes(string $name): string
