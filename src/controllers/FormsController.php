@@ -108,6 +108,25 @@ class FormsController extends Controller
         $form->emailReplyTo = $request->getBodyParam('emailReplyTo');
         $form->emailBody = $request->getBodyParam('emailBody');
         $form->allowSaveResume = (bool) $request->getBodyParam('allowSaveResume');
+
+        // Post-submit behavior (#133). The message/URL/error overrides are
+        // per-site translatable content; the action + entry id are shared.
+        $form->postSubmitAction = in_array(
+            (string) $request->getBodyParam('postSubmitAction', 'message'),
+            Form::POST_SUBMIT_ACTIONS,
+            true,
+        ) ? (string) $request->getBodyParam('postSubmitAction', 'message') : 'message';
+        $redirectEntryId = $request->getBodyParam('redirectEntryId');
+        if (is_array($redirectEntryId)) {
+            $redirectEntryId = reset($redirectEntryId) ?: null;
+        }
+        $form->redirectEntryId = $redirectEntryId !== null && $redirectEntryId !== ''
+            ? (int) $redirectEntryId
+            : null;
+        $form->submitMessage = $request->getBodyParam('submitMessage');
+        $form->errorMessage = $request->getBodyParam('errorMessage');
+        $form->redirectUrl = $request->getBodyParam('redirectUrl');
+
         $form->propagationMethod = PropagationMethod::tryFrom(
             (string)$request->getBodyParam('propagationMethod', 'none')
         ) ?? PropagationMethod::None;
@@ -191,6 +210,16 @@ class FormsController extends Controller
     {
         $supportedSites = $this->getSupportedSitesForForm($form);
 
+        // Resolve the redirect entry (on the edited site) for the element select.
+        $redirectEntry = null;
+        if ($form->redirectEntryId !== null) {
+            $redirectEntry = \craft\elements\Entry::find()
+                ->id($form->redirectEntryId)
+                ->siteId($site->id)
+                ->status(null)
+                ->one();
+        }
+
         /** @var list<array{handle: string, name: string}> $volumes */
         $volumes = array_values(array_map(
             static fn($v): array => ['handle' => (string) $v->handle, 'name' => (string) $v->name],
@@ -218,6 +247,7 @@ class FormsController extends Controller
             'currentSite' => $site,
             'supportedSites' => $supportedSites,
             'builderData' => $builderDataJson,
+            'redirectEntry' => $redirectEntry,
             'volumes' => array_values($volumes),
             'phoneCountries' => $phoneCountries,
             'canEditHtmlBlocks' => $canEditHtmlBlocks,

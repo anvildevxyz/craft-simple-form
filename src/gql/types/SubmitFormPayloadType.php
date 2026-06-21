@@ -31,6 +31,11 @@ class SubmitFormPayloadType extends SimpleFormObjectType
                 'type' => Type::int(),
                 'description' => 'The id of the stored submission, or null when not stored.',
             ],
+            'redirectUrl' => [
+                'type' => Type::string(),
+                'description' => 'The resolved post-submit redirect URL on success (per the form\'s '
+                    . 'post-submit action), or null when the form shows an inline message.',
+            ],
             'errors' => [
                 'type' => Type::nonNull(Type::listOf(Type::nonNull(SubmissionErrorType::getType()))),
                 'description' => 'Validation/processing errors; empty on success.',

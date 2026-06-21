@@ -205,3 +205,12 @@
 }
 .simple-form-signature__hint { color: #64748b; }
 .simple-form-signature__nojs { color: #b91c1c; }
+
+/* Post-submit inline success (#133) */
+.simple-form-success {
+    padding: .75em 1em;
+    border: 1px solid #bbf7d0;
+    border-radius: 4px;
+    background: #f0fdf4;
+    color: #166534;
+}

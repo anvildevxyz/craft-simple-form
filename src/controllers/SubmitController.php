@@ -70,11 +70,13 @@ class SubmitController extends Controller
         $result = Plugin::getInstance()->getSubmissionService()->createFromRequest($form, $request);
 
         // A silently-dropped honeypot hit returns no submission and no errors:
-        // report success so bots get no signal, but never persist the row.
+        // report success so bots get no signal, but never persist the row. No row
+        // means no per-form resolution, so fall back to the global message.
         if ($result['submission'] === null && $result['errors'] === null) {
             return $this->asJson([
                 'success' => true,
                 'message' => $settings->submitMessage,
+                'redirectUrl' => null,
             ]);
         }
 
@@ -85,9 +87,18 @@ class SubmitController extends Controller
             ]);
         }
 
+        // Resolve the per-form post-submit behavior (message + optional redirect),
+        // sharing the exact resolution the GraphQL path uses.
+        $post = Plugin::getInstance()->getSubmissionService()->resolvePostSubmit(
+            $form,
+            $result['submission'],
+            $result['data'] ?? [],
+        );
+
         return $this->asJson([
             'success' => true,
-            'message' => $settings->submitMessage,
+            'message' => $post['message'],
+            'redirectUrl' => $post['redirectUrl'],
         ]);
     }
 

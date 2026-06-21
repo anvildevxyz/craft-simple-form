@@ -62,8 +62,12 @@ class TwigExtension extends AbstractExtension
         $enctype = $hasFileField ? ' enctype="multipart/form-data"' : '';
 
         // Expose the configured (localized) error message so the JS submit
-        // handler can show it if the request fails with a non-JSON response.
-        $errorMessage = (string) (Plugin::getInstance()->getSettings()->errorMessage ?? '');
+        // handler can show it if the request fails with a non-JSON response. The
+        // per-form override (#133) wins over the global default when set.
+        $perFormError = $form->errorMessage;
+        $errorMessage = ($perFormError !== null && trim($perFormError) !== '')
+            ? $perFormError
+            : (string) (Plugin::getInstance()->getSettings()->errorMessage ?? '');
         $errorAttr = $errorMessage !== '' ? ' data-sf-error="' . htmlspecialchars($errorMessage, ENT_QUOTES) . '"' : '';
 
         $steps = FormSteps::group($fields);

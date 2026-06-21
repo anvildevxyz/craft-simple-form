@@ -160,6 +160,74 @@
 
 <hr>
 
+<h2>{{ 'After Submit'|t('simple-form') }}</h2>
+
+{% set placeholderHint = 'You can use {submissionId} and field handles like {handle} as placeholders.'|t('simple-form') %}
+
+{{ forms.textareaField({
+    label: 'Success Message'|t('simple-form'),
+    id: 'submitMessage',
+    name: 'submitMessage',
+    value: form.submitMessage,
+    rows: 3,
+    errors: form.getErrors('submitMessage'),
+    instructions: 'Shown after a successful submission. Leave blank to use the global default. '|t('simple-form') ~ placeholderHint,
+    translatable: true,
+}) }}
+
+{{ forms.selectField({
+    label: 'On Submit'|t('simple-form'),
+    id: 'postSubmitAction',
+    name: 'postSubmitAction',
+    value: form.postSubmitAction ?? 'message',
+    options: [
+        { label: 'Show success message'|t('simple-form'), value: 'message' },
+        { label: 'Redirect to a URL'|t('simple-form'), value: 'url' },
+        { label: 'Redirect to an entry'|t('simple-form'), value: 'entry' },
+    ],
+    errors: form.getErrors('postSubmitAction'),
+    toggle: true,
+    targetPrefix: 'sf-postsubmit-',
+}) }}
+
+<div id="sf-postsubmit-url" {{ (form.postSubmitAction ?? 'message') == 'url' ? '' : 'class="hidden"' }}>
+    {{ forms.textField({
+        label: 'Redirect URL'|t('simple-form'),
+        id: 'redirectUrl',
+        name: 'redirectUrl',
+        value: form.redirectUrl,
+        errors: form.getErrors('redirectUrl'),
+        instructions: 'Where to send the visitor after submitting. '|t('simple-form') ~ placeholderHint,
+        translatable: true,
+    }) }}
+</div>
+
+<div id="sf-postsubmit-entry" {{ (form.postSubmitAction ?? 'message') == 'entry' ? '' : 'class="hidden"' }}>
+    {{ forms.elementSelectField({
+        label: 'Redirect Entry'|t('simple-form'),
+        id: 'redirectEntryId',
+        name: 'redirectEntryId',
+        elementType: 'craft\\elements\\Entry',
+        limit: 1,
+        elements: redirectEntry is defined and redirectEntry ? [redirectEntry] : [],
+        errors: form.getErrors('redirectEntryId'),
+        instructions: 'The visitor is sent to this entry’s URL after submitting.'|t('simple-form'),
+    }) }}
+</div>
+
+{{ forms.textareaField({
+    label: 'Error Message'|t('simple-form'),
+    id: 'errorMessage',
+    name: 'errorMessage',
+    value: form.errorMessage,
+    rows: 2,
+    errors: form.getErrors('errorMessage'),
+    instructions: 'Shown if the submission fails. Leave blank to use the global default.'|t('simple-form'),
+    translatable: true,
+}) }}
+
+<hr>
+
 {{ forms.lightswitchField({
     label: 'Allow save & resume'|t('simple-form'),
     id: 'allowSaveResume',

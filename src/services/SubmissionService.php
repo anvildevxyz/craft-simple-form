@@ -3,6 +3,7 @@
 namespace fabianhaef\simpleform\services;
 
 use Craft;
+use craft\elements\Entry;
 use craft\web\Request;
 use craft\web\UploadedFile;
 use fabianhaef\simpleform\elements\Form;
@@ -37,7 +38,7 @@ class SubmissionService extends Component
      *
      * @param FormModel|Form|string $form Form instance, element, or handle
      * @param Request|null $request Request object (uses Craft request if null)
-     * @return array{submission: Submission|null, errors: array<string, mixed>|null}
+     * @return array{submission: Submission|null, errors: array<string, mixed>|null, data?: array<string, mixed>}
      */
     public function createFromRequest($form, ?Request $request = null): array
     {
@@ -235,7 +236,7 @@ class SubmissionService extends Component
      * @param Form $form
      * @param array<int|string, mixed> $values posted values keyed by field id (or `field_<id>`)
      * @param array{honeypot?: string, captchaToken?: ?string, skipCaptcha?: bool, userId?: ?int, siteId?: ?int} $context
-     * @return array{submission: Submission|null, errors: array<string, mixed>|null}
+     * @return array{submission: Submission|null, errors: array<string, mixed>|null, data?: array<string, mixed>}
      */
     public function submit(Form $form, array $values, array $context = []): array
     {
@@ -423,7 +424,49 @@ class SubmissionService extends Component
             Plugin::getInstance()->getEmailService()->sendSubmissionEmail($form, $submission, $data);
         }
 
-        return ['submission' => $submission, 'errors' => null];
+        // `data` is returned so post-submit resolution (the success message and a
+        // templated redirect URL) can interpolate the submitted values without
+        // re-reading the persisted row.
+        return ['submission' => $submission, 'errors' => null, 'data' => $data];
+    }
+
+    /**
+     * Resolve the post-submit behavior for a completed submission: the success
+     * message to show and the URL to redirect to (or null for an inline message).
+     *
+     * Single source of truth shared by every transport (the front-end controller
+     * and the GraphQL mutation) so they always agree on the final message/redirect.
+     *
+     * - `message` falls back to the global {@see Settings::$submitMessage} when the
+     *   per-form override is blank, with `{handle}`/`{submissionId}` placeholders
+     *   interpolated from the submitted values.
+     * - `redirectUrl` is null for the `message` action; for `url` the placeholders
+     *   are interpolated and each substituted value is `rawurlencode()`d; for
+     *   `entry` the form's `redirectEntryId` resolves to an entry on the
+     *   submission's site and its URL is used (null when missing/disabled).
+     *
+     * @param array<string, mixed> $data the persisted submission data map (field_<id> => [..., 'value' => mixed])
+     * @return array{message: string, redirectUrl: ?string}
+     */
+    public function resolvePostSubmit(Form $form, Submission $submission, array $data): array
+    {
+        $settings = Plugin::getInstance()->getSettings();
+        $placeholders = $this->buildPlaceholders($form, $submission, $data);
+
+        $rawMessage = ($form->submitMessage !== null && trim($form->submitMessage) !== '')
+            ? $form->submitMessage
+            : $settings->submitMessage;
+        $message = $this->interpolate($rawMessage, $placeholders, false);
+
+        $redirectUrl = match ($form->postSubmitAction) {
+            'url' => $form->redirectUrl !== null && trim($form->redirectUrl) !== ''
+                ? $this->interpolate($form->redirectUrl, $placeholders, true)
+                : null,
+            'entry' => $this->resolveEntryUrl($form, $submission),
+            default => null,
+        };
+
+        return ['message' => $message, 'redirectUrl' => $redirectUrl];
     }
 
     public function getSubmission(int $submissionId): ?Submission
@@ -499,6 +542,88 @@ class SubmissionService extends Component
         }
 
         return $value;
+    }
+
+    /**
+     * Build the placeholder map for post-submit interpolation: each field handle
+     * maps to its submitted scalar value (arrays join with ", "), plus the
+     * `submissionId` built-in.
+     *
+     * @param array<string, mixed> $data the persisted submission data map
+     * @return array<string, string>
+     */
+    private function buildPlaceholders(Form $form, Submission $submission, array $data): array
+    {
+        $placeholders = [
+            'submissionId' => $submission->id !== null ? (string) $submission->id : '',
+        ];
+
+        $formModel = new FormModel($form);
+        foreach ($formModel->getFields() as $fieldId => $field) {
+            $value = $data['field_' . $fieldId]['value'] ?? null;
+            $placeholders[$field->getName()] = $this->stringifyValue($value);
+        }
+
+        return $placeholders;
+    }
+
+    /**
+     * Reduce a submitted value to a single string for placeholder substitution.
+     * Arrays (e.g. checkbox groups, file fields) join their scalar members with
+     * ", "; null/bool/scalars stringify directly.
+     */
+    private function stringifyValue(mixed $value): string
+    {
+        if (is_array($value)) {
+            $scalars = array_filter($value, static fn($v): bool => is_scalar($v));
+            return implode(', ', array_map('strval', $scalars));
+        }
+
+        if (is_bool($value)) {
+            return $value ? '1' : '';
+        }
+
+        return $value === null ? '' : (string) $value;
+    }
+
+    /**
+     * Substitute `{token}` placeholders in a template string. Unknown tokens
+     * resolve to an empty string. For URLs each substituted value is
+     * `rawurlencode()`d so it is safe inside a query string/path; for messages the
+     * raw value is used (the front-end sets it via `textContent`, so there is no
+     * markup-injection risk).
+     *
+     * @param array<string, string> $placeholders
+     */
+    private function interpolate(string $template, array $placeholders, bool $encode): string
+    {
+        return (string) preg_replace_callback(
+            '/\{([a-zA-Z_][a-zA-Z0-9_]*)\}/',
+            static function(array $matches) use ($placeholders, $encode): string {
+                $value = $placeholders[$matches[1]] ?? '';
+                return $encode ? rawurlencode($value) : $value;
+            },
+            $template,
+        );
+    }
+
+    /**
+     * Resolve the form's redirect entry to its URL on the submission's site.
+     * Returns null when no entry is configured or the entry is missing/disabled
+     * (no live URL) so the caller falls back to the inline message.
+     */
+    private function resolveEntryUrl(Form $form, Submission $submission): ?string
+    {
+        if ($form->redirectEntryId === null) {
+            return null;
+        }
+
+        $entry = Entry::find()
+            ->id($form->redirectEntryId)
+            ->siteId((int) $submission->siteId)
+            ->one();
+
+        return $entry instanceof Entry ? $entry->getUrl() : null;
     }
 
     /**

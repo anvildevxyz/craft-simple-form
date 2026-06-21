@@ -487,6 +487,38 @@ class GraphQlTest extends SimpleFormTestCase
         $this->assertSame(0, Submission::find()->formId($form->id)->count());
     }
 
+    public function testSubmitMutationReturnsResolvedRedirectUrl(): void
+    {
+        $this->requireCraft();
+
+        $siteId = Craft::$app->getSites()->getPrimarySite()->id;
+        $form = $this->createForm('GqlRedirect', 'gqlRedirectForm', 'GqlRedirect', $siteId);
+        $form->postSubmitAction = 'url';
+        $form->redirectUrl = '/thanks?e={email}';
+        $this->assertTrue(Craft::$app->getElements()->saveElement($form));
+        $emailId = $this->createField($form->id, 'email', 'email', 'Email', false);
+
+        $document = <<<'GQL'
+        mutation ($handle: String!, $siteId: Int, $values: [SimpleFormFieldValueInput!]!) {
+            submitForm(handle: $handle, siteId: $siteId, values: $values) {
+                success
+                redirectUrl
+            }
+        }
+        GQL;
+
+        $result = $this->execute($document, ['simpleFormSubmissions:create'], [
+            'handle' => 'gqlRedirectForm',
+            'siteId' => $siteId,
+            'values' => [['fieldId' => $emailId, 'value' => 'ada@example.com']],
+        ]);
+
+        $this->assertArrayNotHasKey('errors', $result, json_encode($result['errors'] ?? null));
+        $payload = $result['data']['submitForm'];
+        $this->assertTrue($payload['success']);
+        $this->assertSame('/thanks?e=ada%40example.com', $payload['redirectUrl']);
+    }
+
     public function testSubmitMutationEnforcesCaptchaUnlessBypassEnabled(): void
     {
         $this->requireCraft();

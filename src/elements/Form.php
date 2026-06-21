@@ -23,11 +23,24 @@ class Form extends Element
      */
     public const SUPPORTED_PROPAGATION_METHODS = ['none', 'siteGroup', 'language', 'all'];
 
+    /**
+     * Post-submit action: show an inline message (default), redirect to a URL,
+     * or redirect to a Craft entry. The choice is structural, so it is shared
+     * across sites.
+     *
+     * @var list<string>
+     */
+    public const POST_SUBMIT_ACTIONS = ['message', 'url', 'entry'];
+
     // Shared across sites
     public ?string $name = null;
     public ?string $handle = null;
     /** Per-form opt-in for save-&-resume drafts (shared, not translatable). */
     public bool $allowSaveResume = false;
+    /** What to do after a successful submission: message|url|entry (shared, not translatable). */
+    public string $postSubmitAction = 'message';
+    /** Target entry id for the `entry` post-submit action (shared element id). */
+    public ?int $redirectEntryId = null;
 
     // Per-site (translatable). title is stored in elements_sites via hasTitles().
     public ?string $title = null;
@@ -36,6 +49,12 @@ class Form extends Element
     public ?string $emailSubject = null;
     public ?string $emailReplyTo = null;
     public ?string $emailBody = null;
+    /** Per-form success message override; blank falls back to the global Settings value. */
+    public ?string $submitMessage = null;
+    /** Per-form error message override; blank falls back to the global Settings value. */
+    public ?string $errorMessage = null;
+    /** Redirect target for the `url` post-submit action; supports {handle} placeholders. */
+    public ?string $redirectUrl = null;
 
     public static function displayName(): string
     {
@@ -188,6 +207,13 @@ class Form extends Element
         $rules[] = [['emailBody'], 'string'];
         $rules[] = [['allowSaveResume'], 'boolean'];
 
+        // Post-submit behavior (#133).
+        $rules[] = [['submitMessage', 'errorMessage', 'redirectUrl'], 'string'];
+        $rules[] = [['postSubmitAction'], 'in', 'range' => self::POST_SUBMIT_ACTIONS];
+        $rules[] = [['redirectEntryId'], 'integer'];
+        $rules[] = [['redirectUrl'], 'required', 'when' => fn(): bool => $this->postSubmitAction === 'url'];
+        $rules[] = [['redirectEntryId'], 'required', 'when' => fn(): bool => $this->postSubmitAction === 'entry'];
+
         // handle is shared across sites, so it must be globally unique
         $rules[] = [['handle'], 'validateHandleUnique'];
 
@@ -228,6 +254,8 @@ class Form extends Element
             'name' => $this->name,
             'propagationMethod' => $this->propagationMethod->value,
             'allowSaveResume' => $this->allowSaveResume,
+            'postSubmitAction' => $this->postSubmitAction,
+            'redirectEntryId' => $this->redirectEntryId,
             'dateUpdated' => $now,
         ];
 
@@ -258,6 +286,9 @@ class Form extends Element
             'emailSubject' => $this->emailSubject,
             'emailReplyTo' => $this->emailReplyTo,
             'emailBody' => $this->emailBody,
+            'submitMessage' => $this->submitMessage,
+            'errorMessage' => $this->errorMessage,
+            'redirectUrl' => $this->redirectUrl,
         ];
 
         $rowExists = (new \craft\db\Query())
