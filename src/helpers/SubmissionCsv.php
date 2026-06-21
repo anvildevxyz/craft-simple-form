@@ -151,6 +151,14 @@ final class SubmissionCsv
 
         $value = is_array($entry) ? ($entry['value'] ?? '') : $entry;
 
+        // Stored values that {@see self::scalar()} flattens specially — a Consent
+        // record ({consented, …}) or a repeater's list of row objects — must take
+        // that path, not a field type's generic exportValue() (which would
+        // pipe-join the record into an opaque cell).
+        if (is_array($value) && (array_key_exists('consented', $value) || self::isRepeaterValue($value))) {
+            return self::scalar($value);
+        }
+
         if ($type !== '') {
             $fieldType = Plugin::getInstance()->getFieldTypeRegistry()->getFieldType($type);
             if ($fieldType !== null) {
