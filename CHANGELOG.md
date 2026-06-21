@@ -12,6 +12,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   the primary site.
 - Calculation-field values that are whole numbers no longer compare unequal after
   the submission-data round-trip.
+- Chat/notification "Label: value" lines no longer error on legacy submissions
+  whose rows were stored as bare scalars.
 
 ### Changed
 - Simple Form is now commercial software with a single **Pro** edition
