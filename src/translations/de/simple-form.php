@@ -129,4 +129,13 @@ return [
     'Consented: Yes' => 'Eingewilligt: Ja',
     'Consented: No' => 'Eingewilligt: Nein',
     'Text:' => 'Text:',
+    'Rating' => 'Bewertung',
+    'Opinion Scale' => 'Meinungsskala',
+    '{n} of {max}' => '{n} von {max}',
+    'Ratings & scales' => 'Bewertungen & Skalen',
+    'Average' => 'Durchschnitt',
+    '{n} responses' => '{n} Antworten',
+    'Value' => 'Wert',
+    'Responses' => 'Antworten',
+    'No responses yet.' => 'Noch keine Antworten.',
 ];

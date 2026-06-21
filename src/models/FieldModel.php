@@ -161,6 +161,22 @@ class FieldModel extends Model
     }
 
     /**
+     * Coerce a submitted value into the canonical form the field type stores
+     * (e.g. an int for the rating/opinion scale types). Unknown types or a
+     * resolution failure pass the value through unchanged.
+     */
+    public function normalizeValue(mixed $value): mixed
+    {
+        try {
+            $fieldType = Plugin::getInstance()->getFieldTypeRegistry()->getFieldType($this->type, $this->config);
+            return $fieldType !== null ? $fieldType->normalizeValue($value) : $value;
+        } catch (\Throwable $e) {
+            Craft::warning(sprintf('Field normalize error: %s', $e->getMessage()), 'simple-form');
+            return $value;
+        }
+    }
+
+    /**
      * Replace a field's default validation errors with the editor's per-site
      * override message when one is set, so a failed submission speaks in the
      * site's own wording. With no override (the common case) the localized

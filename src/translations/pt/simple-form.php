@@ -123,4 +123,13 @@ return [
     'Consented: Yes' => 'Consentimento: Sim',
     'Consented: No' => 'Consentimento: Não',
     'Text:' => 'Texto:',
+    'Rating' => 'Avaliação',
+    'Opinion Scale' => 'Escala de opinião',
+    '{n} of {max}' => '{n} de {max}',
+    'Ratings & scales' => 'Avaliações e escalas',
+    'Average' => 'Média',
+    '{n} responses' => '{n} respostas',
+    'Value' => 'Valor',
+    'Responses' => 'Respostas',
+    'No responses yet.' => 'Ainda não há respostas.',
 ];

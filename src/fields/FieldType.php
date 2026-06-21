@@ -52,7 +52,7 @@ abstract class FieldType
 
         if ($this->config['required'] ?? false) {
             if (empty($value)) {
-                $errors[] = Craft::t('simple-form', 'This field is required.');
+                $errors[] = $this->t('This field is required.');
             }
         }
 
@@ -96,6 +96,59 @@ abstract class FieldType
         }
 
         return (string) $value;
+    }
+
+    /**
+     * Translate a `simple-form` message, falling back to a local placeholder
+     * interpolation when no Craft application is booted (e.g. the pure-source
+     * unit tests). Production always has the app, so strings stay translatable;
+     * the fallback only keeps render testable without a full boot.
+     *
+     * @param array<string, int|string> $params
+     */
+    protected function t(string $message, array $params = []): string
+    {
+        if (class_exists(Craft::class) && Craft::$app !== null) {
+            return Craft::t('simple-form', $message, $params);
+        }
+
+        $replace = [];
+        foreach ($params as $key => $value) {
+            $replace['{' . $key . '}'] = (string) $value;
+        }
+        return strtr($message, $replace);
+    }
+
+    /**
+     * Coerce a submitted value into the canonical form stored in
+     * `submission.data`. The default is a pass-through; numeric scale types
+     * (rating/opinion) override this to cast to an int so analytics and the
+     * exporter treat the column numerically rather than as a string.
+     */
+    public function normalizeValue(mixed $value): mixed
+    {
+        return $value;
+    }
+
+    /**
+     * Integer-range membership check shared by the numeric scale types
+     * (rating/opinion). The analogue of {@see self::validateOptionMembership()}:
+     * a forged out-of-range or non-integer POST is rejected server-side
+     * regardless of client JS.
+     *
+     * @param list<int> $allowed the inclusive set of permitted integers
+     * @return string[]
+     */
+    protected function validateRangeMembership(mixed $value, array $allowed): array
+    {
+        // Accept only an exact integer (or its integer-string form) — a
+        // fractional or non-numeric value never matches the discrete options.
+        if (is_int($value) || (is_string($value) && $value !== '' && (string) (int) $value === $value)) {
+            if (in_array((int) $value, $allowed, true)) {
+                return [];
+            }
+        }
+        return [$this->t('Please select a valid option.')];
     }
 
     /**

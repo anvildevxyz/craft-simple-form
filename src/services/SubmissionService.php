@@ -244,6 +244,11 @@ class SubmissionService extends Component
             // integrations get the canonical value on both transports.
             $storedValue = $this->normalizedValueForField($field, $persisted);
 
+            // Coerce to the field type's canonical storage form (e.g. an int for
+            // rating/opinion) so analytics and the exporter treat the column
+            // numerically rather than as a string.
+            $storedValue = $field->normalizeValue($storedValue);
+
             $data['field_' . $fieldId] = [
                 'label' => $field->getLabel() ?? $field->getName(),
                 'type' => $field->getType(),

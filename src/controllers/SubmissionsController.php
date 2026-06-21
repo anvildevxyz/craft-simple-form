@@ -169,6 +169,8 @@ class SubmissionsController extends Controller
             'perDay' => $reports->submissionsPerDay($siteId, $days, $formId),
             'perForm' => $reports->perFormTotals($siteId),
             'dispatch' => $reports->dispatchHealth(),
+            // Rating/opinion numeric stats only apply to a single form's field set.
+            'scales' => $formId !== null ? $reports->scaleBreakdown($siteId, $formId) : [],
         ]);
     }
 

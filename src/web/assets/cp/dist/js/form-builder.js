@@ -16,6 +16,7 @@
         checkbox: 'Checkbox', radio: 'Radio', date: 'Date', number: 'Number',
         phone: 'Phone', file: 'File Upload',
         payment: 'Payment', hidden: 'Hidden', consent: 'Agree / Consent',
+        rating: 'Rating', opinion: 'Opinion Scale',
         heading: 'Heading', divider: 'Section Divider', html: 'HTML Block'
     };
     var OPTION_TYPES = ['select', 'checkbox', 'radio'];
@@ -87,6 +88,12 @@
         }
         if (type === 'consent') {
             return { consentText: 'I agree to the [privacy policy](https://example.com/privacy)' };
+        }
+        if (type === 'rating') {
+            return { max: 5, iconStyle: 'star' };
+        }
+        if (type === 'opinion') {
+            return { min: 0, max: 10 };
         }
         if (type === 'heading') {
             return { level: 'h3' };
@@ -574,6 +581,40 @@
             rmInput.placeholder = 'You must agree before submitting.';
             rmRow._input.appendChild(rmInput);
             inspector.appendChild(rmRow);
+        } else if (f.type === 'rating') {
+            inspector.appendChild(numberRow('Maximum (1–10)', c.max != null ? c.max : 5, function(v) {
+                var n = parseInt(v, 10);
+                if (isNaN(n)) { delete c.max; } else { c.max = Math.max(1, Math.min(10, n)); }
+                serialize();
+            }));
+            var styleRow = row('Icon Style');
+            styleRow._input.appendChild(selectEl(
+                [{ value: 'star', label: 'Stars' }, { value: 'heart', label: 'Hearts' }, { value: 'number', label: 'Numbers' }],
+                c.iconStyle || 'star',
+                function(v) { c.iconStyle = v; serialize(); }
+            ));
+            inspector.appendChild(styleRow);
+        } else if (f.type === 'opinion') {
+            inspector.appendChild(numberRow('Minimum', c.min != null ? c.min : 0, function(v) {
+                var n = parseInt(v, 10);
+                if (v === '' || isNaN(n)) { delete c.min; } else { c.min = n; }
+                serialize();
+            }));
+            inspector.appendChild(numberRow('Maximum', c.max != null ? c.max : 10, function(v) {
+                var n = parseInt(v, 10);
+                if (v === '' || isNaN(n)) { delete c.max; } else { c.max = n; }
+                serialize();
+            }));
+            var leftRow = row('Left Label');
+            leftRow._input.appendChild(textInput(c.leftLabel || '', function(v) {
+                if (v.trim() === '') { delete c.leftLabel; } else { c.leftLabel = v; } serialize();
+            }));
+            inspector.appendChild(leftRow);
+            var rightRow = row('Right Label');
+            rightRow._input.appendChild(textInput(c.rightLabel || '', function(v) {
+                if (v.trim() === '') { delete c.rightLabel; } else { c.rightLabel = v; } serialize();
+            }));
+            inspector.appendChild(rightRow);
         }
     }
 

@@ -13,9 +13,11 @@ use fabianhaef\simpleform\fields\HeadingFieldType;
 use fabianhaef\simpleform\fields\HiddenFieldType;
 use fabianhaef\simpleform\fields\HtmlFieldType;
 use fabianhaef\simpleform\fields\NumberFieldType;
+use fabianhaef\simpleform\fields\OpinionScaleFieldType;
 use fabianhaef\simpleform\fields\PaymentFieldType;
 use fabianhaef\simpleform\fields\PhoneFieldType;
 use fabianhaef\simpleform\fields\RadioFieldType;
+use fabianhaef\simpleform\fields\RatingFieldType;
 use fabianhaef\simpleform\fields\SelectFieldType;
 use fabianhaef\simpleform\fields\TextareaFieldType;
 use fabianhaef\simpleform\fields\TextFieldType;
@@ -31,6 +33,15 @@ class FieldTypeRegistry extends Component
      * @var list<string>
      */
     public const OPTION_TYPES = ['select', 'checkbox', 'radio'];
+
+    /**
+     * Numeric scale field types: they store an integer over a bounded range and
+     * are the types analytics aggregates as numbers (average + distribution)
+     * rather than grouping as opaque option strings.
+     *
+     * @var list<string>
+     */
+    public const SCALE_TYPES = ['rating', 'opinion'];
 
     /** @var array<string, class-string<FieldType>> */
     private array $fieldTypes = [];
@@ -52,6 +63,8 @@ class FieldTypeRegistry extends Component
         $this->registerFieldType(PaymentFieldType::class);
         $this->registerFieldType(HiddenFieldType::class);
         $this->registerFieldType(ConsentFieldType::class);
+        $this->registerFieldType(RatingFieldType::class);
+        $this->registerFieldType(OpinionScaleFieldType::class);
 
         // Presentational/layout blocks (value-less; isInput() === false).
         $this->registerFieldType(HeadingFieldType::class);

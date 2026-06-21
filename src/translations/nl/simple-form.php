@@ -123,4 +123,13 @@ return [
     'Consented: Yes' => 'Toestemming: Ja',
     'Consented: No' => 'Toestemming: Nee',
     'Text:' => 'Tekst:',
+    'Rating' => 'Beoordeling',
+    'Opinion Scale' => 'Meningsschaal',
+    '{n} of {max}' => '{n} van {max}',
+    'Ratings & scales' => 'Beoordelingen en schalen',
+    'Average' => 'Gemiddelde',
+    '{n} responses' => '{n} reacties',
+    'Value' => 'Waarde',
+    'Responses' => 'Reacties',
+    'No responses yet.' => 'Nog geen reacties.',
 ];

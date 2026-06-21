@@ -47,6 +47,18 @@ class FieldValidationType extends SimpleFormObjectType
                 'type' => Type::string(),
                 'description' => 'A regular expression the value must match, when configured.',
             ],
+            'iconStyle' => [
+                'type' => Type::string(),
+                'description' => 'For rating fields: the icon preset (star, heart, number).',
+            ],
+            'leftLabel' => [
+                'type' => Type::string(),
+                'description' => 'For opinion-scale fields: the left anchor label (e.g. "Not likely").',
+            ],
+            'rightLabel' => [
+                'type' => Type::string(),
+                'description' => 'For opinion-scale fields: the right anchor label (e.g. "Very likely").',
+            ],
         ];
     }
 }

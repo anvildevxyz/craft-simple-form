@@ -123,4 +123,13 @@ return [
     'Consented: Yes' => '同意: はい',
     'Consented: No' => '同意: いいえ',
     'Text:' => 'テキスト:',
+    'Rating' => '評価',
+    'Opinion Scale' => '評価スケール',
+    '{n} of {max}' => '{max} 中 {n}',
+    'Ratings & scales' => '評価とスケール',
+    'Average' => '平均',
+    '{n} responses' => '{n} 件の回答',
+    'Value' => '値',
+    'Responses' => '回答',
+    'No responses yet.' => 'まだ回答がありません。',
 ];
