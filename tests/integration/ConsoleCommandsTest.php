@@ -7,9 +7,11 @@ use craft\db\Query;
 use craft\helpers\Db;
 use fabianhaef\simpleform\console\controllers\CacheController;
 use fabianhaef\simpleform\console\controllers\DoctorController;
+use fabianhaef\simpleform\console\controllers\FormsController;
 use fabianhaef\simpleform\console\controllers\IntegrationsController;
 use fabianhaef\simpleform\console\controllers\SubmissionsController;
 use fabianhaef\simpleform\elements\Submission;
+use fabianhaef\simpleform\services\FormPortabilityService;
 use yii\console\ExitCode;
 
 /**
@@ -99,5 +101,46 @@ class ConsoleCommandsTest extends SimpleFormTestCase
         $controller = new IntegrationsController('integrations', Craft::$app);
         $controller->submission = 99999999;
         $this->assertSame(ExitCode::DATAERR, $controller->actionRedispatch());
+    }
+
+    public function testFormsExportImportRoundTrip(): void
+    {
+        $this->requireCraft();
+        $form = $this->createForm('Contact', 'console_form_export');
+        $this->createField((int) $form->id, 'email', 'email', 'Email', true);
+
+        $path = Craft::$app->getPath()->getTempPath() . '/sf-form-export-' . uniqid() . '.json';
+
+        // Export.
+        $export = new FormsController('forms', Craft::$app);
+        $export->form = 'console_form_export';
+        $export->out = $path;
+        $this->assertSame(ExitCode::OK, $export->actionExport());
+        $this->assertFileExists($path);
+
+        // Import with rename → a -2 form appears.
+        $import = new FormsController('forms', Craft::$app);
+        $import->mode = FormPortabilityService::MODE_RENAME;
+        $this->assertSame(ExitCode::OK, $import->actionImport($path));
+
+        $imported = \fabianhaef\simpleform\elements\Form::find()
+            ->handle('console_form_export-2')->siteId('*')->status(null)->one();
+        $this->assertNotNull($imported);
+
+        @unlink($path);
+    }
+
+    public function testFormsExportRequiresFormHandle(): void
+    {
+        $this->requireCraft();
+        $controller = new FormsController('forms', Craft::$app);
+        $this->assertSame(ExitCode::USAGE, $controller->actionExport());
+    }
+
+    public function testFormsImportRejectsMissingFile(): void
+    {
+        $this->requireCraft();
+        $controller = new FormsController('forms', Craft::$app);
+        $this->assertSame(ExitCode::DATAERR, $controller->actionImport('/no/such/file.json'));
     }
 }

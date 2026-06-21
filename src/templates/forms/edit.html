@@ -56,6 +56,9 @@
        data-params="{{ { formId: form.id }|json_encode }}">
         {{ 'Save as a new form'|t('simple-form') }}
     </a>
+    <a class="btn icon download" href="{{ cpUrl('simple-form/forms/export/' ~ form.id) }}">
+        {{ 'Export'|t('simple-form') }}
+    </a>
 </div>
 {% endif %}
 
