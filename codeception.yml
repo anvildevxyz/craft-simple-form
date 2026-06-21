@@ -64,6 +64,8 @@ modules:
           params: {}
         - class: fabianhaef\simpleform\migrations\m260621_000001_notification_attachments
           params: {}
+        - class: fabianhaef\simpleform\migrations\m260621_000001_form_allow_editing
+          params: {}
       plugins:
         - handle: simple-form
           class: fabianhaef\simpleform\Plugin

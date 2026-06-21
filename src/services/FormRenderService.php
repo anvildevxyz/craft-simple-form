@@ -171,6 +171,70 @@ class FormRenderService extends Component
     }
 
     /**
+     * Render an editable, pre-filled copy of a form for an existing submission
+     * (#144). Each field is primed with the submission's stored value via the
+     * resolved `field` partial, and the form posts to the front-end edit endpoint
+     * with the submission id and (for the anonymous path) a CSRF-protected hidden
+     * edit token. Server-side authorization (allowEditing + window + token/owner)
+     * is re-checked on submit — this only renders the UI.
+     *
+     * @param \fabianhaef\simpleform\elements\Submission $submission the submission to edit
+     * @param array<string, mixed> $options `token` (string) for the anonymous path; `submitText`
+     * @return string the edit-form markup, or an HTML comment when editing is disabled
+     * @throws \Throwable from the underlying View render
+     */
+    public function renderEditForm(\fabianhaef\simpleform\elements\Submission $submission, array $options = []): string
+    {
+        $form = $submission->getForm();
+        if (!$form instanceof Form || !$form->allowEditing) {
+            return '<!-- Editing is not enabled for this form -->';
+        }
+
+        // Map the submission's stored data (field_<id> => [..., value]) into the
+        // prefill shape the field partial expects (field_<id> => value).
+        $prefill = [];
+        foreach (($submission->data ?? []) as $key => $entry) {
+            if (is_string($key) && is_array($entry) && array_key_exists('value', $entry)) {
+                $prefill[$key] = $entry['value'];
+            }
+        }
+
+        $context = $this->buildContext($form, $options);
+        $settings = Plugin::getInstance()->getSettings();
+        $token = isset($options['token']) ? (string) $options['token'] : '';
+        $submitText = (string) ($options['submitText'] ?? Craft::t('simple-form', 'Save changes'));
+        $action = Craft::$app->getUrlManager()->createUrl('simple-form/submission-edit/update');
+
+        $enctype = $context['hasFileField'] ? ' enctype="multipart/form-data"' : '';
+        $errorMessage = (string) $context['errorMessage'];
+        $errorAttr = $errorMessage !== '' ? ' data-sf-error="' . htmlspecialchars($errorMessage, ENT_QUOTES) . '"' : '';
+
+        $html = '<form class="simple-form simple-form-edit" method="POST"' . $enctype . $errorAttr
+            . ' action="' . htmlspecialchars($action, ENT_QUOTES) . '">';
+        $html .= (string) $context['csrfInput'];
+        $html .= '<input type="hidden" name="submissionId" value="' . (int) $submission->id . '">';
+        if ($token !== '') {
+            $html .= '<input type="hidden" name="t" value="' . htmlspecialchars($token, ENT_QUOTES) . '">';
+        }
+        $html .= (string) $context['honeypot'];
+
+        foreach ($context['fields'] as $field) {
+            $html .= $this->_render($context['partials']['field'], [
+                'field' => $field,
+                'partials' => $context['partials'],
+                'values' => $prefill,
+            ]);
+        }
+
+        $html .= (string) $context['captcha'];
+        $html .= '<button type="submit" class="simple-form-submit-btn">' . htmlspecialchars($submitText) . '</button>';
+        $html .= '</form>';
+        $html .= (string) $context['assets'];
+
+        return $html;
+    }
+
+    /**
      * Build the documented render context passed to the partials.
      *
      * The returned array's `csrfInput`, `honeypot`, `captcha` and `assets` keys

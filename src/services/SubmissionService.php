@@ -243,13 +243,185 @@ class SubmissionService extends Component
      */
     public function submit(Form $form, array $values, array $context = []): array
     {
+        // Spam protection + validation + the persisted data payload are produced
+        // by the shared core so create and edit can never drift apart.
+        $core = $this->processSubmission($form, $values, $context);
+        if ($core['result'] !== null) {
+            // Honeypot/captcha/blocked-spam drop or a validation error: nothing to
+            // persist, return the early result the core decided on.
+            return $core['result'];
+        }
+
+        /** @var array<string, mixed> $data */
+        $data = $core['data'];
+        $isSpam = $core['isSpam'];
+        $spamReason = $core['spamReason'] ?? ($isSpam ? 'akismet' : null);
+
+        // Build + save the submission element.
+        $siteId = $context['siteId'] ?? $form->siteId ?? Craft::$app->getSites()->getCurrentSite()->id;
+
+        $submission = new Submission();
+        $submission->formId = (int) $form->id;
+        $submission->siteId = (int) $siteId;
+        $submission->data = $data;
+        // Always associate the submission with the logged-in user (#135).
+        $submission->userId = isset($context['userId']) ? (int) $context['userId'] : null;
+        $submission->readStatus = $isSpam ? SubmissionStatus::SPAM : SubmissionStatus::NEW;
+        $submission->spamReason = $spamReason;
+        $submission->sourceIp = $this->sourceIp();
+
+        // Fire the before-save event (same as the Twig path).
+        $beforeEvent = new SubmissionEvent($submission, $form, $data, true);
+        Plugin::getInstance()->trigger(Plugin::EVENT_BEFORE_SUBMISSION_SAVE, $beforeEvent);
+
+        if (!Craft::$app->getElements()->saveElement($submission)) {
+            return ['submission' => null, 'errors' => ['submission' => ['Failed to save submission']]];
+        }
+
+        // If the form collects payment, create the pending order now (before the
+        // after-save dispatch) so integrations + email are withheld until the
+        // payment completes. Skipped for spam.
+        $awaitingPayment = !$isSpam
+            && Plugin::getInstance()->getPayments()->prepare($form, $submission, $data);
+
+        // Fire the after-save event. The integration dispatch listener self-skips
+        // while a submission is awaiting payment.
+        $afterEvent = new SubmissionEvent($submission, $form, $data, true);
+        Plugin::getInstance()->trigger(Plugin::EVENT_AFTER_SUBMISSION_SAVE, $afterEvent);
+
+        // Send notifications (queued so a PDF render / upload reads run off-request;
+        // #143). Skipped for spam and while awaiting payment — the email fires once
+        // the order completes.
+        if (!$isSpam && !$awaitingPayment) {
+            Plugin::getInstance()->getEmailService()->queueForSubmission($form, $submission, $data);
+        }
+
+        // `data` is returned so post-submit resolution (the success message and a
+        // templated redirect URL) can interpolate the submitted values without
+        // re-reading the persisted row.
+        return ['submission' => $submission, 'errors' => null, 'data' => $data];
+    }
+
+    /**
+     * Re-validate and re-save an existing submission through the same shared core
+     * as {@see self::submit()} (#144). Authorization (token / owner / window /
+     * allowEditing) is the caller's responsibility — see {@see self::authorizeEdit()}.
+     *
+     * The same element is updated in place: its id, dateCreated, siteId and userId
+     * are preserved. The after-save event fires with `isNew = false` so integration
+     * listeners can distinguish an edit from a create and self-skip if they should
+     * not re-dispatch.
+     *
+     * @param Submission $submission the existing submission to edit
+     * @param array<int|string, mixed> $values posted values keyed by field id (or `field_<id>`)
+     * @param array{honeypot?: string, captchaToken?: ?string, skipCaptcha?: bool, actor?: string} $context
+     * @return array{submission: Submission|null, errors: array<string, mixed>|null}
+     * @throws \yii\base\InvalidConfigException
+     */
+    public function update(Submission $submission, array $values, array $context = []): array
+    {
+        $form = $submission->getForm();
+        if (!$form instanceof Form) {
+            return ['submission' => null, 'errors' => ['form' => ['Form not found']]];
+        }
+
+        // An edit runs through the identical spam + validation + conditional-logic
+        // core as a create, so an edit can never be a spam-laundering bypass.
+        $core = $this->processSubmission($form, $values, $context);
+        if ($core['result'] !== null) {
+            return $core['result'];
+        }
+
+        /** @var array<string, mixed> $data */
+        $data = $core['data'];
+        $isSpam = $core['isSpam'];
+        $spamReason = $core['spamReason'] ?? ($isSpam ? 'akismet' : null);
+
+        // Preserve id/dateCreated/siteId/userId — only the content + spam state
+        // change. A spam verdict on edit flags the submission like a new one.
+        $submission->data = $data;
+        if ($isSpam) {
+            $submission->readStatus = SubmissionStatus::SPAM;
+            $submission->spamReason = $spamReason;
+        }
+
+        $beforeEvent = new SubmissionEvent($submission, $form, $data, false);
+        Plugin::getInstance()->trigger(Plugin::EVENT_BEFORE_SUBMISSION_SAVE, $beforeEvent);
+
+        if (!Craft::$app->getElements()->saveElement($submission)) {
+            return ['submission' => null, 'errors' => ['submission' => ['Failed to save submission']]];
+        }
+
+        // isNew = false lets integration/notification listeners self-skip an edit.
+        $afterEvent = new SubmissionEvent($submission, $form, $data, false);
+        Plugin::getInstance()->trigger(Plugin::EVENT_AFTER_SUBMISSION_SAVE, $afterEvent);
+
+        $actor = (string) ($context['actor'] ?? 'token');
+        Plugin::getInstance()->getAudit()->log(
+            'submission.edit',
+            'submission',
+            (int) $submission->id,
+            'edited via front-end (' . $actor . ')',
+        );
+
+        return ['submission' => $submission, 'errors' => null];
+    }
+
+    /**
+     * Decide whether an edit of $submission is authorized (#144). An edit is
+     * allowed iff the form opted into editing AND the edit window is open AND
+     * either a valid token is supplied OR the current user owns the submission.
+     *
+     * Returns the actor label ('token' | 'user') on success, or null when the
+     * edit must be refused. Never trusts the client: every gate is server-side.
+     */
+    public function authorizeEdit(Submission $submission, ?string $token, ?int $currentUserId): ?string
+    {
+        $form = $submission->getForm();
+        if (!$form instanceof Form || !$form->allowEditing) {
+            return null;
+        }
+
+        // The window is authoritative even when a token's intrinsic expiry is longer.
+        $editTokens = Plugin::getInstance()->getSubmissionEditTokens();
+        if (!$editTokens->isWithinEditWindow($submission, (int) $form->editWindowMinutes)) {
+            return null;
+        }
+
+        // A logged-in owner needs no token.
+        if ($currentUserId !== null && $submission->userId !== null && $submission->userId === $currentUserId) {
+            return 'user';
+        }
+
+        // Otherwise a valid, unexpired token for THIS submission is required.
+        if ($editTokens->verify($submission, $token)) {
+            return 'token';
+        }
+
+        return null;
+    }
+
+    /**
+     * Shared create/edit core: honeypot + captcha + per-field validation +
+     * conditional-logic visibility + content spam scoring, producing the persisted
+     * `data` payload. Returns either an early `result` (a drop or validation error
+     * the caller should return verbatim) or the validated `data` + `isSpam` verdict
+     * for the caller to persist. Routing both submit() and update() through here
+     * guarantees identical validation/spam/conditional behavior.
+     *
+     * @param array<int|string, mixed> $values
+     * @param array{honeypot?: string, captchaToken?: ?string, skipCaptcha?: bool, userId?: ?int, siteId?: ?int} $context
+     * @return array{result: array{submission: null, errors: array<string, mixed>|null}|null, data: array<string, mixed>, isSpam: bool, spamReason?: ?string}
+     */
+    private function processSubmission(Form $form, array $values, array $context): array
+    {
         $settings = Plugin::getInstance()->getSettings();
 
         // (1) Honeypot — transport-agnostic and always honored. A filled honeypot
         // is a bot: drop it silently (no persisted row, no error surfaced) so the
         // client gets no signal about the trap.
         if ($settings->enableHoneypot && trim((string) ($context['honeypot'] ?? '')) !== '') {
-            return ['submission' => null, 'errors' => null];
+            return ['result' => ['submission' => null, 'errors' => null], 'data' => [], 'isSpam' => false];
         }
 
         // (1b) Scheduling window + quota — enforced here so the AJAX path, the
@@ -260,7 +432,11 @@ class SubmissionService extends Component
         // The cap is a soft business limit; see Form::getSubmissionCount() for
         // the documented race-safety note.
         if (!$form->isAcceptingSubmissions()) {
-            return ['submission' => null, 'errors' => ['form' => [$form->getResolvedClosedMessage()]]];
+            return [
+                'result' => ['submission' => null, 'errors' => ['form' => [$form->getResolvedClosedMessage()]]],
+                'data' => [],
+                'isSpam' => false,
+            ];
         }
 
         // (1c) Access gates (#135). Enforced here so every transport (AJAX, no-JS
@@ -271,21 +447,33 @@ class SubmissionService extends Component
 
         // Require login: reject anonymous submissions outright.
         if ($form->requireLogin && $userId === null) {
-            return ['submission' => null, 'errors' => ['form' => [$form->getLoginRequiredMessage()]]];
+            return [
+                'result' => ['submission' => null, 'errors' => ['form' => [$form->getLoginRequiredMessage()]]],
+                'data' => [],
+                'isSpam' => false,
+            ];
         }
 
         // Per-user limit: block a user at/over their cap. Guests are only limited
         // when the form opts into a guest key (email); spam rows never count.
         if ($form->submissionsPerUser !== null
             && $this->userSubmissionCount($form, $userId, $values) >= $form->submissionsPerUser) {
-            return ['submission' => null, 'errors' => ['form' => [$form->getUserLimitMessage()]]];
+            return [
+                'result' => ['submission' => null, 'errors' => ['form' => [$form->getUserLimitMessage()]]],
+                'data' => [],
+                'isSpam' => false,
+            ];
         }
 
         // (2) Captcha — skippable only for explicitly trusted channels.
         if (empty($context['skipCaptcha'])) {
             $token = $context['captchaToken'] ?? null;
             if (!Plugin::getInstance()->getCaptchaService()->verify($token)) {
-                return ['submission' => null, 'errors' => ['captcha' => ['Captcha verification failed']]];
+                return [
+                    'result' => ['submission' => null, 'errors' => ['captcha' => ['Captcha verification failed']]],
+                    'data' => [],
+                    'isSpam' => false,
+                ];
             }
         }
 
@@ -381,7 +569,7 @@ class SubmissionService extends Component
         }
 
         if (!empty($errors)) {
-            return ['submission' => null, 'errors' => $errors];
+            return ['result' => ['submission' => null, 'errors' => $errors], 'data' => [], 'isSpam' => false];
         }
 
         // (4b) Authoritative server-side recompute of every calculation field
@@ -422,7 +610,7 @@ class SubmissionService extends Component
         $denylistHit = Plugin::getInstance()->getDenylistService()->match($form, $data);
         if ($denylistHit !== null) {
             if ($settings->denylistMode === Settings::DENYLIST_BLOCK) {
-                return ['submission' => null, 'errors' => null];
+                return ['result' => ['submission' => null, 'errors' => null], 'data' => [], 'isSpam' => false];
             }
             $quarantineReason = $denylistHit;
         }
@@ -433,7 +621,7 @@ class SubmissionService extends Component
         // matching reason wins, so a denylist hit takes precedence.
         if ($quarantineReason === null && $this->isDuplicate($form, $data)) {
             if ($settings->denylistMode === Settings::DENYLIST_BLOCK) {
-                return ['submission' => null, 'errors' => null];
+                return ['result' => ['submission' => null, 'errors' => null], 'data' => [], 'isSpam' => false];
             }
             $quarantineReason = 'duplicate';
         }
@@ -443,7 +631,7 @@ class SubmissionService extends Component
         // or saves it flagged as spam for review (flag, the default).
         $akismetSpam = Plugin::getInstance()->getAkismetService()->isSpam($form, $data);
         if ($akismetSpam && $settings->akismetMode === Settings::AKISMET_BLOCK) {
-            return ['submission' => null, 'errors' => null];
+            return ['result' => ['submission' => null, 'errors' => null], 'data' => [], 'isSpam' => false];
         }
 
         // A submission is quarantined if any deterministic filter flagged it or
@@ -451,47 +639,11 @@ class SubmissionService extends Component
         $isSpam = $quarantineReason !== null || $akismetSpam;
         $spamReason = $quarantineReason ?? ($akismetSpam ? 'akismet' : null);
 
-        // (6) Build + save the submission element.
-        $submission = new Submission();
-        $submission->formId = (int) $form->id;
-        $submission->siteId = (int) $siteId;
-        $submission->data = $data;
-        // Always associate the submission with the logged-in user (#135).
-        $submission->userId = $userId;
-        $submission->readStatus = $isSpam ? SubmissionStatus::SPAM : SubmissionStatus::NEW;
-        $submission->spamReason = $spamReason;
-        $submission->sourceIp = $this->sourceIp();
-
-        // (7) Fire the before-save event (same as the Twig path).
-        $beforeEvent = new SubmissionEvent($submission, $form, $data, true);
-        Plugin::getInstance()->trigger(Plugin::EVENT_BEFORE_SUBMISSION_SAVE, $beforeEvent);
-
-        if (!Craft::$app->getElements()->saveElement($submission)) {
-            return ['submission' => null, 'errors' => ['submission' => ['Failed to save submission']]];
-        }
-
-        // (8) If the form collects payment, create the pending order now (before
-        // the after-save dispatch) so integrations + email are withheld until the
-        // payment completes. Skipped for spam.
-        $awaitingPayment = !$isSpam
-            && Plugin::getInstance()->getPayments()->prepare($form, $submission, $data);
-
-        // (9) Fire the after-save event. The integration dispatch listener
-        // self-skips while a submission is awaiting payment.
-        $afterEvent = new SubmissionEvent($submission, $form, $data, true);
-        Plugin::getInstance()->trigger(Plugin::EVENT_AFTER_SUBMISSION_SAVE, $afterEvent);
-
-        // (10) Send notifications (notification rows or the legacy email columns;
-        // EmailService no-ops when neither is configured). Skipped for spam and
-        // while awaiting payment — the email fires once the order completes.
-        if (!$isSpam && !$awaitingPayment) {
-            Plugin::getInstance()->getEmailService()->queueForSubmission($form, $submission, $data);
-        }
-
-        // `data` is returned so post-submit resolution (the success message and a
-        // templated redirect URL) can interpolate the submitted values without
-        // re-reading the persisted row.
-        return ['submission' => $submission, 'errors' => null, 'data' => $data];
+        // The validated payload + spam verdict are returned for the caller
+        // (submit() / update()) to persist as a create or an edit. Routing both
+        // through this one core guarantees identical validation, conditional-logic
+        // visibility, denylist/duplicate and Akismet behavior on every transport.
+        return ['result' => null, 'data' => $data, 'isSpam' => $isSpam, 'spamReason' => $spamReason];
     }
 
     /**

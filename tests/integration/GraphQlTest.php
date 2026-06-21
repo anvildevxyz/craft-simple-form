@@ -672,4 +672,70 @@ class GraphQlTest extends SimpleFormTestCase
         // Without it, the submit mutation is absent from the schema entirely.
         $this->assertNotContains('submitForm', $this->mutationFieldNames(['simpleForms:read']));
     }
+
+    public function testUpdateSubmissionMutationScopeGating(): void
+    {
+        $this->requireCraft();
+
+        // The edit scope exposes updateSubmission; the create scope alone does not.
+        $this->assertContains('updateSubmission', $this->mutationFieldNames(['simpleFormSubmissions:edit']));
+        $this->assertNotContains('updateSubmission', $this->mutationFieldNames(['simpleFormSubmissions:create']));
+    }
+
+    public function testUpdateSubmissionMutationEditsWithTokenAndLeaksNoToken(): void
+    {
+        $this->requireCraft();
+
+        $siteId = Craft::$app->getSites()->getPrimarySite()->id;
+        $form = $this->createForm('GqlEdit', 'gqlEditForm', 'GqlEdit', $siteId);
+        $form->allowEditing = true;
+        Craft::$app->getElements()->saveElement($form);
+        $nameId = $this->createField($form->id, 'text', 'fullName', 'Full Name', false);
+
+        // Seed a submission + an edit token.
+        $created = Plugin::getInstance()->getSubmissionService()->submit($form, [$nameId => 'Ada'], [
+            'skipCaptcha' => true,
+            'siteId' => $siteId,
+        ]);
+        $submission = $created['submission'];
+        $this->assertInstanceOf(Submission::class, $submission);
+        $token = Plugin::getInstance()->getSubmissionEditTokens()->issue($submission);
+
+        $document = <<<'GQL'
+        mutation ($id: Int!, $token: String, $values: [SimpleFormFieldValueInput!]!) {
+            updateSubmission(id: $id, token: $token, values: $values) {
+                success
+                submissionId
+                errors { key messages }
+            }
+        }
+        GQL;
+
+        // Valid token → success; the edit persists.
+        $result = $this->execute($document, ['simpleFormSubmissions:edit'], [
+            'id' => (int) $submission->id,
+            'token' => $token,
+            'values' => [['fieldId' => $nameId, 'value' => 'Grace']],
+        ]);
+        $payload = $result['data']['updateSubmission'];
+        $this->assertTrue($payload['success']);
+        $this->assertSame((int) $submission->id, $payload['submissionId']);
+
+        // The payload never carries the token/secret.
+        $this->assertStringNotContainsString($token, json_encode($result));
+
+        $final = Submission::find()->id($submission->id)->one();
+        $this->assertSame('Grace', $final->data['field_' . $nameId]['value']);
+
+        // A tampered token → an auth error payload, no change.
+        $bad = $this->execute($document, ['simpleFormSubmissions:edit'], [
+            'id' => (int) $submission->id,
+            'token' => $token . 'tamper',
+            'values' => [['fieldId' => $nameId, 'value' => 'Hacked']],
+        ]);
+        $this->assertFalse($bad['data']['updateSubmission']['success']);
+        $this->assertSame('auth', $bad['data']['updateSubmission']['errors'][0]['key']);
+        $unchanged = Submission::find()->id($submission->id)->one();
+        $this->assertSame('Grace', $unchanged->data['field_' . $nameId]['value']);
+    }
 }

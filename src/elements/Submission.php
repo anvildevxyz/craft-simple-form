@@ -32,6 +32,10 @@ class Submission extends Element
     public ?string $paymentStatus = null;
     public ?string $paymentAmount = null;
     public ?int $orderId = null;
+    /** SHA-256 hash of the active front-end edit token; the token itself lives only in the edit URL. */
+    public ?string $editTokenHash = null;
+    /** Absolute expiry of the edit token (UTC), or null when no token is active. */
+    public ?string $editTokenExpires = null;
 
     public static function displayName(): string
     {
@@ -147,6 +151,8 @@ class Submission extends Element
             'paymentStatus' => $this->paymentStatus,
             'paymentAmount' => $this->paymentAmount,
             'orderId' => $this->orderId,
+            'editTokenHash' => $this->editTokenHash,
+            'editTokenExpires' => $this->editTokenExpires,
             'dateUpdated' => $now,
         ];
 

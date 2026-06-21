@@ -77,6 +77,8 @@ class SubmissionQuery extends ElementQuery
             'simpleform_submissions.paymentStatus',
             'simpleform_submissions.paymentAmount',
             'simpleform_submissions.orderId',
+            'simpleform_submissions.editTokenHash',
+            'simpleform_submissions.editTokenExpires',
         ]);
 
         if ($this->formId !== null) {

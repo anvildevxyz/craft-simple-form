@@ -102,6 +102,16 @@ class Settings extends Model
     public string $errorMessage = 'There was an error submitting your form. Please try again.';
 
     /**
+     * Site path where the front-end edit page lives (the template that renders
+     * `craft.simpleForm.editForm(...)`), e.g. `forms/edit-submission`. Used by
+     * `craft.simpleForm.editUrl(submission)` to build the tokenized edit link an
+     * autoresponder/email embeds. Empty = no default; pass a path explicitly to
+     * `editUrl(submission, path)` instead. The submission id (`id`) and token
+     * (`t`) are appended as query params.
+     */
+    public string $editPath = '';
+
+    /**
      * Whether the resolved form structure (decoded field config + per-site
      * labels/help text) is cached via Craft's cache component and reused across
      * renders until the form is saved/deleted.

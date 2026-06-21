@@ -169,6 +169,10 @@ class FormsController extends Controller
         $form->duplicateWindowMinutes = (int) $request->getBodyParam('duplicateWindowMinutes', 0);
         $form->duplicateKey = (string) $request->getBodyParam('duplicateKey', Form::DUPLICATE_KEY_EMAIL);
 
+        // Front-end editing (#144). Shared flags + edit window.
+        $form->allowEditing = (bool) $request->getBodyParam('allowEditing');
+        $form->editWindowMinutes = max(0, (int) $request->getBodyParam('editWindowMinutes', 0));
+
         $form->propagationMethod = PropagationMethod::tryFrom(
             (string)$request->getBodyParam('propagationMethod', 'none')
         ) ?? PropagationMethod::None;

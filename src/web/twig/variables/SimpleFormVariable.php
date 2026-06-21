@@ -4,6 +4,7 @@ namespace fabianhaef\simpleform\web\twig\variables;
 
 use Craft;
 use craft\helpers\Template;
+use craft\helpers\UrlHelper;
 use fabianhaef\simpleform\elements\db\FormQuery;
 use fabianhaef\simpleform\elements\db\SubmissionQuery;
 use fabianhaef\simpleform\elements\Form;
@@ -98,6 +99,67 @@ class SimpleFormVariable
     public function field(string $handle, string $fieldHandle, array $options = []): Markup
     {
         return Plugin::getInstance()->getFormRender()->renderField($handle, $fieldHandle, $options);
+    }
+
+    /**
+     * Render an editable, pre-filled copy of a submission's form (#144). Pass a
+     * `token` in $options for the anonymous tokenized-link path; a logged-in owner
+     * needs none. The submission may be passed as an element or its id.
+     *
+     *     {{ craft.simpleForm.editForm(submission, { token: craft.app.request.getParam('t') }) }}
+     *
+     * @param Submission|int $submission
+     * @param array<string, mixed> $options
+     */
+    public function editForm(Submission|int $submission, array $options = []): Markup
+    {
+        $element = $submission instanceof Submission
+            ? $submission
+            : Submission::find()->id($submission)->one();
+
+        if (!$element instanceof Submission) {
+            return Template::raw('<!-- Submission not found -->');
+        }
+
+        return Template::raw(Plugin::getInstance()->getFormRender()->renderEditForm($element, $options));
+    }
+
+    /**
+     * A secure, tokenized edit URL for a submission, suitable for an autoresponder
+     * or "edit your submission" link (#144). Issues (or rotates) the submission's
+     * edit token and embeds it (plus the submission id) as query params on the edit
+     * page — `$path`, else the `editPath` setting. Returns null when the form does
+     * not allow editing or no edit path is configured.
+     *
+     * @param Submission|int $submission
+     * @param string|null $path site path of the edit page; falls back to the `editPath` setting
+     */
+    public function editUrl(Submission|int $submission, ?string $path = null): ?string
+    {
+        $element = $submission instanceof Submission
+            ? $submission
+            : Submission::find()->id($submission)->one();
+
+        if (!$element instanceof Submission) {
+            return null;
+        }
+
+        $form = $element->getForm();
+        if (!$form instanceof Form || !$form->allowEditing) {
+            return null;
+        }
+
+        $path ??= Plugin::getInstance()->getSettings()->editPath;
+        if ($path === '') {
+            return null;
+        }
+
+        $token = Plugin::getInstance()->getSubmissionEditTokens()->issue($element);
+
+        return UrlHelper::siteUrl($path, [
+            'id' => (int) $element->id,
+            't' => $token,
+        ]);
     }
 
     /**

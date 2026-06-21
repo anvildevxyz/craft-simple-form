@@ -59,6 +59,7 @@ use fabianhaef\simpleform\services\PdfService;
 use fabianhaef\simpleform\services\ReportsService;
 use fabianhaef\simpleform\services\RetentionService;
 use fabianhaef\simpleform\services\SafeRenderService;
+use fabianhaef\simpleform\services\SubmissionEditTokenService;
 use fabianhaef\simpleform\services\SubmissionService;
 use fabianhaef\simpleform\stencils\StencilLibrary;
 use fabianhaef\simpleform\web\twig\variables\SimpleFormVariable;
@@ -124,6 +125,7 @@ class Plugin extends BasePlugin
             'safeRender' => SafeRenderService::class,
             'emailService' => EmailService::class,
             'submissionService' => SubmissionService::class,
+            'submissionEditTokens' => SubmissionEditTokenService::class,
             'drafts' => DraftService::class,
             'captchaService' => CaptchaService::class,
             'captchaProviderRegistry' => CaptchaProviderRegistry::class,
@@ -215,6 +217,10 @@ class Plugin extends BasePlugin
 
         Craft::$app->getUrlManager()->addRules([
             'simple-form/submit' => 'simple-form/submit/index',
+            // Front-end submission editing (#144): the public update transport.
+            // Authorization (token/owner + window + allowEditing) is enforced in
+            // the controller; an unauthorized request 403s cleanly.
+            'simple-form/submission-edit/update' => 'simple-form/submission-edit/update',
             // MCP transport endpoint (token-authenticated machine API). Mapped
             // unconditionally; the controller itself enforces the off-by-default
             // toggle and bearer auth, so a disabled server still 404s cleanly.
@@ -312,9 +318,12 @@ class Plugin extends BasePlugin
                     'simpleForms:read' => ['label' => Craft::t('simple-form', 'View form schemas')],
                 ];
 
-                // Create a submission via the submitForm mutation.
+                // Create a submission via the submitForm mutation; edit an existing
+                // one via the updateSubmission mutation (#144). Both are scoped
+                // separately so an operator can grant submit without granting edit.
                 $event->mutations[$label] = [
                     'simpleFormSubmissions:create' => ['label' => Craft::t('simple-form', 'Submit forms')],
+                    'simpleFormSubmissions:edit' => ['label' => Craft::t('simple-form', 'Edit submissions')],
                 ];
             }
         );
@@ -371,6 +380,13 @@ class Plugin extends BasePlugin
     {
         /** @var SubmissionService $service */
         $service = $this->get('submissionService');
+        return $service;
+    }
+
+    public function getSubmissionEditTokens(): SubmissionEditTokenService
+    {
+        /** @var SubmissionEditTokenService $service */
+        $service = $this->get('submissionEditTokens');
         return $service;
     }
 

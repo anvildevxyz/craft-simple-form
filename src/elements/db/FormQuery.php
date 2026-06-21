@@ -67,6 +67,8 @@ class FormQuery extends ElementQuery
             'simpleform_forms.preventDuplicates',
             'simpleform_forms.duplicateWindowMinutes',
             'simpleform_forms.duplicateKey',
+            'simpleform_forms.allowEditing',
+            'simpleform_forms.editWindowMinutes',
             'simpleform_forms_sites.description',
             'simpleform_forms_sites.emailTo',
             'simpleform_forms_sites.emailSubject',

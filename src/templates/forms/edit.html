@@ -403,6 +403,26 @@
     errors: form.getErrors('duplicateWindowMinutes') ?? [],
 }) }}
 
+{{ forms.lightswitchField({
+    label: 'Allow front-end editing'|t('simple-form'),
+    id: 'allowEditing',
+    name: 'allowEditing',
+    on: form.allowEditing ?? false,
+    instructions: 'Let a submitter return to view and edit their submission via a secure tokenized link (or, for logged-in users, their own submission). Off by default.'|t('simple-form'),
+}) }}
+
+{{ forms.textField({
+    label: 'Edit window (minutes)'|t('simple-form'),
+    id: 'editWindowMinutes',
+    name: 'editWindowMinutes',
+    type: 'number',
+    min: 0,
+    size: 6,
+    value: form.editWindowMinutes ?? 0,
+    instructions: 'How long after submission edits are accepted. 0 = no time limit while editing is allowed.'|t('simple-form'),
+    errors: form.getErrors('editWindowMinutes'),
+}) }}
+
 <hr>
 
 <h2>{{ 'Form Fields'|t('simple-form') }}</h2>
