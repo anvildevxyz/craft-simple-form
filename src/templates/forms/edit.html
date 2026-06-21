@@ -238,6 +238,61 @@
 
 <hr>
 
+<h2>{{ 'Availability'|t('simple-form') }}</h2>
+<p class="light">{{ 'Optionally limit when this form accepts submissions and how many it accepts. Leave a field blank for no limit. Closed forms are rejected on the server, so a crafted or cached submission cannot get through.'|t('simple-form') }}</p>
+
+{{ forms.dateTimeField({
+    label: 'Open date'|t('simple-form'),
+    id: 'openDate',
+    name: 'openDate',
+    value: form.openDate,
+    errors: form.getErrors('openDate'),
+    instructions: 'Submissions are rejected before this date. Leave blank to open immediately.'|t('simple-form'),
+}) }}
+
+{{ forms.dateTimeField({
+    label: 'Close date'|t('simple-form'),
+    id: 'closeDate',
+    name: 'closeDate',
+    value: form.closeDate,
+    errors: form.getErrors('closeDate'),
+    instructions: 'Submissions are rejected after this date. Leave blank to stay open indefinitely.'|t('simple-form'),
+}) }}
+
+{{ forms.textField({
+    label: 'Submission limit'|t('simple-form'),
+    id: 'submissionLimit',
+    name: 'submissionLimit',
+    type: 'number',
+    min: 1,
+    value: form.submissionLimit,
+    errors: form.getErrors('submissionLimit'),
+    instructions: 'Stop accepting submissions once this many have been received (spam excluded). Leave blank for unlimited.'|t('simple-form'),
+}) }}
+
+{% if form.id and form.submissionLimit %}
+    <p class="light" style="margin-top:-8px;">
+        {{ '{count} / {limit} submissions'|t('simple-form', { count: form.getSubmissionCount(), limit: form.submissionLimit }) }}
+    </p>
+{% elseif form.id %}
+    <p class="light" style="margin-top:-8px;">
+        {{ '{count} submissions so far'|t('simple-form', { count: form.getSubmissionCount() }) }}
+    </p>
+{% endif %}
+
+{{ forms.textareaField({
+    label: 'Closed message'|t('simple-form'),
+    id: 'closedMessage',
+    name: 'closedMessage',
+    value: form.closedMessage,
+    rows: 2,
+    errors: form.getErrors('closedMessage'),
+    instructions: 'Shown in place of the form when it is closed or full. Leave blank for a default message.'|t('simple-form'),
+    translatable: true,
+}) }}
+
+<hr>
+
 <h2>{{ 'Form Fields'|t('simple-form') }}</h2>
 <p class="light">{{ 'Drag a field type from the right onto the form, or click it to add. Click a field to edit its properties. Changes are saved when you save the form.'|t('simple-form') }}</p>
 
