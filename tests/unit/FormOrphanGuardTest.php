@@ -16,7 +16,10 @@ class FormOrphanGuardTest extends TestCase
         $code = (string) file_get_contents(__DIR__ . '/../../src/elements/Form.php');
         $start = strpos($code, 'function afterSave');
         $this->assertNotFalse($start, 'Form::afterSave should exist');
-        return substr($code, $start, 2000);
+        // Window must span the whole shared-row block (the $shared map grows as new
+        // form columns are added), so it still captures the canonical-only update
+        // guard that follows the ungated insert.
+        return substr($code, $start, 3000);
     }
 
     public function testSharedRowIsSeededOnAnySaveNotOnlyCanonical(): void
