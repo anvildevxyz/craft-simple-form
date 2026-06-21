@@ -63,6 +63,7 @@ class FormQuery extends ElementQuery
             'simpleform_forms.requireLogin',
             'simpleform_forms.submissionsPerUser',
             'simpleform_forms.guestLimitKey',
+            'simpleform_forms.templatePath',
             'simpleform_forms_sites.description',
             'simpleform_forms_sites.emailTo',
             'simpleform_forms_sites.emailSubject',

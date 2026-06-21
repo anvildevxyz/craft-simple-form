@@ -1,0 +1,32 @@
+{#
+  Default Simple Form theme — one field group (#137).
+
+  Variables:
+    field      a resolved field row:
+               { id, type, name (handle), label, helpText, required, isChoice,
+                 fieldName ("field_<id>"), labelId, conditional, input (Markup) }
+    partials   map of resolved partial template paths (for {% include partials.input %})
+    values     resume prefill map (field_<id> => value)
+
+  A theme may override the wrapper/labels here and still inherit the control via
+  the `input` partial.
+-#}
+{%- apply spaceless -%}
+<div class="simple-form-group" data-sf-handle="{{ field.name }}"{% if field.conditional %} data-sf-conditional="{{ field.conditional|json_encode }}"{% endif %}>
+{%- if field.label -%}
+  {%- if field.isChoice -%}
+    <span class="simple-form-label" id="{{ field.labelId }}">{{ field.label }}{% if field.required %} <span class="required" aria-hidden="true">*</span>{% endif %}</span>
+  {%- else -%}
+    <label for="{{ field.fieldName }}">{{ field.label }}{% if field.required %} <span class="required" aria-hidden="true">*</span>{% endif %}</label>
+  {%- endif -%}
+{%- endif -%}
+{%- if field.helpText %}<small class="help-text">{{ field.helpText }}</small>{% endif -%}
+{%- if field.isChoice -%}
+  <div class="input-wrapper" role="group"{% if field.label %} aria-labelledby="{{ field.labelId }}"{% endif %}>
+{%- else -%}
+  <div class="input-wrapper">
+{%- endif -%}
+{% include partials.input with { field: field, values: values } only %}
+</div>
+</div>
+{%- endapply -%}

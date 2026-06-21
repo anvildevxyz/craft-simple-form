@@ -149,6 +149,10 @@ class FormsController extends Controller
         $form->guestLimitKey = (string) $request->getBodyParam('guestLimitKey', Form::GUEST_LIMIT_NONE);
         $form->userLimitMessage = $request->getBodyParam('userLimitMessage');
 
+        // Custom render-template path (#137). Shared, structural; blank clears it.
+        $templatePath = trim((string) $request->getBodyParam('templatePath', ''));
+        $form->templatePath = $templatePath !== '' ? $templatePath : null;
+
         $form->propagationMethod = PropagationMethod::tryFrom(
             (string)$request->getBodyParam('propagationMethod', 'none')
         ) ?? PropagationMethod::None;

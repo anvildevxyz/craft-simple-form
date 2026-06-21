@@ -80,6 +80,13 @@ class Form extends Element
     public ?int $submissionsPerUser = null;
     /** How to key the per-user limit for guests: 'none' | 'email' | 'ip' (shared). */
     public string $guestLimitKey = self::GUEST_LIMIT_NONE;
+    /**
+     * Per-form custom render-template path (#137), a site-templates directory of
+     * Twig partials (e.g. `_simple-form/landing`) that override the plugin's
+     * built-in form markup. Overrides {@see Settings::$templatePath}. Shared
+     * across sites (structural, not translatable). Null = use the global/built-in.
+     */
+    public ?string $templatePath = null;
 
     // Per-site (translatable). title is stored in elements_sites via hasTitles().
     public ?string $title = null;
@@ -402,6 +409,9 @@ class Form extends Element
         // operands, which throws on the DateTime objects Craft hydrates here.
         $rules[] = [['closeDate'], 'validateWindow'];
 
+        // Custom render-template path (#137).
+        $rules[] = [['templatePath'], 'string', 'max' => 255];
+
         // handle is shared across sites, so it must be globally unique
         $rules[] = [['handle'], 'validateHandleUnique'];
 
@@ -460,6 +470,7 @@ class Form extends Element
             'requireLogin' => $this->requireLogin,
             'submissionsPerUser' => $this->submissionsPerUser,
             'guestLimitKey' => $this->guestLimitKey,
+            'templatePath' => $this->templatePath,
             'dateUpdated' => $now,
         ];
 

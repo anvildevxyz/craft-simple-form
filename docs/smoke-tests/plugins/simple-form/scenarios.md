@@ -332,6 +332,42 @@ and front-end UX checks.
 
 ---
 
+## I. Custom render templates / theming (#137)
+
+### S13 — Override the field partial ⬜
+1. SETUP: S0 form exists. In the site's templates root, create `templates/_simple-form/field.twig` containing:
+   `<div class="my-field" data-sf-handle="{{ field.name }}">{{ field.label }}{{ field.input }}</div>`
+2. EXECUTE (UI): Settings → General → set **Default render template path** = `_simple-form` → Save.
+3. EXECUTE (front end): render the form on a test entry/page via `{{ craft.simpleForm.form('smokeForm') }}` and load the page.
+4. VERIFY (DOM): each field group is wrapped in `<div class="my-field" …>` (the override), and the page still has one real `<form class="simple-form" …>` (form.twig fell through to the built-in).
+5. VERIFY (submit): submit the form → a `simpleform_submissions` row is created and the notification/queue fires as before.
+6. VERIFY (Logs): no new errors.
+
+### S14 — Per-form theme beats global ⬜
+1. SETUP: two forms — `smokeForm` (no per-form path) and a second form `themedForm` with **Custom template path** = `_simple-form/landing` (create `templates/_simple-form/landing/field.twig` wrapping the group in `<div class="landing-field">`).
+2. EXECUTE: render both on a page.
+3. VERIFY (DOM): `smokeForm` uses `.my-field` (global), `themedForm` uses `.landing-field` (per-form override wins).
+
+### S15 — Hand-authored form still submits ⬜
+1. SETUP: S0 form exists.
+2. EXECUTE (Twig): on a template, hand-author the body:
+   `{{ craft.simpleForm.formStart('smokeForm') }}{{ craft.simpleForm.field('smokeForm','Name') }}{{ craft.simpleForm.field('smokeForm','Email') }}{{ craft.simpleForm.formEnd('smokeForm') }}`
+3. VERIFY (DOM): one `<form>` with the hidden `formHandle`, a CSRF input, honeypot, each field's `data-sf-handle`, and a submit button + `</form>`.
+4. EXECUTE (submit): submit it → a `Submission` row is created and the notification fires.
+
+### S16 — Invalid path degrades gracefully ⬜
+1. EXECUTE (UI): set a form's **Custom template path** to a bogus value like `_does/not/exist` → Save.
+2. EXECUTE: render the form on a public page.
+3. VERIFY (DOM): the page renders the built-in markup (`.simple-form-group`), **no 500**.
+4. VERIFY (Logs): a `simple-form` warning is logged for the missing theme partial, not an exception.
+
+### S17 — Theme suppresses plugin assets ⬜
+1. SETUP: create an empty `templates/_simple-form/assets.twig` and set the global template path to `_simple-form`.
+2. EXECUTE: render a form; inspect the page source.
+3. VERIFY (DOM): no plugin `<style>`/`<script>` block emitted from the form (asset slot suppressed). With the default theme (no override) the FormAsset bundle still registers as before.
+
+---
+
 ## Runner index (execute individually later)
 ```
 /craft-smoke-test plugin:simple-form S1: add a Webhook integration to a form and verify the row + DB
@@ -364,6 +400,11 @@ and front-end UX checks.
 /craft-smoke-test plugin:simple-form S31: submit a valid relation selection and verify ids stored + linked titles in the submission detail
 /craft-smoke-test plugin:simple-form S32: forge a disallowed entry id + over-limit categories and verify both are rejected server-side
 /craft-smoke-test plugin:simple-form S33: export submissions CSV and verify relation titles; delete an element and verify the (deleted) fallback
+/craft-smoke-test plugin:simple-form theme S13: override field.twig via the global template path and verify the wrapper + a working submit
+/craft-smoke-test plugin:simple-form theme S14: per-form template path beats the global default
+/craft-smoke-test plugin:simple-form theme S15: hand-author a form with formStart/field/formEnd and verify a real submission
+/craft-smoke-test plugin:simple-form theme S16: set a bogus template path and verify graceful built-in fallback + a logged warning
+/craft-smoke-test plugin:simple-form theme S17: suppress plugin assets via an empty assets.twig override
 ```
 
 ## Coverage notes / known limits

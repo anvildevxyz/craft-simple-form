@@ -236,6 +236,16 @@
     instructions: 'Add a “Save & continue later” button to this form so visitors can save their progress and return via a link. Applies to multi-step forms.'|t('simple-form'),
 }) }}
 
+{{ forms.textField({
+    label: 'Custom template path'|t('simple-form'),
+    id: 'templatePath',
+    name: 'templatePath',
+    value: form.templatePath,
+    errors: form.getErrors('templatePath'),
+    instructions: 'A folder of Twig partials in your site’s templates/ that override how this form renders (e.g. `_simple-form/landing`). Overrides the global default. Leave blank to use the global default or the built-in markup.'|t('simple-form'),
+    placeholder: '_simple-form/landing',
+}) }}
+
 <hr>
 
 <h2>{{ 'Availability'|t('simple-form') }}</h2>

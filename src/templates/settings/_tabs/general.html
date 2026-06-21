@@ -28,3 +28,13 @@
     instructions: 'Currently only database storage is supported.'|t('simple-form'),
     errors: settings.getErrors('storageLocation') ?? [],
 }) }}
+
+{{ forms.autosuggestField({
+    label: 'Default render template path'|t('simple-form'),
+    name: 'templatePath',
+    suggestEnvVars: false,
+    value: settings.templatePath,
+    errors: settings.getErrors('templatePath') ?? [],
+    instructions: 'A folder of Twig partials in your site’s templates/ that overrides how every form renders (e.g. `_simple-form`). A per-form path takes precedence. Leave blank to use the built-in markup.'|t('simple-form'),
+    placeholder: '_simple-form',
+}) }}
