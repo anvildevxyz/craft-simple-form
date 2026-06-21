@@ -1,0 +1,6 @@
+actor: SmokeTester
+modules:
+  enabled:
+    - Asserts
+    - \craft\test\Craft
+    - \Helper\Integration

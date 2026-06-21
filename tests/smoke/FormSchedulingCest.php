@@ -5,129 +5,126 @@ namespace fabianhaef\simpleform\tests\smoke;
 use Craft;
 use fabianhaef\simpleform\elements\Form;
 use fabianhaef\simpleform\elements\Submission;
-use fabianhaef\simpleform\Plugin;
+use SmokeTester;
 
 /**
- * Form Scheduling + Quota Smoke Tests
+ * Form Scheduling + Quota Smoke Tests (functional).
  *
  * Exercises the public-facing behaviour of open/close dates and the submission
- * cap: the rendered form is replaced by the closed message, and a crafted
+ * cap: the rendered form is replaced by the closed message (via the real
+ * {@see \fabianhaef\simpleform\services\FormRenderService}), and a crafted
  * submission to the shared service path is rejected server-side even when the
- * HTML form was never rendered.
+ * HTML form was never rendered. Forms and fields are seeded through the data
+ * layer (see {@see BaseSmokeCest}).
+ *
+ * @author Fabian Haefliger
+ * @since 1.0.0
  */
-class FormSchedulingCest
+class FormSchedulingCest extends BaseSmokeCest
 {
-    private int $siteId;
+    // =========================================================================
+    // PRIVATE PROPERTIES
+    // =========================================================================
+
     private string $formHandle;
+
     private int $formId;
+
     private int $fieldId;
 
-    public function _before(FunctionalTester $I): void
+    // =========================================================================
+    // PUBLIC METHODS
+    // =========================================================================
+
+    public function _before(SmokeTester $I): void
     {
-        $this->siteId = Craft::$app->getSites()->getPrimarySite()->id;
-
-        $form = new Form();
-        $form->siteId = $this->siteId;
-        $form->name = 'scheduling-test-' . uniqid();
-        $form->handle = $this->formHandle = 'schedTest' . uniqid();
-        $form->title = 'Scheduling Test';
-        $form->emailTo = 'admin@test.com';
-        Craft::$app->getElements()->saveElement($form);
-        $this->formId = (int) $form->id;
-
-        $db = Craft::$app->getDb();
-        $now = date('Y-m-d H:i:s');
-        $db->createCommand()->insert('{{%simpleform_fields}}', [
-            'formId' => $this->formId,
-            'type' => 'text',
-            'name' => 'note',
-            'required' => false,
-            'config' => '[]',
-            'sortOrder' => 1,
-            'dateCreated' => $now,
-            'dateUpdated' => $now,
-            'uid' => \craft\helpers\StringHelper::UUID(),
-        ])->execute();
-        $this->fieldId = (int) $db->getLastInsertID();
-        $db->createCommand()->insert('{{%simpleform_fields_sites}}', [
-            'fieldId' => $this->fieldId,
-            'siteId' => $this->siteId,
-            'label' => 'Note',
-            'dateCreated' => $now,
-            'dateUpdated' => $now,
-            'uid' => \craft\helpers\StringHelper::UUID(),
-        ])->execute();
+        $form = $this->createForm('Scheduling Test', 'schedTest' . uniqid(), 'admin@test.com');
+        $this->formId = (int)$form->id;
+        $this->formHandle = $form->handle;
+        $this->fieldId = $this->createField($this->formId, 'text', 'note', 'Note');
     }
 
-    public function testNotYetOpenShowsClosedMessageInsteadOfForm(FunctionalTester $I): void
+    public function testNotYetOpenShowsClosedMessageInsteadOfForm(SmokeTester $I): void
     {
-        $form = Form::find()->id($this->formId)->one();
+        $form = $this->form();
         $form->openDate = new \DateTime('+2 days');
         $form->closedMessage = 'Registration opens soon.';
         Craft::$app->getElements()->saveElement($form);
 
-        $html = Craft::$app->getView()->renderString('{{ simpleForm("' . $this->formHandle . '") }}');
+        $html = $this->renderForm($this->formHandle);
 
         $I->assertStringContainsString('simple-form--closed', $html, 'Closed wrapper should render');
         $I->assertStringContainsString('Registration opens soon.', $html, 'Closed message should show');
         $I->assertStringNotContainsString('<form', $html, 'No form element when not yet open');
     }
 
-    public function testClosedFormDefaultsMessageWhenBlank(FunctionalTester $I): void
+    public function testClosedFormDefaultsMessageWhenBlank(SmokeTester $I): void
     {
-        $form = Form::find()->id($this->formId)->one();
+        $form = $this->form();
         $form->closeDate = new \DateTime('-1 day');
         Craft::$app->getElements()->saveElement($form);
 
-        $html = Craft::$app->getView()->renderString('{{ simpleForm("' . $this->formHandle . '") }}');
+        $html = $this->renderForm($this->formHandle);
 
         $I->assertStringContainsString('simple-form--closed', $html);
         $I->assertStringContainsString('no longer accepting submissions', $html, 'Falls back to default closed copy');
     }
 
-    public function testServerRejectsSubmissionWhenClosed(FunctionalTester $I): void
+    public function testServerRejectsSubmissionWhenClosed(SmokeTester $I): void
     {
-        $form = Form::find()->id($this->formId)->one();
+        $form = $this->form();
         $form->closeDate = new \DateTime('-1 day');
         Craft::$app->getElements()->saveElement($form);
 
         $before = Submission::find()->formId($this->formId)->siteId('*')->status(null)->count();
 
-        $result = Plugin::getInstance()->getSubmissionService()->submit(
+        $result = $this->service()->submit(
             $form,
             [$this->fieldId => 'crafted'],
             ['skipCaptcha' => true],
         );
 
         $I->assertNull($result['submission'], 'Closed form must not persist a submission');
-        $I->assertArrayHasKey('form', (array) $result['errors']);
+        $I->assertArrayHasKey('form', (array)$result['errors']);
 
         $after = Submission::find()->formId($this->formId)->siteId('*')->status(null)->count();
         $I->assertSame($before, $after, 'No submission row stored for a closed form');
     }
 
-    public function testQuotaClosesFormAfterLimitReached(FunctionalTester $I): void
+    public function testQuotaClosesFormAfterLimitReached(SmokeTester $I): void
     {
-        $form = Form::find()->id($this->formId)->one();
+        $form = $this->form();
         $form->submissionLimit = 1;
         Craft::$app->getElements()->saveElement($form);
 
-        $service = Plugin::getInstance()->getSubmissionService();
+        $service = $this->service();
 
         // First submission fills the quota.
         $first = $service->submit($form, [$this->fieldId => 'one'], ['skipCaptcha' => true]);
         $I->assertInstanceOf(Submission::class, $first['submission']);
 
         // Reload so the count cache reflects the new row, then the next is rejected.
-        $reloaded = Form::find()->id($this->formId)->one();
+        $reloaded = $this->form();
         $I->assertFalse($reloaded->isAcceptingSubmissions());
 
         $second = $service->submit($reloaded, [$this->fieldId => 'two'], ['skipCaptcha' => true]);
         $I->assertNull($second['submission'], 'Over-quota submission rejected');
-        $I->assertArrayHasKey('form', (array) $second['errors']);
+        $I->assertArrayHasKey('form', (array)$second['errors']);
 
         // The render also shows the closed message.
-        $html = Craft::$app->getView()->renderString('{{ simpleForm("' . $this->formHandle . '") }}');
+        $html = $this->renderForm($this->formHandle);
         $I->assertStringContainsString('simple-form--closed', $html);
+    }
+
+    // =========================================================================
+    // PRIVATE METHODS
+    // =========================================================================
+
+    /**
+     * The form element reloaded fresh from the current site.
+     */
+    private function form(): Form
+    {
+        return Form::find()->id($this->formId)->siteId(Craft::$app->getSites()->getPrimarySite()->id)->one();
     }
 }

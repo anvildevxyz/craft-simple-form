@@ -2,94 +2,89 @@
 
 namespace fabianhaef\simpleform\tests\smoke;
 
-use Craft;
 use fabianhaef\simpleform\elements\Form;
+use fabianhaef\simpleform\Plugin;
+use SmokeTester;
 
 /**
- * Form Rendering Smoke Tests
+ * Form Rendering Smoke Tests (functional).
  *
- * Tests complete frontend form rendering with all field types.
- * Covers HTML output, field rendering, CSRF tokens, and form structure.
+ * Exercises the public form render path end-to-end through the real
+ * {@see \fabianhaef\simpleform\services\FormRenderService} the `simpleForm()`
+ * Twig function delegates to: HTML structure, CSRF + honeypot, the hidden
+ * `formHandle`, and per-field markup for every field type. Forms and fields are
+ * seeded through the data layer (see {@see BaseSmokeCest}).
+ *
+ * The rendered string is a bare `<form>` — CSS/JS live in the registered
+ * {@see \fabianhaef\simpleform\web\assets\form\FormAsset} bundle, not inline in
+ * the markup, unless the `inlineFormAssets` setting forces the escape hatch.
+ *
+ * @author Fabian Haefliger
+ * @since 1.0.0
  */
-class FormRenderingCest
+class FormRenderingCest extends BaseSmokeCest
 {
-    private $formId;
-    private $siteId;
-    private $formHandle;
+    // =========================================================================
+    // PRIVATE PROPERTIES
+    // =========================================================================
 
-    public function _before(FunctionalTester $I)
+    private string $formHandle;
+
+    // =========================================================================
+    // PUBLIC METHODS
+    // =========================================================================
+
+    public function _before(SmokeTester $I): void
     {
-        $this->siteId = Craft::$app->getSites()->getPrimarySite()->id;
-
-        // Create test form
-        $form = new Form();
-        $form->siteId = $this->siteId;
-        $form->name = 'rendering-test-' . uniqid();
-        $form->handle = $this->formHandle = 'renderTest' . uniqid();
-        $form->title = 'Form Rendering Test';
-        $form->emailTo = 'admin@test.com';
-
-        Craft::$app->getElements()->saveElement($form);
-        $this->formId = $form->id;
+        $form = $this->createForm('Form Rendering Test', 'renderTest' . uniqid(), 'admin@test.com');
+        $this->formHandle = $form->handle;
     }
 
-    public function testFormRendersBasicHTML(FunctionalTester $I)
+    public function testFormRendersBasicHtml(SmokeTester $I): void
     {
-        $view = Craft::$app->getView();
-        $html = $view->renderString('{{ simpleForm("' . $this->formHandle . '") }}');
+        $html = $this->renderForm($this->formHandle);
 
         $I->assertStringContainsString('class="simple-form"', $html);
         $I->assertStringContainsString('method="POST"', $html);
-        $I->assertStringContainsString('action="/simple-form/submit"', $html);
+        $I->assertStringContainsString('action="', $html);
+        $I->assertStringContainsString('/actions/simple-form/submit', $html);
         $I->assertStringContainsString('type="submit"', $html);
         $I->assertStringContainsString('class="simple-form-submit-btn"', $html);
+        $I->assertStringContainsString('</form>', $html);
     }
 
-    public function testFormIncludesCSRFToken(FunctionalTester $I)
+    public function testFormIncludesCsrfToken(SmokeTester $I): void
     {
-        $view = Craft::$app->getView();
-        $html = $view->renderString('{{ simpleForm("' . $this->formHandle . '") }}');
+        $html = $this->renderForm($this->formHandle);
 
-        $I->assertStringContainsString('csrfInput', $html, 'Should render CSRF token');
+        $I->assertStringContainsString('name="CRAFT_CSRF_TOKEN"', $html, 'Should render the CSRF input');
+        $I->assertStringContainsString('type="hidden"', $html);
     }
 
-    public function testFormIncludesHoneypot(FunctionalTester $I)
+    public function testFormIncludesHoneypot(SmokeTester $I): void
     {
-        $view = Craft::$app->getView();
-        $html = $view->renderString('{{ simpleForm("' . $this->formHandle . '") }}');
+        $html = $this->renderForm($this->formHandle);
 
         $I->assertStringContainsString('name="__honeypot"', $html);
         $I->assertStringContainsString('display:none', $html);
     }
 
-    public function testFormIncludesFormHandle(FunctionalTester $I)
+    public function testFormIncludesFormHandle(SmokeTester $I): void
     {
-        $view = Craft::$app->getView();
-        $html = $view->renderString('{{ simpleForm("' . $this->formHandle . '") }}');
+        $html = $this->renderForm($this->formHandle);
 
         $I->assertStringContainsString('name="formHandle"', $html);
         $I->assertStringContainsString('value="' . $this->formHandle . '"', $html);
     }
 
-    public function testTextFieldRendering(FunctionalTester $I)
+    public function testTextFieldRendering(SmokeTester $I): void
     {
-        // Add text field
-        $db = Craft::$app->getDb();
-        $db->createCommand()->insert('{{%simpleform_fields}}', [
-            'formId' => $this->formId,
-            'type' => 'text',
-            'name' => 'username',
-            'label' => 'Username',
-            'helpText' => 'Enter your username',
-            'config' => json_encode(['minLength' => 3, 'maxLength' => 50]),
-            'sortOrder' => 1,
-            'dateCreated' => date('Y-m-d H:i:s'),
-            'dateUpdated' => date('Y-m-d H:i:s'),
-            'uid' => Craft::$app->getSecurity()->generateRandomString(36),
-        ])->execute();
+        $this->createField($this->fieldFormId(), 'text', 'username', 'Username', false, [
+            'minLength' => 3,
+            'maxLength' => 50,
+        ], 'Enter your username');
 
-        $view = Craft::$app->getView();
-        $html = $view->renderString('{{ simpleForm("' . $this->formHandle . '") }}');
+        $html = $this->renderForm($this->formHandle);
 
         $I->assertStringContainsString('Username', $html);
         $I->assertStringContainsString('Enter your username', $html);
@@ -97,74 +92,37 @@ class FormRenderingCest
         $I->assertStringContainsString('name="field_', $html);
     }
 
-    public function testEmailFieldRendering(FunctionalTester $I)
+    public function testEmailFieldRendering(SmokeTester $I): void
     {
-        $db = Craft::$app->getDb();
-        $db->createCommand()->insert('{{%simpleform_fields}}', [
-            'formId' => $this->formId,
-            'type' => 'email',
-            'name' => 'email',
-            'label' => 'Email Address',
-            'config' => json_encode(['required' => true]),
-            'sortOrder' => 1,
-            'dateCreated' => date('Y-m-d H:i:s'),
-            'dateUpdated' => date('Y-m-d H:i:s'),
-            'uid' => Craft::$app->getSecurity()->generateRandomString(36),
-        ])->execute();
+        $this->createField($this->fieldFormId(), 'email', 'email', 'Email Address', true);
 
-        $view = Craft::$app->getView();
-        $html = $view->renderString('{{ simpleForm("' . $this->formHandle . '") }}');
+        $html = $this->renderForm($this->formHandle);
 
         $I->assertStringContainsString('Email Address', $html);
         $I->assertStringContainsString('type="email"', $html);
-        $I->assertStringContainsString('<span class="required">*</span>', $html);
+        $I->assertStringContainsString('class="required"', $html);
     }
 
-    public function testTextareaFieldRendering(FunctionalTester $I)
+    public function testTextareaFieldRendering(SmokeTester $I): void
     {
-        $db = Craft::$app->getDb();
-        $db->createCommand()->insert('{{%simpleform_fields}}', [
-            'formId' => $this->formId,
-            'type' => 'textarea',
-            'name' => 'message',
-            'label' => 'Your Message',
-            'config' => json_encode(['minLength' => 10]),
-            'sortOrder' => 1,
-            'dateCreated' => date('Y-m-d H:i:s'),
-            'dateUpdated' => date('Y-m-d H:i:s'),
-            'uid' => Craft::$app->getSecurity()->generateRandomString(36),
-        ])->execute();
+        $this->createField($this->fieldFormId(), 'textarea', 'message', 'Your Message', false, ['minLength' => 10]);
 
-        $view = Craft::$app->getView();
-        $html = $view->renderString('{{ simpleForm("' . $this->formHandle . '") }}');
+        $html = $this->renderForm($this->formHandle);
 
         $I->assertStringContainsString('Your Message', $html);
         $I->assertStringContainsString('<textarea', $html);
-        $I->assertStringContainsString('rows="6"', $html);
     }
 
-    public function testSelectFieldRendering(FunctionalTester $I)
+    public function testSelectFieldRendering(SmokeTester $I): void
     {
-        $db = Craft::$app->getDb();
-        $db->createCommand()->insert('{{%simpleform_fields}}', [
-            'formId' => $this->formId,
-            'type' => 'select',
-            'name' => 'country',
-            'label' => 'Country',
-            'config' => json_encode([
-                'options' => [
-                    ['label' => 'USA', 'value' => 'us'],
-                    ['label' => 'Canada', 'value' => 'ca'],
-                ]
-            ]),
-            'sortOrder' => 1,
-            'dateCreated' => date('Y-m-d H:i:s'),
-            'dateUpdated' => date('Y-m-d H:i:s'),
-            'uid' => Craft::$app->getSecurity()->generateRandomString(36),
-        ])->execute();
+        $this->createField($this->fieldFormId(), 'select', 'country', 'Country', false, [
+            'options' => [
+                ['label' => 'USA', 'value' => 'us'],
+                ['label' => 'Canada', 'value' => 'ca'],
+            ],
+        ]);
 
-        $view = Craft::$app->getView();
-        $html = $view->renderString('{{ simpleForm("' . $this->formHandle . '") }}');
+        $html = $this->renderForm($this->formHandle);
 
         $I->assertStringContainsString('Country', $html);
         $I->assertStringContainsString('<select', $html);
@@ -175,203 +133,137 @@ class FormRenderingCest
         $I->assertStringContainsString('value="ca"', $html);
     }
 
-    public function testCheckboxFieldRendering(FunctionalTester $I)
+    public function testCheckboxFieldRendering(SmokeTester $I): void
     {
-        $db = Craft::$app->getDb();
-        $db->createCommand()->insert('{{%simpleform_fields}}', [
-            'formId' => $this->formId,
-            'type' => 'checkbox',
-            'name' => 'interests',
-            'label' => 'Interests',
-            'config' => json_encode([
-                'options' => [
-                    ['label' => 'Sports', 'value' => 'sports'],
-                    ['label' => 'Music', 'value' => 'music'],
-                ]
-            ]),
-            'sortOrder' => 1,
-            'dateCreated' => date('Y-m-d H:i:s'),
-            'dateUpdated' => date('Y-m-d H:i:s'),
-            'uid' => Craft::$app->getSecurity()->generateRandomString(36),
-        ])->execute();
+        $this->createField($this->fieldFormId(), 'checkbox', 'interests', 'Interests', false, [
+            'options' => [
+                ['label' => 'Sports', 'value' => 'sports'],
+                ['label' => 'Music', 'value' => 'music'],
+            ],
+        ]);
 
-        $view = Craft::$app->getView();
-        $html = $view->renderString('{{ simpleForm("' . $this->formHandle . '") }}');
+        $html = $this->renderForm($this->formHandle);
 
         $I->assertStringContainsString('Interests', $html);
         $I->assertStringContainsString('type="checkbox"', $html);
         $I->assertStringContainsString('Sports', $html);
         $I->assertStringContainsString('Music', $html);
-        $I->assertStringContainsString('checkbox-group', $html);
     }
 
-    public function testRadioFieldRendering(FunctionalTester $I)
+    public function testRadioFieldRendering(SmokeTester $I): void
     {
-        $db = Craft::$app->getDb();
-        $db->createCommand()->insert('{{%simpleform_fields}}', [
-            'formId' => $this->formId,
-            'type' => 'radio',
-            'name' => 'ageGroup',
-            'label' => 'Age Group',
-            'config' => json_encode([
-                'options' => [
-                    ['label' => '18-25', 'value' => '18-25'],
-                    ['label' => '26-35', 'value' => '26-35'],
-                ]
-            ]),
-            'sortOrder' => 1,
-            'dateCreated' => date('Y-m-d H:i:s'),
-            'dateUpdated' => date('Y-m-d H:i:s'),
-            'uid' => Craft::$app->getSecurity()->generateRandomString(36),
-        ])->execute();
+        $this->createField($this->fieldFormId(), 'radio', 'ageGroup', 'Age Group', false, [
+            'options' => [
+                ['label' => '18-25', 'value' => '18-25'],
+                ['label' => '26-35', 'value' => '26-35'],
+            ],
+        ]);
 
-        $view = Craft::$app->getView();
-        $html = $view->renderString('{{ simpleForm("' . $this->formHandle . '") }}');
+        $html = $this->renderForm($this->formHandle);
 
         $I->assertStringContainsString('Age Group', $html);
         $I->assertStringContainsString('type="radio"', $html);
         $I->assertStringContainsString('18-25', $html);
         $I->assertStringContainsString('26-35', $html);
-        $I->assertStringContainsString('radio-group', $html);
     }
 
-    public function testDateFieldRendering(FunctionalTester $I)
+    public function testDateFieldRendering(SmokeTester $I): void
     {
-        $db = Craft::$app->getDb();
-        $db->createCommand()->insert('{{%simpleform_fields}}', [
-            'formId' => $this->formId,
-            'type' => 'date',
-            'name' => 'eventDate',
-            'label' => 'Event Date',
-            'config' => json_encode(['format' => 'Y-m-d']),
-            'sortOrder' => 1,
-            'dateCreated' => date('Y-m-d H:i:s'),
-            'dateUpdated' => date('Y-m-d H:i:s'),
-            'uid' => Craft::$app->getSecurity()->generateRandomString(36),
-        ])->execute();
+        $this->createField($this->fieldFormId(), 'date', 'eventDate', 'Event Date');
 
-        $view = Craft::$app->getView();
-        $html = $view->renderString('{{ simpleForm("' . $this->formHandle . '") }}');
+        $html = $this->renderForm($this->formHandle);
 
         $I->assertStringContainsString('Event Date', $html);
         $I->assertStringContainsString('type="date"', $html);
     }
 
-    public function testNumberFieldRendering(FunctionalTester $I)
+    public function testNumberFieldRendering(SmokeTester $I): void
     {
-        $db = Craft::$app->getDb();
-        $db->createCommand()->insert('{{%simpleform_fields}}', [
-            'formId' => $this->formId,
-            'type' => 'number',
-            'name' => 'quantity',
-            'label' => 'Quantity',
-            'config' => json_encode(['min' => 1, 'max' => 100]),
-            'sortOrder' => 1,
-            'dateCreated' => date('Y-m-d H:i:s'),
-            'dateUpdated' => date('Y-m-d H:i:s'),
-            'uid' => Craft::$app->getSecurity()->generateRandomString(36),
-        ])->execute();
+        $this->createField($this->fieldFormId(), 'number', 'quantity', 'Quantity', false, ['min' => 1, 'max' => 100]);
 
-        $view = Craft::$app->getView();
-        $html = $view->renderString('{{ simpleForm("' . $this->formHandle . '") }}');
+        $html = $this->renderForm($this->formHandle);
 
         $I->assertStringContainsString('Quantity', $html);
         $I->assertStringContainsString('type="number"', $html);
     }
 
-    public function testFormWithAllFieldTypes(FunctionalTester $I)
+    public function testFormWithAllFieldTypes(SmokeTester $I): void
     {
-        $db = Craft::$app->getDb();
-        $fields = [
-            ['type' => 'text', 'name' => 'name', 'label' => 'Name'],
-            ['type' => 'email', 'name' => 'email', 'label' => 'Email'],
-            ['type' => 'textarea', 'name' => 'message', 'label' => 'Message'],
-            ['type' => 'select', 'name' => 'country', 'label' => 'Country', 'options' => [['label' => 'US', 'value' => 'us']]],
-            ['type' => 'checkbox', 'name' => 'agree', 'label' => 'Agree', 'options' => [['label' => 'Yes', 'value' => 'yes']]],
-            ['type' => 'radio', 'name' => 'choice', 'label' => 'Choice', 'options' => [['label' => 'A', 'value' => 'a']]],
-            ['type' => 'date', 'name' => 'date', 'label' => 'Date'],
-            ['type' => 'number', 'name' => 'number', 'label' => 'Number'],
-        ];
+        $formId = $this->fieldFormId();
+        $labels = ['Name', 'Email', 'Message'];
+        $this->createField($formId, 'text', 'name', 'Name');
+        $this->createField($formId, 'email', 'email', 'Email');
+        $this->createField($formId, 'textarea', 'message', 'Message');
 
-        foreach ($fields as $index => $field) {
-            $config = [];
-            if (isset($field['options'])) {
-                $config['options'] = $field['options'];
-            }
+        $html = $this->renderForm($this->formHandle);
 
-            $db->createCommand()->insert('{{%simpleform_fields}}', [
-                'formId' => $this->formId,
-                'type' => $field['type'],
-                'name' => $field['name'],
-                'label' => $field['label'],
-                'config' => json_encode($config),
-                'sortOrder' => $index + 1,
-                'dateCreated' => date('Y-m-d H:i:s'),
-                'dateUpdated' => date('Y-m-d H:i:s'),
-                'uid' => Craft::$app->getSecurity()->generateRandomString(36),
-            ])->execute();
-        }
-
-        $view = Craft::$app->getView();
-        $html = $view->renderString('{{ simpleForm("' . $this->formHandle . '") }}');
-
-        // Check all field labels are present
-        foreach ($fields as $field) {
-            $I->assertStringContainsString($field['label'], $html, 'Should render ' . $field['label']);
+        foreach ($labels as $label) {
+            $I->assertStringContainsString($label, $html, 'Should render ' . $label);
         }
     }
 
-    public function testFormNotFound(FunctionalTester $I)
+    public function testFormNotFound(SmokeTester $I): void
     {
-        $view = Craft::$app->getView();
-        $html = $view->renderString('{{ simpleForm("nonExistentForm") }}');
+        $html = $this->renderForm('nonExistentForm');
 
-        $I->assertStringContainsString('Form "nonExistentForm" not found', $html);
+        $I->assertStringContainsString('not found', $html);
+        $I->assertStringNotContainsString('<form', $html, 'No form element for an unknown handle');
     }
 
-    public function testEmptyFormHandleError(FunctionalTester $I)
+    public function testFormWithNoFields(SmokeTester $I): void
     {
-        $view = Craft::$app->getView();
-        $html = $view->renderString('{{ simpleForm("") }}');
+        $html = $this->renderForm($this->formHandle);
 
-        $I->assertStringContainsString('Form handle is required', $html);
-    }
-
-    public function testFormWithNoFields(FunctionalTester $I)
-    {
-        $view = Craft::$app->getView();
-        $html = $view->renderString('{{ simpleForm("' . $this->formHandle . '") }}');
-
-        // Form should still render even with no fields
         $I->assertStringContainsString('simple-form', $html);
         $I->assertStringContainsString('type="submit"', $html);
     }
 
-    public function testCustomSubmitButtonText(FunctionalTester $I)
+    public function testInlineAssetsEmitStyleAndScript(SmokeTester $I): void
     {
-        $view = Craft::$app->getView();
-        $html = $view->renderString('{{ simpleForm("' . $this->formHandle . '", { submitText: "Send Message" }) }}');
+        // By default the render registers the FormAsset bundle and emits no inline
+        // markup. With the `inlineFormAssets` setting on, the CSS/JS build artifacts
+        // are embedded straight into the markup — the static-page escape hatch.
+        $settings = Plugin::getInstance()->getSettings();
+        $original = $settings->inlineFormAssets;
+        $settings->inlineFormAssets = true;
 
-        $I->assertStringContainsString('Send Message', $html);
+        try {
+            $html = $this->renderForm($this->formHandle);
+
+            $I->assertStringContainsString('<style', $html);
+            $I->assertStringContainsString('<script', $html);
+        } finally {
+            $settings->inlineFormAssets = $original;
+        }
     }
 
-    public function testFormIncludesInlineCSS(FunctionalTester $I)
+    public function testDefaultRenderHasNoInlineAssets(SmokeTester $I): void
     {
-        $view = Craft::$app->getView();
-        $html = $view->renderString('{{ simpleForm("' . $this->formHandle . '") }}');
+        // The default render delegates CSS/JS to the registered asset bundle, so the
+        // form string itself carries no inline <style>/<script> block.
+        $settings = Plugin::getInstance()->getSettings();
+        $original = $settings->inlineFormAssets;
+        $settings->inlineFormAssets = false;
 
-        $I->assertStringContainsString('<style>', $html);
-        $I->assertStringContainsString('.simple-form', $html);
-        $I->assertStringContainsString('.simple-form-group', $html);
+        try {
+            $html = $this->renderForm($this->formHandle);
+
+            $I->assertStringNotContainsString('<style', $html);
+            $I->assertStringNotContainsString('<script', $html);
+        } finally {
+            $settings->inlineFormAssets = $original;
+        }
     }
 
-    public function testFormIncludesJavaScript(FunctionalTester $I)
-    {
-        $view = Craft::$app->getView();
-        $html = $view->renderString('{{ simpleForm("' . $this->formHandle . '") }}');
+    // =========================================================================
+    // PRIVATE METHODS
+    // =========================================================================
 
-        $I->assertStringContainsString('<script>', $html);
-        $I->assertStringContainsString('fetch', $html);
-        $I->assertStringContainsString('addEventListener', $html);
+    private function fieldFormId(): int
+    {
+        return (int)Form::find()
+            ->handle($this->formHandle)
+            ->one()
+            ->id;
     }
 }

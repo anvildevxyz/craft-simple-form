@@ -2,418 +2,216 @@
 
 namespace fabianhaef\simpleform\tests\smoke;
 
-use Craft;
-use fabianhaef\simpleform\elements\Form;
 use fabianhaef\simpleform\elements\Submission;
+use SmokeTester;
 
 /**
- * Form Submission & Validation Smoke Tests
+ * Form Submission & Validation Smoke Tests (functional).
  *
- * Tests form submission, validation, error handling, and data persistence.
+ * Exercises the public submit path through the real shared entry point
+ * {@see \fabianhaef\simpleform\services\SubmissionService::createFromRequest()}
+ * — the same method the front-end SubmitController calls — seeding the form and
+ * fields through the data layer (see {@see BaseSmokeCest}). Assertions are made
+ * against the returned envelope and the persisted {@see Submission} element.
+ *
+ * @author Fabian Haefliger
+ * @since 1.0.0
  */
-class FormSubmissionAndValidationCest
+class FormSubmissionAndValidationCest extends BaseSmokeCest
 {
-    private $formId;
-    private $siteId;
-    private $formHandle;
+    // =========================================================================
+    // PRIVATE PROPERTIES
+    // =========================================================================
 
-    public function _before(FunctionalTester $I)
+    private int $formId;
+
+    private string $formHandle;
+
+    // =========================================================================
+    // PUBLIC METHODS
+    // =========================================================================
+
+    public function _before(SmokeTester $I): void
     {
-        $this->siteId = Craft::$app->getSites()->getPrimarySite()->id;
-
-        // Create test form
-        $form = new Form();
-        $form->siteId = $this->siteId;
-        $form->name = 'submission-test-' . uniqid();
-        $form->handle = $this->formHandle = 'submitTest' . uniqid();
-        $form->title = 'Submission Test Form';
-        $form->emailTo = 'admin@test.com';
-
-        Craft::$app->getElements()->saveElement($form);
-        $this->formId = $form->id;
+        $form = $this->createForm('Submission Test Form', 'submitTest' . uniqid(), 'admin@test.com');
+        $this->formId = (int)$form->id;
+        $this->formHandle = $form->handle;
     }
 
-    public function testSubmitFormWithValidData(FunctionalTester $I)
+    public function testSubmitFormWithValidData(SmokeTester $I): void
     {
-        // Add text field
-        $db = Craft::$app->getDb();
-        $db->createCommand()->insert('{{%simpleform_fields}}', [
-            'formId' => $this->formId,
-            'type' => 'text',
-            'name' => 'name',
-            'label' => 'Name',
-            'config' => json_encode([]),
-            'sortOrder' => 1,
-            'dateCreated' => date('Y-m-d H:i:s'),
-            'dateUpdated' => date('Y-m-d H:i:s'),
-            'uid' => Craft::$app->getSecurity()->generateRandomString(36),
-        ])->execute();
-        $fieldId = $db->getLastInsertID();
+        $fieldId = $this->createField($this->formId, 'text', 'name', 'Name');
 
-        // Submit form
-        $I->sendPost('/simple-form/submit', [
-            'formHandle' => $this->formHandle,
-            'field_' . $fieldId => 'John Doe',
-        ]);
+        $result = $this->submitRequest($this->formHandle, ['field_' . $fieldId => 'John Doe']);
 
-        $I->seeResponseCodeIs(200);
-        $response = json_decode($I->grabPageSource(), true);
-        $I->assertTrue($response['success'], 'Form submission should succeed');
-        $I->assertArrayHasKey('message', $response);
+        $I->assertNull($result['errors'], 'Valid submission should not error');
+        $I->assertInstanceOf(Submission::class, $result['submission']);
 
-        // Verify submission was saved
-        $submission = Submission::find()
-            ->formId($this->formId)
-            ->one();
+        $submission = Submission::find()->formId($this->formId)->one();
         $I->assertNotNull($submission, 'Submission should be saved');
     }
 
-    public function testSubmitWithMissingRequiredField(FunctionalTester $I)
+    public function testSubmitWithMissingRequiredField(SmokeTester $I): void
     {
-        // Add required field
-        $db = Craft::$app->getDb();
-        $db->createCommand()->insert('{{%simpleform_fields}}', [
-            'formId' => $this->formId,
-            'type' => 'text',
-            'name' => 'email',
-            'label' => 'Email',
-            'config' => json_encode(['required' => true]),
-            'sortOrder' => 1,
-            'dateCreated' => date('Y-m-d H:i:s'),
-            'dateUpdated' => date('Y-m-d H:i:s'),
-            'uid' => Craft::$app->getSecurity()->generateRandomString(36),
-        ])->execute();
+        $fieldId = $this->createField($this->formId, 'text', 'email', 'Email', true);
 
-        // Submit without field
-        $I->sendPost('/simple-form/submit', [
-            'formHandle' => $this->formHandle,
-        ]);
+        $result = $this->submitRequest($this->formHandle, []);
 
-        $response = json_decode($I->grabPageSource(), true);
-        $I->assertFalse($response['success'], 'Should fail validation');
-        $I->assertArrayHasKey('errors', $response);
+        $I->assertNull($result['submission'], 'Should fail validation');
+        $I->assertNotNull($result['errors']);
+        $I->assertArrayHasKey('field_' . $fieldId, $result['errors']);
     }
 
-    public function testSubmitWithInvalidEmail(FunctionalTester $I)
+    public function testSubmitWithInvalidEmail(SmokeTester $I): void
     {
-        // Add email field
-        $db = Craft::$app->getDb();
-        $db->createCommand()->insert('{{%simpleform_fields}}', [
-            'formId' => $this->formId,
-            'type' => 'email',
-            'name' => 'email',
-            'label' => 'Email',
-            'config' => json_encode(['required' => true]),
-            'sortOrder' => 1,
-            'dateCreated' => date('Y-m-d H:i:s'),
-            'dateUpdated' => date('Y-m-d H:i:s'),
-            'uid' => Craft::$app->getSecurity()->generateRandomString(36),
-        ])->execute();
-        $fieldId = $db->getLastInsertID();
+        $fieldId = $this->createField($this->formId, 'email', 'email', 'Email', true);
 
-        // Submit with invalid email
-        $I->sendPost('/simple-form/submit', [
-            'formHandle' => $this->formHandle,
-            'field_' . $fieldId => 'not-an-email',
-        ]);
+        $result = $this->submitRequest($this->formHandle, ['field_' . $fieldId => 'not-an-email']);
 
-        $response = json_decode($I->grabPageSource(), true);
-        $I->assertFalse($response['success']);
-        $I->assertArrayHasKey('errors', $response);
-        $I->assertArrayHasKey('field_' . $fieldId, $response['errors']);
+        $I->assertNull($result['submission']);
+        $I->assertNotNull($result['errors']);
+        $I->assertArrayHasKey('field_' . $fieldId, $result['errors']);
     }
 
-    public function testSubmitWithTextLengthValidation(FunctionalTester $I)
+    public function testSubmitWithTextLengthValidation(SmokeTester $I): void
     {
-        // Add text field with min length
-        $db = Craft::$app->getDb();
-        $db->createCommand()->insert('{{%simpleform_fields}}', [
-            'formId' => $this->formId,
-            'type' => 'text',
-            'name' => 'username',
-            'label' => 'Username',
-            'config' => json_encode(['minLength' => 5, 'maxLength' => 20]),
-            'sortOrder' => 1,
-            'dateCreated' => date('Y-m-d H:i:s'),
-            'dateUpdated' => date('Y-m-d H:i:s'),
-            'uid' => Craft::$app->getSecurity()->generateRandomString(36),
-        ])->execute();
-        $fieldId = $db->getLastInsertID();
-
-        // Submit with too short value
-        $I->sendPost('/simple-form/submit', [
-            'formHandle' => $this->formHandle,
-            'field_' . $fieldId => 'abc',
+        $fieldId = $this->createField($this->formId, 'text', 'username', 'Username', false, [
+            'minLength' => 5,
+            'maxLength' => 20,
         ]);
 
-        $response = json_decode($I->grabPageSource(), true);
-        $I->assertFalse($response['success']);
-        $I->assertArrayHasKey('errors', $response);
+        $tooShort = $this->submitRequest($this->formHandle, ['field_' . $fieldId => 'abc']);
+        $I->assertNull($tooShort['submission']);
+        $I->assertNotNull($tooShort['errors']);
 
-        // Submit with valid length
-        $I->sendPost('/simple-form/submit', [
-            'formHandle' => $this->formHandle,
-            'field_' . $fieldId => 'validusername',
-        ]);
-
-        $response = json_decode($I->grabPageSource(), true);
-        $I->assertTrue($response['success']);
+        $valid = $this->submitRequest($this->formHandle, ['field_' . $fieldId => 'validusername']);
+        $I->assertNull($valid['errors']);
+        $I->assertInstanceOf(Submission::class, $valid['submission']);
     }
 
-    public function testSubmitWithSelectFieldValidation(FunctionalTester $I)
+    public function testSubmitWithSelectFieldValidation(SmokeTester $I): void
     {
-        // Add select field
-        $db = Craft::$app->getDb();
-        $db->createCommand()->insert('{{%simpleform_fields}}', [
-            'formId' => $this->formId,
-            'type' => 'select',
-            'name' => 'country',
-            'label' => 'Country',
-            'config' => json_encode([
-                'options' => [
-                    ['label' => 'USA', 'value' => 'us'],
-                    ['label' => 'Canada', 'value' => 'ca'],
-                ]
-            ]),
-            'sortOrder' => 1,
-            'dateCreated' => date('Y-m-d H:i:s'),
-            'dateUpdated' => date('Y-m-d H:i:s'),
-            'uid' => Craft::$app->getSecurity()->generateRandomString(36),
-        ])->execute();
-        $fieldId = $db->getLastInsertID();
-
-        // Submit with invalid option
-        $I->sendPost('/simple-form/submit', [
-            'formHandle' => $this->formHandle,
-            'field_' . $fieldId => 'invalid',
+        $fieldId = $this->createField($this->formId, 'select', 'country', 'Country', false, [
+            'options' => [
+                ['label' => 'USA', 'value' => 'us'],
+                ['label' => 'Canada', 'value' => 'ca'],
+            ],
         ]);
 
-        $response = json_decode($I->grabPageSource(), true);
-        $I->assertFalse($response['success']);
+        $invalid = $this->submitRequest($this->formHandle, ['field_' . $fieldId => 'invalid']);
+        $I->assertNull($invalid['submission']);
+        $I->assertNotNull($invalid['errors']);
 
-        // Submit with valid option
-        $I->sendPost('/simple-form/submit', [
-            'formHandle' => $this->formHandle,
-            'field_' . $fieldId => 'us',
-        ]);
-
-        $response = json_decode($I->grabPageSource(), true);
-        $I->assertTrue($response['success']);
+        $valid = $this->submitRequest($this->formHandle, ['field_' . $fieldId => 'us']);
+        $I->assertNull($valid['errors']);
+        $I->assertInstanceOf(Submission::class, $valid['submission']);
     }
 
-    public function testSubmitWithCheckboxField(FunctionalTester $I)
+    public function testSubmitWithCheckboxField(SmokeTester $I): void
     {
-        // Add checkbox field
-        $db = Craft::$app->getDb();
-        $db->createCommand()->insert('{{%simpleform_fields}}', [
-            'formId' => $this->formId,
-            'type' => 'checkbox',
-            'name' => 'interests',
-            'label' => 'Interests',
-            'config' => json_encode([
-                'options' => [
-                    ['label' => 'Sports', 'value' => 'sports'],
-                    ['label' => 'Music', 'value' => 'music'],
-                ]
-            ]),
-            'sortOrder' => 1,
-            'dateCreated' => date('Y-m-d H:i:s'),
-            'dateUpdated' => date('Y-m-d H:i:s'),
-            'uid' => Craft::$app->getSecurity()->generateRandomString(36),
-        ])->execute();
-        $fieldId = $db->getLastInsertID();
-
-        // Submit with multiple selections
-        $I->sendPost('/simple-form/submit', [
-            'formHandle' => $this->formHandle,
-            'field_' . $fieldId => ['sports', 'music'],
+        $fieldId = $this->createField($this->formId, 'checkbox', 'interests', 'Interests', false, [
+            'options' => [
+                ['label' => 'Sports', 'value' => 'sports'],
+                ['label' => 'Music', 'value' => 'music'],
+            ],
         ]);
 
-        $response = json_decode($I->grabPageSource(), true);
-        $I->assertTrue($response['success']);
+        $result = $this->submitRequest($this->formHandle, ['field_' . $fieldId => ['sports', 'music']]);
 
-        // Verify data was saved
-        $submission = Submission::find()
-            ->formId($this->formId)
-            ->one();
+        $I->assertNull($result['errors']);
+        $I->assertInstanceOf(Submission::class, $result['submission']);
+
+        $submission = Submission::find()->formId($this->formId)->one();
         $I->assertNotNull($submission);
     }
 
-    public function testSubmitWithRadioField(FunctionalTester $I)
+    public function testSubmitWithRadioField(SmokeTester $I): void
     {
-        // Add radio field
-        $db = Craft::$app->getDb();
-        $db->createCommand()->insert('{{%simpleform_fields}}', [
-            'formId' => $this->formId,
-            'type' => 'radio',
-            'name' => 'choice',
-            'label' => 'Choose One',
-            'config' => json_encode([
-                'options' => [
-                    ['label' => 'Option A', 'value' => 'a'],
-                    ['label' => 'Option B', 'value' => 'b'],
-                ]
-            ]),
-            'sortOrder' => 1,
-            'dateCreated' => date('Y-m-d H:i:s'),
-            'dateUpdated' => date('Y-m-d H:i:s'),
-            'uid' => Craft::$app->getSecurity()->generateRandomString(36),
-        ])->execute();
-        $fieldId = $db->getLastInsertID();
-
-        // Submit
-        $I->sendPost('/simple-form/submit', [
-            'formHandle' => $this->formHandle,
-            'field_' . $fieldId => 'a',
+        $fieldId = $this->createField($this->formId, 'radio', 'choice', 'Choose One', false, [
+            'options' => [
+                ['label' => 'Option A', 'value' => 'a'],
+                ['label' => 'Option B', 'value' => 'b'],
+            ],
         ]);
 
-        $response = json_decode($I->grabPageSource(), true);
-        $I->assertTrue($response['success']);
+        $result = $this->submitRequest($this->formHandle, ['field_' . $fieldId => 'a']);
+
+        $I->assertNull($result['errors']);
+        $I->assertInstanceOf(Submission::class, $result['submission']);
     }
 
-    public function testHoneypotPreventsSpam(FunctionalTester $I)
+    public function testHoneypotPreventsSpam(SmokeTester $I): void
     {
-        // Submit with honeypot field filled
-        $I->sendPost('/simple-form/submit', [
-            'formHandle' => $this->formHandle,
-            '__honeypot' => 'spam',
-        ]);
+        // A filled honeypot is dropped silently: no submission, no errors — bots
+        // get no signal, and nothing is persisted.
+        $before = Submission::find()->formId($this->formId)->status(null)->count();
 
-        // Should redirect silently (honeypot protection)
-        $I->seeResponseCodeIs(302);
+        $result = $this->submitRequest($this->formHandle, ['__honeypot' => 'spam']);
+
+        $I->assertNull($result['submission'], 'Honeypot hit must not persist a submission');
+        $I->assertNull($result['errors'], 'Honeypot hit returns no errors (silent drop)');
+
+        $after = Submission::find()->formId($this->formId)->status(null)->count();
+        $I->assertSame($before, $after, 'No submission row stored for a honeypot hit');
     }
 
-    public function testMissingFormHandle(FunctionalTester $I)
+    public function testInvalidFormHandle(SmokeTester $I): void
     {
-        $I->sendPost('/simple-form/submit', []);
+        $result = $this->service()->createFromRequest('nonexistent');
 
-        $response = json_decode($I->grabPageSource(), true);
-        $I->assertFalse($response['success']);
-        $I->assertArrayHasKey('errors', $response);
+        $I->assertNull($result['submission']);
+        $I->assertNotNull($result['errors']);
+        $I->assertArrayHasKey('form', $result['errors']);
     }
 
-    public function testInvalidFormHandle(FunctionalTester $I)
+    public function testSubmissionDataFormat(SmokeTester $I): void
     {
-        $I->sendPost('/simple-form/submit', [
-            'formHandle' => 'nonexistent',
-        ]);
+        $fieldId = $this->createField($this->formId, 'text', 'testfield', 'Test Field');
 
-        $response = json_decode($I->grabPageSource(), true);
-        $I->assertFalse($response['success']);
-    }
+        $result = $this->submitRequest($this->formHandle, ['field_' . $fieldId => 'Test Value']);
+        $I->assertInstanceOf(Submission::class, $result['submission']);
 
-    public function testSubmissionDataFormat(FunctionalTester $I)
-    {
-        // Add field
-        $db = Craft::$app->getDb();
-        $db->createCommand()->insert('{{%simpleform_fields}}', [
-            'formId' => $this->formId,
-            'type' => 'text',
-            'name' => 'testfield',
-            'label' => 'Test Field',
-            'config' => json_encode([]),
-            'sortOrder' => 1,
-            'dateCreated' => date('Y-m-d H:i:s'),
-            'dateUpdated' => date('Y-m-d H:i:s'),
-            'uid' => Craft::$app->getSecurity()->generateRandomString(36),
-        ])->execute();
-        $fieldId = $db->getLastInsertID();
+        $submission = Submission::find()->formId($this->formId)->one();
+        $data = $submission->data;
 
-        // Submit
-        $I->sendPost('/simple-form/submit', [
-            'formHandle' => $this->formHandle,
-            'field_' . $fieldId => 'Test Value',
-        ]);
-
-        $response = json_decode($I->grabPageSource(), true);
-        $I->assertTrue($response['success']);
-
-        // Check saved data format
-        $submission = Submission::find()
-            ->formId($this->formId)
-            ->one();
-
-        $data = json_decode($submission->data, true);
         $I->assertArrayHasKey('field_' . $fieldId, $data);
         $I->assertArrayHasKey('label', $data['field_' . $fieldId]);
         $I->assertArrayHasKey('type', $data['field_' . $fieldId]);
         $I->assertArrayHasKey('value', $data['field_' . $fieldId]);
-        $I->assertEquals('Test Field', $data['field_' . $fieldId]['label']);
-        $I->assertEquals('Test Value', $data['field_' . $fieldId]['value']);
+        $I->assertSame('Test Field', $data['field_' . $fieldId]['label']);
+        $I->assertSame('Test Value', $data['field_' . $fieldId]['value']);
     }
 
-    public function testMultipleSubmissions(FunctionalTester $I)
+    public function testMultipleSubmissions(SmokeTester $I): void
     {
-        // Add field
-        $db = Craft::$app->getDb();
-        $db->createCommand()->insert('{{%simpleform_fields}}', [
-            'formId' => $this->formId,
-            'type' => 'text',
-            'name' => 'name',
-            'label' => 'Name',
-            'config' => json_encode([]),
-            'sortOrder' => 1,
-            'dateCreated' => date('Y-m-d H:i:s'),
-            'dateUpdated' => date('Y-m-d H:i:s'),
-            'uid' => Craft::$app->getSecurity()->generateRandomString(36),
-        ])->execute();
-        $fieldId = $db->getLastInsertID();
+        $fieldId = $this->createField($this->formId, 'text', 'name', 'Name');
 
-        // Submit 3 times
         for ($i = 1; $i <= 3; $i++) {
-            $I->sendPost('/simple-form/submit', [
-                'formHandle' => $this->formHandle,
-                'field_' . $fieldId => 'User ' . $i,
-            ]);
-
-            $response = json_decode($I->grabPageSource(), true);
-            $I->assertTrue($response['success']);
+            $result = $this->submitRequest($this->formHandle, ['field_' . $fieldId => 'User ' . $i]);
+            $I->assertInstanceOf(Submission::class, $result['submission']);
         }
 
-        // Verify all 3 submissions were saved
-        $submissions = Submission::find()
-            ->formId($this->formId)
-            ->all();
-
+        $submissions = Submission::find()->formId($this->formId)->all();
         $I->assertCount(3, $submissions);
     }
 
-    public function testSubmissionContainsCorrectFieldInfo(FunctionalTester $I)
+    public function testSubmissionContainsCorrectFieldInfo(SmokeTester $I): void
     {
-        // Add field with specific config
-        $db = Craft::$app->getDb();
-        $db->createCommand()->insert('{{%simpleform_fields}}', [
-            'formId' => $this->formId,
-            'type' => 'text',
-            'name' => 'fullName',
-            'label' => 'Full Name',
-            'helpText' => 'Your complete name',
-            'config' => json_encode(['minLength' => 5]),
-            'sortOrder' => 1,
-            'dateCreated' => date('Y-m-d H:i:s'),
-            'dateUpdated' => date('Y-m-d H:i:s'),
-            'uid' => Craft::$app->getSecurity()->generateRandomString(36),
-        ])->execute();
-        $fieldId = $db->getLastInsertID();
+        $fieldId = $this->createField($this->formId, 'text', 'fullName', 'Full Name', false, [
+            'minLength' => 5,
+        ], 'Your complete name');
 
-        // Submit
-        $I->sendPost('/simple-form/submit', [
-            'formHandle' => $this->formHandle,
-            'field_' . $fieldId => 'John Smith',
-        ]);
+        $result = $this->submitRequest($this->formHandle, ['field_' . $fieldId => 'John Smith']);
+        $I->assertInstanceOf(Submission::class, $result['submission']);
 
-        // Check submission
-        $submission = Submission::find()
-            ->formId($this->formId)
-            ->one();
+        $submission = Submission::find()->formId($this->formId)->one();
 
-        $I->assertEquals($this->formId, $submission->formId);
-        $I->assertEquals('new', $submission->readStatus);
+        $I->assertSame($this->formId, $submission->formId);
+        $I->assertSame('new', $submission->readStatus);
 
-        $data = json_decode($submission->data, true);
-        $fieldData = $data['field_' . $fieldId];
-        $I->assertEquals('Full Name', $fieldData['label']);
-        $I->assertEquals('text', $fieldData['type']);
-        $I->assertEquals('John Smith', $fieldData['value']);
+        $fieldData = $submission->data['field_' . $fieldId];
+        $I->assertSame('Full Name', $fieldData['label']);
+        $I->assertSame('text', $fieldData['type']);
+        $I->assertSame('John Smith', $fieldData['value']);
     }
 }

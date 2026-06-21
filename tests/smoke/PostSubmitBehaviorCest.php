@@ -4,115 +4,115 @@ namespace fabianhaef\simpleform\tests\smoke;
 
 use Craft;
 use fabianhaef\simpleform\elements\Form;
+use fabianhaef\simpleform\elements\Submission;
+use fabianhaef\simpleform\Plugin;
+use SmokeTester;
 
 /**
- * Post-Submit Behavior Smoke Tests (#133)
+ * Post-Submit Behavior Smoke Tests (#133, functional).
  *
  * Exercises the per-form success message override (with placeholder
  * interpolation), the global fallback, and the URL/entry redirect actions
- * through the real /simple-form/submit endpoint's JSON envelope.
+ * through the shared submit path + the real
+ * {@see \fabianhaef\simpleform\services\SubmissionService::resolvePostSubmit()}
+ * — the exact resolution the SubmitController and GraphQL mutation both use.
+ * Forms and fields are seeded through the data layer (see {@see BaseSmokeCest}).
+ *
+ * @author Fabian Haefliger
+ * @since 1.0.0
  */
-class PostSubmitBehaviorCest
+class PostSubmitBehaviorCest extends BaseSmokeCest
 {
-    private int $siteId;
+    // =========================================================================
+    // PRIVATE PROPERTIES
+    // =========================================================================
+
     private int $formId;
+
     private string $formHandle;
+
     private int $fieldId;
 
-    public function _before(FunctionalTester $I): void
+    // =========================================================================
+    // PUBLIC METHODS
+    // =========================================================================
+
+    public function _before(SmokeTester $I): void
     {
-        $this->siteId = Craft::$app->getSites()->getPrimarySite()->id;
-
-        $form = new Form();
-        $form->siteId = $this->siteId;
-        $form->name = 'postsubmit-test-' . uniqid();
-        $form->handle = $this->formHandle = 'postSubmit' . uniqid();
-        $form->title = 'Post-Submit Test Form';
-        $form->emailTo = 'admin@test.com';
-        Craft::$app->getElements()->saveElement($form);
-        $this->formId = (int) $form->id;
-
-        $db = Craft::$app->getDb();
-        $db->createCommand()->insert('{{%simpleform_fields}}', [
-            'formId' => $this->formId,
-            'type' => 'text',
-            'name' => 'firstName',
-            'label' => 'First Name',
-            'config' => json_encode([]),
-            'sortOrder' => 1,
-            'dateCreated' => date('Y-m-d H:i:s'),
-            'dateUpdated' => date('Y-m-d H:i:s'),
-            'uid' => Craft::$app->getSecurity()->generateRandomString(36),
-        ])->execute();
-        $this->fieldId = (int) $db->getLastInsertID();
+        $form = $this->createForm('Post-Submit Test Form', 'postSubmit' . uniqid(), 'admin@test.com');
+        $this->formId = (int)$form->id;
+        $this->formHandle = $form->handle;
+        $this->fieldId = $this->createField($this->formId, 'text', 'firstName', 'First Name');
     }
 
-    public function testPerFormMessageInterpolatesSubmittedValue(FunctionalTester $I): void
+    public function testPerFormMessageInterpolatesSubmittedValue(SmokeTester $I): void
     {
-        $form = Form::find()->id($this->formId)->siteId($this->siteId)->one();
+        $form = $this->form();
         $form->submitMessage = 'Thanks {firstName}!';
         Craft::$app->getElements()->saveElement($form);
 
-        $I->sendPost('/simple-form/submit', [
-            'formHandle' => $this->formHandle,
-            'field_' . $this->fieldId => 'Ada',
-        ]);
+        $envelope = $this->submitAndResolve($I, 'Ada');
 
-        $I->seeResponseCodeIs(200);
-        $response = json_decode($I->grabPageSource(), true);
-        $I->assertTrue($response['success']);
-        $I->assertSame('Thanks Ada!', $response['message']);
-        $I->assertNull($response['redirectUrl'], 'message action has no redirect');
+        $I->assertSame('Thanks Ada!', $envelope['message']);
+        $I->assertNull($envelope['redirectUrl'], 'message action has no redirect');
     }
 
-    public function testBlankMessageFallsBackToGlobalDefault(FunctionalTester $I): void
+    public function testBlankMessageFallsBackToGlobalDefault(SmokeTester $I): void
     {
-        $global = \fabianhaef\simpleform\Plugin::getInstance()->getSettings()->submitMessage;
+        $global = Plugin::getInstance()->getSettings()->submitMessage;
 
-        $I->sendPost('/simple-form/submit', [
-            'formHandle' => $this->formHandle,
-            'field_' . $this->fieldId => 'Ada',
-        ]);
+        $envelope = $this->submitAndResolve($I, 'Ada');
 
-        $I->seeResponseCodeIs(200);
-        $response = json_decode($I->grabPageSource(), true);
-        $I->assertTrue($response['success']);
-        $I->assertSame($global, $response['message']);
+        $I->assertSame($global, $envelope['message']);
     }
 
-    public function testUrlActionReturnsEncodedRedirect(FunctionalTester $I): void
+    public function testUrlActionReturnsEncodedRedirect(SmokeTester $I): void
     {
-        $form = Form::find()->id($this->formId)->siteId($this->siteId)->one();
+        $form = $this->form();
         $form->postSubmitAction = 'url';
         $form->redirectUrl = '/thanks?n={firstName}';
         Craft::$app->getElements()->saveElement($form);
 
-        $I->sendPost('/simple-form/submit', [
-            'formHandle' => $this->formHandle,
-            'field_' . $this->fieldId => 'Ada Lovelace',
-        ]);
+        $envelope = $this->submitAndResolve($I, 'Ada Lovelace');
 
-        $I->seeResponseCodeIs(200);
-        $response = json_decode($I->grabPageSource(), true);
-        $I->assertTrue($response['success']);
-        $I->assertSame('/thanks?n=Ada%20Lovelace', $response['redirectUrl']);
+        $I->assertSame('/thanks?n=Ada%20Lovelace', $envelope['redirectUrl']);
     }
 
-    public function testEntryActionWithMissingEntryFallsBackToInlineMessage(FunctionalTester $I): void
+    public function testEntryActionWithMissingEntryFallsBackToInlineMessage(SmokeTester $I): void
     {
-        $form = Form::find()->id($this->formId)->siteId($this->siteId)->one();
+        $form = $this->form();
         $form->postSubmitAction = 'entry';
         $form->redirectEntryId = 999999; // no such entry → null redirect
         Craft::$app->getElements()->saveElement($form);
 
-        $I->sendPost('/simple-form/submit', [
-            'formHandle' => $this->formHandle,
-            'field_' . $this->fieldId => 'Ada',
-        ]);
+        $envelope = $this->submitAndResolve($I, 'Ada');
 
-        $I->seeResponseCodeIs(200);
-        $response = json_decode($I->grabPageSource(), true);
-        $I->assertTrue($response['success']);
-        $I->assertNull($response['redirectUrl'], 'missing entry yields inline message');
+        $I->assertNull($envelope['redirectUrl'], 'missing entry yields inline message');
+    }
+
+    // =========================================================================
+    // PRIVATE METHODS
+    // =========================================================================
+
+    /**
+     * The form element reloaded fresh from the current site.
+     */
+    private function form(): Form
+    {
+        return Form::find()->id($this->formId)->siteId(Craft::$app->getSites()->getPrimarySite()->id)->one();
+    }
+
+    /**
+     * Submit the seeded form with the given first-name value, then resolve the
+     * post-submit envelope exactly as the SubmitController does.
+     *
+     * @return array{message: string, redirectUrl: string|null}
+     */
+    private function submitAndResolve(SmokeTester $I, string $firstName): array
+    {
+        $result = $this->submitRequest($this->formHandle, ['field_' . $this->fieldId => $firstName]);
+        $I->assertInstanceOf(Submission::class, $result['submission']);
+
+        return $this->service()->resolvePostSubmit($this->form(), $result['submission'], $result['data'] ?? []);
     }
 }
