@@ -41,7 +41,7 @@ class SubmissionService extends Component
      *
      * @param FormModel|Form|string $form Form instance, element, or handle
      * @param Request|null $request Request object (uses Craft request if null)
-     * @return array{submission: Submission|null, errors: array<string, mixed>|null, data?: array<string, mixed>}
+     * @return array{submission: Submission|null, errors: array<string, mixed>|null, data?: array<string, mixed>, paymentRedirectUrl?: string}
      */
     public function createFromRequest(FormModel|Form|string $form, ?Request $request = null): array
     {
@@ -138,10 +138,16 @@ class SubmissionService extends Component
 
         $userId = Craft::$app->getUser()->getId();
 
+        // Gateway payment-form fields (card number/expiry/cvv, posted under the
+        // `paymentForm` namespace by the embedded gateway form) drive the
+        // pay-to-submit charge (#116). Absent for non-payment forms.
+        $paymentForm = $request->getBodyParam('paymentForm');
+
         $result = $this->submit($formElement, $values, [
             'honeypot' => (string) $request->getBodyParam('__honeypot', ''),
             'captchaToken' => null, // CaptchaService reads the request body itself.
             'userId' => $userId !== null ? (int) $userId : null,
+            'payment' => is_array($paymentForm) ? $paymentForm : [],
         ]);
 
         // Temp PNGs are copied into the volume by saveTempFiles(); remove the
@@ -238,8 +244,8 @@ class SubmissionService extends Component
      *
      * @param Form $form
      * @param array<int|string, mixed> $values posted values keyed by field id (or `field_<id>`)
-     * @param array{honeypot?: string, captchaToken?: ?string, skipCaptcha?: bool, userId?: ?int, siteId?: ?int} $context
-     * @return array{submission: Submission|null, errors: array<string, mixed>|null, data?: array<string, mixed>}
+     * @param array{honeypot?: string, captchaToken?: ?string, skipCaptcha?: bool, userId?: ?int, siteId?: ?int, payment?: array<string, mixed>} $context
+     * @return array{submission: Submission|null, errors: array<string, mixed>|null, data?: array<string, mixed>, paymentRedirectUrl?: string}
      */
     public function submit(Form $form, array $values, array $context = []): array
     {
@@ -257,6 +263,19 @@ class SubmissionService extends Component
         $isSpam = $core['isSpam'];
         $spamReason = $core['spamReason'] ?? ($isSpam ? 'akismet' : null);
 
+        // Pay-to-submit (#116): for a form that collects payment, the charge is
+        // attempted BEFORE the submission is persisted. A decline/misconfig
+        // returns an error and saves nothing; success or an offsite redirect
+        // carries the resulting payment state onto the new row. Skipped for spam.
+        $payment = null;
+        if (!$isSpam) {
+            $paymentParams = is_array($context['payment'] ?? null) ? $context['payment'] : [];
+            $payment = Plugin::getInstance()->getPayments()->authorizeForSubmit($form, $data, $paymentParams);
+            if ($payment !== null && $payment['error'] !== null) {
+                return ['submission' => null, 'errors' => ['payment' => [$payment['error']]]];
+            }
+        }
+
         // Build + save the submission element.
         $siteId = $context['siteId'] ?? $form->siteId ?? Craft::$app->getSites()->getCurrentSite()->id;
 
@@ -270,6 +289,16 @@ class SubmissionService extends Component
         $submission->spamReason = $spamReason;
         $submission->sourceIp = $this->sourceIp();
 
+        // Stamp the payment state before the after-save event so the existing
+        // gating (integrations self-skip + email below) keys off it: a settled
+        // payment releases immediately, a pending one is withheld until the order
+        // completes (handled by PaymentsService::handleOrderCompleted).
+        if ($payment !== null && $payment['error'] === null && $payment['status'] !== '') {
+            $submission->paymentStatus = $payment['status'];
+            $submission->paymentAmount = (string) $payment['amount'];
+            $submission->orderId = $payment['orderId'] ?: null;
+        }
+
         // Fire the before-save event (same as the Twig path).
         $beforeEvent = new SubmissionEvent($submission, $form, $data, true);
         Plugin::getInstance()->trigger(Plugin::EVENT_BEFORE_SUBMISSION_SAVE, $beforeEvent);
@@ -278,11 +307,7 @@ class SubmissionService extends Component
             return ['submission' => null, 'errors' => ['submission' => ['Failed to save submission']]];
         }
 
-        // If the form collects payment, create the pending order now (before the
-        // after-save dispatch) so integrations + email are withheld until the
-        // payment completes. Skipped for spam.
-        $awaitingPayment = !$isSpam
-            && Plugin::getInstance()->getPayments()->prepare($form, $submission, $data);
+        $awaitingPayment = $submission->isAwaitingPayment();
 
         // Fire the after-save event. The integration dispatch listener self-skips
         // while a submission is awaiting payment.
@@ -298,8 +323,14 @@ class SubmissionService extends Component
 
         // `data` is returned so post-submit resolution (the success message and a
         // templated redirect URL) can interpolate the submitted values without
-        // re-reading the persisted row.
-        return ['submission' => $submission, 'errors' => null, 'data' => $data];
+        // re-reading the persisted row. `paymentRedirectUrl`, when present, sends
+        // the visitor on to complete an offsite/3DS payment.
+        $result = ['submission' => $submission, 'errors' => null, 'data' => $data];
+        if ($payment !== null && ($payment['redirectUrl'] ?? null) !== null) {
+            $result['paymentRedirectUrl'] = $payment['redirectUrl'];
+        }
+
+        return $result;
     }
 
     /**

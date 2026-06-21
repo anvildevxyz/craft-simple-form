@@ -231,11 +231,14 @@ class Plugin extends BasePlugin
 
         // Data-retention housekeeping: prune aged submissions + integration logs
         // on Craft's garbage-collection run (opt-in via settings; 0 = keep forever).
+        // Also reconcile payment state: cancel submissions whose payment stayed
+        // pending past the TTL (abandoned offsite/redirect checkouts, #116).
         Event::on(
             Gc::class,
             Gc::EVENT_RUN,
             function(): void {
                 $this->getRetention()->runGarbageCollection();
+                $this->getPayments()->expirePending();
             }
         );
 

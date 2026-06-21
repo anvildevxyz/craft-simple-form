@@ -7,6 +7,7 @@ use craft\base\Element;
 use craft\db\Query;
 use craft\elements\actions\Delete;
 use craft\helpers\Db;
+use craft\helpers\Html;
 use craft\helpers\StringHelper;
 use fabianhaef\simpleform\elements\actions\SetSubmissionStatus;
 use fabianhaef\simpleform\elements\db\SubmissionQuery;
@@ -21,6 +22,8 @@ class Submission extends Element
     public const PAYMENT_PENDING = 'pending';
     /** Payment has settled. */
     public const PAYMENT_PAID = 'paid';
+    /** A pending payment was abandoned/expired (or its order was canceled) before settling. */
+    public const PAYMENT_CANCELED = 'canceled';
 
     public ?int $formId = null;
     /** @var SubmissionData|null */
@@ -49,6 +52,12 @@ class Submission extends Element
     public function isAwaitingPayment(): bool
     {
         return $this->paymentStatus === self::PAYMENT_PENDING;
+    }
+
+    /** Whether this submission's required payment has settled. */
+    public function isPaid(): bool
+    {
+        return $this->paymentStatus === self::PAYMENT_PAID;
     }
 
     public static function tableName(): string
@@ -185,7 +194,55 @@ class Submission extends Element
             'form' => ['label' => 'Form'],
             'dateCreated' => ['label' => 'Date'],
             'readStatus' => ['label' => 'Status'],
+            'payment' => ['label' => Craft::t('simple-form', 'Payment')],
             'userId' => ['label' => 'User'],
+        ];
+    }
+
+    /**
+     * Render the `payment` column as a small, translated status pill. Submissions
+     * with no payment requirement (`paymentStatus === null`) show a neutral dash so
+     * the column reads cleanly in mixed indexes. All other attributes fall through
+     * to the core renderer.
+     *
+     * @throws \yii\base\InvalidConfigException from {@see parent::attributeHtml()}.
+     */
+    protected function attributeHtml(string $attribute): string
+    {
+        if ($attribute !== 'payment') {
+            return parent::attributeHtml($attribute);
+        }
+
+        if ($this->paymentStatus === null) {
+            return Html::tag('span', '—', ['class' => 'light']);
+        }
+
+        $labels = [
+            self::PAYMENT_PENDING => Craft::t('simple-form', 'Pending'),
+            self::PAYMENT_PAID => Craft::t('simple-form', 'Paid'),
+            self::PAYMENT_CANCELED => Craft::t('simple-form', 'Canceled'),
+        ];
+
+        return Html::tag(
+            'span',
+            $labels[$this->paymentStatus] ?? StringHelper::titleize($this->paymentStatus),
+            ['class' => "status-label status-{$this->paymentStatus}"],
+        );
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    protected static function defineSortOptions(): array
+    {
+        return [
+            'dateCreated' => Craft::t('simple-form', 'Date'),
+            'readStatus' => Craft::t('simple-form', 'Status'),
+            'payment' => [
+                'label' => Craft::t('simple-form', 'Payment'),
+                'orderBy' => 'simpleform_submissions.paymentStatus',
+                'attribute' => 'payment',
+            ],
         ];
     }
 

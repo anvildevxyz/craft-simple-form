@@ -19,6 +19,8 @@ class SubmissionQuery extends ElementQuery
     public ?int $formId = null;
     public ?string $readStatus = null;
     public mixed $userId = null;
+    public mixed $paymentStatus = null;
+    public mixed $orderId = null;
 
     public function form(Form|string|null $value = null): static
     {
@@ -55,6 +57,26 @@ class SubmissionQuery extends ElementQuery
     public function userId(mixed $value = null): static
     {
         $this->userId = $value;
+        return $this;
+    }
+
+    /**
+     * Filter submissions by Commerce payment status. Accepts any value
+     * {@see Db::parseParam()} understands (string, list, ':empty:', etc.).
+     */
+    public function paymentStatus(mixed $value = null): static
+    {
+        $this->paymentStatus = $value;
+        return $this;
+    }
+
+    /**
+     * Filter submissions by the linked Commerce order id. Accepts any value
+     * {@see Db::parseParam()} understands (int, list, ':notempty:', etc.).
+     */
+    public function orderId(mixed $value = null): static
+    {
+        $this->orderId = $value;
         return $this;
     }
 
@@ -96,6 +118,18 @@ class SubmissionQuery extends ElementQuery
         if ($this->userId !== null) {
             $this->subQuery->andWhere(
                 Db::parseParam('simpleform_submissions.userId', $this->userId)
+            );
+        }
+
+        if ($this->paymentStatus !== null) {
+            $this->subQuery->andWhere(
+                Db::parseParam('simpleform_submissions.paymentStatus', $this->paymentStatus)
+            );
+        }
+
+        if ($this->orderId !== null) {
+            $this->subQuery->andWhere(
+                Db::parseParam('simpleform_submissions.orderId', $this->orderId)
             );
         }
 

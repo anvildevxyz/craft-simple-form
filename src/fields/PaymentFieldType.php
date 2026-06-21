@@ -3,12 +3,15 @@
 namespace fabianhaef\simpleform\fields;
 
 use Craft;
+use fabianhaef\simpleform\Plugin;
 
 /**
- * Payment field (#116, minimal scope). Marks a form as requiring payment and
- * defines the amount — either a fixed amount or read from another field's value.
- * On submit (when Craft Commerce is installed) a pending order is created and
- * notifications/integrations are gated until payment completes.
+ * Payment field (#116). Marks a form as requiring payment and defines the
+ * amount — either a fixed amount or read from another field's value. When Craft
+ * Commerce is installed it renders the configured gateway's embedded payment
+ * form (e.g. card fields) so the visitor pays on submit; the charge is processed
+ * server-side and notifications/integrations are gated until it settles. Without
+ * Commerce (or a usable gateway) the field degrades to an informational note.
  *
  * Config keys:
  *  - amountType: 'fixed' | 'field' (default 'fixed')
@@ -51,9 +54,22 @@ class PaymentFieldType extends FieldType
             $label = Craft::t('simple-form', 'Payment is calculated from your entries.');
         }
 
-        return sprintf(
+        $note = sprintf(
             '<p class="simple-form-payment-note" data-sf-payment="1">%s</p>',
             htmlspecialchars($label, ENT_QUOTES),
+        );
+
+        // The gateway renders its own payment form (card fields, etc.), posted
+        // under the `paymentForm` namespace the submit controller reads. Null
+        // when Commerce/a gateway is unavailable — the note alone is shown.
+        $gatewayForm = Plugin::getInstance()->getPayments()->paymentFormHtml();
+        if ($gatewayForm === null) {
+            return $note;
+        }
+
+        return $note . sprintf(
+            '<div class="simple-form-payment-fields" data-sf-payment-fields="1">%s</div>',
+            $gatewayForm,
         );
     }
 }

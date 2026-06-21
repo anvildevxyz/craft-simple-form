@@ -87,6 +87,19 @@ class SubmissionsController extends Controller
     }
 
     /**
+     * Cancel submissions whose payment has stayed pending past the configured
+     * TTL (paymentPendingTtlMinutes) — abandoned offsite/redirect checkouts
+     * (#116). Mirrors the automatic garbage-collection sweep, for ops/cron use.
+     */
+    public function actionExpirePayments(): int
+    {
+        $count = Plugin::getInstance()->getPayments()->expirePending();
+        $this->stdout("Canceled {$count} expired pending payment(s).\n", Console::FG_GREEN);
+
+        return ExitCode::OK;
+    }
+
+    /**
      * @return int|null|false form id, null for "all forms", or false on a bad handle
      */
     private function resolveFormId(): int|null|false

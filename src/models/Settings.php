@@ -206,6 +206,21 @@ class Settings extends Model
     public array $mcpTokens = [];
 
     /**
+     * Handle of the Craft Commerce gateway used to collect payment for forms
+     * with a Payment field (#116). Empty = use the store's first enabled
+     * gateway. Ignored when Commerce isn't installed.
+     */
+    public ?string $paymentGatewayHandle = null;
+
+    /**
+     * Minutes a pending (unpaid) payment submission may linger before it is
+     * expired and its order canceled by garbage collection (#116). 0 disables
+     * expiry. Only relevant for redirect/offsite gateways where the visitor may
+     * abandon the payment after the row is created.
+     */
+    public int $paymentPendingTtlMinutes = 60;
+
+    /**
      * @return array<string, array{class: class-string, attributes: list<string>}>
      */
     public function behaviors(): array

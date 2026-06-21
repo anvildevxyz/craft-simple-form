@@ -278,4 +278,17 @@ return [
     'When set, generated submission PDFs are stored as Assets in this volume and reused; otherwise they are rendered on demand.' => 'Cuando se define, los PDF de envío generados se almacenan como recursos en este volumen y se reutilizan; de lo contrario, se generan bajo demanda.',
     'Max Attachment Size (MB)' => 'Tamaño máximo de adjunto (MB)',
     'Total cap on a notification’s attachments. Uploaded files over this cap fall back to in-body download links. 0 disables the cap.' => 'Límite total de los adjuntos de una notificación. Los archivos subidos que superen este límite se sustituyen por enlaces de descarga en el cuerpo del mensaje. 0 desactiva el límite.',
+
+    // Payments (#116)
+    'Payment' => 'Pago',
+    'Payment:' => 'Pago:',
+    'Amount:' => 'Importe:',
+    'Order:' => 'Pedido:',
+    'Pending' => 'Pendiente',
+    'Paid' => 'Pagado',
+    'Canceled' => 'Cancelado',
+    'Amount due:' => 'Importe a pagar:',
+    'Payment is calculated from your entries.' => 'El pago se calcula a partir de tus respuestas.',
+    'Payments are not available right now. Please try again later.' => 'Los pagos no están disponibles en este momento. Inténtalo de nuevo más tarde.',
+    'Your payment could not be processed.' => 'No se pudo procesar tu pago.',
 ];

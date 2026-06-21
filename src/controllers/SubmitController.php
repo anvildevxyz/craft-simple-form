@@ -87,6 +87,16 @@ class SubmitController extends Controller
             ]);
         }
 
+        // An offsite / 3-D-Secure payment must finish before the submission is
+        // "done": send the visitor straight to the gateway redirect, overriding
+        // the normal post-submit behavior (#116).
+        if (!empty($result['paymentRedirectUrl'])) {
+            return $this->asJson([
+                'success' => true,
+                'redirectUrl' => $result['paymentRedirectUrl'],
+            ]);
+        }
+
         // Resolve the per-form post-submit behavior (message + optional redirect),
         // sharing the exact resolution the GraphQL path uses.
         $post = Plugin::getInstance()->getSubmissionService()->resolvePostSubmit(

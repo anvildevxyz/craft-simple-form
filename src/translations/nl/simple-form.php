@@ -272,4 +272,17 @@ return [
     'When set, generated submission PDFs are stored as Assets in this volume and reused; otherwise they are rendered on demand.' => 'Indien ingesteld worden gegenereerde PDF’s van inzendingen als assets in dit volume opgeslagen en hergebruikt; anders worden ze op aanvraag gegenereerd.',
     'Max Attachment Size (MB)' => 'Maximale bijlagegrootte (MB)',
     'Total cap on a notification’s attachments. Uploaded files over this cap fall back to in-body download links. 0 disables the cap.' => 'Totale limiet voor de bijlagen van een melding. Geüploade bestanden boven deze limiet worden vervangen door downloadlinks in de berichttekst. 0 schakelt de limiet uit.',
+
+    // Payments (#116)
+    'Payment' => 'Betaling',
+    'Payment:' => 'Betaling:',
+    'Amount:' => 'Bedrag:',
+    'Order:' => 'Bestelling:',
+    'Pending' => 'In behandeling',
+    'Paid' => 'Betaald',
+    'Canceled' => 'Geannuleerd',
+    'Amount due:' => 'Te betalen bedrag:',
+    'Payment is calculated from your entries.' => 'De betaling wordt berekend op basis van je invoer.',
+    'Payments are not available right now. Please try again later.' => 'Betalingen zijn momenteel niet beschikbaar. Probeer het later opnieuw.',
+    'Your payment could not be processed.' => 'Je betaling kon niet worden verwerkt.',
 ];

@@ -53,6 +53,37 @@
                     {% endif %}
                 </p>
             {% endif %}
+            {% if submission.paymentStatus %}
+                {% set paymentLabels = {
+                    pending: 'Pending'|t('simple-form'),
+                    paid: 'Paid'|t('simple-form'),
+                    canceled: 'Canceled'|t('simple-form'),
+                } %}
+                <p>
+                    <strong>{{ 'Payment:'|t('simple-form') }}</strong>
+                    <span class="status-label status-{{ submission.paymentStatus }}">
+                        {{ paymentLabels[submission.paymentStatus] ?? submission.paymentStatus|capitalize }}
+                    </span>
+                </p>
+                {% if submission.paymentAmount %}
+                    <p>
+                        <strong>{{ 'Amount:'|t('simple-form') }}</strong>
+                        {{ submission.paymentAmount|number_format(2) }}
+                    </p>
+                {% endif %}
+                {% if submission.orderId %}
+                    <p>
+                        <strong>{{ 'Order:'|t('simple-form') }}</strong>
+                        {% if craft.app.plugins.isPluginInstalled('commerce') %}
+                            <a href="{{ cpUrl('commerce/orders/' ~ submission.orderId) }}">
+                                #{{ submission.orderId }}
+                            </a>
+                        {% else %}
+                            #{{ submission.orderId }}
+                        {% endif %}
+                    </p>
+                {% endif %}
+            {% endif %}
         </div>
     </div>
 

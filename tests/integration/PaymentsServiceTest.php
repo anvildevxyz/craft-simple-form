@@ -130,6 +130,57 @@ class PaymentsServiceTest extends SimpleFormTestCase
         $this->assertGreaterThanOrEqual(1, $this->logCount((int) $awaiting->id), 'dispatch runs once paid');
     }
 
+    public function testMarkCanceledOnlyAffectsPending(): void
+    {
+        $this->requireCraft();
+        $form = $this->createForm('Pay', 'pay_cancel');
+        $formId = (int) $form->id;
+
+        $pending = $this->submission($formId, PaymentsService::STATUS_PENDING);
+        $this->payments()->markCanceled($pending);
+        $this->assertSame(PaymentsService::STATUS_CANCELED, $pending->paymentStatus);
+
+        // A settled payment is never downgraded by a later cancel.
+        $paid = $this->submission($formId, PaymentsService::STATUS_PAID);
+        $this->payments()->markCanceled($paid);
+        $this->assertSame(PaymentsService::STATUS_PAID, $paid->paymentStatus);
+    }
+
+    public function testExpirePendingCancelsStaleAndRespectsTtl(): void
+    {
+        $this->requireCraft();
+        $form = $this->createForm('Pay', 'pay_expire');
+        $formId = (int) $form->id;
+
+        $stale = $this->submission($formId, PaymentsService::STATUS_PENDING);
+        // Backdate the row two hours so it's well past any positive TTL.
+        $this->backdate((int) $stale->id, '-2 hours');
+        $fresh = $this->submission($formId, PaymentsService::STATUS_PENDING);
+
+        // TTL = 0 disables expiry entirely.
+        Plugin::getInstance()->getSettings()->paymentPendingTtlMinutes = 0;
+        $this->assertSame(0, $this->payments()->expirePending());
+
+        // TTL = 60 cancels the stale pending row but leaves the fresh one.
+        Plugin::getInstance()->getSettings()->paymentPendingTtlMinutes = 60;
+        $this->assertSame(1, $this->payments()->expirePending());
+
+        $reloadedStale = Submission::find()->id((int) $stale->id)->status(null)->one();
+        $reloadedFresh = Submission::find()->id((int) $fresh->id)->status(null)->one();
+        $this->assertInstanceOf(Submission::class, $reloadedStale);
+        $this->assertInstanceOf(Submission::class, $reloadedFresh);
+        $this->assertSame(PaymentsService::STATUS_CANCELED, $reloadedStale->paymentStatus);
+        $this->assertSame(PaymentsService::STATUS_PENDING, $reloadedFresh->paymentStatus);
+    }
+
+    private function backdate(int $submissionId, string $modifier): void
+    {
+        $when = (new \DateTime('now', new \DateTimeZone('UTC')))->modify($modifier);
+        Craft::$app->getDb()->createCommand()
+            ->update('{{%elements}}', ['dateCreated' => $when->format('Y-m-d H:i:s')], ['id' => $submissionId])
+            ->execute();
+    }
+
     private function logCount(int $submissionId): int
     {
         return (int) (new Query())

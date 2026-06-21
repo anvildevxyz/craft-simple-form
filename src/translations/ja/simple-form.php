@@ -272,4 +272,17 @@ return [
     'When set, generated submission PDFs are stored as Assets in this volume and reused; otherwise they are rendered on demand.' => '設定すると、生成された送信内容の PDF はこのボリュームにアセットとして保存され再利用されます。設定しない場合はオンデマンドで生成されます。',
     'Max Attachment Size (MB)' => '最大添付サイズ（MB）',
     'Total cap on a notification’s attachments. Uploaded files over this cap fall back to in-body download links. 0 disables the cap.' => '通知の添付ファイルの合計上限です。この上限を超えるアップロードファイルは本文内のダウンロードリンクに切り替わります。0 で上限を無効にします。',
+
+    // Payments (#116)
+    'Payment' => '支払い',
+    'Payment:' => '支払い:',
+    'Amount:' => '金額:',
+    'Order:' => '注文:',
+    'Pending' => '保留中',
+    'Paid' => '支払い済み',
+    'Canceled' => 'キャンセル済み',
+    'Amount due:' => 'お支払い金額:',
+    'Payment is calculated from your entries.' => 'お支払い金額は入力内容に基づいて計算されます。',
+    'Payments are not available right now. Please try again later.' => '現在、お支払いはご利用いただけません。後ほど再度お試しください。',
+    'Your payment could not be processed.' => 'お支払いを処理できませんでした。',
 ];

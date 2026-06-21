@@ -28,14 +28,25 @@ parameters:
             message: '#Parameter \#3 \$type of method yii\\db\\Migration::addColumn\(\) expects string, yii\\db\\ColumnSchemaBuilder given#'
             path: src/migrations/
         # Craft Commerce is a SOFT dependency (#116): the Payment field + order
-        # flow are guarded by class_exists() and only run when Commerce is
-        # installed, which the plugin's standalone vendor does not include. Ignore
-        # the resulting unknown-class noise on the guarded paths.
+        # flow are guarded by class_exists()/commerceAvailable() and only run when
+        # Commerce is installed, which the plugin's standalone vendor does not
+        # include. Without the package the whole order/charge path is unanalysable
+        # (unknown classes + the by-ref $redirect that processPayment() mutates
+        # reads as always-null). Ignore the resulting noise on the guarded paths only.
         -
             message: '#unknown class craft\\commerce\\#'
             paths:
                 - src/Plugin.php
                 - src/services/PaymentsService.php
+        -
+            message: '#(invalid (return )?type|Instantiated class|Class|Caught class) craft\\commerce\\#'
+            path: src/services/PaymentsService.php
+        -
+            message: '#\$element of method craft\\services\\Elements::saveElement\(\) expects craft\\base\\ElementInterface, craft\\commerce\\#'
+            path: src/services/PaymentsService.php
+        -
+            message: '#(Call to function is_string\(\) with null will always evaluate to false|Result of && is always false)#'
+            path: src/services/PaymentsService.php
         # Yii's InlineValidator rebinds the rule Closure's `$this` to the model
         # being validated (the DynamicModel in IntegrationsService::validateSettings)
         # via Closure::bindTo, so `$this->addError()` resolves at runtime even

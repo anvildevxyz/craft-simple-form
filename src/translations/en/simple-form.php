@@ -274,4 +274,17 @@ return [
     'When set, generated submission PDFs are stored as Assets in this volume and reused; otherwise they are rendered on demand.' => 'When set, generated submission PDFs are stored as Assets in this volume and reused; otherwise they are rendered on demand.',
     'Max Attachment Size (MB)' => 'Max Attachment Size (MB)',
     'Total cap on a notification’s attachments. Uploaded files over this cap fall back to in-body download links. 0 disables the cap.' => 'Total cap on a notification’s attachments. Uploaded files over this cap fall back to in-body download links. 0 disables the cap.',
+
+    // Payments (#116)
+    'Payment' => 'Payment',
+    'Payment:' => 'Payment:',
+    'Amount:' => 'Amount:',
+    'Order:' => 'Order:',
+    'Pending' => 'Pending',
+    'Paid' => 'Paid',
+    'Canceled' => 'Canceled',
+    'Amount due:' => 'Amount due:',
+    'Payment is calculated from your entries.' => 'Payment is calculated from your entries.',
+    'Payments are not available right now. Please try again later.' => 'Payments are not available right now. Please try again later.',
+    'Your payment could not be processed.' => 'Your payment could not be processed.',
 ];
