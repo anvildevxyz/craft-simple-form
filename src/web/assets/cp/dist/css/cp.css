@@ -251,6 +251,23 @@
 .sf-field-del:hover { color: #cf2c2c; }
 .sf-grip { color: #b3bcc6; cursor: grab; user-select: none; letter-spacing: -2px; }
 
+/* Multi-column rows in the canvas mirror the front-end grid so paired fields
+   preview side by side; widths come from the inline --sf-cols custom property. */
+.sf-builder-row {
+    display: grid;
+    gap: 8px;
+    grid-template-columns: var(--sf-cols, 1fr);
+    margin-bottom: 8px;
+}
+.sf-builder-row .sf-field { margin-bottom: 0; min-width: 0; }
+
+/* Drop indicators: a coloured edge shows where a dragged field will land —
+   top/bottom for a vertical reorder, left/right for a side-by-side pairing. */
+.sf-field.drop-before { box-shadow: 0 -3px 0 0 #1f6fff; }
+.sf-field.drop-after { box-shadow: 0 3px 0 0 #1f6fff; }
+.sf-field.drop-left { box-shadow: -3px 0 0 0 #1f6fff; }
+.sf-field.drop-right { box-shadow: 3px 0 0 0 #1f6fff; }
+
 /* Layout blocks read as presentational, not as input rows. */
 .sf-field--layout { background: #f7f9fc; border-style: dashed; }
 .sf-field--layout .sf-field-label { font-weight: 500; color: #596673; font-style: italic; }

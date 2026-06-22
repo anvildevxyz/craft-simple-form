@@ -14,6 +14,12 @@
         var n = (typeof row === 'number') ? row : parseInt(row, 10);
         return (!isNaN(n) && n >= 1) ? n : null;
     }
+    // A field's relative column weight within its row (1..MAX_COLUMNS, default 1).
+    function widthOf(f) {
+        var config = (f && f.config) || {};
+        var w = (typeof config.width === 'number') ? config.width : parseInt(config.width, 10);
+        return (!isNaN(w) && w >= 1) ? Math.min(MAX_COLUMNS, w) : 1;
+    }
     function groupRows(list) {
         var rows = [];
         var current = [];
@@ -36,7 +42,7 @@
     // parity test and skip everything that touches `document`.
     if (typeof document === 'undefined') {
         if (typeof module !== 'undefined' && module.exports) {
-            module.exports = { groupRows: groupRows, MAX_COLUMNS: MAX_COLUMNS };
+            module.exports = { groupRows: groupRows, widthOf: widthOf, MAX_COLUMNS: MAX_COLUMNS };
         }
         return;
     }
@@ -231,6 +237,10 @@
             var wrap = document.createElement('div');
             wrap.className = 'sf-builder-row';
             wrap.dataset.cols = row.length;
+            // Mirror the front-end column weights so the canvas previews widths.
+            wrap.style.setProperty('--sf-cols', row.map(function(f) {
+                return (widthOf(f)) + 'fr';
+            }).join(' '));
             row.forEach(function(f) { wrap.appendChild(renderBlock(f)); });
             canvas.appendChild(wrap);
         });
@@ -310,7 +320,7 @@
         if (first) { first.focus(); }
     }
 
-    function addField(type, atIndex) {
+    function addField(type, atIndex, pairWith) {
         // Layout blocks have no user-facing label (heading text / divider label
         // is the content); start them blank and seed the handle from the type so
         // the row is still uniquely addressable for conditionals + persistence.
@@ -318,7 +328,11 @@
         // Consent is, by design, normally a required tick — default it on.
         var f = normalize({ id: null, type: type, label: label, required: type === 'consent', config: defaultConfig(type) });
         f.handle = uniqueHandle(slug(label) || type, f.clientId);
-        if (atIndex == null || atIndex >= fields.length) { fields.push(f); }
+        if (pairWith) {
+            // Dropped onto a field's edge: place it beside that field as a column.
+            fields.push(f);
+            pairFields(f, field(pairWith.cid), pairWith.side);
+        } else if (atIndex == null || atIndex >= fields.length) { fields.push(f); }
         else { fields.splice(Math.max(0, atIndex), 0, f); }
         commit();
         select(f.clientId);
@@ -475,10 +489,13 @@
         });
         var rowHint = document.createElement('div'); rowHint.className = 'instructions';
         var rowHintP = document.createElement('p');
-        rowHintP.textContent = 'Give two or more adjacent fields the same Row number to lay them out side by side (up to ' + MAX_COLUMNS + ' columns).';
+        rowHintP.textContent = 'Drag a field onto the left or right edge of another to place them side by side '
+            + '(up to ' + MAX_COLUMNS + ' columns), or set a matching Row number here.';
         rowHint.appendChild(rowHintP);
         rowRow._input.appendChild(rowHint);
         inspector.appendChild(rowRow);
+
+        appendWidthRow(f);
 
         renderTypeConfig(f);
         inspector.appendChild(conditionsSection(f));
@@ -1114,6 +1131,41 @@
         return r;
     }
 
+    // The group of fields sharing this field's visual row (just [f] when lone).
+    function rowGroupOf(f) {
+        var found = null;
+        groupRows(fields).forEach(function(g) { if (g.indexOf(f) !== -1) { found = g; } });
+        return found || [f];
+    }
+
+    // A "Column Width" control, shown only when the field shares a row. Sets
+    // config.width (1..MAX_COLUMNS) as a relative weight; 1 (Equal) is the
+    // default and is stored as the absence of the key.
+    function appendWidthRow(f) {
+        var group = rowGroupOf(f);
+        if (group.length <= 1) { return; }
+        var WIDTH_LABELS = { 1: 'Equal', 2: 'Wide', 3: 'Wider', 4: 'Widest' };
+        var opts = [];
+        for (var i = 1; i <= MAX_COLUMNS; i++) {
+            opts.push({ value: String(i), label: i === 1 ? 'Equal' : ((WIDTH_LABELS[i] || 'Wide') + ' (' + i + '×)') });
+        }
+        var widthRow = row('Column Width');
+        widthRow._input.appendChild(selectEl(opts, String(widthOf(f)), function(v) {
+            f.config = f.config || {};
+            var n = parseInt(v, 10);
+            if (isNaN(n) || n <= 1) { delete f.config.width; } else { f.config.width = Math.min(MAX_COLUMNS, n); }
+            commit();
+            renderInspector();
+        }));
+        var ratio = group.map(function(x) { return widthOf(x); }).join(' : ');
+        var wHint = document.createElement('div'); wHint.className = 'instructions';
+        var wp = document.createElement('p');
+        wp.textContent = 'Relative width within the row. This row: ' + ratio + '.';
+        wHint.appendChild(wp);
+        widthRow._input.appendChild(wHint);
+        inspector.appendChild(widthRow);
+    }
+
     function optionsEditor(f) {
         var c = f.config || (f.config = {});
         if (!Array.isArray(c.options)) { c.options = []; }
@@ -1388,39 +1440,137 @@
         }
     });
 
-    canvas.addEventListener('dragend', function() {
-        dragCid = null;
-        Array.prototype.slice.call(canvas.querySelectorAll('.sf-field')).forEach(function(el) { el.classList.remove('dragging', 'drop-before', 'drop-after'); });
-    });
+    function clearDropMarks() {
+        Array.prototype.slice.call(canvas.querySelectorAll('.sf-field')).forEach(function(el) {
+            el.classList.remove('dragging', 'drop-before', 'drop-after', 'drop-left', 'drop-right');
+        });
+    }
 
-    function indexFromEvent(e) {
+    canvas.addEventListener('dragend', function() { dragCid = null; clearDropMarks(); });
+
+    // Resolve a drag event to a drop intent. When the cursor sits over a field's
+    // left/right edge band (and that field's row has room) it's a side-by-side
+    // drop sharing that field's row; otherwise it's a vertical reorder, returning
+    // the flat insert index. Block DOM order matches the `fields` array order.
+    var EDGE_BAND = 0.3;
+    function dropTarget(e) {
         var blocks = Array.prototype.slice.call(canvas.querySelectorAll('.sf-field'));
         for (var i = 0; i < blocks.length; i++) {
-            var rect = blocks[i].getBoundingClientRect();
-            if (e.clientY < rect.top + rect.height / 2) { return i; }
+            var r = blocks[i].getBoundingClientRect();
+            if (e.clientY >= r.top && e.clientY <= r.bottom && e.clientX >= r.left && e.clientX <= r.right) {
+                var cid = blocks[i].dataset.cid;
+                var target = field(cid);
+                var rowNum = target && rowKeyOf(target);
+                var rowSize = rowNum ? fields.filter(function(f) { return rowKeyOf(f) === rowNum; }).length : 1;
+                // Don't offer pairing once the row is full (unless re-ordering a
+                // member already in it — that's the dragged field itself).
+                var roomy = rowSize < MAX_COLUMNS || (dragCid && rowKeyOf(field(dragCid)) === rowNum);
+                if (roomy) {
+                    var band = r.width * EDGE_BAND;
+                    if (e.clientX < r.left + band) { return { mode: 'left', cid: cid }; }
+                    if (e.clientX > r.right - band) { return { mode: 'right', cid: cid }; }
+                }
+                break; // over the middle of a field — fall through to vertical
+            }
         }
-        return blocks.length;
+        var index = blocks.length;
+        for (var j = 0; j < blocks.length; j++) {
+            var rr = blocks[j].getBoundingClientRect();
+            if (e.clientY < rr.top + rr.height / 2) { index = j; break; }
+        }
+        return { mode: 'vertical', index: index };
+    }
+
+    // Compact row numbers from the current ordering: a multi-field group gets the
+    // next sequential row number; a field left alone in a row drops its row/width
+    // hints. Keeps positional grouping robust after any move (and the manual Row
+    // input in sync). Mirror of nothing on the PHP side — the server re-derives.
+    function normalizeRows() {
+        var n = 0;
+        groupRows(fields).forEach(function(group) {
+            if (group.length <= 1) {
+                var lone = group[0];
+                if (lone && lone.config) { delete lone.config.row; delete lone.config.width; }
+            } else {
+                n++;
+                group.forEach(function(f) { f.config = f.config || {}; f.config.row = n; });
+            }
+        });
+    }
+
+    function nextRowNumber() {
+        var max = 0;
+        fields.forEach(function(f) { var r = rowKeyOf(f); if (r && r > max) { max = r; } });
+        return max + 1;
+    }
+
+    // Place `moved` beside `target` (side 'left'|'right'), sharing its row.
+    function pairFields(moved, target, side) {
+        if (!moved || !target || moved === target) { return; }
+        target.config = target.config || {};
+        if (!rowKeyOf(target)) { target.config.row = nextRowNumber(); }
+        var rowNum = target.config.row;
+        var members = fields.filter(function(f) { return rowKeyOf(f) === rowNum; });
+        if (members.length >= MAX_COLUMNS && rowKeyOf(moved) !== rowNum) { return; }
+        var from = fields.indexOf(moved);
+        if (from !== -1) { fields.splice(from, 1); }
+        moved.config = moved.config || {};
+        moved.config.row = rowNum;
+        var ti = fields.indexOf(target);
+        fields.splice(side === 'left' ? ti : ti + 1, 0, moved);
+        normalizeRows();
     }
 
     canvas.addEventListener('dragover', function(e) {
         e.preventDefault();
         e.dataTransfer.dropEffect = dragCid ? 'move' : 'copy';
+        clearDropMarks();
+        var blocks = Array.prototype.slice.call(canvas.querySelectorAll('.sf-field'));
+        var t = dropTarget(e);
+        if (t.mode === 'left' || t.mode === 'right') {
+            var b = blocks.filter(function(el) { return el.dataset.cid === t.cid; })[0];
+            if (b) { b.classList.add(t.mode === 'left' ? 'drop-left' : 'drop-right'); }
+        } else if (t.index < blocks.length) {
+            blocks[t.index].classList.add('drop-before');
+        } else if (blocks.length) {
+            blocks[blocks.length - 1].classList.add('drop-after');
+        }
     });
 
     canvas.addEventListener('drop', function(e) {
         e.preventDefault();
-        var index = indexFromEvent(e);
+        clearDropMarks();
+        var t = dropTarget(e);
         var newType = e.dataTransfer.getData('text/sf-new');
-        if (newType) { addField(newType, index); return; }
-        var moveCid = e.dataTransfer.getData('text/sf-move') || dragCid;
-        if (moveCid) {
-            var from = fields.findIndex(function(f) { return f.clientId === moveCid; });
-            if (from === -1) { return; }
-            var moved = fields.splice(from, 1)[0];
-            if (index > from) { index--; }
-            fields.splice(Math.min(index, fields.length), 0, moved);
-            commit();
+
+        if (newType) {
+            if (t.mode === 'left' || t.mode === 'right') {
+                addField(newType, null, { cid: t.cid, side: t.mode });
+            } else {
+                addField(newType, t.index);
+            }
+            return;
         }
+
+        var moveCid = e.dataTransfer.getData('text/sf-move') || dragCid;
+        if (!moveCid) { return; }
+        var moved = field(moveCid);
+        if (!moved) { return; }
+
+        if (t.mode === 'left' || t.mode === 'right') {
+            pairFields(moved, field(t.cid), t.mode);
+            commit();
+            return;
+        }
+        // Vertical reorder: the field leaves any row it was in (full width again).
+        var from = fields.indexOf(moved);
+        var index = t.index;
+        fields.splice(from, 1);
+        if (index > from) { index--; }
+        if (moved.config) { delete moved.config.row; delete moved.config.width; }
+        fields.splice(Math.min(index, fields.length), 0, moved);
+        normalizeRows();
+        commit();
     });
 
     // ---- submit guard ----------------------------------------------------
