@@ -65,18 +65,12 @@ class RetentionService extends Component
         if ($formId !== null) {
             $query->andWhere(['formId' => $formId]);
         }
-        $ids = $query->column();
-
-        $ids = array_map('intval', $ids);
+        $ids = array_map('intval', $query->column());
         if ($ids === []) {
             return 0;
         }
 
-        if ($anonymize) {
-            return $this->anonymize($ids);
-        }
-
-        return $this->hardDelete($ids);
+        return $anonymize ? $this->anonymize($ids) : $this->hardDelete($ids);
     }
 
     /**
@@ -165,14 +159,14 @@ class RetentionService extends Component
                 }
                 foreach ((array) ($entry['value'] ?? []) as $assetId) {
                     if (is_numeric($assetId)) {
-                        $assetIds[] = (int) $assetId;
+                        $assetIds[(int) $assetId] = true;
                     }
                 }
             }
         }
 
         if ($assetIds !== []) {
-            Plugin::getInstance()->getAssetUploadService()->deleteAssets(...array_values(array_unique($assetIds)));
+            Plugin::getInstance()->getAssetUploadService()->deleteAssets(...array_keys($assetIds));
         }
     }
 

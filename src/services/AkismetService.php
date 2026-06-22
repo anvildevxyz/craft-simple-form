@@ -89,11 +89,9 @@ class AkismetService extends Component
                 continue;
             }
             $value = $entry['value'] ?? '';
-            if (is_array($value)) {
-                $value = implode(', ', array_map('strval', $value));
-            }
-            if ((string) $value !== '') {
-                $parts[] = (string) $value;
+            $value = (string) (is_array($value) ? implode(', ', array_map('strval', $value)) : $value);
+            if ($value !== '') {
+                $parts[] = $value;
             }
         }
         return implode("\n", $parts);
@@ -110,11 +108,7 @@ class AkismetService extends Component
         $name = null;
         $email = null;
         foreach ($data as $entry) {
-            if (!is_array($entry)) {
-                continue;
-            }
-            $value = is_array($entry['value'] ?? null) ? null : (string) ($entry['value'] ?? '');
-            if ($value === null || $value === '') {
+            if (!is_array($entry) || is_array($entry['value'] ?? null) || ($value = (string) ($entry['value'] ?? '')) === '') {
                 continue;
             }
             if ($email === null && ($entry['type'] ?? '') === EmailFieldType::getType()) {
@@ -128,7 +122,7 @@ class AkismetService extends Component
 
     private function parsedKey(?string $value): ?string
     {
-        if ($value === null || $value === '') {
+        if (($value ?? '') === '') {
             return null;
         }
         $parsed = App::parseEnv($value);

@@ -69,7 +69,7 @@ class AuditService extends Component
             ->from(self::TABLE)
             ->orderBy(['dateCreated' => SORT_DESC, 'id' => SORT_DESC])
             ->limit($limit);
-        if ($action !== null && $action !== '') {
+        if (($action ?? '') !== '') {
             $query->where(['action' => $action]);
         }
 

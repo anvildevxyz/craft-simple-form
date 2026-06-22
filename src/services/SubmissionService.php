@@ -113,7 +113,7 @@ class SubmissionService extends Component
         foreach ($pendingUploads as $fieldId => $info) {
             $ids = $uploadService->saveUploads($info['files'], $info['config']);
             $values[$fieldId] = $ids;
-            $createdAssetIds = array_merge($createdAssetIds, $ids);
+            array_push($createdAssetIds, ...$ids);
         }
 
         // Signatures: decode each validated data URL to a temp PNG, then save it
@@ -134,7 +134,7 @@ class SubmissionService extends Component
                 $info['config'],
             );
             $values[$fieldId] = $ids;
-            $createdAssetIds = array_merge($createdAssetIds, $ids);
+            array_push($createdAssetIds, ...$ids);
         }
 
         $userId = Craft::$app->getUser()->getId();
@@ -844,16 +844,11 @@ class SubmissionService extends Component
      */
     private function dedupeFingerprint(Form $form, array $data, ?string $sourceIp): ?string
     {
-        if ($form->duplicateKey === Form::DUPLICATE_KEY_CONTENT) {
-            return 'content:' . $this->contentHash($data);
-        }
-
-        if ($form->duplicateKey === Form::DUPLICATE_KEY_IP) {
-            return ($sourceIp !== null && $sourceIp !== '') ? 'ip:' . $sourceIp : null;
-        }
-
-        $email = $this->firstEmail($data);
-        return $email !== null ? 'email:' . strtolower($email) : null;
+        return match ($form->duplicateKey) {
+            Form::DUPLICATE_KEY_CONTENT => 'content:' . $this->contentHash($data),
+            Form::DUPLICATE_KEY_IP => ($sourceIp !== null && $sourceIp !== '') ? 'ip:' . $sourceIp : null,
+            default => ($email = $this->firstEmail($data)) !== null ? 'email:' . strtolower($email) : null,
+        };
     }
 
     /**
@@ -864,10 +859,10 @@ class SubmissionService extends Component
      */
     private function contentHash(array $data): string
     {
-        $values = [];
-        foreach ($data as $key => $entry) {
-            $values[$key] = is_array($entry) ? ($entry['value'] ?? null) : $entry;
-        }
+        $values = array_map(
+            static fn($entry) => is_array($entry) ? ($entry['value'] ?? null) : $entry,
+            $data,
+        );
         ksort($values);
 
         return md5(json_encode($values) ?: '');
@@ -895,11 +890,9 @@ class SubmissionService extends Component
     private function firstEmail(array $data): ?string
     {
         foreach ($data as $entry) {
-            if (!is_array($entry)) {
-                continue;
-            }
-            $value = $entry['value'] ?? null;
-            if (is_string($value) && $value !== '' && ($entry['type'] ?? '') === EmailFieldType::getType()) {
+            if (is_array($entry)
+                && ($entry['type'] ?? '') === EmailFieldType::getType()
+                && is_string($value = $entry['value'] ?? null) && $value !== '') {
                 return $value;
             }
         }
@@ -1030,11 +1023,7 @@ class SubmissionService extends Component
             ->getFieldTypeRegistry()
             ->getFieldType($field->getType(), $field->getConfig());
 
-        if ($fieldType instanceof CompositeFieldType) {
-            return $fieldType->serializeValue($value);
-        }
-
-        return $value;
+        return $fieldType instanceof CompositeFieldType ? $fieldType->serializeValue($value) : $value;
     }
 
     /**
@@ -1068,8 +1057,7 @@ class SubmissionService extends Component
     private function stringifyValue(mixed $value): string
     {
         if (is_array($value)) {
-            $scalars = array_filter($value, static fn($v): bool => is_scalar($v));
-            return implode(', ', array_map('strval', $scalars));
+            return implode(', ', array_map('strval', array_filter($value, 'is_scalar')));
         }
 
         if (is_bool($value)) {
@@ -1092,10 +1080,9 @@ class SubmissionService extends Component
     {
         return (string) preg_replace_callback(
             '/\{([a-zA-Z_][a-zA-Z0-9_]*)\}/',
-            static function(array $matches) use ($placeholders, $encode): string {
-                $value = $placeholders[$matches[1]] ?? '';
-                return $encode ? rawurlencode($value) : $value;
-            },
+            static fn(array $m): string => $encode
+                ? rawurlencode($placeholders[$m[1]] ?? '')
+                : ($placeholders[$m[1]] ?? ''),
             $template,
         );
     }
@@ -1118,9 +1105,7 @@ class SubmissionService extends Component
 
         $url = $entry instanceof Entry ? $entry->getUrl() : null;
 
-        return $url !== null
-            ? $this->safeRedirectUrl($url, (int) $submission->siteId)
-            : null;
+        return $url !== null ? $this->safeRedirectUrl($url, (int) $submission->siteId) : null;
     }
 
     /**
@@ -1129,10 +1114,9 @@ class SubmissionService extends Component
     private function safeRedirectUrl(string $url, int $siteId): ?string
     {
         $site = Craft::$app->getSites()->getSiteById($siteId);
-        $host = $site !== null ? parse_url($site->getBaseUrl(), PHP_URL_HOST) : null;
-        $host = is_string($host) ? $host : null;
+        $host = $site !== null ? parse_url((string) $site->getBaseUrl(), PHP_URL_HOST) : null;
 
-        return SafeUrl::isSafeRedirectUrl($url, $host) ? $url : null;
+        return SafeUrl::isSafeRedirectUrl($url, is_string($host) ? $host : null) ? $url : null;
     }
 
     /**
@@ -1162,10 +1146,6 @@ class SubmissionService extends Component
             ->getFieldTypeRegistry()
             ->getFieldType($field->getType(), $field->getConfig());
 
-        if ($fieldType === null) {
-            return $value;
-        }
-
-        return $fieldType->normalizeStoredValue($value);
+        return $fieldType === null ? $value : $fieldType->normalizeStoredValue($value);
     }
 }

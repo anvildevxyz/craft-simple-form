@@ -49,15 +49,7 @@ class SubmissionEditTokenService extends Component
 
         $submission->editTokenHash = $this->hash($token);
         $submission->editTokenExpires = Db::prepareDateForDb($expires);
-
-        Craft::$app->getDb()->createCommand()->update(
-            '{{%simpleform_submissions}}',
-            [
-                'editTokenHash' => $submission->editTokenHash,
-                'editTokenExpires' => $submission->editTokenExpires,
-            ],
-            ['id' => $submission->id],
-        )->execute();
+        $this->persist($submission, $submission->editTokenHash, $submission->editTokenExpires);
 
         return $token;
     }
@@ -80,9 +72,7 @@ class SubmissionEditTokenService extends Component
 
         if ($submission->editTokenExpires !== null) {
             $expires = Db::prepareDateForDb($submission->editTokenExpires);
-            if ($expires !== null && $expires < Db::prepareDateForDb(new \DateTime())) {
-                return false;
-            }
+            return $expires === null || $expires >= Db::prepareDateForDb(new \DateTime());
         }
 
         return true;
@@ -112,10 +102,15 @@ class SubmissionEditTokenService extends Component
     {
         $submission->editTokenHash = null;
         $submission->editTokenExpires = null;
+        $this->persist($submission, null, null);
+    }
 
+    /** Write the token hash + expiry to the submission row. */
+    private function persist(Submission $submission, ?string $hash, ?string $expires): void
+    {
         Craft::$app->getDb()->createCommand()->update(
             '{{%simpleform_submissions}}',
-            ['editTokenHash' => null, 'editTokenExpires' => null],
+            ['editTokenHash' => $hash, 'editTokenExpires' => $expires],
             ['id' => $submission->id],
         )->execute();
     }

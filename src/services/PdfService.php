@@ -129,8 +129,7 @@ class PdfService extends Component
      */
     public function filename(Form $form, Submission $submission): string
     {
-        $slug = Assets::prepareAssetName(sprintf('%s-%d.pdf', $form->handle ?: 'form', (int) $submission->id), true, true);
-        return $slug;
+        return Assets::prepareAssetName(sprintf('%s-%d.pdf', $form->handle ?: 'form', (int) $submission->id), true, true);
     }
 
     // =========================================================================

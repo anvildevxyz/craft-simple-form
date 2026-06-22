@@ -67,7 +67,8 @@ class ReportsService extends Component
     public function submissionsPerDay(int $siteId, int $days = 30, ?int $formId = null): array
     {
         $days = max(1, $days);
-        $since = (new \DateTime("today -{$days} days", new \DateTimeZone('UTC')));
+        $utc = new \DateTimeZone('UTC');
+        $since = new \DateTime("today -{$days} days", $utc);
 
         $query = (new Query())
             ->select(['d' => 'DATE([[dateCreated]])', 'c' => 'COUNT(*)'])
@@ -86,7 +87,7 @@ class ReportsService extends Component
 
         $series = [];
         for ($i = $days - 1; $i >= 0; $i--) {
-            $day = (new \DateTime("today -{$i} days", new \DateTimeZone('UTC')))->format('Y-m-d');
+            $day = (new \DateTime("today -{$i} days", $utc))->format('Y-m-d');
             $series[] = ['date' => $day, 'count' => $counts[$day] ?? 0];
         }
 
@@ -129,12 +130,10 @@ class ReportsService extends Component
         $fields = Plugin::getInstance()->getFormStructure()->getFieldSet($formId, $siteId);
         $scaleFields = [];
         foreach ($fields as $field) {
-            $type = $field['type'];
-            if (in_array($type, FieldTypeRegistry::SCALE_TYPES, true)) {
-                $key = 'field_' . $field['id'];
-                $scaleFields[$key] = [
+            if (in_array($field['type'], FieldTypeRegistry::SCALE_TYPES, true)) {
+                $scaleFields['field_' . $field['id']] = [
                     'label' => $field['label'],
-                    'type' => $type,
+                    'type' => $field['type'],
                 ];
             }
         }
@@ -206,9 +205,8 @@ class ReportsService extends Component
             DispatchStatus::PENDING => 0,
         ];
         foreach ($rows as $row) {
-            $status = (string) $row['status'];
-            if (isset($health[$status])) {
-                $health[$status] = (int) $row['c'];
+            if (isset($health[(string) $row['status']])) {
+                $health[(string) $row['status']] = (int) $row['c'];
             }
         }
 

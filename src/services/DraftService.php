@@ -32,9 +32,7 @@ class DraftService extends Component
      */
     public function save(int $formId, int $siteId, array $data, ?string $existingToken = null): string
     {
-        $token = ($existingToken !== null && $existingToken !== '')
-            ? $existingToken
-            : bin2hex(random_bytes(32));
+        $token = ($existingToken !== null && $existingToken !== '') ? $existingToken : bin2hex(random_bytes(32));
 
         $now = Db::prepareDateForDb(new \DateTime());
         $expires = Db::prepareDateForDb((new \DateTime())->modify('+' . $this->retentionDays() . ' days'));

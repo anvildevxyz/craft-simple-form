@@ -86,7 +86,8 @@ class DenylistService extends Component
         }
 
         $max = filter_var($subnet, FILTER_VALIDATE_IP, FILTER_FLAG_IPV6) !== false ? 128 : 32;
-        return (int) $bits >= 0 && (int) $bits <= $max;
+
+        return (int) $bits <= $max;
     }
 
     // =========================================================================
@@ -130,7 +131,8 @@ class DenylistService extends Component
 
         foreach ($this->extractEmails($data) as $email) {
             $lower = strtolower($email);
-            $domain = substr($lower, strpos($lower, '@') === false ? 0 : strpos($lower, '@') + 1);
+            $at = strpos($lower, '@');
+            $domain = $at === false ? $lower : substr($lower, $at + 1);
 
             foreach ($entries as $entry) {
                 $entry = strtolower($entry);
@@ -239,11 +241,9 @@ class DenylistService extends Component
                 continue;
             }
             $value = $entry['value'] ?? '';
-            if (is_array($value)) {
-                $value = implode(' ', array_map('strval', $value));
-            }
-            if ((string) $value !== '') {
-                $parts[] = (string) $value;
+            $value = is_array($value) ? implode(' ', array_map('strval', $value)) : (string) $value;
+            if ($value !== '') {
+                $parts[] = $value;
             }
         }
 

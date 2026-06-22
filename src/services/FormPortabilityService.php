@@ -131,8 +131,7 @@ class FormPortabilityService extends Component
 
         $handle = $this->resolveHandle((string)$form['handle'], $mode, $result);
 
-        $db = Craft::$app->getDb();
-        $transaction = $db->beginTransaction();
+        $transaction = Craft::$app->getDb()->beginTransaction();
         try {
             $newForm = $this->createForm($form, $handle, $result);
             $this->importFields($newForm, is_array($data['fields'] ?? null) ? $data['fields'] : []);
@@ -218,7 +217,7 @@ class FormPortabilityService extends Component
         $sites = Craft::$app->getSites();
 
         // Structural rows from the primary supported site (config is shared).
-        $baseSiteId = $siteIds[0] ?? Craft::$app->getSites()->getPrimarySite()->id;
+        $baseSiteId = $siteIds[0] ?? $sites->getPrimarySite()->id;
         $baseRows = FieldQueryHelper::fieldsForForm($formId, $baseSiteId);
 
         // Per-site content rows, keyed by field id then site handle.
@@ -403,10 +402,8 @@ class FormPortabilityService extends Component
     private function uniqueHandle(string $handle): string
     {
         $suffix = 2;
-        $candidate = "{$handle}-{$suffix}";
-        while (FormContentHelper::handleExists($candidate)) {
+        while (FormContentHelper::handleExists($candidate = "{$handle}-{$suffix}")) {
             $suffix++;
-            $candidate = "{$handle}-{$suffix}";
         }
 
         return $candidate;

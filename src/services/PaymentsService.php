@@ -47,14 +47,21 @@ class PaymentsService extends Component
      */
     public function paymentFieldConfig(Form $form): ?array
     {
-        $fields = Plugin::getInstance()->getFormStructure()->getFieldSet((int) $form->id, (int) $form->siteId);
-        foreach ($fields as $field) {
+        foreach ($this->fieldSet($form) as $field) {
             if ($field['type'] === PaymentFieldType::getType()) {
                 return $field['config'];
             }
         }
 
         return null;
+    }
+
+    /**
+     * @return list<array<string, mixed>>
+     */
+    private function fieldSet(Form $form): array
+    {
+        return Plugin::getInstance()->getFormStructure()->getFieldSet((int) $form->id, (int) $form->siteId);
     }
 
     /**
@@ -126,8 +133,7 @@ class PaymentsService extends Component
             return null;
         }
 
-        $boundsError = $this->amountOutOfBoundsMessage($form, $amount);
-        if ($boundsError !== null) {
+        if (($boundsError = $this->amountOutOfBoundsMessage($form, $amount)) !== null) {
             return $this->result('', 0, $amount, null, $boundsError);
         }
 
@@ -272,13 +278,11 @@ class PaymentsService extends Component
             ->andWhere(['<', 'elements.dateCreated', Db::prepareDateForDb($cutoff)])
             ->all();
 
-        $canceled = 0;
         foreach ($stale as $submission) {
             $this->markCanceled($submission);
-            $canceled++;
         }
 
-        return $canceled;
+        return count($stale);
     }
 
     /**
@@ -294,14 +298,11 @@ class PaymentsService extends Component
 
         try {
             $html = $this->gateway()->getPaymentFormHtml([]);
-            if ($html === null) {
-                return null;
-            }
 
             // Gateways render bare input names (number, expiry, cvv…); namespace
             // them under `paymentForm` so they post as a single array the submit
             // controller hands straight to the gateway's PaymentForm model.
-            return Craft::$app->getView()->namespaceInputs($html, 'paymentForm');
+            return $html === null ? null : Craft::$app->getView()->namespaceInputs($html, 'paymentForm');
         } catch (\Throwable $e) {
             Craft::warning('Could not render payment form (#116): ' . $e->getMessage(), 'simple-form');
             return null;
@@ -380,8 +381,7 @@ class PaymentsService extends Component
      */
     private function submitterEmail(Form $form, array $data): ?string
     {
-        $fields = Plugin::getInstance()->getFormStructure()->getFieldSet((int) $form->id, (int) $form->siteId);
-        foreach ($fields as $field) {
+        foreach ($this->fieldSet($form) as $field) {
             if ($field['type'] === EmailFieldType::getType()) {
                 $value = SubmissionValues::value($data['field_' . $field['id']] ?? null);
                 if (is_string($value) && filter_var($value, FILTER_VALIDATE_EMAIL)) {
@@ -399,9 +399,8 @@ class PaymentsService extends Component
      */
     private function valuesByHandle(Form $form, array $data): array
     {
-        $fields = Plugin::getInstance()->getFormStructure()->getFieldSet((int) $form->id, (int) $form->siteId);
         $values = [];
-        foreach ($fields as $field) {
+        foreach ($this->fieldSet($form) as $field) {
             $values[(string) $field['name']] = SubmissionValues::value($data['field_' . $field['id']] ?? null);
         }
 

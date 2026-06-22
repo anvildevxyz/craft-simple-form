@@ -159,7 +159,6 @@ class FormRenderService extends Component
                 break;
             }
         }
-
         if ($field === null) {
             Craft::warning(sprintf('Field "%s" not found on form "%s"', $fieldHandle, $handle), 'simple-form');
             return Template::raw('');
@@ -294,7 +293,7 @@ class FormRenderService extends Component
             'action' => Craft::$app->getUrlManager()->createUrl('simple-form/submit'),
             'hasFileField' => $this->_hasFileField($resolvedFields),
             // Per-form override (#133) wins over the global default when set.
-            'errorMessage' => ($form->errorMessage !== null && trim($form->errorMessage) !== '')
+            'errorMessage' => trim((string) $form->errorMessage) !== ''
                 ? $form->errorMessage
                 : (string) ($settings->errorMessage ?? ''),
             'csrfInput' => Template::raw(Craft::$app->getView()->renderString('{{ csrfInput() }}')),
@@ -328,7 +327,6 @@ class FormRenderService extends Component
 
         if (!$form) {
             Craft::warning(sprintf('Form "%s" not found for Twig rendering', $handle), 'simple-form');
-            return null;
         }
 
         return $form;
@@ -380,12 +378,10 @@ class FormRenderService extends Component
      */
     private function _resolvePartials(Form $form, array $options): array
     {
-        $partials = [];
-        foreach (self::PARTIALS as $partial) {
-            $partials[$partial] = $this->_resolvePartial($partial, $form, $options);
-        }
-
-        return $partials;
+        return array_combine(
+            self::PARTIALS,
+            array_map(fn(string $partial): string => $this->_resolvePartial($partial, $form, $options), self::PARTIALS),
+        );
     }
 
     /**
@@ -442,7 +438,7 @@ class FormRenderService extends Component
 
         $global = Plugin::getInstance()->getSettings()->templatePath;
 
-        return is_string($global) && $global !== '' ? $global : null;
+        return (is_string($global) && $global !== '') ? $global : null;
     }
 
     /**
@@ -703,10 +699,8 @@ class FormRenderService extends Component
      */
     private function _missing(string $handle): string
     {
-        if ($handle === '') {
-            return '<!-- Form handle is required -->';
-        }
-
-        return sprintf('<!-- Form "%s" not found -->', htmlspecialchars($handle));
+        return $handle === ''
+            ? '<!-- Form handle is required -->'
+            : sprintf('<!-- Form "%s" not found -->', htmlspecialchars($handle));
     }
 }

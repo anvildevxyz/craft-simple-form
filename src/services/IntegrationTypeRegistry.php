@@ -32,15 +32,19 @@ class IntegrationTypeRegistry extends Component
         parent::init();
 
         // Core connectors.
-        $this->registerType(WebhookIntegration::class);
-        $this->registerType(SlackIntegration::class);
-        $this->registerType(DiscordIntegration::class);
-        $this->registerType(MailchimpIntegration::class);
-        $this->registerType(ActiveCampaignIntegration::class);
-        $this->registerType(HubSpotIntegration::class);
-        $this->registerType(PipedriveIntegration::class);
-        $this->registerType(GoogleSheetsIntegration::class);
-        $this->registerType(CraftElementIntegration::class);
+        foreach ([
+            WebhookIntegration::class,
+            SlackIntegration::class,
+            DiscordIntegration::class,
+            MailchimpIntegration::class,
+            ActiveCampaignIntegration::class,
+            HubSpotIntegration::class,
+            PipedriveIntegration::class,
+            GoogleSheetsIntegration::class,
+            CraftElementIntegration::class,
+        ] as $class) {
+            $this->registerType($class);
+        }
 
         // Let third parties contribute their own. Fired on the Plugin class so the
         // registration ergonomics match field types / MCP tools. Guarded on the
@@ -49,10 +53,8 @@ class IntegrationTypeRegistry extends Component
             return;
         }
 
-        $plugin = Plugin::getInstance();
-        if ($plugin !== null) {
-            $event = new RegisterIntegrationTypesEvent();
-            $plugin->trigger(Plugin::EVENT_REGISTER_INTEGRATION_TYPES, $event);
+        if (($plugin = Plugin::getInstance()) !== null) {
+            $plugin->trigger(Plugin::EVENT_REGISTER_INTEGRATION_TYPES, $event = new RegisterIntegrationTypesEvent());
             foreach ($event->types as $class) {
                 $this->registerType($class);
             }
@@ -76,12 +78,7 @@ class IntegrationTypeRegistry extends Component
 
     public function getType(string $handle): ?IntegrationTypeInterface
     {
-        if (!isset($this->types[$handle])) {
-            return null;
-        }
-
-        $class = $this->types[$handle];
-        return new $class();
+        return isset($this->types[$handle]) ? new $this->types[$handle]() : null;
     }
 
     /**
@@ -101,10 +98,6 @@ class IntegrationTypeRegistry extends Component
      */
     public function getAllTypes(): array
     {
-        $out = [];
-        foreach ($this->types as $handle => $class) {
-            $out[$handle] = $class::displayName();
-        }
-        return $out;
+        return array_map(static fn(string $class): string => $class::displayName(), $this->types);
     }
 }

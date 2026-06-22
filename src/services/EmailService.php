@@ -37,14 +37,13 @@ class EmailService extends Component
         $allSent = true;
         foreach ($resolved as $entry) {
             $notification = $entry['notification'];
-            $sent = $this->send(
+            $allSent = $this->send(
                 $entry['recipients'],
                 $this->renderSubjectFor($notification->subject, $form),
                 $this->renderBodyFor($notification->body, $form, $submission, $data),
                 $notification->replyTo,
                 $this->attachmentsFor($notification, $form, $submission, $data),
-            );
-            $allSent = $allSent && $sent;
+            ) && $allSent;
         }
 
         return $allSent;
@@ -64,7 +63,8 @@ class EmailService extends Component
     {
         $attachments = [];
         $totalBytes = 0;
-        $capBytes = max(0, Plugin::getInstance()->getSettings()->maxAttachmentSizeMb) * 1024 * 1024;
+        $maxMb = $this->getSettings()->maxAttachmentSizeMb;
+        $capBytes = max(0, $maxMb) * 1024 * 1024;
 
         if ($notification->attachPdf) {
             $pdf = Plugin::getInstance()->getPdf()->render($form, $submission, $data, (int) $submission->siteId);
@@ -86,7 +86,7 @@ class EmailService extends Component
                         'Skipping upload attachment "%s" for submission %d: over the %d MB attachment cap; sent as an in-body link instead.',
                         $upload['fileName'],
                         (int) $submission->id,
-                        Plugin::getInstance()->getSettings()->maxAttachmentSizeMb,
+                        $maxMb,
                     ), 'simple-form');
                     continue;
                 }
@@ -202,10 +202,11 @@ class EmailService extends Component
             // Set from address: prefer the plugin's configured sender, falling
             // back to Craft's system email settings.
             $mailSettings = App::mailSettings();
+            $settings = $this->getSettings();
             $parsedFromEmail = App::parseEnv($mailSettings->fromEmail);
             $parsedFromName = App::parseEnv($mailSettings->fromName);
-            $fromEmail = $this->getSettings()->getSenderEmail() ?? (is_string($parsedFromEmail) ? $parsedFromEmail : null);
-            $fromName = $this->getSettings()->getSenderName() ?? (is_string($parsedFromName) ? $parsedFromName : null);
+            $fromEmail = $settings->getSenderEmail() ?? (is_string($parsedFromEmail) ? $parsedFromEmail : null);
+            $fromName = $settings->getSenderName() ?? (is_string($parsedFromName) ? $parsedFromName : null);
             if ($fromEmail) {
                 $mail->setFrom($fromName ? [$fromEmail => $fromName] : $fromEmail);
             }

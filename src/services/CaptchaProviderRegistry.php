@@ -36,8 +36,7 @@ class CaptchaProviderRegistry extends Component
 
         $plugin = Plugin::getInstance();
         if ($plugin !== null) {
-            $event = new RegisterCaptchaProvidersEvent();
-            $plugin->trigger(Plugin::EVENT_REGISTER_CAPTCHA_PROVIDERS, $event);
+            $plugin->trigger(Plugin::EVENT_REGISTER_CAPTCHA_PROVIDERS, $event = new RegisterCaptchaProvidersEvent());
             foreach ($event->providers as $class) {
                 $this->registerProvider($class);
             }
@@ -61,11 +60,7 @@ class CaptchaProviderRegistry extends Component
 
     public function getProvider(string $handle): ?CaptchaProviderInterface
     {
-        if (!isset($this->providers[$handle])) {
-            return null;
-        }
-        $class = $this->providers[$handle];
-        return new $class();
+        return isset($this->providers[$handle]) ? new $this->providers[$handle]() : null;
     }
 
     /**
@@ -86,10 +81,6 @@ class CaptchaProviderRegistry extends Component
      */
     public function all(): array
     {
-        $out = [];
-        foreach ($this->providers as $handle => $class) {
-            $out[$handle] = $class::displayName();
-        }
-        return $out;
+        return array_map(static fn($class) => $class::displayName(), $this->providers);
     }
 }

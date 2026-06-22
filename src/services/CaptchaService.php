@@ -23,11 +23,7 @@ class CaptchaService extends Component
     {
         $settings = $this->getSettings();
 
-        if (!$settings->enableCaptcha) {
-            return true;
-        }
-
-        return $this->provider()->verify($token, $settings);
+        return !$settings->enableCaptcha || $this->provider()->verify($token, $settings);
     }
 
     /**
@@ -36,10 +32,8 @@ class CaptchaService extends Component
     public function renderWidget(): string
     {
         $settings = $this->getSettings();
-        if (!$settings->enableCaptcha) {
-            return '';
-        }
-        return $this->provider()->renderWidget($settings);
+
+        return $settings->enableCaptcha ? $this->provider()->renderWidget($settings) : '';
     }
 
     /** The provider selected in settings (falls back to the default). */

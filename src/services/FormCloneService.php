@@ -86,7 +86,7 @@ class FormCloneService extends Component
         $handle = $this->uniqueHandle((string) $source->handle . '-copy');
 
         $notifications = Plugin::getInstance()->getNotifications()->getForForm($sourceId);
-        $integrationIds = $this->attachedIntegrationIds($sourceId);
+        $integrationIds = Plugin::getInstance()->getIntegrations()->getAttachedIntegrationIds($sourceId);
 
         return $this->build(
             name: $name,
@@ -162,9 +162,8 @@ class FormCloneService extends Component
             $root = $base;
         }
 
-        $candidate = $root . '-copy';
-        if (!FormContentHelper::handleExists($candidate)) {
-            return $candidate;
+        if (!FormContentHelper::handleExists($root . '-copy')) {
+            return $root . '-copy';
         }
 
         $n = 2;
@@ -289,8 +288,7 @@ class FormCloneService extends Component
             // FieldQueryHelper injects `required` into config; drop it so it
             // doesn't double up with the column the sync path writes.
             unset($config['required']);
-            $optionLabels = is_array($row['optionLabels'] ?? null) ? $row['optionLabels'] : [];
-            $config = $this->mergeSiteLabels($config, $optionLabels);
+            $config = $this->mergeSiteLabels($config, is_array($row['optionLabels'] ?? null) ? $row['optionLabels'] : []);
 
             return [
                 'type' => (string) $row['type'],
@@ -339,6 +337,7 @@ class FormCloneService extends Component
     {
         return array_map(static function(array $item): array {
             unset($item['id']);
+
             return $item;
         }, $items);
     }
@@ -355,10 +354,11 @@ class FormCloneService extends Component
     private function applyFieldIds(array $items, array $idByHandle): array
     {
         return array_map(static function(array $item) use ($idByHandle): array {
-            $handle = (string) ($item['handle'] ?? '');
-            if (isset($idByHandle[$handle])) {
-                $item['id'] = $idByHandle[$handle];
+            $id = $idByHandle[(string) ($item['handle'] ?? '')] ?? null;
+            if ($id !== null) {
+                $item['id'] = $id;
             }
+
             return $item;
         }, $items);
     }
@@ -373,9 +373,7 @@ class FormCloneService extends Component
      */
     private function orderSitesPrimaryFirst(array $siteIds, int $primarySiteId): array
     {
-        $ordered = array_values(array_filter($siteIds, static fn(int $id): bool => $id !== $primarySiteId));
-        array_unshift($ordered, $primarySiteId);
-        return $ordered;
+        return [$primarySiteId, ...array_filter($siteIds, static fn(int $id): bool => $id !== $primarySiteId)];
     }
 
     /**
@@ -438,8 +436,7 @@ class FormCloneService extends Component
      */
     private function stencilNotifications(Stencil $stencil): array
     {
-        $defaultEmail = (string) (Craft::$app->getProjectConfig()->get('email.fromEmail') ?? '');
-        $defaultEmail = (string) \craft\helpers\App::parseEnv($defaultEmail);
+        $defaultEmail = (string) \craft\helpers\App::parseEnv((string) (Craft::$app->getProjectConfig()->get('email.fromEmail') ?? ''));
 
         $models = [];
         $sortOrder = 1;
@@ -465,16 +462,6 @@ class FormCloneService extends Component
         }
 
         return $models;
-    }
-
-    /**
-     * The ids of integrations attached to a form.
-     *
-     * @return list<int>
-     */
-    private function attachedIntegrationIds(int $formId): array
-    {
-        return Plugin::getInstance()->getIntegrations()->getAttachedIntegrationIds($formId);
     }
 
     /**
@@ -535,10 +522,8 @@ class FormCloneService extends Component
     private function primarySiteId(array $siteIds): int
     {
         $primary = Craft::$app->getSites()->getPrimarySite()->id;
-        if (in_array($primary, $siteIds, true)) {
-            return $primary;
-        }
-        return $siteIds[0] ?? $primary;
+
+        return in_array($primary, $siteIds, true) ? $primary : ($siteIds[0] ?? $primary);
     }
 
     /**
@@ -562,15 +547,11 @@ class FormCloneService extends Component
             'emailBody' => $content['emailBody'] ?? null,
         ];
 
-        $exists = (new Query())
-            ->from('{{%simpleform_forms_sites}}')
-            ->where(['formId' => $formId, 'siteId' => $siteId])
-            ->exists();
+        $where = ['formId' => $formId, 'siteId' => $siteId];
+        $exists = (new Query())->from('{{%simpleform_forms_sites}}')->where($where)->exists();
 
         if ($exists) {
-            $db->createCommand()->update('{{%simpleform_forms_sites}}', $row + [
-                'dateUpdated' => $now,
-            ], ['formId' => $formId, 'siteId' => $siteId])->execute();
+            $db->createCommand()->update('{{%simpleform_forms_sites}}', $row + ['dateUpdated' => $now], $where)->execute();
         } else {
             $db->createCommand()->insert('{{%simpleform_forms_sites}}', $row + [
                 'formId' => $formId,

@@ -39,17 +39,8 @@ class AssetUploadService extends Component
 
         $ids = [];
         foreach ($files as $file) {
-            $asset = new Asset();
-            $asset->tempFilePath = $file->tempName;
-            $asset->setFilename($file->name);
-            $asset->newFolderId = $folderId;
-            $asset->setScenario(Asset::SCENARIO_CREATE);
-            $asset->avoidFilenameConflicts = true;
-
-            if (Craft::$app->getElements()->saveElement($asset)) {
-                $ids[] = (int) $asset->id;
-            } else {
-                Craft::warning('Failed to save uploaded asset: ' . implode(', ', $asset->getFirstErrors()), 'simple-form');
+            if (($id = $this->createAsset($file->tempName, $file->name, $folderId, 'uploaded')) !== null) {
+                $ids[] = $id;
             }
         }
 
@@ -85,17 +76,8 @@ class AssetUploadService extends Component
 
         $ids = [];
         foreach ($files as $file) {
-            $asset = new Asset();
-            $asset->tempFilePath = $file['path'];
-            $asset->setFilename($file['filename']);
-            $asset->newFolderId = $folderId;
-            $asset->setScenario(Asset::SCENARIO_CREATE);
-            $asset->avoidFilenameConflicts = true;
-
-            if (Craft::$app->getElements()->saveElement($asset)) {
-                $ids[] = (int) $asset->id;
-            } else {
-                Craft::warning('Failed to save signature asset: ' . implode(', ', $asset->getFirstErrors()), 'simple-form');
+            if (($id = $this->createAsset($file['path'], $file['filename'], $folderId, 'signature')) !== null) {
+                $ids[] = $id;
             }
         }
 
@@ -110,20 +92,34 @@ class AssetUploadService extends Component
         }
     }
 
+    /** Save one temp file as an Asset in $folderId; returns its id or null (logging) on failure. */
+    private function createAsset(string $tempPath, string $filename, int $folderId, string $kind): ?int
+    {
+        $asset = new Asset();
+        $asset->tempFilePath = $tempPath;
+        $asset->setFilename($filename);
+        $asset->newFolderId = $folderId;
+        $asset->setScenario(Asset::SCENARIO_CREATE);
+        $asset->avoidFilenameConflicts = true;
+
+        if (Craft::$app->getElements()->saveElement($asset)) {
+            return (int) $asset->id;
+        }
+
+        Craft::warning("Failed to save $kind asset: " . implode(', ', $asset->getFirstErrors()), 'simple-form');
+        return null;
+    }
+
     private function resolveFolderId(mixed $volumeHandle): ?int
     {
         $volumes = Craft::$app->getVolumes();
-
-        $volume = null;
-        if (is_string($volumeHandle) && $volumeHandle !== '') {
-            $volume = $volumes->getVolumeByHandle($volumeHandle);
-        }
+        $volume = (is_string($volumeHandle) && $volumeHandle !== '')
+            ? $volumes->getVolumeByHandle($volumeHandle)
+            : null;
         $volume ??= $volumes->getAllVolumes()[0] ?? null;
-        if ($volume === null) {
-            return null;
-        }
 
-        $folder = Craft::$app->getAssets()->getRootFolderByVolumeId($volume->id);
-        return $folder?->id;
+        return $volume === null
+            ? null
+            : Craft::$app->getAssets()->getRootFolderByVolumeId($volume->id)?->id;
     }
 }

@@ -50,12 +50,10 @@ class IntegrationsService extends Component
      */
     public function getAllIntegrations(): array
     {
-        $rows = (new \craft\db\Query())
+        return array_map($this->rowToModel(...), (new \craft\db\Query())
             ->from(self::TABLE)
             ->orderBy(['sortOrder' => SORT_ASC, 'id' => SORT_ASC])
-            ->all();
-
-        return array_map([$this, 'rowToModel'], $rows);
+            ->all());
     }
 
     /**
@@ -67,15 +65,13 @@ class IntegrationsService extends Component
      */
     public function getIntegrationsForForm(int $formId): array
     {
-        $rows = (new \craft\db\Query())
+        return array_map($this->rowToModel(...), (new \craft\db\Query())
             ->select(['i.*'])
             ->from(['i' => self::TABLE])
             ->innerJoin(['fi' => self::PIVOT_TABLE], '[[fi.integrationId]] = [[i.id]]')
             ->where(['fi.formId' => $formId])
             ->orderBy(['i.sortOrder' => SORT_ASC, 'i.id' => SORT_ASC])
-            ->all();
-
-        return array_map([$this, 'rowToModel'], $rows);
+            ->all());
     }
 
     /**
@@ -235,8 +231,7 @@ class IntegrationsService extends Component
         $submissionId = (int) $submission->id;
         $attempt = $this->countAttempts($integrationId, $submissionId) + 1;
 
-        $type = Plugin::getInstance()->getIntegrationTypeRegistry()->getType($integration->type);
-        if ($type === null) {
+        if (($type = Plugin::getInstance()->getIntegrationTypeRegistry()->getType($integration->type)) === null) {
             $message = "Unknown integration type: {$integration->type}";
             $this->logDispatch($integrationId, $submissionId, DispatchStatus::FAILED, $attempt, null, $message);
             return IntegrationResult::failure(null, $message);
@@ -314,22 +309,19 @@ class IntegrationsService extends Component
         $attributes = $settings;
         foreach ($rules as $rule) {
             foreach ((array) ($rule[0] ?? []) as $attr) {
-                if (!array_key_exists($attr, $attributes)) {
-                    $attributes[$attr] = null;
-                }
+                $attributes[$attr] ??= null;
             }
         }
 
         $model = new \yii\base\DynamicModel($attributes);
         foreach ($rules as $rule) {
-            $validator = $rule[1] ?? 'safe';
             $options = [];
             foreach ($rule as $key => $value) {
                 if (!is_int($key)) {
                     $options[$key] = $value;
                 }
             }
-            $model->addRule((array) ($rule[0] ?? []), $validator, $options);
+            $model->addRule((array) ($rule[0] ?? []), $rule[1] ?? 'safe', $options);
         }
 
         return $model->validate() ? [] : $model->getErrors();
@@ -426,12 +418,11 @@ class IntegrationsService extends Component
         $security = Craft::$app->getSecurity();
         foreach (self::SECRET_KEYS as $secretKey) {
             $value = $settings[$secretKey] ?? null;
-            if (!is_string($value) || $value === ''
-                || str_starts_with($value, '$')
-                || str_starts_with($value, self::ENC_PREFIX)) {
-                continue;
+            if (is_string($value) && $value !== ''
+                && !str_starts_with($value, '$')
+                && !str_starts_with($value, self::ENC_PREFIX)) {
+                $settings[$secretKey] = self::ENC_PREFIX . base64_encode($security->encryptByKey($value, $key));
             }
-            $settings[$secretKey] = self::ENC_PREFIX . base64_encode($security->encryptByKey($value, $key));
         }
 
         return $settings;
@@ -473,9 +464,8 @@ class IntegrationsService extends Component
         if (is_array($raw)) {
             return $raw;
         }
-        if (is_string($raw) && $raw !== '') {
-            $decoded = Json::decodeIfJson($raw);
-            return is_array($decoded) ? $decoded : [];
+        if (is_string($raw) && $raw !== '' && is_array($decoded = Json::decodeIfJson($raw))) {
+            return $decoded;
         }
         return [];
     }
@@ -576,8 +566,7 @@ class IntegrationsService extends Component
 
         $counts = [DispatchStatus::SUCCESS => 0, DispatchStatus::FAILED => 0, DispatchStatus::PENDING => 0];
         foreach ($rows as $row) {
-            $status = (string) $row['status'];
-            if (isset($counts[$status])) {
+            if (isset($counts[$status = (string) $row['status']])) {
                 $counts[$status]++;
             }
         }
@@ -689,7 +678,6 @@ class IntegrationsService extends Component
                 $settings[$secretKey] = self::REDACTED;
             }
         }
-
         return $settings;
     }
 

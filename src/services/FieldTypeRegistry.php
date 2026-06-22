@@ -68,36 +68,39 @@ class FieldTypeRegistry extends Component
     {
         parent::init();
 
-        $this->registerFieldType(TextFieldType::class);
-        $this->registerFieldType(EmailFieldType::class);
-        $this->registerFieldType(TextareaFieldType::class);
-        $this->registerFieldType(SelectFieldType::class);
-        $this->registerFieldType(CheckboxFieldType::class);
-        $this->registerFieldType(RadioFieldType::class);
-        $this->registerFieldType(DateFieldType::class);
-        $this->registerFieldType(NumberFieldType::class);
-        $this->registerFieldType(PhoneFieldType::class);
-        $this->registerFieldType(FileFieldType::class);
-        $this->registerFieldType(SignatureFieldType::class);
-        $this->registerFieldType(PaymentFieldType::class);
-        $this->registerFieldType(HiddenFieldType::class);
-        $this->registerFieldType(ConsentFieldType::class);
-        $this->registerFieldType(RatingFieldType::class);
-        $this->registerFieldType(OpinionScaleFieldType::class);
-        $this->registerFieldType(EntryRelationFieldType::class);
-        $this->registerFieldType(CategoryRelationFieldType::class);
-        $this->registerFieldType(TagRelationFieldType::class);
-        $this->registerFieldType(UserRelationFieldType::class);
-        $this->registerFieldType(AssetRelationFieldType::class);
-        $this->registerFieldType(CalculationFieldType::class);
-        $this->registerFieldType(RepeaterFieldType::class);
-        $this->registerFieldType(NameFieldType::class);
-        $this->registerFieldType(AddressFieldType::class);
-
-        // Presentational/layout blocks (value-less; isInput() === false).
-        $this->registerFieldType(HeadingFieldType::class);
-        $this->registerFieldType(DividerFieldType::class);
-        $this->registerFieldType(HtmlFieldType::class);
+        foreach ([
+            TextFieldType::class,
+            EmailFieldType::class,
+            TextareaFieldType::class,
+            SelectFieldType::class,
+            CheckboxFieldType::class,
+            RadioFieldType::class,
+            DateFieldType::class,
+            NumberFieldType::class,
+            PhoneFieldType::class,
+            FileFieldType::class,
+            SignatureFieldType::class,
+            PaymentFieldType::class,
+            HiddenFieldType::class,
+            ConsentFieldType::class,
+            RatingFieldType::class,
+            OpinionScaleFieldType::class,
+            EntryRelationFieldType::class,
+            CategoryRelationFieldType::class,
+            TagRelationFieldType::class,
+            UserRelationFieldType::class,
+            AssetRelationFieldType::class,
+            CalculationFieldType::class,
+            RepeaterFieldType::class,
+            NameFieldType::class,
+            AddressFieldType::class,
+            // Presentational/layout blocks (value-less; isInput() === false).
+            HeadingFieldType::class,
+            DividerFieldType::class,
+            HtmlFieldType::class,
+        ] as $class) {
+            $this->registerFieldType($class);
+        }
     }
 
     /**
@@ -108,13 +111,10 @@ class FieldTypeRegistry extends Component
      */
     public function layoutTypeHandles(): array
     {
-        $handles = [];
-        foreach ($this->fieldTypes as $type => $class) {
-            if (!(new $class())->isInput()) {
-                $handles[] = $type;
-            }
-        }
-        return $handles;
+        return array_values(array_filter(
+            array_keys($this->fieldTypes),
+            fn(string $type): bool => !(new $this->fieldTypes[$type]())->isInput(),
+        ));
     }
 
     /**
@@ -160,10 +160,7 @@ class FieldTypeRegistry extends Component
     {
         $types = [];
         foreach ($this->fieldTypes as $type => $class) {
-            $types[$type] = [
-                'type' => $type,
-                'label' => $class::getLabel(),
-            ];
+            $types[$type] = ['type' => $type, 'label' => $class::getLabel()];
         }
         return $types;
     }

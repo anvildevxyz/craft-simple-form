@@ -89,16 +89,17 @@ class SafeRenderService extends Component
         $sandbox = $twig->getExtension(SandboxExtension::class);
 
         $base = $sandbox->getSecurityPolicy();
-        if ($base instanceof SecurityPolicy && $allowedClasses !== []) {
-            $allowedClasses = array_merge($base->getAllowedClasses(), $allowedClasses);
+        $basePolicy = $base instanceof SecurityPolicy ? $base : null;
+        if ($basePolicy !== null && $allowedClasses !== []) {
+            $allowedClasses = array_merge($basePolicy->getAllowedClasses(), $allowedClasses);
         }
 
         $scoped = new SecurityPolicy(
-            $base instanceof SecurityPolicy ? $base->getAllowedTags() : [],
-            $base instanceof SecurityPolicy ? $base->getAllowedFilters() : [],
-            $base instanceof SecurityPolicy ? $base->getAllowedFunctions() : [],
-            $base instanceof SecurityPolicy ? $base->getAllowedMethods() : [],
-            $base instanceof SecurityPolicy ? $base->getAllowedProperties() : [],
+            $basePolicy?->getAllowedTags() ?? [],
+            $basePolicy?->getAllowedFilters() ?? [],
+            $basePolicy?->getAllowedFunctions() ?? [],
+            $basePolicy?->getAllowedMethods() ?? [],
+            $basePolicy?->getAllowedProperties() ?? [],
             $allowedClasses,
         );
 

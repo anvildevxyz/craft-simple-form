@@ -55,10 +55,7 @@ class FormStructureService extends Component
         }
 
         $fieldSet = FieldQueryHelper::fieldsForForm($formId, $siteId);
-
-        $cache->set($key, $fieldSet, null, new TagDependency([
-            'tags' => [$this->tagForForm($formId)],
-        ]));
+        $cache->set($key, $fieldSet, null, new TagDependency(['tags' => [$this->tagForForm($formId)]]));
 
         return $fieldSet;
     }
@@ -79,7 +76,7 @@ class FormStructureService extends Component
         $formIds = array_values(array_unique(array_map('intval', $formIds)));
         $siteId ??= Craft::$app->getSites()->getCurrentSite()->id;
 
-        if (empty($formIds)) {
+        if (!$formIds) {
             return [];
         }
 
@@ -100,13 +97,10 @@ class FormStructureService extends Component
             }
         }
 
-        if (!empty($misses)) {
+        if ($misses) {
             // One query for every cache miss, regardless of how many forms missed.
-            $fetched = FieldQueryHelper::fieldsForForms($misses, $siteId);
-            foreach ($fetched as $formId => $fieldSet) {
-                $cache->set($this->keyFor($formId, $siteId), $fieldSet, null, new TagDependency([
-                    'tags' => [$this->tagForForm($formId)],
-                ]));
+            foreach (FieldQueryHelper::fieldsForForms($misses, $siteId) as $formId => $fieldSet) {
+                $cache->set($this->keyFor($formId, $siteId), $fieldSet, null, new TagDependency(['tags' => [$this->tagForForm($formId)]]));
                 $result[$formId] = $fieldSet;
             }
         }
@@ -135,18 +129,13 @@ class FormStructureService extends Component
      */
     public function warm(int $formId, ?array $siteIds = null): int
     {
-        $siteIds ??= array_map(
-            static fn($site) => (int)$site->id,
-            Craft::$app->getSites()->getAllSites()
-        );
+        $siteIds ??= array_map(static fn($site) => (int)$site->id, Craft::$app->getSites()->getAllSites());
 
-        $count = 0;
         foreach ($siteIds as $siteId) {
             $this->getFieldSet($formId, (int)$siteId);
-            $count++;
         }
 
-        return $count;
+        return count($siteIds);
     }
 
     /**
@@ -173,14 +162,8 @@ class FormStructureService extends Component
      */
     private function cachingEnabled(): bool
     {
-        if (App::devMode()) {
-            return false;
-        }
-
-        if (!Plugin::getInstance()->getSettings()->cacheFormStructure) {
-            return false;
-        }
-
-        return !(Craft::$app->getCache() instanceof \yii\caching\DummyCache);
+        return !App::devMode()
+            && Plugin::getInstance()->getSettings()->cacheFormStructure
+            && !(Craft::$app->getCache() instanceof \yii\caching\DummyCache);
     }
 }

@@ -31,66 +31,53 @@ class SubmissionBodyRenderer extends Component
      */
     public function render(Form $form, Submission $submission, array $data): string
     {
-        $html = '<html><body>';
-        $html .= '<h2>' . Craft::t('simple-form', 'New Form Submission') . '</h2>';
+        $html = '<html><body>'
+            . '<h2>' . Craft::t('simple-form', 'New Form Submission') . '</h2>'
+            . '<p>'
+            . '<strong>' . Craft::t('simple-form', 'Form') . ':</strong> ' . htmlspecialchars($form->title ?? $form->name) . '<br>'
+            . '<strong>' . Craft::t('simple-form', 'Date') . ':</strong> ' . $submission->dateCreated->format('Y-m-d H:i:s') . '<br>';
 
-        $html .= '<p>';
-        $html .= '<strong>' . Craft::t('simple-form', 'Form') . ':</strong> ' . htmlspecialchars($form->title ?? $form->name) . '<br>';
-        $html .= '<strong>' . Craft::t('simple-form', 'Date') . ':</strong> ' . $submission->dateCreated->format('Y-m-d H:i:s') . '<br>';
-
-        if ($submission->userId) {
-            $user = Craft::$app->getUsers()->getUserById($submission->userId);
-            if ($user) {
-                $html .= '<strong>' . Craft::t('simple-form', 'User') . ':</strong> ' . htmlspecialchars($user->fullName ?: $user->username) . '<br>';
-            }
+        if ($submission->userId && ($user = Craft::$app->getUsers()->getUserById($submission->userId))) {
+            $html .= '<strong>' . Craft::t('simple-form', 'User') . ':</strong> ' . htmlspecialchars($user->fullName ?: $user->username) . '<br>';
         }
 
-        $html .= '</p>';
-
-        $html .= '<hr>';
-        $html .= '<h3>' . Craft::t('simple-form', 'Submission Data') . '</h3>';
-        $html .= '<table style="border-collapse: collapse; width: 100%;">';
+        $html .= '</p>'
+            . '<hr>'
+            . '<h3>' . Craft::t('simple-form', 'Submission Data') . '</h3>'
+            . '<table style="border-collapse: collapse; width: 100%;">';
 
         foreach ($data as $fieldData) {
-            $label = htmlspecialchars($fieldData['label']);
             $value = $fieldData['type'] === FileFieldType::getType()
                 ? $this->formatFileValue($fieldData['value'])
                 : $this->formatFieldValue($fieldData['value']);
 
-            $html .= '<tr style="border-bottom: 1px solid #ddd;">';
-            $html .= '<td style="padding: 10px; font-weight: bold; width: 30%;">' . $label . '</td>';
-            $html .= '<td style="padding: 10px;">' . $value . '</td>';
-            $html .= '</tr>';
+            $html .= '<tr style="border-bottom: 1px solid #ddd;">'
+                . '<td style="padding: 10px; font-weight: bold; width: 30%;">' . htmlspecialchars($fieldData['label']) . '</td>'
+                . '<td style="padding: 10px;">' . $value . '</td>'
+                . '</tr>';
         }
 
-        $html .= '</table>';
-
-        $html .= '<hr>';
-        $html .= '<p style="font-size: 0.9em; color: #666;">';
-        $html .= Craft::t('simple-form', 'This is an automated message. Please do not reply directly to this email.');
-        $html .= '</p>';
-
-        $html .= '</body></html>';
-
-        return $html;
+        return $html . '</table>'
+            . '<hr>'
+            . '<p style="font-size: 0.9em; color: #666;">'
+            . Craft::t('simple-form', 'This is an automated message. Please do not reply directly to this email.')
+            . '</p>'
+            . '</body></html>';
     }
 
     // =========================================================================
     // Private Methods
     // =========================================================================
 
+    private const EMPTY = '<em style="color: #999;">—</em>';
+
     private function formatFieldValue(mixed $value): string
     {
         if ($value === null || $value === '') {
-            return '<em style="color: #999;">—</em>';
+            return self::EMPTY;
         }
 
-        if (is_array($value)) {
-            $stringValues = array_map('strval', $value);
-            return htmlspecialchars(implode(', ', $stringValues));
-        }
-
-        return htmlspecialchars((string) $value);
+        return htmlspecialchars(is_array($value) ? implode(', ', array_map('strval', $value)) : (string) $value);
     }
 
     /**
@@ -102,7 +89,7 @@ class SubmissionBodyRenderer extends Component
     {
         $ids = is_array($value) ? $value : [];
         if ($ids === []) {
-            return '<em style="color: #999;">—</em>';
+            return self::EMPTY;
         }
 
         $links = [];
@@ -111,13 +98,12 @@ class SubmissionBodyRenderer extends Component
             if (!$asset instanceof Asset) {
                 continue;
             }
-            $url = $asset->getUrl();
             $name = htmlspecialchars((string) $asset->getFilename());
-            $links[] = $url
+            $links[] = ($url = $asset->getUrl())
                 ? '<a href="' . htmlspecialchars((string) $url) . '">' . $name . '</a>'
                 : $name;
         }
 
-        return $links === [] ? '<em style="color: #999;">—</em>' : implode('<br>', $links);
+        return $links === [] ? self::EMPTY : implode('<br>', $links);
     }
 }

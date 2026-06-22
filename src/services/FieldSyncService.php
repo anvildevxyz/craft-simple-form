@@ -37,7 +37,9 @@ class FieldSyncService extends Component
         $errors = [];
         $seenHandles = [];
 
-        $layoutTypes = Plugin::getInstance()->getFieldTypeRegistry()->layoutTypeHandles();
+        $registry = Plugin::getInstance()->getFieldTypeRegistry();
+        $layoutTypes = $registry->layoutTypeHandles();
+        $typeHandles = $registry->typeHandles();
 
         foreach ($items as $i => $item) {
             $pos = $i + 1;
@@ -45,12 +47,11 @@ class FieldSyncService extends Component
             $handle = trim((string)($item['handle'] ?? ''));
             $type = (string)($item['type'] ?? '');
             $name = $label !== '' ? $label : ($handle !== '' ? $handle : "#$pos");
-            $isLayout = in_array($type, $layoutTypes, true);
 
             // Layout blocks (heading/divider/html) carry no user-facing label —
             // their content is the heading text / divider label / HTML body — so
             // only input fields require a label.
-            if ($label === '' && !$isLayout) {
+            if ($label === '' && !in_array($type, $layoutTypes, true)) {
                 $errors[] = Craft::t('simple-form', 'Field {name}: label is required.', ['name' => "#$pos"]);
             }
 
@@ -66,7 +67,7 @@ class FieldSyncService extends Component
                 $seenHandles[$key] = true;
             }
 
-            if (!in_array($type, Plugin::getInstance()->getFieldTypeRegistry()->typeHandles(), true)) {
+            if (!in_array($type, $typeHandles, true)) {
                 $errors[] = Craft::t('simple-form', 'Field {name}: invalid type.', ['name' => $name]);
             }
 
@@ -77,13 +78,13 @@ class FieldSyncService extends Component
                 }
             }
 
+            $config = is_array($item['config'] ?? null) ? $item['config'] : [];
+
             if ($type === RepeaterFieldType::getType()) {
-                $config = is_array($item['config'] ?? null) ? $item['config'] : [];
                 $errors = array_merge($errors, self::repeaterConfigErrors($config, $name));
             }
 
             if ($type === PhoneFieldType::getType()) {
-                $config = is_array($item['config'] ?? null) ? $item['config'] : [];
                 $pattern = trim((string) ($config['pattern'] ?? ''));
                 if ($pattern !== '' && !self::isSafeRegexPattern($pattern)) {
                     $errors[] = Craft::t('simple-form', 'Field {name}: the phone pattern is invalid or too complex.', ['name' => $name]);
@@ -91,7 +92,6 @@ class FieldSyncService extends Component
             }
 
             if ($type === PaymentFieldType::getType()) {
-                $config = is_array($item['config'] ?? null) ? $item['config'] : [];
                 $min = isset($config['minAmount']) && is_numeric($config['minAmount']) ? (float) $config['minAmount'] : null;
                 $max = isset($config['maxAmount']) && is_numeric($config['maxAmount']) ? (float) $config['maxAmount'] : null;
                 if ($min !== null && $max !== null && $min > $max) {
@@ -139,7 +139,7 @@ class FieldSyncService extends Component
 
             $handle = trim((string)($item['handle'] ?? ''));
             $label = trim((string)($item['label'] ?? ''));
-            $name = $label !== '' ? $label : ($handle !== '' ? $handle : '#' . ($i + 1));
+            $name = $label ?: ($handle ?: '#' . ($i + 1));
             $config = is_array($item['config'] ?? null) ? $item['config'] : [];
             $formula = trim((string)($config['formula'] ?? ''));
 
@@ -163,10 +163,7 @@ class FieldSyncService extends Component
 
             // Only calculation→calculation edges matter for cycle detection;
             // references to ordinary (leaf) fields never form a cycle.
-            $graph[$handle] = array_values(array_filter(
-                $refs,
-                static fn($ref) => isset($calcHandles[$ref])
-            ));
+            $graph[$handle] = array_values(array_filter($refs, static fn($ref) => isset($calcHandles[$ref])));
         }
 
         if (self::hasCycle($graph)) {
@@ -273,7 +270,7 @@ class FieldSyncService extends Component
         foreach ($items as $i => $item) {
             $handle = trim((string)($item['handle'] ?? ''));
             $label = trim((string)($item['label'] ?? ''));
-            $name = $label !== '' ? $label : ($handle !== '' ? $handle : '#' . ($i + 1));
+            $name = $label ?: ($handle ?: '#' . ($i + 1));
             $config = is_array($item['config'] ?? null) ? $item['config'] : [];
             $refs = ConditionalEvaluator::referencedFields($config);
 
@@ -282,10 +279,7 @@ class FieldSyncService extends Component
             }
 
             // Edges only to handles present in the set (others are pruned on save).
-            $graph[$handle] = array_values(array_filter(
-                $refs,
-                static fn($ref) => $ref !== $handle && isset($present[$ref])
-            ));
+            $graph[$handle] = array_values(array_filter($refs, static fn($ref) => $ref !== $handle && isset($present[$ref])));
         }
 
         if (self::hasCycle($graph)) {
@@ -317,12 +311,9 @@ class FieldSyncService extends Component
      */
     private static function dfsHasCycle(string $node, array $graph, array &$state): bool
     {
-        $current = $state[$node] ?? 0;
-        if ($current === 1) {
-            return true;
-        }
-        if ($current === 2) {
-            return false;
+        switch ($state[$node] ?? 0) {
+            case 1: return true;
+            case 2: return false;
         }
 
         $state[$node] = 1;
@@ -392,7 +383,7 @@ class FieldSyncService extends Component
         $now = date('Y-m-d H:i:s');
         $formId = (int)$form->id;
 
-        $supportedSiteIds = $this->supportedSiteIds($form, $currentSiteId);
+        $supportedSiteIds = $form->supportedSiteIds() ?: [$currentSiteId];
 
         // Handles present in the saved set — conditional rules referencing a
         // handle outside this set (e.g. a target field removed in the same
@@ -405,10 +396,8 @@ class FieldSyncService extends Component
             }
         }
 
-        $existingIds = array_map(
-            'intval',
-            (new Query())->select(['id'])->from('{{%simpleform_fields}}')->where(['formId' => $formId])->column()
-        );
+        $existingIds = array_map('intval', (new Query())
+            ->select(['id'])->from('{{%simpleform_fields}}')->where(['formId' => $formId])->column());
 
         $keptIds = [];
         $transaction = $db->beginTransaction();
@@ -431,7 +420,7 @@ class FieldSyncService extends Component
                 [$config, $optionLabels] = self::splitOptionLabels($config);
                 // Drop conditional rules that point at a removed field or at the
                 // field itself, so persisted rules only ever reference live peers.
-                $config = self::sanitizeConditional($config, $validHandles, trim((string)$item['handle']));
+                $config = self::sanitizeConditional($config, $validHandles, $handle);
                 $rawId = $item['id'] ?? null;
                 $id = is_numeric($rawId) ? (int)$rawId : null;
 
@@ -503,7 +492,7 @@ class FieldSyncService extends Component
             }
 
             // Delete removed fields; their _sites rows cascade via FK.
-            $toDelete = array_values(array_diff($existingIds, $keptIds));
+            $toDelete = array_diff($existingIds, $keptIds);
             if ($toDelete) {
                 $db->createCommand()->delete('{{%simpleform_fields}}', ['id' => $toDelete])->execute();
             }
@@ -625,15 +614,5 @@ class FieldSyncService extends Component
         }
 
         return !preg_match('/(\([^)]*[+*][^)]*\)[+*]|[+*]{2,})/', $pattern);
-    }
-
-    /**
-     * Site IDs a new field should be seeded on, from the form's propagation method.
-     *
-     * @return int[]
-     */
-    private function supportedSiteIds(Form $form, int $currentSiteId): array
-    {
-        return $form->supportedSiteIds() ?: [$currentSiteId];
     }
 }

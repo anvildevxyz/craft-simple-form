@@ -37,7 +37,7 @@ class NotificationsService extends Component
             ->orderBy(['sortOrder' => SORT_ASC, 'id' => SORT_ASC])
             ->all();
 
-        return array_map([$this, 'rowToModel'], $rows);
+        return array_map($this->rowToModel(...), $rows);
     }
 
     public function getById(int $id): ?NotificationModel
@@ -128,17 +128,13 @@ class NotificationsService extends Component
         $resolved = [];
 
         foreach ($this->getForForm((int) $form->id) as $notification) {
-            if (!$notification->enabled) {
-                continue;
-            }
-            if (!$this->conditionPasses($notification, $valuesByHandle)) {
+            if (!$notification->enabled || !$this->conditionPasses($notification, $valuesByHandle)) {
                 continue;
             }
             $recipients = $this->resolveRecipients($notification, $valuesByHandle);
-            if ($recipients === []) {
-                continue;
+            if ($recipients !== []) {
+                $resolved[] = ['notification' => $notification, 'recipients' => $recipients];
             }
-            $resolved[] = ['notification' => $notification, 'recipients' => $recipients];
         }
 
         return $resolved;
@@ -170,15 +166,8 @@ class NotificationsService extends Component
         }
 
         // Static recipient list: split on comma/semicolon/whitespace, keep valid addresses.
-        $parts = preg_split('/[\s,;]+/', $notification->recipient) ?: [];
-        $addresses = [];
-        foreach ($parts as $part) {
-            $part = trim($part);
-            if ($part !== '' && filter_var($part, FILTER_VALIDATE_EMAIL)) {
-                $addresses[] = $part;
-            }
-        }
-        return array_values(array_unique($addresses));
+        $parts = preg_split('/[\s,;]+/', $notification->recipient, -1, PREG_SPLIT_NO_EMPTY) ?: [];
+        return array_values(array_unique(array_filter($parts, static fn(string $p): bool => (bool) filter_var($p, FILTER_VALIDATE_EMAIL))));
     }
 
     /**
@@ -199,9 +188,8 @@ class NotificationsService extends Component
 
         $values = [];
         foreach ($data as $key => $entry) {
-            $handle = $handleById[$key] ?? null;
-            if ($handle !== null) {
-                $values[$handle] = SubmissionValues::value($entry);
+            if (isset($handleById[$key])) {
+                $values[$handleById[$key]] = SubmissionValues::value($entry);
             }
         }
 
@@ -220,9 +208,9 @@ class NotificationsService extends Component
         $model->enabled = (bool) $row['enabled'];
         $model->recipientType = (string) $row['recipientType'];
         $model->recipient = (string) $row['recipient'];
-        $model->subject = $row['subject'] !== null ? (string) $row['subject'] : null;
-        $model->replyTo = $row['replyTo'] !== null ? (string) $row['replyTo'] : null;
-        $model->body = $row['body'] !== null ? (string) $row['body'] : null;
+        $model->subject = isset($row['subject']) ? (string) $row['subject'] : null;
+        $model->replyTo = isset($row['replyTo']) ? (string) $row['replyTo'] : null;
+        $model->body = isset($row['body']) ? (string) $row['body'] : null;
         $model->attachPdf = (bool) ($row['attachPdf'] ?? false);
         $model->attachUploads = (bool) ($row['attachUploads'] ?? false);
         $conditional = $row['conditional'] ?? null;
@@ -234,7 +222,7 @@ class NotificationsService extends Component
         } else {
             $model->conditional = null;
         }
-        $model->sortOrder = $row['sortOrder'] !== null ? (int) $row['sortOrder'] : null;
+        $model->sortOrder = isset($row['sortOrder']) ? (int) $row['sortOrder'] : null;
         $model->uid = $row['uid'] ?? null;
         return $model;
     }
