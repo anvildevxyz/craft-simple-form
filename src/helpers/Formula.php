@@ -28,6 +28,8 @@ use fabianhaef\simpleform\exceptions\FormulaException;
  * evaluation (already-validated formulas) is total — divide-by-zero yields 0.0
  * and a missing/non-numeric reference resolves to 0.0.
  *
+ * @phpstan-type Token array{type: string, value: string}
+ *
  * @author Fabian Haefliger
  * @since 5.x
  */
@@ -71,11 +73,11 @@ final class Formula
     // =========================================================================
 
     /**
-     * @param list<array{type: string, value: string}> $tokens
+     * @param list<Token> $tokens
      * @param array<string, float> $refs
      */
     private function __construct(
-        /** @var list<array{type: string, value: string}> */
+        /** @var list<Token> */
         private array $tokens,
         /** @var array<string, float> handle => numeric value */
         private array $refs,
@@ -115,7 +117,7 @@ final class Formula
      * unrecognised character. Public so save-time validation can assert a formula
      * parses (and harvest its `{handle}` references) without evaluating it.
      *
-     * @return list<array{type: string, value: string}>
+     * @return list<Token>
      * @throws FormulaException when an unexpected character is encountered
      */
     public static function tokenize(string $formula): array
@@ -246,7 +248,7 @@ final class Formula
     }
 
     /**
-     * @param list<array{type: string, value: string}> $tokens
+     * @param list<Token> $tokens
      * @throws FormulaException
      */
     private static function guardCount(array $tokens): void
@@ -383,14 +385,14 @@ final class Formula
 
     // ---- token cursor -------------------------------------------------------
 
-    /** @return array{type: string, value: string}|null */
+    /** @return Token|null */
     private function peek(): ?array
     {
         return $this->tokens[$this->pos] ?? null;
     }
 
     /**
-     * @return array{type: string, value: string}
+     * @return Token
      * @throws FormulaException
      */
     private function next(): array

@@ -61,6 +61,15 @@ class FieldTypeRegistry extends Component
      */
     public const RELATION_TYPES = ['entry', 'category', 'tag', 'user', 'asset'];
 
+    /**
+     * Field types whose stored value is a list of asset ids (file uploads,
+     * signature PNGs). Consumed by the CSV exporter (rendered as asset URLs) and
+     * the retention GC (collected for deletion).
+     *
+     * @var list<string>
+     */
+    public const ASSET_TYPES = ['file', 'signature'];
+
     /** @var array<string, class-string<FieldType>> */
     private array $fieldTypes = [];
 

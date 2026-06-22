@@ -16,6 +16,8 @@ use fabianhaef\simpleform\Plugin;
  * nested repeaters, no in-row conditional logic, and no file/payment inner
  * types.
  *
+ * @phpstan-type RepeaterInnerField array{handle: string, type: string, label: string, config: array<string, mixed>}
+ *
  * @author Fabian Haefliger
  * @since 1.0.0
  */
@@ -83,7 +85,7 @@ class RepeaterFieldType extends FieldType
      * surfaces those as errors; here they're simply ignored so a malformed
      * config can never crash rendering or validation.
      *
-     * @return list<array{handle: string, type: string, label: string, config: array<string, mixed>}>
+     * @return list<RepeaterInnerField>
      */
     public function innerFields(): array
     {
@@ -131,7 +133,7 @@ class RepeaterFieldType extends FieldType
      * Pure and side-effect free (no Craft, no DB) for straightforward unit
      * testing of the serialization contract.
      *
-     * @param list<array{handle: string, type: string, label: string, config: array<string, mixed>}> $innerDefs the result of {@see self::innerFields()}
+     * @param list<RepeaterInnerField> $innerDefs the result of {@see self::innerFields()}
      * @return list<array<string, string>>
      */
     public static function normalizeRows(mixed $value, array $innerDefs): array
@@ -288,7 +290,7 @@ class RepeaterFieldType extends FieldType
      * fields exactly.
      *
      * @param array<string, string> $rowValue
-     * @param list<array{handle: string, type: string, label: string, config: array<string, mixed>}> $innerDefs
+     * @param list<RepeaterInnerField> $innerDefs
      */
     private function renderRow(
         string $name,

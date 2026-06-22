@@ -16,6 +16,7 @@ use yii\base\Component;
 
 /**
  * @phpstan-import-type SubmissionData from Submission
+ * @phpstan-type EmailAttachment array{content: string, fileName: string, contentType: string}
  */
 class EmailService extends Component
 {
@@ -57,7 +58,7 @@ class EmailService extends Component
      * download links.
      *
      * @param array<string, mixed> $data
-     * @return list<array{content: string, fileName: string, contentType: string}>
+     * @return list<EmailAttachment>
      */
     private function attachmentsFor(NotificationModel $notification, Form $form, Submission $submission, array $data): array
     {
@@ -103,7 +104,7 @@ class EmailService extends Component
      * Resolve the submission's file-field uploads to attachment payloads.
      *
      * @param array<string, mixed> $data
-     * @return list<array{content: string, fileName: string, contentType: string}>
+     * @return list<EmailAttachment>
      */
     private function uploadAttachments(array $data): array
     {
@@ -178,7 +179,7 @@ class EmailService extends Component
      * Compose + send one email.
      *
      * @param list<string>|string $to
-     * @param list<array{content: string, fileName: string, contentType: string}> $attachments
+     * @param list<EmailAttachment> $attachments
      */
     private function send(array|string $to, string $subject, string $body, ?string $replyTo, array $attachments = []): bool
     {

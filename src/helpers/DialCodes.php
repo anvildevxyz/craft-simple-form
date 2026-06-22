@@ -15,6 +15,8 @@ use Craft;
  * per site. The labels are not added to the shipped translation catalogs (they
  * are proper nouns and degrade to English at runtime, which is acceptable).
  *
+ * @phpstan-type DialCode array{dial: string, label: string}
+ *
  * @author Fabian Haefliger
  * @since 5.x
  */
@@ -27,7 +29,7 @@ final class DialCodes
     /**
      * The curated country list, keyed by ISO-3166-1 alpha-2 code.
      *
-     * @var array<string, array{dial: string, label: string}>
+     * @var array<string, DialCode>
      */
     private const COUNTRIES = [
         'CH' => ['dial' => '+41', 'label' => 'Switzerland'],
@@ -66,7 +68,7 @@ final class DialCodes
     /**
      * The full curated country map, keyed by ISO code.
      *
-     * @return array<string, array{dial: string, label: string}>
+     * @return array<string, DialCode>
      */
     public static function all(): array
     {
@@ -107,7 +109,7 @@ final class DialCodes
      * skipped. Keys are upper-cased.
      *
      * @param list<string> $allowed
-     * @return array<string, array{dial: string, label: string}>
+     * @return array<string, DialCode>
      */
     public static function allowed(array $allowed): array
     {

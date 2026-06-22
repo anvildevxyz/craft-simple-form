@@ -24,6 +24,8 @@ use fabianhaef\simpleform\services\FieldTypeRegistry;
  * Composite fields (Name/Address) are the exception: rather than pipe-joining
  * their sub-part map into one cell, each composite **flattens** into one column
  * per stored sub-field, header `"<field label> — <sub-field label>"`.
+ *
+ * @phpstan-type CsvColumn array{key: string, sub: ?string, label: string}
  */
 final class SubmissionCsv
 {
@@ -37,7 +39,7 @@ final class SubmissionCsv
      *
      * @var list<string>
      */
-    private const ASSET_TYPES = ['file', 'signature'];
+    private const ASSET_TYPES = FieldTypeRegistry::ASSET_TYPES;
 
     /**
      * Per-export id => resolved asset reference (public URL, or `Asset #id` when
@@ -418,7 +420,7 @@ final class SubmissionCsv
      * <sub>']`). The union across submissions keeps mixed forms aligned.
      *
      * @param array<int, Submission> $submissions
-     * @return list<array{key: string, sub: ?string, label: string}>
+     * @return list<CsvColumn>
      */
     private static function discoverColumns(array $submissions): array
     {
@@ -465,7 +467,7 @@ final class SubmissionCsv
      * The ordered scalar cell values for one submission against the discovered
      * column list (a missing field/sub-field yields an empty cell).
      *
-     * @param list<array{key: string, sub: ?string, label: string}> $columns
+     * @param list<CsvColumn> $columns
      * @return list<string>
      */
     private static function rowValues(Submission $submission, array $columns): array

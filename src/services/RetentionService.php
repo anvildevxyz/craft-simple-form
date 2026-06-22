@@ -154,7 +154,7 @@ class RetentionService extends Component
                 continue;
             }
             foreach ($data as $entry) {
-                if (!is_array($entry) || !in_array($entry['type'] ?? null, ['file', 'signature'], true)) {
+                if (!is_array($entry) || !in_array($entry['type'] ?? null, FieldTypeRegistry::ASSET_TYPES, true)) {
                     continue;
                 }
                 foreach ((array) ($entry['value'] ?? []) as $assetId) {
