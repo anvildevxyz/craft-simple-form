@@ -109,6 +109,25 @@ class FormRenderTest extends SimpleFormTestCase
         }
     }
 
+    public function testPerFormPathIgnoredWhenSwitchOff(): void
+    {
+        $this->requireCraft();
+
+        // A stored per-form path must be ignored entirely when the switch is off:
+        // the gate short-circuits to built-in markup before the path is consulted.
+        $form = $this->createForm('Contact', 'render_path_off');
+        $this->createField((int) $form->id, 'text', 'name', 'Your name', true);
+        $form->templatePath = '_sf-theme';
+        $form->useCustomTemplate = false;
+        Craft::$app->getElements()->saveElement($form);
+        Plugin::getInstance()->getFormStructure()->invalidate((int) $form->id);
+
+        $html = Plugin::getInstance()->getFormRender()->renderForm('render_path_off');
+
+        $this->assertStringNotContainsString('class="my-field"', $html, 'Stored path must be ignored when the switch is off.');
+        $this->assertStringContainsString('<form class="simple-form"', $html);
+    }
+
     public function testInvalidPathDegradesGracefully(): void
     {
         $this->requireCraft();

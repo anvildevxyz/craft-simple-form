@@ -22,17 +22,26 @@ class m260622_000002_form_use_custom_template extends Migration
 
     public function safeUp(): bool
     {
-        if (!$this->db->columnExists(self::TABLE, 'useCustomTemplate')) {
-            $this->addColumn(
-                self::TABLE,
-                'useCustomTemplate',
-                $this->boolean()->notNull()->defaultValue(false)->after('templatePath'),
-            );
+        if ($this->db->columnExists(self::TABLE, 'useCustomTemplate')) {
+            return true;
         }
 
-        $globalDefault = trim((string) (
-            Craft::$app->getProjectConfig()->get('plugins.simple-form.settings.templatePath') ?? ''
-        ));
+        $this->addColumn(
+            self::TABLE,
+            'useCustomTemplate',
+            $this->boolean()->notNull()->defaultValue(false)->after('templatePath'),
+        );
+
+        // Resolve the global default with the same precedence Craft applies in
+        // Plugin::getSettings() — a config/simple-form.php override on top of
+        // project config — so a file-only global default isn't missed and the
+        // forms it was rendering aren't silently left switched off. Read from
+        // config directly: the plugin instance isn't available while migrations
+        // apply (e.g. the integration test harness).
+        $fileConfig = Craft::$app->getConfig()->getConfigFromFile('simple-form');
+        $global = (is_array($fileConfig) ? ($fileConfig['templatePath'] ?? null) : null)
+            ?? Craft::$app->getProjectConfig()->get('plugins.simple-form.settings.templatePath');
+        $globalDefault = is_string($global) ? trim($global) : '';
 
         if ($globalDefault !== '') {
             // The global default was rendering for every form — keep them all on.
