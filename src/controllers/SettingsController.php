@@ -78,12 +78,15 @@ class SettingsController extends Controller
         // tab's fields (e.g. the required defaultEmailSender on the Email tab).
         $values = $settings->getAttributes();
 
+        $bool = array_flip(self::BOOL_FIELDS);
+        $float = array_flip(self::FLOAT_FIELDS);
+        $int = array_flip(self::INT_FIELDS);
         foreach (self::TAB_FIELDS[$tab] as $field) {
-            if (in_array($field, self::BOOL_FIELDS, true)) {
+            if (isset($bool[$field])) {
                 $values[$field] = (bool) $request->getBodyParam($field);
-            } elseif (in_array($field, self::FLOAT_FIELDS, true)) {
+            } elseif (isset($float[$field])) {
                 $values[$field] = (float) $request->getBodyParam($field, $values[$field] ?? 0.5);
-            } elseif (in_array($field, self::INT_FIELDS, true)) {
+            } elseif (isset($int[$field])) {
                 $values[$field] = (int) $request->getBodyParam($field, $values[$field] ?? 0);
             } else {
                 $value = $request->getBodyParam($field, $values[$field] ?? null);
@@ -96,10 +99,9 @@ class SettingsController extends Controller
         if (!Craft::$app->getPlugins()->savePluginSettings($plugin, $values)) {
             $settings = $plugin->getSettings();
             $firstErrors = $settings->getFirstErrors();
-            $error = $firstErrors
-                ? reset($firstErrors)
-                : Craft::t('simple-form', 'Couldn’t save settings.');
-            Craft::$app->getSession()->setError($error);
+            Craft::$app->getSession()->setError(
+                $firstErrors ? reset($firstErrors) : Craft::t('simple-form', 'Couldn’t save settings.'),
+            );
 
             // Re-render the same tab with the invalid model so errors show inline.
             Craft::$app->getUrlManager()->setRouteParams([
@@ -183,7 +185,7 @@ class SettingsController extends Controller
             // an inline template macro and the translation catalog).
             $vars['mcpScopeLabels'] = array_combine(
                 Scopes::all(),
-                array_map([Scopes::class, 'label'], Scopes::all()),
+                array_map(Scopes::label(...), Scopes::all()),
             );
             // Plaintext secret is only ever surfaced once, immediately after
             // creation, via the flash set in actionCreateMcpToken().

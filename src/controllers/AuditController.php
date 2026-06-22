@@ -26,13 +26,16 @@ class AuditController extends Controller
         $entries = Plugin::getInstance()->getAudit()->recent(200, $action ?: null);
 
         // Resolve actor names once.
+        $users = Craft::$app->getUsers();
         $userNames = [];
         foreach ($entries as $entry) {
-            $uid = $entry['userId'] !== null ? (int) $entry['userId'] : null;
-            if ($uid !== null && !isset($userNames[$uid])) {
-                $user = Craft::$app->getUsers()->getUserById($uid);
-                $userNames[$uid] = $user ? ($user->fullName ?: $user->username) : ('#' . $uid);
+            if ($entry['userId'] === null) {
+                continue;
             }
+            $uid = (int) $entry['userId'];
+            $userNames[$uid] ??= ($user = $users->getUserById($uid))
+                ? ($user->fullName ?: $user->username)
+                : ('#' . $uid);
         }
 
         return $this->renderTemplate('simple-form/settings/index', [

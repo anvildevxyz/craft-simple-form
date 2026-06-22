@@ -31,6 +31,8 @@ class SubmissionsController extends Controller
 
         return true;
     }
+
+
     /**
      * Build the submissions query from the current request's filters (form,
      * status, search, date range) for the current site — shared by the index
@@ -57,11 +59,11 @@ class SubmissionsController extends Controller
         // the shape avoids malformed date literals producing surprising results.
         $dateFrom = $request->getQueryParam('dateFrom');
         if (is_string($dateFrom) && preg_match('/^\d{4}-\d{2}-\d{2}$/', $dateFrom)) {
-            $query->andWhere(['>=', 'elements.dateCreated', $dateFrom . ' 00:00:00']);
+            $query->andWhere(['>=', 'elements.dateCreated', "$dateFrom 00:00:00"]);
         }
         $dateTo = $request->getQueryParam('dateTo');
         if (is_string($dateTo) && preg_match('/^\d{4}-\d{2}-\d{2}$/', $dateTo)) {
-            $query->andWhere(['<=', 'elements.dateCreated', $dateTo . ' 23:59:59']);
+            $query->andWhere(['<=', 'elements.dateCreated', "$dateTo 23:59:59"]);
         }
 
         return $query;
@@ -73,12 +75,11 @@ class SubmissionsController extends Controller
         $request = Craft::$app->getRequest();
         $siteId = Craft::$app->getSites()->getCurrentSite()->id;
 
-        $submissions = $this->buildFilteredQuery($request, $siteId)->all();
-        $csv = \fabianhaef\simpleform\helpers\SubmissionCsv::fromSubmissions($submissions);
+        $csv = \fabianhaef\simpleform\helpers\SubmissionCsv::fromSubmissions(
+            $this->buildFilteredQuery($request, $siteId)->all()
+        );
 
-        return $this->response->sendContentAsFile($csv, 'submissions.csv', [
-            'mimeType' => 'text/csv',
-        ]);
+        return $this->response->sendContentAsFile($csv, 'submissions.csv', ['mimeType' => 'text/csv']);
     }
 
     public function actionIndex(): Response
@@ -101,20 +102,10 @@ class SubmissionsController extends Controller
         // entire table (e.g. ?perPage=99999999) and exhaust memory.
         $page = max(1, (int) ($request->getQueryParam('page') ?? 1));
         $perPage = max(1, min((int) $request->getQueryParam('perPage', 50), 500));
-        $query->offset(($page - 1) * $perPage)
-            ->limit($perPage);
-
-        $submissions = $query->all();
-
-        $allForms = Form::find()
-            ->siteId($siteId)
-            ->orderBy(['title' => SORT_ASC])
-            ->all();
-
-        $stats = $this->getSubmissionStats($siteId, $formId !== null ? (int) $formId : null);
+        $query->offset(($page - 1) * $perPage)->limit($perPage);
 
         return $this->renderTemplate('simple-form/submissions/index', [
-            'submissions' => $submissions,
+            'submissions' => $query->all(),
             'total' => $total,
             'page' => $page,
             'perPage' => $perPage,
@@ -123,17 +114,9 @@ class SubmissionsController extends Controller
             'search' => $search,
             'dateFrom' => $dateFrom,
             'dateTo' => $dateTo,
-            'forms' => $allForms,
-            'stats' => $stats,
+            'forms' => Form::find()->siteId($siteId)->orderBy(['title' => SORT_ASC])->all(),
+            'stats' => Plugin::getInstance()->getReports()->statusBreakdown($siteId, $formId !== null ? (int) $formId : null),
         ]);
-    }
-
-    /**
-     * @return array<string, int>
-     */
-    private function getSubmissionStats(int $siteId, ?int $formId = null): array
-    {
-        return Plugin::getInstance()->getReports()->statusBreakdown($siteId, $formId);
     }
 
     /**
@@ -154,12 +137,7 @@ class SubmissionsController extends Controller
         }
 
         $element = Craft::$app->getElements()->getElementById((int) $elementId, $elementType, '*');
-        if ($element === null) {
-            return null;
-        }
-
-        $url = $element->getCpEditUrl();
-        if ($url === null) {
+        if ($element === null || ($url = $element->getCpEditUrl()) === null) {
             return null;
         }
 
@@ -209,11 +187,7 @@ class SubmissionsController extends Controller
     {
         $siteId = Craft::$app->getSites()->getCurrentSite()->id;
 
-        $submission = Submission::find()
-            ->siteId($siteId)
-            ->id($submissionId)
-            ->one();
-
+        $submission = Submission::find()->siteId($siteId)->id($submissionId)->one();
         if (!$submission) {
             throw new \yii\web\NotFoundHttpException('Submission not found');
         }
@@ -235,8 +209,7 @@ class SubmissionsController extends Controller
         // keyed by log id.
         $elementLinks = [];
         foreach ($logs as $log) {
-            $link = $this->elementLink($log);
-            if ($link !== null) {
+            if (($link = $this->elementLink($log)) !== null) {
                 $elementLinks[(int) $log['id']] = $link;
             }
         }
@@ -308,19 +281,14 @@ class SubmissionsController extends Controller
         $submissionId = $request->getRequiredBodyParam('submissionId');
         $siteId = Craft::$app->getSites()->getCurrentSite()->id;
 
-        $submission = Submission::find()
-            ->siteId($siteId)
-            ->id($submissionId)
-            ->one();
-
+        $submission = Submission::find()->siteId($siteId)->id($submissionId)->one();
         if (!$submission) {
             return $this->asJsonError(Craft::t('simple-form', 'Couldn’t update the status.'));
         }
 
         $statuses = SubmissionStatus::all();
         $currentIndex = array_search($submission->readStatus, $statuses);
-        $nextIndex = ($currentIndex + 1) % count($statuses);
-        $submission->readStatus = $statuses[$nextIndex];
+        $submission->readStatus = $statuses[($currentIndex + 1) % count($statuses)];
 
         if (!Craft::$app->getElements()->saveElement($submission)) {
             return $this->asJsonError(Craft::t('simple-form', 'Couldn’t update the status.'));

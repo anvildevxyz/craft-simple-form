@@ -37,6 +37,11 @@ class IntegrationsController extends Controller
         ]);
     }
 
+    private function service(): \fabianhaef\simpleform\services\IntegrationsService
+    {
+        return Plugin::getInstance()->getIntegrations();
+    }
+
     /**
      * Per-form screen: every global integration with a toggle controlling
      * whether it is attached to (dispatched for) this form.
@@ -44,7 +49,7 @@ class IntegrationsController extends Controller
     public function actionIndex(int $formId): Response
     {
         $form = $this->getFormOrFail($formId);
-        $service = Plugin::getInstance()->getIntegrations();
+        $service = $this->service();
 
         return $this->renderTemplate('simple-form/forms/integrations/index', [
             'form' => $form,
@@ -62,11 +67,8 @@ class IntegrationsController extends Controller
         $registry = Plugin::getInstance()->getIntegrationTypeRegistry();
 
         $integration = null;
-        if ($integrationId !== null) {
-            $integration = Plugin::getInstance()->getIntegrations()->getIntegrationById($integrationId);
-            if ($integration === null) {
-                throw new NotFoundHttpException('Integration not found');
-            }
+        if ($integrationId !== null && ($integration = $this->service()->getIntegrationById($integrationId)) === null) {
+            throw new NotFoundHttpException('Integration not found');
         }
 
         /** @var \craft\web\Request $request */
@@ -102,18 +104,13 @@ class IntegrationsController extends Controller
 
         $integrationId = $request->getBodyParam('integrationId');
         $registry = Plugin::getInstance()->getIntegrationTypeRegistry();
-        $service = Plugin::getInstance()->getIntegrations();
+        $service = $this->service();
 
         $integration = null;
-        if ($integrationId) {
-            $integration = $service->getIntegrationById((int) $integrationId);
-            if ($integration === null) {
-                throw new NotFoundHttpException('Integration not found');
-            }
+        if ($integrationId && ($integration = $service->getIntegrationById((int) $integrationId)) === null) {
+            throw new NotFoundHttpException('Integration not found');
         }
-        if ($integration === null) {
-            $integration = new IntegrationModel();
-        }
+        $integration ??= new IntegrationModel();
 
         $integration->type = (string) $request->getRequiredBodyParam('type');
         $integration->name = (string) $request->getBodyParam('name', $integration->type);
@@ -149,9 +146,8 @@ class IntegrationsController extends Controller
         $request = Craft::$app->getRequest();
 
         $integrationId = (int) $request->getRequiredBodyParam('integrationId');
-        $deleted = Plugin::getInstance()->getIntegrations()->deleteIntegration($integrationId);
 
-        if (!$deleted) {
+        if (!$this->service()->deleteIntegration($integrationId)) {
             return $this->asJsonError(Craft::t('simple-form', 'Couldn’t complete that action.'));
         }
 
@@ -168,7 +164,7 @@ class IntegrationsController extends Controller
         /** @var \craft\web\Request $request */
         $request = Craft::$app->getRequest();
 
-        $service = Plugin::getInstance()->getIntegrations();
+        $service = $this->service();
         $integration = $service->getIntegrationById((int) $request->getRequiredBodyParam('integrationId'));
         if ($integration === null) {
             return $this->asJsonError(Craft::t('simple-form', 'Couldn’t complete that action.'));
@@ -192,7 +188,7 @@ class IntegrationsController extends Controller
 
         $formId = (int) $request->getRequiredBodyParam('formId');
         $integrationId = (int) $request->getRequiredBodyParam('integrationId');
-        $service = Plugin::getInstance()->getIntegrations();
+        $service = $this->service();
 
         if ($service->getIntegrationById($integrationId) === null) {
             return $this->asJsonError(Craft::t('simple-form', 'Couldn’t complete that action.'));
@@ -216,8 +212,7 @@ class IntegrationsController extends Controller
         $integrationId = (int) $request->getRequiredBodyParam('integrationId');
         $submissionId = (int) $request->getRequiredBodyParam('submissionId');
 
-        $service = Plugin::getInstance()->getIntegrations();
-        $integration = $service->getIntegrationById($integrationId);
+        $integration = $this->service()->getIntegrationById($integrationId);
         $submission = Submission::find()->id($submissionId)->one();
 
         if ($integration === null || $submission === null) {
@@ -241,7 +236,7 @@ class IntegrationsController extends Controller
     {
         return $this->renderTemplate('simple-form/settings/integrations/failures', [
             'selectedSettingsSubnavItem' => 'integrations',
-            'failures' => Plugin::getInstance()->getIntegrations()->getFailedDispatches(),
+            'failures' => $this->service()->getFailedDispatches(),
             'typeNames' => Plugin::getInstance()->getIntegrationTypeRegistry()->getAllTypes(),
         ]);
     }
@@ -255,7 +250,7 @@ class IntegrationsController extends Controller
 
         $queue = Craft::$app->getQueue();
         $count = 0;
-        foreach (Plugin::getInstance()->getIntegrations()->getFailedDispatches() as $failure) {
+        foreach ($this->service()->getFailedDispatches() as $failure) {
             if ($failure['submissionId'] === null) {
                 continue;
             }

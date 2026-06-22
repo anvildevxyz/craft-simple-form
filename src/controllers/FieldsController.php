@@ -218,10 +218,9 @@ class FieldsController extends Controller
         try {
             $ordered = [];
             foreach ($fields as $index => $field) {
-                if (!isset($field['id'])) {
-                    continue;
+                if (isset($field['id'])) {
+                    $ordered[(int) $field['id']] = $index + 1;
                 }
-                $ordered[(int) $field['id']] = $index + 1;
             }
             $fieldIds = array_keys($ordered);
 
@@ -299,10 +298,9 @@ class FieldsController extends Controller
             $errors['type'][] = 'Invalid field type';
         }
 
-        if (in_array($type, FieldTypeRegistry::OPTION_TYPES, true)) {
-            if (empty($config['options']) || !is_array($config['options'])) {
-                $errors['config'][] = $type . ' fields must have at least one option';
-            }
+        if (in_array($type, FieldTypeRegistry::OPTION_TYPES, true)
+            && (empty($config['options']) || !is_array($config['options']))) {
+            $errors['config'][] = $type . ' fields must have at least one option';
         }
 
         return $errors;
@@ -317,10 +315,7 @@ class FieldsController extends Controller
     private function supportedSiteIds(int $formId, int $currentSiteId): array
     {
         $form = Form::find()->id($formId)->siteId('*')->status(null)->one();
-        if (!$form) {
-            return [$currentSiteId];
-        }
 
-        return $form->supportedSiteIds() ?: [$currentSiteId];
+        return $form ? ($form->supportedSiteIds() ?: [$currentSiteId]) : [$currentSiteId];
     }
 }

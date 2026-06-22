@@ -36,11 +36,12 @@ class SubmitController extends Controller
             ]);
         }
 
-        $settings = Plugin::getInstance()->getSettings();
+        $plugin = Plugin::getInstance();
+        $submissions = $plugin->getSubmissionService();
 
         // Abuse throttle (shared with the GraphQL submit path). Over the limit
         // returns 429 with the standard error envelope; 0 disables it.
-        if (Plugin::getInstance()->getSubmissionService()->isRateLimited($request->getUserIP())) {
+        if ($submissions->isRateLimited($request->getUserIP())) {
             $message = Craft::t('simple-form', 'Too many submissions. Please wait a moment and try again.');
             $this->response->setStatusCode(429);
             return $this->asJson([
@@ -67,7 +68,7 @@ class SubmitController extends Controller
         // userId, then routes through the shared submit() path so validation,
         // spam protection, events, and email all run identically to the GraphQL
         // mutation. Building values here would skip file-field handling.
-        $result = Plugin::getInstance()->getSubmissionService()->createFromRequest($form, $request);
+        $result = $submissions->createFromRequest($form, $request);
 
         // A silently-dropped honeypot hit returns no submission and no errors:
         // report success so bots get no signal, but never persist the row. No row
@@ -75,7 +76,7 @@ class SubmitController extends Controller
         if ($result['submission'] === null && $result['errors'] === null) {
             return $this->asJson([
                 'success' => true,
-                'message' => $settings->submitMessage,
+                'message' => $plugin->getSettings()->submitMessage,
                 'redirectUrl' => null,
             ]);
         }
@@ -99,11 +100,7 @@ class SubmitController extends Controller
 
         // Resolve the per-form post-submit behavior (message + optional redirect),
         // sharing the exact resolution the GraphQL path uses.
-        $post = Plugin::getInstance()->getSubmissionService()->resolvePostSubmit(
-            $form,
-            $result['submission'],
-            $result['data'] ?? [],
-        );
+        $post = $submissions->resolvePostSubmit($form, $result['submission'], $result['data'] ?? []);
 
         return $this->asJson([
             'success' => true,
@@ -123,34 +120,34 @@ class SubmitController extends Controller
         $this->requirePostRequest();
         /** @var \craft\web\Request $request */
         $request = Craft::$app->getRequest();
+        $siteId = Craft::$app->getSites()->getCurrentSite()->id;
 
-        $formHandle = (string) $request->getBodyParam('formHandle', '');
         $form = Form::find()
-            ->handle($formHandle)
-            ->siteId(Craft::$app->getSites()->getCurrentSite()->id)
+            ->handle((string) $request->getBodyParam('formHandle', ''))
+            ->siteId($siteId)
             ->one();
 
         if (!$form instanceof Form || !$form->allowSaveResume) {
             return $this->asJson(['success' => false]);
         }
 
-        if (Plugin::getInstance()->getSubmissionService()->isRateLimited($request->getUserIP())) {
+        $plugin = Plugin::getInstance();
+        if ($plugin->getSubmissionService()->isRateLimited($request->getUserIP())) {
             $this->response->setStatusCode(429);
 
             return $this->asJson(['success' => false]);
         }
 
-        $values = [];
-        foreach ($request->getBodyParams() as $key => $value) {
-            if (is_string($key) && str_starts_with($key, 'field_')) {
-                $values[$key] = $value;
-            }
-        }
+        $values = array_filter(
+            $request->getBodyParams(),
+            static fn($key) => is_string($key) && str_starts_with($key, 'field_'),
+            ARRAY_FILTER_USE_KEY,
+        );
 
         $existingToken = (string) $request->getBodyParam('sfresume', '');
-        $token = Plugin::getInstance()->getDrafts()->save(
+        $token = $plugin->getDrafts()->save(
             (int) $form->id,
-            Craft::$app->getSites()->getCurrentSite()->id,
+            $siteId,
             $values,
             $existingToken !== '' ? $existingToken : null,
         );

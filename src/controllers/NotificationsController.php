@@ -49,14 +49,7 @@ class NotificationsController extends Controller
             $notification->name = (string) Craft::t('simple-form', 'New notification');
         }
 
-        return $this->renderTemplate('simple-form/forms/notifications/edit', [
-            'form' => $form,
-            'notification' => $notification,
-            'fieldOptions' => $this->fieldOptions($form),
-            'operators' => ConditionalEvaluator::OPERATORS,
-            'pdfAvailable' => Plugin::getInstance()->getPdf()->isAvailable(),
-            'errors' => [],
-        ]);
+        return $this->renderEdit($form, $notification, []);
     }
 
     public function actionSave(): Response
@@ -95,14 +88,7 @@ class NotificationsController extends Controller
 
         if (!$service->save($notification)) {
             Craft::$app->getSession()->setError(Craft::t('simple-form', 'Couldn’t save notification.'));
-            return $this->renderTemplate('simple-form/forms/notifications/edit', [
-                'form' => $form,
-                'notification' => $notification,
-                'fieldOptions' => $this->fieldOptions($form),
-                'operators' => ConditionalEvaluator::OPERATORS,
-                'pdfAvailable' => Plugin::getInstance()->getPdf()->isAvailable(),
-                'errors' => $notification->getErrors(),
-            ]);
+            return $this->renderEdit($form, $notification, $notification->getErrors());
         }
 
         Craft::$app->getSession()->setNotice(Craft::t('simple-form', 'Notification saved.'));
@@ -138,6 +124,23 @@ class NotificationsController extends Controller
     }
 
     /**
+     * Shared render of the notification edit screen.
+     *
+     * @param array<string, mixed> $errors
+     */
+    private function renderEdit(Form $form, NotificationModel $notification, array $errors): Response
+    {
+        return $this->renderTemplate('simple-form/forms/notifications/edit', [
+            'form' => $form,
+            'notification' => $notification,
+            'fieldOptions' => $this->fieldOptions($form),
+            'operators' => ConditionalEvaluator::OPERATORS,
+            'pdfAvailable' => Plugin::getInstance()->getPdf()->isAvailable(),
+            'errors' => $errors,
+        ]);
+    }
+
+    /**
      * Assemble a single-rule conditional config from the posted fields, or null
      * when the editor didn't enable a condition.
      *
@@ -154,23 +157,19 @@ class NotificationsController extends Controller
             return null;
         }
 
+        // F19 (CWE-20): only persist a known operator.
+        $operator = (string) $request->getBodyParam('conditionOperator', 'eq');
+
         return [
             'enabled' => true,
             'match' => ConditionalEvaluator::MATCH_ALL,
             'action' => ConditionalEvaluator::ACTION_SHOW,
             'rules' => [[
                 'field' => $field,
-                // F19 (CWE-20): only persist a known operator.
-                'operator' => $this->normalizeOperator((string) $request->getBodyParam('conditionOperator', 'eq')),
+                'operator' => in_array($operator, ConditionalEvaluator::OPERATORS, true) ? $operator : 'eq',
                 'value' => (string) $request->getBodyParam('conditionValue', ''),
             ]],
         ];
-    }
-
-    /** Clamp a posted condition operator to the supported set, defaulting to eq. */
-    private function normalizeOperator(string $operator): string
-    {
-        return in_array($operator, ConditionalEvaluator::OPERATORS, true) ? $operator : 'eq';
     }
 
     /**
@@ -181,16 +180,11 @@ class NotificationsController extends Controller
     private function fieldOptions(Form $form): array
     {
         $fields = Plugin::getInstance()->getFormStructure()->getFieldSet((int) $form->id, (int) $form->siteId);
-        $options = [];
-        foreach ($fields as $field) {
-            $options[(string) $field['name']] = (string) $field['label'];
-        }
-        return $options;
+        return array_map('strval', array_column($fields, 'label', 'name'));
     }
 
     private function nullableString(mixed $value): ?string
     {
-        $value = is_string($value) ? trim($value) : '';
-        return $value === '' ? null : $value;
+        return ($value = is_string($value) ? trim($value) : '') === '' ? null : $value;
     }
 }

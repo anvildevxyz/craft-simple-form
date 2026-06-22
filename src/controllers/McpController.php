@@ -111,16 +111,14 @@ class McpController extends Controller
         Plugin::getInstance()->getMcpTokenManager()->touch($token);
 
         // 5. Parse the JSON-RPC body.
-        $raw = $request->getRawBody();
-        $decoded = json_decode($raw, true);
+        $decoded = json_decode($request->getRawBody(), true);
         if (!is_array($decoded)) {
             $response->data = $this->jsonRpcError(null, -32700, 'Parse error.');
             return $response;
         }
 
         // 6. Dispatch through the transport-agnostic server.
-        $server = new McpServer();
-        $result = $server->handle($decoded, $token);
+        $result = (new McpServer())->handle($decoded, $token);
 
         // A notification yields no response body; reply 202 Accepted with no content.
         if ($result === null) {
@@ -146,11 +144,9 @@ class McpController extends Controller
             return null;
         }
 
-        $secret = trim($m[1]);
-
         /** @var TokenManager $manager */
         $manager = Plugin::getInstance()->getMcpTokenManager();
-        return $manager->validateSecret($secret);
+        return $manager->validateSecret(trim($m[1]));
     }
 
     /**

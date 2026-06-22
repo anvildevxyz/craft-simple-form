@@ -66,8 +66,8 @@ class SubmissionEditController extends Controller
             throw new NotFoundHttpException('Form not found');
         }
 
-        $settings = Plugin::getInstance()->getSettings();
-        $formModel = new FormModel($form);
+        $plugin = Plugin::getInstance();
+        $settings = $plugin->getSettings();
 
         // Build the values map, resolving file uploads to asset ids — mirrors
         // SubmissionService::createFromRequest so an edit collects values exactly
@@ -75,7 +75,7 @@ class SubmissionEditController extends Controller
         $values = [];
         $pendingUploads = [];
         $fileErrors = [];
-        foreach ($formModel->getFields() as $fieldId => $field) {
+        foreach ((new FormModel($form))->getFields() as $fieldId => $field) {
             if ($field->getType() === FileFieldType::getType()) {
                 $files = UploadedFile::getInstancesByName('field_' . $fieldId);
                 $config = $field->getConfig();
@@ -95,15 +95,14 @@ class SubmissionEditController extends Controller
             return $this->asJson(['success' => false, 'errors' => $fileErrors]);
         }
 
-        $uploadService = Plugin::getInstance()->getAssetUploadService();
+        $uploadService = $plugin->getAssetUploadService();
         $createdAssetIds = [];
         foreach ($pendingUploads as $fieldId => $info) {
-            $ids = $uploadService->saveUploads($info['files'], $info['config']);
-            $values[$fieldId] = $ids;
+            $values[$fieldId] = $ids = $uploadService->saveUploads($info['files'], $info['config']);
             $createdAssetIds = array_merge($createdAssetIds, $ids);
         }
 
-        $result = Plugin::getInstance()->getSubmissionService()->update($submission, $values, [
+        $result = $plugin->getSubmissionService()->update($submission, $values, [
             'honeypot' => (string) $request->getBodyParam('__honeypot', ''),
             'captchaToken' => null,
             'actor' => $actor,
@@ -115,12 +114,8 @@ class SubmissionEditController extends Controller
             $uploadService->deleteAssets(...$createdAssetIds);
         }
 
-        // Silent drop (honeypot/blocked spam): report success so a bot gets no
-        // signal, but persist nothing.
-        if ($result['submission'] === null && $result['errors'] === null) {
-            return $this->asJson(['success' => true, 'message' => $settings->submitMessage]);
-        }
-
+        // A real validation error reports the errors; otherwise success — including
+        // a silent honeypot/blocked-spam drop, so a bot gets no signal.
         if (!empty($result['errors'])) {
             return $this->asJson(['success' => false, 'errors' => $result['errors']]);
         }

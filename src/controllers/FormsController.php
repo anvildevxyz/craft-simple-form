@@ -41,11 +41,7 @@ class FormsController extends Controller
         Form::eagerLoadFields($forms);
 
         $stencils = array_map(
-            static fn($stencil): array => [
-                'handle' => $stencil->handle,
-                'name' => $stencil->name,
-                'description' => $stencil->description,
-            ],
+            static fn($s): array => ['handle' => $s->handle, 'name' => $s->name, 'description' => $s->description],
             array_values(Plugin::getInstance()->getStencilLibrary()->getAll()),
         );
 
@@ -83,7 +79,7 @@ class FormsController extends Controller
         }
 
         // Fetch fields with this site's translatable label/helpText, in builder shape.
-        $fields = $form->id ? $this->getFieldsForForm((int)$form->id, $site->id) : [];
+        $fields = $form->id ? FieldQueryHelper::fieldsForForm((int)$form->id, $site->id) : [];
 
         return $this->renderEdit($form, $site, $this->fieldsToBuilderJson($fields));
     }
@@ -121,11 +117,8 @@ class FormsController extends Controller
 
         // Post-submit behavior (#133). The message/URL/error overrides are
         // per-site translatable content; the action + entry id are shared.
-        $form->postSubmitAction = in_array(
-            (string) $request->getBodyParam('postSubmitAction', 'message'),
-            Form::POST_SUBMIT_ACTIONS,
-            true,
-        ) ? (string) $request->getBodyParam('postSubmitAction', 'message') : 'message';
+        $postSubmitAction = (string) $request->getBodyParam('postSubmitAction', 'message');
+        $form->postSubmitAction = in_array($postSubmitAction, Form::POST_SUBMIT_ACTIONS, true) ? $postSubmitAction : 'message';
         $redirectEntryId = $request->getBodyParam('redirectEntryId');
         if (is_array($redirectEntryId)) {
             $redirectEntryId = reset($redirectEntryId) ?: null;
@@ -140,8 +133,8 @@ class FormsController extends Controller
         // Scheduling window + quota. Empty inputs clear the bound (open-ended /
         // unlimited). forms.dateTimeField posts a {date, time, timezone} array,
         // which DateTimeHelper::toDateTime normalises (returns false when blank).
-        $openDate = DateTimeHelper::toDateTime($request->getBodyParam('openDate')) ?: null;
-        $closeDate = DateTimeHelper::toDateTime($request->getBodyParam('closeDate')) ?: null;
+        $openDate = DateTimeHelper::toDateTime($request->getBodyParam('openDate'));
+        $closeDate = DateTimeHelper::toDateTime($request->getBodyParam('closeDate'));
         $form->openDate = $openDate instanceof \DateTime ? $openDate : null;
         $form->closeDate = $closeDate instanceof \DateTime ? $closeDate : null;
         $submissionLimit = $request->getBodyParam('submissionLimit');
@@ -396,11 +389,7 @@ class FormsController extends Controller
         // the builder as a flat list rather than through the translation path.
         $phoneCountries = [];
         foreach (DialCodes::all() as $iso => $meta) {
-            $phoneCountries[] = [
-                'iso' => $iso,
-                'dial' => $meta['dial'],
-                'label' => DialCodes::label($iso),
-            ];
+            $phoneCountries[] = ['iso' => $iso, 'dial' => $meta['dial'], 'label' => DialCodes::label($iso)];
         }
 
         $identity = Craft::$app->getUser()->getIdentity();
@@ -442,7 +431,7 @@ class FormsController extends Controller
         $app = Craft::$app;
 
         $map = static fn(array $items): array => array_values(array_map(
-            static fn($item): array => ['handle' => (string) $item->handle, 'name' => (string) $item->name],
+            static fn($i): array => ['handle' => (string) $i->handle, 'name' => (string) $i->name],
             $items,
         ));
 
@@ -476,7 +465,7 @@ class FormsController extends Controller
      */
     private function fieldsToBuilderJson(array $fields): string
     {
-        $items = array_map(static fn(array $f): array => [
+        return $this->encodeBuilderJson(array_map(static fn(array $f): array => [
             'id' => (int)$f['id'],
             'type' => (string)$f['type'],
             'handle' => (string)$f['name'],
@@ -488,9 +477,7 @@ class FormsController extends Controller
                 is_array($f['config'] ?? null) ? $f['config'] : [],
                 is_array($f['optionLabels'] ?? null) ? $f['optionLabels'] : []
             ),
-        ], $fields);
-
-        return $this->encodeBuilderJson($items);
+        ], $fields));
     }
 
     /**
@@ -534,16 +521,6 @@ class FormsController extends Controller
     }
 
     /**
-     * Load a form's fields joined to the given site's translatable label/helpText.
-     *
-     * @return array<int,array<string,mixed>>
-     */
-    private function getFieldsForForm(int $formId, int $siteId): array
-    {
-        return FieldQueryHelper::fieldsForForm($formId, $siteId);
-    }
-
-    /**
      * The sites this form is (or would be) saved to AND the user may edit, for
      * the native CP header site selector.
      *
@@ -551,15 +528,12 @@ class FormsController extends Controller
      */
     private function getSupportedSitesForForm(Form $form): array
     {
-        $editableSiteIds = Craft::$app->getSites()->getEditableSiteIds();
+        $sitesService = Craft::$app->getSites();
+        $editableSiteIds = $sitesService->getEditableSiteIds();
         $sites = [];
         foreach ($form->getSupportedSites() as $id) {
             $siteId = is_array($id) ? $id['siteId'] : $id;
-            if (!in_array($siteId, $editableSiteIds, true)) {
-                continue;
-            }
-            $site = Craft::$app->getSites()->getSiteById($siteId);
-            if ($site) {
+            if (in_array($siteId, $editableSiteIds, true) && ($site = $sitesService->getSiteById($siteId))) {
                 $sites[] = $site;
             }
         }
