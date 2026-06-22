@@ -25,8 +25,10 @@ class FieldBuilderTest extends TestCase
         $this->assertTrue($ref->hasMethod('sync'));
 
         // Valid field types are sourced from the registry, not a hardcoded list.
+        // (The registry may be held in a local before typeHandles() is called.)
         $code = $this->source('services/FieldSyncService.php');
-        $this->assertStringContainsString('getFieldTypeRegistry()->typeHandles()', $code);
+        $this->assertStringContainsString('getFieldTypeRegistry()', $code);
+        $this->assertStringContainsString('typeHandles()', $code);
         $this->assertStringNotContainsString("'text', 'email', 'textarea'", $code);
     }
 

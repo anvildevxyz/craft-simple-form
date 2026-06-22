@@ -10,6 +10,20 @@
     { label: (form.title ?: form.name), url: cpUrl('simple-form/forms/edit/' ~ form.id) },
 ] %}
 
+{# Shared form tab strip. The form's own panes live on the edit screen, so those
+   four tabs deep-link back there (#anchor honoured by the CP asset's JS);
+   Notifications/Integrations are the sibling pages. #}
+{% set editUrl = cpUrl('simple-form/forms/edit/' ~ form.id) %}
+{% set tabs = {
+    build: { label: 'Build'|t('simple-form'), url: editUrl ~ '#build' },
+    details: { label: 'Details'|t('simple-form'), url: editUrl ~ '#details' },
+    confirmation: { label: 'Confirmation'|t('simple-form'), url: editUrl ~ '#confirmation' },
+    rules: { label: 'Rules'|t('simple-form'), url: editUrl ~ '#rules' },
+    notifications: { label: 'Notifications'|t('simple-form'), url: cpUrl('simple-form/forms/' ~ form.id ~ '/notifications') },
+    integrations: { label: 'Integrations'|t('simple-form'), url: cpUrl('simple-form/forms/' ~ form.id ~ '/integrations') },
+} %}
+{% set selectedTab = 'notifications' %}
+
 {% block actionButton %}
     <a class="btn submit add icon" href="{{ cpUrl('simple-form/forms/' ~ form.id ~ '/notifications/new') }}">
         {{ 'New notification'|t('simple-form') }}

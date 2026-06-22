@@ -95,7 +95,9 @@ class SettingsTest extends TestCase
         // values silently drops file uploads (regression guarded here).
         $code = $this->source('controllers/SubmitController.php');
 
-        $this->assertStringContainsString('getSubmissionService()->createFromRequest(', $code);
+        // The service may be held in a local before createFromRequest() is called.
+        $this->assertStringContainsString('getSubmissionService()', $code);
+        $this->assertStringContainsString('->createFromRequest(', $code);
         $this->assertStringContainsString('submitMessage', $code);
     }
 

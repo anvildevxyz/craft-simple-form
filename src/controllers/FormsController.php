@@ -109,10 +109,11 @@ class FormsController extends Controller
         $form->handle = $request->getBodyParam('handle');
         $form->title = $request->getBodyParam('title');
         $form->description = $request->getBodyParam('description');
-        $form->emailTo = $request->getBodyParam('emailTo');
-        $form->emailSubject = $request->getBodyParam('emailSubject');
-        $form->emailReplyTo = $request->getBodyParam('emailReplyTo');
-        $form->emailBody = $request->getBodyParam('emailBody');
+        // Email config has moved to the form's Notifications screen; the built-in
+        // emailTo/emailSubject/emailReplyTo/emailBody columns are no longer edited
+        // here. They are intentionally NOT read from the post, so an existing
+        // form's stored values are preserved on save; the legacy send path remains
+        // a dormant fallback for forms that have no notification rows.
         $form->allowSaveResume = (bool) $request->getBodyParam('allowSaveResume');
 
         // Post-submit behavior (#133). The message/URL/error overrides are

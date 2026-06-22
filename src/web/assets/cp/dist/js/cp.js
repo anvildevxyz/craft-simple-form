@@ -12,6 +12,45 @@
     var csrf = window.Craft && Craft.csrfTokenValue;
 
     /**
+     * Form editor tabs: honour an incoming `#pane` hash (e.g. arriving from the
+     * Notifications/Integrations screens, whose tab strip deep-links back here)
+     * by activating that tab. Craft.CP wires the in-page panes but selects the
+     * server-rendered default tab on load, so deep-links need a nudge. Inert
+     * when there's no `#tabs` strip or the hash matches no tab.
+     */
+    function activateHashTab(attempt) {
+        var hash = window.location.hash;
+        if (!hash || hash.charAt(0) !== '#') {
+            return;
+        }
+        var tabs = document.getElementById('tabs');
+        if (!tabs) {
+            return;
+        }
+        var tab = tabs.querySelector('a[role="tab"][href="' + hash + '"]');
+        if (!tab || tab.classList.contains('sel')) {
+            return;
+        }
+        var cp = window.Craft && Craft.cp;
+        if (cp && cp.tabManager) {
+            cp.tabManager.selectTab(tab);
+            return;
+        }
+        // The tab manager isn't wired yet on first paint; retry briefly, then
+        // fall back to a native click (which Craft.Tabs also listens for).
+        if ((attempt || 0) < 20) {
+            setTimeout(function () { activateHashTab((attempt || 0) + 1); }, 50);
+        } else {
+            tab.click();
+        }
+    }
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', function () { activateHashTab(0); });
+    } else {
+        activateHashTab(0);
+    }
+
+    /**
      * POST form-encoded body, expecting a JSON `{success, error}` response.
      * Mirrors the controllers' requireAcceptsJson() contract.
      */

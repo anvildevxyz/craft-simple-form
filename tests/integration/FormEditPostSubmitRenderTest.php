@@ -62,7 +62,9 @@ class FormEditPostSubmitRenderTest extends SimpleFormTestCase
         $form = $this->createForm('Render', 'render_postsubmit');
         $html = $this->render($form);
 
-        $this->assertStringContainsString('After Submit', $html);
+        // The after-submit controls now live in the "Confirmation" tab pane
+        // (the standalone "After Submit" heading was replaced by the tab label).
+        $this->assertStringContainsString('id="confirmation"', $html);
         $this->assertStringContainsString('name="submitMessage"', $html);
         $this->assertStringContainsString('name="postSubmitAction"', $html);
         $this->assertStringContainsString('name="redirectUrl"', $html);

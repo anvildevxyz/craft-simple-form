@@ -185,7 +185,8 @@ final class SubmissionCsv
     /** The public URL for an asset, or an `Asset #id` reference as a fallback. */
     private static function assetReference(int $assetId): string
     {
-        $url = Asset::find()->id($assetId)->one()?->getUrl();
+        $asset = Asset::find()->id($assetId)->one();
+        $url = $asset instanceof Asset ? $asset->getUrl() : null;
         return is_string($url) && $url !== '' ? $url : 'Asset #' . $assetId;
     }
 

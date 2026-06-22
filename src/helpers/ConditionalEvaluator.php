@@ -245,7 +245,11 @@ class ConditionalEvaluator
             : str_contains(self::scalarString($actual), $exp);
     }
 
-    /** Whether any array element string-equals $exp. */
+    /**
+     * Whether any array element string-equals $exp.
+     *
+     * @param array<array-key, mixed> $actual
+     */
     private static function hasMember(array $actual, string $exp): bool
     {
         foreach ($actual as $item) {
