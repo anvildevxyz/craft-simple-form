@@ -34,7 +34,9 @@ class SendIntegrationJob extends BaseJob implements RetryableJobInterface
         if ($integration === null) {
             return;
         }
-        $submission = Submission::find()->id($this->submissionId)->one();
+        // Worker runs in primary-site context: search across all sites so a
+        // submission made on a non-primary site is still found (matches SendNotifications).
+        $submission = Submission::find()->siteId('*')->id($this->submissionId)->one();
         if ($submission === null) {
             return;
         }
