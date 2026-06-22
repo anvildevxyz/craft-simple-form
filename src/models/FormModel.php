@@ -8,23 +8,14 @@ use yii\base\Model;
 
 class FormModel extends Model
 {
-    private Form $form;
     /** @var array<int, FieldModel> */
     private array $fields = [];
 
-    public function __construct(Form $form)
+    public function __construct(private Form $form)
     {
         parent::__construct();
-        $this->form = $form;
-        $this->loadFields();
-    }
-
-    private function loadFields(): void
-    {
         // Use the form's own site so labels/help text match the loaded form's language.
-        $rawFields = FieldQueryHelper::fieldsForForm((int)$this->form->id, $this->form->siteId);
-
-        foreach ($rawFields as $rawField) {
+        foreach (FieldQueryHelper::fieldsForForm((int)$form->id, $form->siteId) as $rawField) {
             $this->fields[$rawField['id']] = new FieldModel(
                 (int) $rawField['id'],
                 $rawField['type'],

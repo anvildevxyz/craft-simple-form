@@ -249,15 +249,16 @@ class Settings extends Model
      */
     protected function defineRules(): array
     {
+        $recaptcha = fn(string $type): bool => $this->enableCaptcha
+            && $this->selectedCaptchaProvider === 'recaptcha'
+            && $this->captchaType === $type;
+        $provider = fn(string $name): bool => $this->enableCaptcha && $this->selectedCaptchaProvider === $name;
+
         return [
             [['defaultEmailSender'], 'required'],
             // Skip the email format check for env references (`$VAR`), which only
             // resolve at runtime.
-            [
-                ['defaultEmailSender'],
-                'email',
-                'when' => fn(): bool => !$this->isEnvReference($this->defaultEmailSender),
-            ],
+            [['defaultEmailSender'], 'email', 'when' => fn(): bool => !str_starts_with((string) $this->defaultEmailSender, '$')],
             [['enableHoneypot', 'enableCaptcha', 'cacheFormStructure', 'inlineFormAssets', 'enableMcp', 'dispatchIntegrationsSynchronously', 'enableAkismet', 'anonymizeInsteadOfDelete', 'allowGraphqlCaptchaBypass', 'enableDenylists'], 'boolean'],
             [['retainSubmissionsDays', 'retainIntegrationLogsDays', 'retainAuditLogDays', 'submitRateLimitPerMinute', 'maxAttachmentSizeMb'], 'integer', 'min' => 0],
             [['pdfStorageVolume'], 'string'],
@@ -275,30 +276,10 @@ class Settings extends Model
             [['storageLocation'], 'in', 'range' => ['database']],
             [['templatePath'], 'string'],
             [['recaptchaV3MinScore'], 'number', 'min' => 0, 'max' => 1],
-            [
-                ['recaptchaV3SiteKey', 'recaptchaV3SecretKey'],
-                'required',
-                'when' => fn(): bool => $this->enableCaptcha
-                    && $this->selectedCaptchaProvider === 'recaptcha'
-                    && $this->captchaType === self::CAPTCHA_V3,
-            ],
-            [
-                ['recaptchaV2SiteKey', 'recaptchaV2SecretKey'],
-                'required',
-                'when' => fn(): bool => $this->enableCaptcha
-                    && $this->selectedCaptchaProvider === 'recaptcha'
-                    && $this->captchaType === self::CAPTCHA_V2,
-            ],
-            [
-                ['turnstileSiteKey', 'turnstileSecretKey'],
-                'required',
-                'when' => fn(): bool => $this->enableCaptcha && $this->selectedCaptchaProvider === 'turnstile',
-            ],
-            [
-                ['hcaptchaSiteKey', 'hcaptchaSecretKey'],
-                'required',
-                'when' => fn(): bool => $this->enableCaptcha && $this->selectedCaptchaProvider === 'hcaptcha',
-            ],
+            [['recaptchaV3SiteKey', 'recaptchaV3SecretKey'], 'required', 'when' => fn(): bool => $recaptcha(self::CAPTCHA_V3)],
+            [['recaptchaV2SiteKey', 'recaptchaV2SecretKey'], 'required', 'when' => fn(): bool => $recaptcha(self::CAPTCHA_V2)],
+            [['turnstileSiteKey', 'turnstileSecretKey'], 'required', 'when' => fn(): bool => $provider('turnstile')],
+            [['hcaptchaSiteKey', 'hcaptchaSecretKey'], 'required', 'when' => fn(): bool => $provider('hcaptcha')],
         ];
     }
 
@@ -361,11 +342,7 @@ class Settings extends Model
 
         foreach (preg_split('/\R/', $value) ?: [] as $line) {
             $entry = trim((string) $line);
-            if ($entry === '') {
-                continue;
-            }
-
-            if (!DenylistService::isValidIpEntry($entry)) {
+            if ($entry !== '' && !DenylistService::isValidIpEntry($entry)) {
                 $this->addError($attribute, Craft::t('simple-form', 'Invalid IP or CIDR range: {entry}', ['entry' => $entry]));
             }
         }
@@ -377,15 +354,10 @@ class Settings extends Model
             return null;
         }
 
+        // parseEnv can return a bool for boolean env references; only non-empty
+        // string values are meaningful here.
         $parsed = App::parseEnv($value);
 
-        // parseEnv can return a bool for boolean env references; only string
-        // values are meaningful here.
         return is_string($parsed) && $parsed !== '' ? $parsed : null;
-    }
-
-    private function isEnvReference(?string $value): bool
-    {
-        return is_string($value) && str_starts_with($value, '$');
     }
 }

@@ -67,11 +67,7 @@ class NotificationModel extends Model
      */
     public function validatePdfAvailable(string $attribute): void
     {
-        if (!$this->attachPdf) {
-            return;
-        }
-
-        if (!Plugin::getInstance()->getPdf()->isAvailable()) {
+        if ($this->attachPdf && !Plugin::getInstance()->getPdf()->isAvailable()) {
             $this->addError($attribute, Craft::t(
                 'simple-form',
                 'Install the dompdf library to attach a submission PDF.',

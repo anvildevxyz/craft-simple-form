@@ -9,27 +9,20 @@ use yii\base\Model;
 
 class FieldModel extends Model
 {
-    private int $id;
-    private string $type;
-    private string $name;
-    private ?string $label;
-    /** @var array<string, mixed> */
-    private array $config;
-    private ?string $errorMessage;
-
     /**
      * @param array<string, mixed> $config
      * @param string|null $errorMessage optional per-site validation message override
      */
-    public function __construct(int $id, string $type, string $name, ?string $label = null, array $config = [], ?string $errorMessage = null)
-    {
+    public function __construct(
+        private int $id,
+        private string $type,
+        private string $name,
+        private ?string $label = null,
+        /** @var array<string, mixed> */
+        private array $config = [],
+        private ?string $errorMessage = null,
+    ) {
         parent::__construct();
-        $this->id = $id;
-        $this->type = $type;
-        $this->name = $name;
-        $this->label = $label;
-        $this->config = $config;
-        $this->errorMessage = $errorMessage;
     }
 
     public function getId(): int
@@ -73,7 +66,7 @@ class FieldModel extends Model
     public function isInputType(): bool
     {
         $fieldType = Plugin::getInstance()->getFieldTypeRegistry()->getFieldType($this->type, $this->config);
-        return $fieldType === null || $fieldType->isInput();
+        return $fieldType?->isInput() ?? true;
     }
 
     /**
@@ -121,14 +114,12 @@ class FieldModel extends Model
             return [];
         }
 
-        $fieldTypeRegistry = Plugin::getInstance()->getFieldTypeRegistry();
-
         // Resolve effective required-ness (static OR conditional) and let the
         // field type enforce it, so there is a single required code path.
         $config = $this->config;
         $config['required'] = $this->isRequired($formData);
 
-        $fieldType = $fieldTypeRegistry->getFieldType($this->type, $config);
+        $fieldType = Plugin::getInstance()->getFieldTypeRegistry()->getFieldType($this->type, $config);
 
         // An unregistered type is a recoverable data state (e.g. a field whose
         // type was removed from the plugin), so it degrades to a validation
@@ -155,11 +146,7 @@ class FieldModel extends Model
     public function persistValue(mixed $value, array $context = []): mixed
     {
         $fieldType = Plugin::getInstance()->getFieldTypeRegistry()->getFieldType($this->type, $this->config);
-        if (!$fieldType) {
-            return $value;
-        }
-
-        return $fieldType->persistValue($value, $context);
+        return $fieldType ? $fieldType->persistValue($value, $context) : $value;
     }
 
     /**
@@ -191,11 +178,7 @@ class FieldModel extends Model
      */
     public static function applyOverride(array $errors, ?string $override): array
     {
-        $override = $override !== null ? trim($override) : '';
-        if ($errors === [] || $override === '') {
-            return $errors;
-        }
-
-        return [$override];
+        $override = trim($override ?? '');
+        return ($errors === [] || $override === '') ? $errors : [$override];
     }
 }
