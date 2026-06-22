@@ -15,10 +15,10 @@
    Notifications/Integrations are the sibling pages. #}
 {% set editUrl = cpUrl('simple-form/forms/edit/' ~ form.id) %}
 {% set tabs = {
-    build: { label: 'Build'|t('simple-form'), url: editUrl ~ '#build' },
-    details: { label: 'Details'|t('simple-form'), url: editUrl ~ '#details' },
-    confirmation: { label: 'Confirmation'|t('simple-form'), url: editUrl ~ '#confirmation' },
-    rules: { label: 'Rules'|t('simple-form'), url: editUrl ~ '#rules' },
+    'sf-build': { label: 'Build'|t('simple-form'), url: editUrl ~ '#sf-build' },
+    'sf-details': { label: 'Details'|t('simple-form'), url: editUrl ~ '#sf-details' },
+    'sf-confirmation': { label: 'Confirmation'|t('simple-form'), url: editUrl ~ '#sf-confirmation' },
+    'sf-rules': { label: 'Rules'|t('simple-form'), url: editUrl ~ '#sf-rules' },
     notifications: { label: 'Notifications'|t('simple-form'), url: cpUrl('simple-form/forms/' ~ form.id ~ '/notifications') },
     integrations: { label: 'Integrations'|t('simple-form'), url: cpUrl('simple-form/forms/' ~ form.id ~ '/integrations') },
 } %}

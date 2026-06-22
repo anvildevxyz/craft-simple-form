@@ -68,7 +68,9 @@ class FormEditTabsRenderTest extends SimpleFormTestCase
         $this->assertStringContainsString('id="tabs"', $html);
 
         // ...and each in-page pane is rendered with the id the tab anchor targets.
-        foreach (['build', 'details', 'confirmation', 'rules'] as $pane) {
+        // Ids are sf-* namespaced so they can't collide with reserved Craft CP
+        // ids (an unprefixed `details` would inherit the meta sidebar width).
+        foreach (['sf-build', 'sf-details', 'sf-confirmation', 'sf-rules'] as $pane) {
             $this->assertStringContainsString('id="' . $pane . '"', $html);
         }
 
