@@ -62,12 +62,6 @@ final class Formula
     // PRIVATE PROPERTIES
     // =========================================================================
 
-    /** @var list<array{type: string, value: string}> */
-    private array $tokens;
-
-    /** @var array<string, float> handle => numeric value */
-    private array $refs;
-
     private int $pos = 0;
 
     private int $depth = 0;
@@ -80,10 +74,12 @@ final class Formula
      * @param list<array{type: string, value: string}> $tokens
      * @param array<string, float> $refs
      */
-    private function __construct(array $tokens, array $refs)
-    {
-        $this->tokens = $tokens;
-        $this->refs = $refs;
+    private function __construct(
+        /** @var list<array{type: string, value: string}> */
+        private array $tokens,
+        /** @var array<string, float> handle => numeric value */
+        private array $refs,
+    ) {
     }
 
     /**
@@ -140,14 +136,14 @@ final class Formula
             if (ctype_digit($char) || ($char === '.' && $i + 1 < $length && ctype_digit($formula[$i + 1]))) {
                 $number = '';
                 $seenDot = false;
-                while ($i < $length && (ctype_digit($formula[$i]) || $formula[$i] === '.')) {
-                    if ($formula[$i] === '.') {
+                while ($i < $length && (ctype_digit($c = $formula[$i]) || $c === '.')) {
+                    if ($c === '.') {
                         if ($seenDot) {
                             throw new FormulaException('Malformed number literal.');
                         }
                         $seenDot = true;
                     }
-                    $number .= $formula[$i];
+                    $number .= $c;
                     $i++;
                 }
                 $tokens[] = ['type' => 'number', 'value' => $number];
@@ -175,20 +171,21 @@ final class Formula
             // Bareword: an allow-listed function name only.
             if (ctype_alpha($char)) {
                 $word = '';
-                while ($i < $length && (ctype_alnum($formula[$i]) || $formula[$i] === '_')) {
-                    $word .= $formula[$i];
+                while ($i < $length && (ctype_alnum($c = $formula[$i]) || $c === '_')) {
+                    $word .= $c;
                     $i++;
                 }
-                if (!array_key_exists(strtolower($word), self::FUNCTIONS)) {
+                $lower = strtolower($word);
+                if (!array_key_exists($lower, self::FUNCTIONS)) {
                     throw new FormulaException('Unknown function: ' . $word . '.');
                 }
-                $tokens[] = ['type' => 'func', 'value' => strtolower($word)];
+                $tokens[] = ['type' => 'func', 'value' => $lower];
                 self::guardCount($tokens);
                 continue;
             }
 
             // Single-character operators and grouping.
-            if (in_array($char, ['+', '-', '*', '/', '(', ')', ','], true)) {
+            if (str_contains('+-*/(),', $char)) {
                 $tokens[] = ['type' => $char, 'value' => $char];
                 self::guardCount($tokens);
                 $i++;
@@ -237,17 +234,12 @@ final class Formula
     {
         $refs = [];
         foreach ($valuesByHandle as $handle => $value) {
-            if (is_array($value)) {
-                // Multi-value (checkbox group) has no scalar numeric meaning.
-                $refs[$handle] = 0.0;
-                continue;
-            }
-            $refs[$handle] = is_numeric($value) ? (float) $value : 0.0;
+            // Multi-value (checkbox group) has no scalar numeric meaning -> 0.0.
+            $refs[$handle] = (!is_array($value) && is_numeric($value)) ? (float) $value : 0.0;
         }
 
-        // When missingAsZero is off the lookup still resolves to 0.0 (formula
-        // grammar has no notion of "skip"); the flag is reserved for future
-        // strict modes and documented as no-op in v1.
+        // missingAsZero is a documented no-op in v1: the lookup always resolves
+        // to 0.0 (the grammar has no notion of "skip"); reserved for strict modes.
         unset($missingAsZero);
 
         return $refs;
@@ -276,7 +268,7 @@ final class Formula
             $value = $op === '+' ? $value + $rhs : $value - $rhs;
         }
 
-        $this->leave();
+        $this->depth--;
         return $value;
     }
 
@@ -297,7 +289,7 @@ final class Formula
             }
         }
 
-        $this->leave();
+        $this->depth--;
         return $value;
     }
 
@@ -315,36 +307,36 @@ final class Formula
         }
 
         // Unary sign.
-        if ($token['type'] === '+' || $token['type'] === '-') {
+        if (($t = $token['type']) === '+' || $t === '-') {
             $this->next();
             $operand = $this->parseFactor();
-            $this->leave();
-            return $token['type'] === '-' ? -$operand : $operand;
+            $this->depth--;
+            return $t === '-' ? -$operand : $operand;
         }
 
-        if ($token['type'] === 'number') {
+        if ($t === 'number') {
             $this->next();
-            $this->leave();
+            $this->depth--;
             return (float) $token['value'];
         }
 
-        if ($token['type'] === 'ref') {
+        if ($t === 'ref') {
             $this->next();
-            $this->leave();
+            $this->depth--;
             return $this->refs[$token['value']] ?? 0.0;
         }
 
-        if ($token['type'] === '(') {
+        if ($t === '(') {
             $this->next();
             $value = $this->parseExpr();
             $this->expect(')');
-            $this->leave();
+            $this->depth--;
             return $value;
         }
 
-        if ($token['type'] === 'func') {
+        if ($t === 'func') {
             $value = $this->parseFunction($token['value']);
-            $this->leave();
+            $this->depth--;
             return $value;
         }
 
@@ -439,10 +431,5 @@ final class Formula
         if (++$this->depth > self::MAX_DEPTH) {
             throw new FormulaException('Formula is nested too deeply.');
         }
-    }
-
-    private function leave(): void
-    {
-        $this->depth--;
     }
 }

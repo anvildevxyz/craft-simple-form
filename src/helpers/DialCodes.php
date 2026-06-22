@@ -97,9 +97,8 @@ final class DialCodes
     public static function label(string $iso): string
     {
         $iso = strtoupper($iso);
-        $source = self::COUNTRIES[$iso]['label'] ?? $iso;
 
-        return Craft::t('simple-form', $source);
+        return Craft::t('simple-form', self::COUNTRIES[$iso]['label'] ?? $iso);
     }
 
     /**
@@ -112,10 +111,10 @@ final class DialCodes
      */
     public static function allowed(array $allowed): array
     {
-        $allowed = array_values(array_filter(array_map(
+        $allowed = array_filter(array_map(
             static fn(mixed $iso): string => strtoupper(trim((string) $iso)),
             $allowed,
-        )));
+        ));
 
         if ($allowed === []) {
             return self::COUNTRIES;

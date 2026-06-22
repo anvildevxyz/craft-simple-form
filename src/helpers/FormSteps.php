@@ -37,7 +37,7 @@ final class FormSteps
      */
     private static function pageOf(array $field): int
     {
-        $config = $field['config'] ?? [];
+        $config = $field['config'] ?? null;
         $page = is_array($config) ? ($config['page'] ?? 1) : 1;
         return (is_numeric($page) && (int) $page >= 1) ? (int) $page : 1;
     }

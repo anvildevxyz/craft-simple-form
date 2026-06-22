@@ -42,11 +42,7 @@ final class SafeUrl
         }
 
         $parts = parse_url($url);
-        if ($parts === false || !isset($parts['scheme'], $parts['host'])) {
-            return false;
-        }
-
-        if (!in_array(strtolower($parts['scheme']), ['http', 'https'], true)) {
+        if ($parts === false || !isset($parts['scheme'], $parts['host']) || !self::isHttp($parts['scheme'])) {
             return false;
         }
 
@@ -132,15 +128,7 @@ final class SafeUrl
     public static function isSafeRedirectUrl(string $url, ?string $siteHost = null): bool
     {
         $url = trim($url);
-        if ($url === '') {
-            return false;
-        }
-
-        if (preg_match('#^(javascript|data|vbscript):#i', $url)) {
-            return false;
-        }
-
-        if (str_starts_with($url, '//')) {
+        if ($url === '' || preg_match('#^(javascript|data|vbscript):#i', $url) || str_starts_with($url, '//')) {
             return false;
         }
 
@@ -149,11 +137,7 @@ final class SafeUrl
         }
 
         $parts = parse_url($url);
-        if ($parts === false || !isset($parts['scheme'], $parts['host'])) {
-            return false;
-        }
-
-        if (!in_array(strtolower($parts['scheme']), ['http', 'https'], true)) {
+        if ($parts === false || !isset($parts['scheme'], $parts['host']) || !self::isHttp($parts['scheme'])) {
             return false;
         }
 
@@ -173,15 +157,7 @@ final class SafeUrl
     public static function isAcceptableRedirectTemplate(string $template): bool
     {
         $template = trim($template);
-        if ($template === '') {
-            return false;
-        }
-
-        if (preg_match('#^(javascript|data|vbscript):#i', $template)) {
-            return false;
-        }
-
-        if (str_starts_with($template, '//')) {
+        if ($template === '' || preg_match('#^(javascript|data|vbscript):#i', $template) || str_starts_with($template, '//')) {
             return false;
         }
 
@@ -189,13 +165,9 @@ final class SafeUrl
             return true;
         }
 
-        $structural = preg_replace('/\{[a-zA-Z_][a-zA-Z0-9_]*\}/', 'x', $template) ?? $template;
-        $parts = parse_url($structural);
-        if ($parts === false || !isset($parts['scheme'], $parts['host'])) {
-            return false;
-        }
+        $parts = parse_url(preg_replace('/\{[a-zA-Z_][a-zA-Z0-9_]*\}/', 'x', $template) ?? $template);
 
-        return in_array(strtolower($parts['scheme']), ['http', 'https'], true);
+        return $parts !== false && isset($parts['scheme'], $parts['host']) && self::isHttp($parts['scheme']);
     }
 
     /**
@@ -229,12 +201,8 @@ final class SafeUrl
 
         $scheme = strtolower($parts['scheme'] ?? 'https');
         $port = $parts['port'] ?? ($scheme === 'https' ? 443 : 80);
-        $entries = [];
-        foreach ($ips as $ip) {
-            $entries[] = "{$host}:{$port}:{$ip}";
-        }
 
-        return ['curl' => [CURLOPT_RESOLVE => $entries]];
+        return ['curl' => [CURLOPT_RESOLVE => array_map(static fn(string $ip): string => "{$host}:{$port}:{$ip}", $ips)]];
     }
 
     /**
@@ -254,20 +222,22 @@ final class SafeUrl
             return [$host];
         }
 
-        $ips = gethostbynamel($host);
-        $ips = $ips === false ? [] : $ips;
+        $ips = gethostbynamel($host) ?: [];
 
         // Best-effort IPv6 lookup; ignored if DNS is unavailable.
-        $aaaa = @dns_get_record($host, DNS_AAAA);
-        if (is_array($aaaa)) {
-            foreach ($aaaa as $record) {
-                if (isset($record['ipv6']) && is_string($record['ipv6'])) {
-                    $ips[] = $record['ipv6'];
-                }
+        foreach (@dns_get_record($host, DNS_AAAA) ?: [] as $record) {
+            if (isset($record['ipv6']) && is_string($record['ipv6'])) {
+                $ips[] = $record['ipv6'];
             }
         }
 
         return array_values(array_unique($ips));
+    }
+
+    /** True when $scheme is http or https (case-insensitive). */
+    private static function isHttp(string $scheme): bool
+    {
+        return in_array(strtolower($scheme), ['http', 'https'], true);
     }
 
     /**

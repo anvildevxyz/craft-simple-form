@@ -75,15 +75,13 @@ class FieldQueryHelper
         foreach ($rows as $row) {
             $config = $row['config'] ? json_decode($row['config'], true) : [];
             // Guard against malformed/legacy values that don't decode to an array.
-            if (!is_array($config)) {
-                $config = [];
-            }
-            $row['required'] = (bool)$row['required'];
+            $config = is_array($config) ? $config : [];
+            $row['required'] = $required = (bool)$row['required'];
             // Field types read "required" from their config, so expose it there too.
-            $config['required'] = $row['required'];
+            $config['required'] = $required;
             $row['config'] = $config;
             // Fall back to the field handle when this site has no translated label yet.
-            $row['label'] = $row['label'] ?? $row['name'];
+            $row['label'] ??= $row['name'];
             // Per-site option-label overrides (value => label) for choice fields.
             $optionLabels = $row['optionLabels'] ? json_decode($row['optionLabels'], true) : [];
             $row['optionLabels'] = is_array($optionLabels) ? $optionLabels : [];

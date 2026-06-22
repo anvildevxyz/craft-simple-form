@@ -68,14 +68,10 @@ class ConditionalEvaluator
             return true;
         }
 
-        $action = ($conditional['action'] ?? self::ACTION_SHOW) === self::ACTION_HIDE
-            ? self::ACTION_HIDE
-            : self::ACTION_SHOW;
-
         $rulesMatch = self::rulesMatch($rules, self::normalizeMatch($conditional['match'] ?? self::MATCH_ALL), $values);
 
         // show: visible when rules match. hide: visible when they don't.
-        return $action === self::ACTION_SHOW ? $rulesMatch : !$rulesMatch;
+        return ($conditional['action'] ?? self::ACTION_SHOW) === self::ACTION_HIDE ? !$rulesMatch : $rulesMatch;
     }
 
     /**
@@ -124,10 +120,7 @@ class ConditionalEvaluator
 
         $handles = [];
         foreach ([$conditional['rules'] ?? [], ($conditional['required']['rules'] ?? [])] as $ruleSet) {
-            if (!is_array($ruleSet)) {
-                continue;
-            }
-            foreach ($ruleSet as $rule) {
+            foreach (is_array($ruleSet) ? $ruleSet : [] as $rule) {
                 if (is_array($rule) && isset($rule['field']) && $rule['field'] !== '') {
                     $handles[] = (string) $rule['field'];
                 }
@@ -145,21 +138,21 @@ class ConditionalEvaluator
      */
     private static function rulesMatch(array $rules, string $match, array $values): bool
     {
-        $results = [];
+        $any = $match === self::MATCH_ANY;
+        $seen = false;
         foreach ($rules as $rule) {
             if (!is_array($rule)) {
                 continue;
             }
-            $results[] = self::evaluateRule($rule, $values);
+            $seen = true;
+            // short-circuit: ANY needs one true, ALL fails on one false.
+            if (self::evaluateRule($rule, $values) === $any) {
+                return $any;
+            }
         }
 
-        if ($results === []) {
-            return true;
-        }
-
-        return $match === self::MATCH_ANY
-            ? in_array(true, $results, true)
-            : !in_array(false, $results, true);
+        // empty rule set => true; otherwise no short-circuit hit means ALL true / ANY all-false.
+        return !$seen || !$any;
     }
 
     /**
@@ -169,11 +162,8 @@ class ConditionalEvaluator
     private static function evaluateRule(array $rule, array $values): bool
     {
         $handle = isset($rule['field']) ? (string) $rule['field'] : '';
-        $operator = (string) ($rule['operator'] ?? 'eq');
-        $expected = $rule['value'] ?? '';
-        $actual = $values[$handle] ?? null;
 
-        return self::compare($operator, $actual, $expected);
+        return self::compare((string) ($rule['operator'] ?? 'eq'), $values[$handle] ?? null, $rule['value'] ?? '');
     }
 
     /**
@@ -181,28 +171,22 @@ class ConditionalEvaluator
      */
     public static function compare(string $operator, mixed $actual, mixed $expected): bool
     {
-        switch ($operator) {
-            case 'empty':
-                return self::isEmpty($actual);
-            case 'notEmpty':
-                return !self::isEmpty($actual);
-            case 'eq':
-                return self::eq($actual, $expected);
-            case 'neq':
-                return !self::eq($actual, $expected);
-            case 'contains':
-                return self::contains($actual, $expected);
-            case 'gt':
-                $a = self::comparable($actual);
-                $b = self::comparable($expected);
-                return $a !== null && $b !== null && $a > $b;
-            case 'lt':
-                $a = self::comparable($actual);
-                $b = self::comparable($expected);
-                return $a !== null && $b !== null && $a < $b;
-            default:
-                return false;
-        }
+        return match ($operator) {
+            'empty' => self::isEmpty($actual),
+            'notEmpty' => !self::isEmpty($actual),
+            'eq' => self::eq($actual, $expected),
+            'neq' => !self::eq($actual, $expected),
+            'contains' => self::contains($actual, $expected),
+            'gt', 'lt' => self::numericCompare($operator, $actual, $expected),
+            default => false, // unknown operators never match.
+        };
+    }
+
+    private static function numericCompare(string $operator, mixed $actual, mixed $expected): bool
+    {
+        $a = self::comparable($actual);
+        $b = self::comparable($expected);
+        return $a !== null && $b !== null && ($operator === 'gt' ? $a > $b : $a < $b);
     }
 
     /** Clamp a posted/stored match mode to the supported set, defaulting to MATCH_ALL. */
@@ -227,10 +211,9 @@ class ConditionalEvaluator
                     return false;
                 }
             }
-            return true;
         }
 
-        return false;
+        return is_array($value);
     }
 
     /**
@@ -242,16 +225,9 @@ class ConditionalEvaluator
     {
         $exp = self::scalarString($expected);
 
-        if (is_array($actual)) {
-            foreach ($actual as $item) {
-                if (self::scalarString($item) === $exp) {
-                    return true;
-                }
-            }
-            return false;
-        }
-
-        return self::scalarString($actual) === $exp;
+        return is_array($actual)
+            ? self::hasMember($actual, $exp)
+            : self::scalarString($actual) === $exp;
     }
 
     /**
@@ -264,16 +240,21 @@ class ConditionalEvaluator
             return false;
         }
 
-        if (is_array($actual)) {
-            foreach ($actual as $item) {
-                if (self::scalarString($item) === $exp) {
-                    return true;
-                }
+        return is_array($actual)
+            ? self::hasMember($actual, $exp)
+            : str_contains(self::scalarString($actual), $exp);
+    }
+
+    /** Whether any array element string-equals $exp. */
+    private static function hasMember(array $actual, string $exp): bool
+    {
+        foreach ($actual as $item) {
+            if (self::scalarString($item) === $exp) {
+                return true;
             }
-            return false;
         }
 
-        return str_contains(self::scalarString($actual), $exp);
+        return false;
     }
 
     /**
@@ -291,9 +272,7 @@ class ConditionalEvaluator
                 return (float) $value;
             }
             $timestamp = strtotime($value);
-            if ($timestamp !== false) {
-                return (float) $timestamp;
-            }
+            return $timestamp !== false ? (float) $timestamp : null;
         }
 
         return null;
@@ -301,16 +280,10 @@ class ConditionalEvaluator
 
     private static function scalarString(mixed $value): string
     {
-        if ($value === null || $value === false) {
-            return '';
-        }
-        if ($value === true) {
-            return '1';
-        }
-        if (is_array($value)) {
-            return '';
-        }
-
-        return (string) $value;
+        return match (true) {
+            $value === null, $value === false, is_array($value) => '',
+            $value === true => '1',
+            default => (string) $value,
+        };
     }
 }

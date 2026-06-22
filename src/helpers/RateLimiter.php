@@ -40,6 +40,7 @@ final class RateLimiter
     {
         $cache = Craft::$app->getCache();
         $cacheKey = self::PREFIX . $key;
+        // Read-then-write (TTL refreshed); not atomic by design — see class doc.
         $cache->set($cacheKey, (int) $cache->get($cacheKey) + 1, $windowSeconds);
     }
 }

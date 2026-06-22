@@ -49,8 +49,7 @@ final class FormRows
 
             // A field with no row hint, a different row value than the row being
             // built, or one that would overflow the cap, starts a fresh row.
-            $sameRow = $key !== null && $key === $currentKey && count($currentRow) < self::MAX_COLUMNS;
-            if (!$sameRow) {
+            if ($key === null || $key !== $currentKey || count($currentRow) >= self::MAX_COLUMNS) {
                 if ($currentRow !== []) {
                     $rows[] = $currentRow;
                 }
@@ -80,16 +79,9 @@ final class FormRows
      */
     private static function rowOf(array $field): ?int
     {
-        $config = $field['config'] ?? [];
-        if (!is_array($config)) {
-            return null;
-        }
+        $config = $field['config'] ?? null;
+        $row = is_array($config) ? ($config['row'] ?? null) : null;
 
-        $row = $config['row'] ?? null;
-        if (!is_numeric($row) || (int) $row < 1) {
-            return null;
-        }
-
-        return (int) $row;
+        return is_numeric($row) && (int) $row >= 1 ? (int) $row : null;
     }
 }

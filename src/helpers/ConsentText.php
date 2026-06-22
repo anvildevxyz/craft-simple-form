@@ -46,26 +46,20 @@ final class ConsentText
         $offset = 0;
 
         if (preg_match_all(self::LINK_PATTERN, $text, $matches, PREG_OFFSET_CAPTURE) > 0) {
-            foreach ($matches[0] as $i => $whole) {
-                $start = (int) $whole[1];
-
+            foreach ($matches[0] as $i => [$whole, $start]) {
                 // Escape the literal text preceding this token.
                 $out .= self::escape(substr($text, $offset, $start - $offset));
 
-                $label = $matches[1][$i][0];
+                $label = self::escape($matches[1][$i][0]);
                 $url = $matches[2][$i][0];
 
+                // A non-http(s) URL is neutralised: emit the visible label as
+                // plain escaped text, never a clickable javascript:/data: link.
                 $out .= self::isSafeUrl($url)
-                    ? sprintf(
-                        '<a href="%s" target="_blank" rel="noopener noreferrer">%s</a>',
-                        self::escape($url),
-                        self::escape($label),
-                    )
-                    // A non-http(s) URL is neutralised: emit the visible label as
-                    // plain escaped text, never a clickable javascript:/data: link.
-                    : self::escape($label);
+                    ? sprintf('<a href="%s" target="_blank" rel="noopener noreferrer">%s</a>', self::escape($url), $label)
+                    : $label;
 
-                $offset = $start + strlen($whole[0]);
+                $offset = $start + strlen($whole);
             }
         }
 

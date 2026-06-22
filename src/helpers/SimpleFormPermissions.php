@@ -18,23 +18,25 @@ class SimpleFormPermissions
      */
     public static function definitions(): array
     {
+        $t = static fn(string $m): string => Craft::t('simple-form', $m);
+
         return [
-            'heading' => Craft::t('simple-form', 'Simple Form'),
+            'heading' => $t('Simple Form'),
             'permissions' => [
                 self::MANAGE_FORMS => [
-                    'label' => Craft::t('simple-form', 'Manage forms and fields'),
+                    'label' => $t('Manage forms and fields'),
                     'nested' => [
-                        self::MANAGE_INTEGRATIONS => ['label' => Craft::t('simple-form', 'Manage form integrations')],
-                        self::EDIT_HTML_BLOCKS => ['label' => Craft::t('simple-form', 'Edit HTML layout blocks')],
+                        self::MANAGE_INTEGRATIONS => ['label' => $t('Manage form integrations')],
+                        self::EDIT_HTML_BLOCKS => ['label' => $t('Edit HTML layout blocks')],
                     ],
                 ],
                 self::VIEW_SUBMISSIONS => [
-                    'label' => Craft::t('simple-form', 'View submissions'),
+                    'label' => $t('View submissions'),
                     'nested' => [
-                        self::MANAGE_SUBMISSIONS => ['label' => Craft::t('simple-form', 'Toggle submission read status')],
+                        self::MANAGE_SUBMISSIONS => ['label' => $t('Toggle submission read status')],
                     ],
                 ],
-                self::MANAGE_SETTINGS => ['label' => Craft::t('simple-form', 'Manage plugin settings')],
+                self::MANAGE_SETTINGS => ['label' => $t('Manage plugin settings')],
             ],
         ];
     }

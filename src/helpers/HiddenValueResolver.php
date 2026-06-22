@@ -93,9 +93,7 @@ class HiddenValueResolver
             default => $userAttributes['email'] ?? null,
         };
 
-        $value = $value !== null && $value !== '' ? $value : $default;
-
-        return self::sanitize($value, $config);
+        return self::sanitize($value !== null && $value !== '' ? $value : $default, $config);
     }
 
     /**
@@ -115,14 +113,9 @@ class HiddenValueResolver
      */
     public static function sanitize(mixed $value, array $config): string
     {
-        $text = trim((string) (is_scalar($value) ? $value : ''));
-        $max = self::maxLength($config);
+        $text = trim(is_scalar($value) ? (string) $value : '');
 
-        if (mb_strlen($text) > $max) {
-            $text = mb_substr($text, 0, $max);
-        }
-
-        return $text;
+        return mb_substr($text, 0, self::maxLength($config));
     }
 
     /**

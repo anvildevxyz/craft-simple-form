@@ -60,27 +60,15 @@ final class SignaturePng
         }
 
         $payload = preg_replace('/\s+/', '', $m[1]) ?? '';
-        if ($payload === '') {
-            return null;
-        }
 
         // strict mode → reject any character outside the base64 alphabet.
-        $bytes = base64_decode($payload, true);
-        if ($bytes === false || $bytes === '') {
-            return null;
-        }
+        $bytes = $payload === '' ? '' : (base64_decode($payload, true) ?: '');
 
-        if (strlen($bytes) > $maxBytes) {
-            return null;
-        }
-
-        // Confirm the decoded bytes really are a PNG, independent of the
-        // declared media type above.
-        if (!str_starts_with($bytes, self::PNG_MAGIC)) {
-            return null;
-        }
-
-        return $bytes;
+        // Enforce the size ceiling and confirm the decoded bytes really are a
+        // PNG by magic bytes, independent of the declared media type above.
+        return $bytes !== '' && strlen($bytes) <= $maxBytes && str_starts_with($bytes, self::PNG_MAGIC)
+            ? $bytes
+            : null;
     }
 
     /**

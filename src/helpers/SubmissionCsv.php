@@ -43,7 +43,6 @@ final class SubmissionCsv
      */
     public static function fromSubmissions(array $submissions): string
     {
-        $meta = ['ID', 'Form', 'Status', 'Submitted'];
         $columns = self::discoverColumns($submissions);
 
         $handle = fopen('php://temp', 'r+');
@@ -51,26 +50,17 @@ final class SubmissionCsv
             return '';
         }
 
-        $header = $meta;
-        foreach ($columns as $col) {
-            $header[] = $col['label'];
-        }
-        fputcsv($handle, $header);
+        fputcsv($handle, ['ID', 'Form', 'Status', 'Submitted', ...array_column($columns, 'label')]);
 
         foreach ($submissions as $submission) {
             $form = $submission->getForm();
-            $line = [
+            fputcsv($handle, [
                 (string) $submission->id,
                 (string) ($form?->title ?? $form?->name ?? $submission->formId),
                 (string) $submission->readStatus,
                 $submission->dateCreated?->format('Y-m-d H:i:s') ?? '',
-            ];
-
-            foreach (self::rowValues($submission, $columns) as $value) {
-                $line[] = $value;
-            }
-
-            fputcsv($handle, $line);
+                ...self::rowValues($submission, $columns),
+            ]);
         }
 
         rewind($handle);
@@ -107,7 +97,6 @@ final class SubmissionCsv
             foreach ($columns as $i => $col) {
                 $row[$col['label']] = $values[$i];
             }
-
             $rows[] = $row;
         }
 
@@ -187,27 +176,17 @@ final class SubmissionCsv
             return $value;
         }
 
-        $refs = [];
-        foreach ((array) $value as $assetId) {
-            if (!is_numeric($assetId)) {
-                continue;
-            }
-            $refs[] = self::assetReference((int) $assetId);
-        }
-        return $refs;
+        return array_values(array_map(
+            static fn($id): string => self::assetReference((int) $id),
+            array_filter((array) $value, 'is_numeric'),
+        ));
     }
 
     /** The public URL for an asset, or an `Asset #id` reference as a fallback. */
     private static function assetReference(int $assetId): string
     {
-        $asset = Asset::find()->id($assetId)->one();
-        if ($asset instanceof Asset) {
-            $url = $asset->getUrl();
-            if (is_string($url) && $url !== '') {
-                return $url;
-            }
-        }
-        return 'Asset #' . $assetId;
+        $url = Asset::find()->id($assetId)->one()?->getUrl();
+        return is_string($url) && $url !== '' ? $url : 'Asset #' . $assetId;
     }
 
     /**
@@ -269,7 +248,7 @@ final class SubmissionCsv
             if (self::isRepeaterValue($value)) {
                 return self::neutralizeFormula((string) json_encode($value));
             }
-            return implode('|', array_map([self::class, 'scalar'], $value));
+            return implode('|', array_map(self::scalar(...), $value));
         }
         return self::neutralizeFormula((string) $value);
     }
@@ -292,7 +271,6 @@ final class SubmissionCsv
             try {
                 $at = ' (' . (new \DateTimeImmutable($record['consentedAt']))->format('Y-m-d H:i') . ')';
             } catch (\Exception) {
-                $at = '';
             }
         }
 
@@ -423,11 +401,9 @@ final class SubmissionCsv
      */
     private static function entryLabel(mixed $entry, string $fallback): string
     {
-        if (is_array($entry) && isset($entry['label']) && is_string($entry['label'])) {
-            return $entry['label'];
-        }
-
-        return $fallback;
+        return is_array($entry) && isset($entry['label']) && is_string($entry['label'])
+            ? $entry['label']
+            : $fallback;
     }
 
     /**

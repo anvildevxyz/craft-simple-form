@@ -38,17 +38,10 @@ class FormContentHelper
      */
     public static function fieldIdsByHandle(int $formId): array
     {
-        $rows = (new Query())
-            ->select(['id', 'name'])
+        return array_map('intval', (new Query())
+            ->select(['name', 'id'])
             ->from('{{%simpleform_fields}}')
             ->where(['formId' => $formId])
-            ->all();
-
-        $map = [];
-        foreach ($rows as $row) {
-            $map[(string) $row['name']] = (int) $row['id'];
-        }
-
-        return $map;
+            ->pairs());
     }
 }
