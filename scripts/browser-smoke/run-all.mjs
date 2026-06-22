@@ -51,7 +51,8 @@ async function login(page) {
 }
 
 async function saveForm(page) {
-  await page.getByRole('button', { name: /^Save$|Speichern/i }).click();
+  const save = page.locator('#header button[type="submit"].btn.submit, #content button[type="submit"].btn.submit').first();
+  await save.click();
   await page.waitForTimeout(1200);
 }
 
@@ -130,15 +131,10 @@ async function main() {
     const iid = lines[lines.length - 1]?.split('\t')[0]?.trim();
     if (!iid || iid === 'id') throw new Error('No Ops hook integration');
     await page.goto(`${CP}/simple-form/settings/integrations/${iid}?site=default`);
-    const enabledCheckbox = page.locator('input[type="checkbox"][name="enabled"]');
-    if (await enabledCheckbox.isChecked()) {
-      const lightswitch = page.locator('.field-enabled .lightswitch').first();
-      if (await lightswitch.count()) {
-        await lightswitch.click();
-      } else {
-        await enabledCheckbox.uncheck();
-      }
-    }
+    const lightswitch = page.locator('#enabled.lightswitch, .lightswitch-field .lightswitch').first();
+    await lightswitch.waitFor({ state: 'visible' });
+    const isOn = await lightswitch.evaluate((el) => el.classList.contains('on'));
+    if (isOn) await lightswitch.click();
     await saveForm(page);
     await page.waitForURL(/\/integrations/, { timeout: 15000 });
     const enabled = mysql(`SELECT enabled FROM simpleform_integrations WHERE id=${iid}`);
@@ -170,15 +166,17 @@ async function main() {
     await page.waitForLoadState('networkidle');
     const enableCaptcha = page.locator('input[type="checkbox"][name="enableCaptcha"]');
     if (!(await enableCaptcha.isChecked())) {
-      const lightswitch = page.locator('.field-enableCaptcha .lightswitch').first();
-      if (await lightswitch.count()) {
-        await lightswitch.click();
+      const checkboxId = await enableCaptcha.getAttribute('id');
+      if (checkboxId) {
+        await page.locator(`label[for="${checkboxId}"]`).click();
       } else {
-        await enableCaptcha.check();
+        await enableCaptcha.check({ force: true });
       }
     }
     await page.locator('#captcha-settings').waitFor({ state: 'visible' });
     await page.locator('#selectedCaptchaProvider').selectOption('turnstile');
+    await page.locator('input[name="turnstileSiteKey"]').fill('smoke-test-site-key');
+    await page.locator('input[name="turnstileSecretKey"]').fill('smoke-test-secret-key');
     await saveForm(page);
   });
 

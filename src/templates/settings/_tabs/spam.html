@@ -22,6 +22,7 @@
     name: 'enableCaptcha',
     value: 1,
     checked: settings.enableCaptcha ?? false,
+    toggle: '#captcha-settings',
     instructions: 'Add CAPTCHA verification to forms for additional spam protection.'|t('simple-form'),
 }) }}
 
@@ -152,6 +153,7 @@
     name: 'enableAkismet',
     value: 1,
     checked: settings.enableAkismet ?? false,
+    toggle: '#akismet-settings',
     instructions: 'Score each submission with Akismet and flag or block likely spam.'|t('simple-form'),
 }) }}
 
@@ -187,6 +189,7 @@
     name: 'enableDenylists',
     value: 1,
     checked: settings.enableDenylists ?? false,
+    toggle: '#denylist-settings',
     instructions: 'Block or flag submissions that match a keyword, email/domain, or IP you specify below.'|t('simple-form'),
 }) }}
 

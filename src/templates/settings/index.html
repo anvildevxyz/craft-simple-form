@@ -30,6 +30,8 @@
         <a class="btn submit add icon" href="{{ cpUrl('simple-form/settings/integrations/new') }}">
             {{ 'New Integration'|t('simple-form') }}
         </a>
+    {% elseif fullPageForm %}
+        {{ parent() }}
     {% endif %}
 {% endblock %}
 
