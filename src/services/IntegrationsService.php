@@ -620,10 +620,22 @@ class IntegrationsService extends Component
             ->indexBy('id')
             ->all();
 
+        // Batch-load the referenced submissions once (was an N+1 of up to $limit
+        // per-row queries); same default query semantics as the prior ->one().
+        $submissionIds = [];
+        foreach ($rows as $row) {
+            if ($row['submissionId'] !== null) {
+                $submissionIds[(int) $row['submissionId']] = true;
+            }
+        }
+        $submissions = $submissionIds === []
+            ? []
+            : Submission::find()->id(array_keys($submissionIds))->indexBy('id')->all();
+
         $out = [];
         foreach ($rows as $row) {
             $submission = $row['submissionId'] !== null
-                ? Submission::find()->id((int) $row['submissionId'])->one()
+                ? ($submissions[(int) $row['submissionId']] ?? null)
                 : null;
             $form = $submission?->getForm();
             $integration = $integrationNames[$row['integrationId']] ?? null;
