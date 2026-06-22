@@ -52,4 +52,15 @@ ok("string numeric row groups",
 
 ok("MAX_COLUMNS is 4", builder.MAX_COLUMNS === 4);
 
+// ---- column widths (widthOf) ----------------------------------------------
+var widthOf = builder.widthOf;
+function withWidth(w) { return { config: w === undefined ? {} : { width: w } }; }
+
+ok("no width → 1", widthOf(withWidth()) === 1);
+ok("width 2 honoured", widthOf(withWidth(2)) === 2);
+ok("string width coerced", widthOf(withWidth("3")) === 3);
+ok("width below 1 → 1", widthOf(withWidth(0)) === 1);
+ok("width clamped to MAX_COLUMNS", widthOf(withWidth(9)) === builder.MAX_COLUMNS);
+ok("invalid width → 1", widthOf(withWidth("x")) === 1);
+
 console.log("row-grouping.test.js: " + passed + " assertions passed");

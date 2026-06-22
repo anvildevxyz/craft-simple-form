@@ -227,6 +227,7 @@
 .sf-canvas .sf-empty { margin: 24px 0; text-align: center; }
 
 .sf-field {
+    position: relative;
     display: flex;
     align-items: center;
     gap: 10px;
@@ -250,6 +251,49 @@
 }
 .sf-field-del:hover { color: #cf2c2c; }
 .sf-grip { color: #b3bcc6; cursor: grab; user-select: none; letter-spacing: -2px; }
+
+/* Multi-column rows in the canvas mirror the front-end grid so paired fields
+   preview side by side; widths come from the inline --sf-cols custom property. */
+.sf-builder-row {
+    display: grid;
+    gap: 8px;
+    grid-template-columns: var(--sf-cols, 1fr);
+    margin-bottom: 8px;
+}
+.sf-builder-row .sf-field { margin-bottom: 0; min-width: 0; }
+
+/* Drop indicators: a bold insertion bar shows where a dragged field will land.
+   A horizontal bar (top/bottom) means a vertical reorder; a vertical bar at the
+   edge — plus a highlight on the target — means a side-by-side pairing. */
+.sf-field.drop-before::after,
+.sf-field.drop-after::after,
+.sf-field.drop-left::after,
+.sf-field.drop-right::after {
+    content: '';
+    position: absolute;
+    background: #1f6fff;
+    border-radius: 3px;
+    z-index: 3;
+    pointer-events: none;
+}
+.sf-field.drop-before::after { left: 0; right: 0; top: -6px; height: 4px; }
+.sf-field.drop-after::after { left: 0; right: 0; bottom: -6px; height: 4px; }
+.sf-field.drop-left::after { top: -2px; bottom: -2px; left: -6px; width: 4px; }
+.sf-field.drop-right::after { top: -2px; bottom: -2px; right: -6px; width: 4px; }
+/* The side-by-side target lights up so it's obvious the field joins this column. */
+.sf-field.drop-left,
+.sf-field.drop-right {
+    border-color: #1f6fff;
+    background: #eef4ff;
+    box-shadow: 0 0 0 1px #1f6fff;
+}
+/* Tint the whole row when a column will be added, reinforcing "side by side". */
+.sf-builder-row:has(.drop-left),
+.sf-builder-row:has(.drop-right) {
+    outline: 1px dashed #9cc0ff;
+    outline-offset: 4px;
+    border-radius: 4px;
+}
 
 /* Layout blocks read as presentational, not as input rows. */
 .sf-field--layout { background: #f7f9fc; border-style: dashed; }

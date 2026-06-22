@@ -53,20 +53,28 @@
     margin-top: 5px;
 }
 
-/* Multi-column rows: equal-width CSS grid that collapses on mobile (no JS). */
+/* Multi-column rows: a CSS grid that collapses on mobile (no JS). Column widths
+   come from the inline `--sf-cols` custom property (e.g. "2fr 1fr" for a 66/33
+   split); the per-field weight is set in the builder. The data-cols fallbacks
+   below keep older cached markup (no --sf-cols) rendering as equal columns. */
 .simple-form-row {
     display: grid;
     gap: 1rem;
+    grid-template-columns: var(--sf-cols, 1fr);
 }
-.simple-form-row[data-cols="2"] { grid-template-columns: repeat(2, 1fr); }
-.simple-form-row[data-cols="3"] { grid-template-columns: repeat(3, 1fr); }
-.simple-form-row[data-cols="4"] { grid-template-columns: repeat(4, 1fr); }
+/* When `--sf-cols` is present (new markup) it wins; the repeat() fallback keeps
+   older cached markup, which only has data-cols, rendering as equal columns. */
+.simple-form-row[data-cols="2"] { grid-template-columns: var(--sf-cols, repeat(2, 1fr)); }
+.simple-form-row[data-cols="3"] { grid-template-columns: var(--sf-cols, repeat(3, 1fr)); }
+.simple-form-row[data-cols="4"] { grid-template-columns: var(--sf-cols, repeat(4, 1fr)); }
 .simple-form-col { min-width: 0; }
 /* Give multi-column layouts room to breathe without affecting single-column
    forms (their .simple-form max-width is unchanged). */
 .simple-form:has(.simple-form-row) { max-width: 720px; }
 @media (max-width: 600px) {
-    .simple-form-row { grid-template-columns: 1fr; }
+    /* Match the [data-cols]/--sf-cols specificity so the collapse always wins. */
+    .simple-form-row,
+    .simple-form-row[data-cols] { grid-template-columns: 1fr; }
 }
 
 /* Save & resume */

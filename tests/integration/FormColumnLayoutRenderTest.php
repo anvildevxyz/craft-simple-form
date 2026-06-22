@@ -29,6 +29,35 @@ class FormColumnLayoutRenderTest extends SimpleFormTestCase
         $this->assertStringContainsString('name="field_' . $lastId . '"', $html);
     }
 
+    public function testColumnWidthsEmitGridTemplate(): void
+    {
+        $this->requireCraft();
+
+        $form = $this->createForm('Split', 'splitForm', 'Split');
+        $this->createField($form->id, 'text', 'firstName', 'First', false, ['row' => 1, 'width' => 2]);
+        $this->createField($form->id, 'text', 'lastName', 'Last', false, ['row' => 1]);
+
+        $html = (new TwigExtension())->renderForm('splitForm');
+
+        // A weighted row exposes its column track sizes via the --sf-cols
+        // custom property so the stylesheet's media query can still collapse it.
+        $this->assertStringContainsString('--sf-cols: 2fr 1fr;', $html);
+        $this->assertStringContainsString('class="simple-form-row" data-cols="2"', $html);
+    }
+
+    public function testEqualColumnsEmitUniformGridTemplate(): void
+    {
+        $this->requireCraft();
+
+        $form = $this->createForm('Even', 'evenForm', 'Even');
+        $this->createField($form->id, 'text', 'firstName', 'First', false, ['row' => 1]);
+        $this->createField($form->id, 'text', 'lastName', 'Last', false, ['row' => 1]);
+
+        $html = (new TwigExtension())->renderForm('evenForm');
+
+        $this->assertStringContainsString('--sf-cols: 1fr 1fr;', $html);
+    }
+
     public function testSingleColumnFormHasNoRowWrapper(): void
     {
         $this->requireCraft();

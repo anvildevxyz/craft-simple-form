@@ -33,7 +33,7 @@
 {%- if steps|length <= 1 -%}
   {%- for row in rows -%}
     {%- if row|length > 1 -%}
-      <div class="simple-form-row" data-cols="{{ row|length }}">
+      <div class="simple-form-row" data-cols="{{ row|length }}" style="--sf-cols: {{ row|map(field => (field.config.width ?? 1) ~ 'fr')|join(' ') }};">
       {%- for field in row -%}
         <div class="simple-form-col">{% include partials.field with { field: field, partials: partials, values: resume ? resume.values : {} } only %}</div>
       {%- endfor -%}
@@ -49,7 +49,7 @@
     <div class="simple-form-step" data-sf-step="{{ i }}"{% if i > 0 %} hidden{% endif %}>
     {%- for row in stepRows[i] -%}
       {%- if row|length > 1 -%}
-        <div class="simple-form-row" data-cols="{{ row|length }}">
+        <div class="simple-form-row" data-cols="{{ row|length }}" style="--sf-cols: {{ row|map(field => (field.config.width ?? 1) ~ 'fr')|join(' ') }};">
         {%- for field in row -%}
           <div class="simple-form-col">{% include partials.field with { field: field, partials: partials, values: resume ? resume.values : {} } only %}</div>
         {%- endfor -%}
