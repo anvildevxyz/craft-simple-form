@@ -67,11 +67,12 @@ class EmailService extends Component
         $capBytes = max(0, $maxMb) * 1024 * 1024;
 
         if ($notification->attachPdf) {
-            $pdf = Plugin::getInstance()->getPdf()->render($form, $submission, $data, (int) $submission->siteId);
+            $pdfService = Plugin::getInstance()->getPdf();
+            $pdf = $pdfService->render($form, $submission, $data, (int) $submission->siteId);
             if ($pdf !== null) {
                 $attachments[] = [
                     'content' => $pdf,
-                    'fileName' => Plugin::getInstance()->getPdf()->filename($form, $submission),
+                    'fileName' => $pdfService->filename($form, $submission),
                     'contentType' => 'application/pdf',
                 ];
                 $totalBytes += strlen($pdf);
