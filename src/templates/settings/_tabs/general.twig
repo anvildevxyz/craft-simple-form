@@ -35,6 +35,6 @@
     suggestEnvVars: false,
     value: settings.templatePath,
     errors: settings.getErrors('templatePath') ?? [],
-    instructions: 'A folder of Twig partials in your site’s templates/ that overrides how every form renders (e.g. `_simple-form`). A per-form path takes precedence. Leave blank to use the built-in markup.'|t('simple-form'),
+    instructions: 'A folder of Twig partials in your site’s templates/ (e.g. `_simple-form`) used as the default custom template. It applies to a form only when that form has “Use a custom render template” enabled, and a per-form path there overrides this. Leave blank to use the built-in markup.'|t('simple-form'),
     placeholder: '_simple-form',
 }) }}

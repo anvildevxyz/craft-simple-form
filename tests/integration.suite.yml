@@ -2,5 +2,11 @@ actor: IntegrationTester
 modules:
   enabled:
     - Asserts
-    - \craft\test\Craft
+    - \craft\test\Craft:
+        # Column-adding plugin migrations added after the test schema's frozen
+        # baseline must be registered here so the harness applies their DDL on
+        # setup (otherwise the new column is missing and FormQuery selects fail).
+        migrations:
+          - class: fabianhaef\simpleform\migrations\m260622_000002_form_use_custom_template
+            params: []
     - \Helper\Integration

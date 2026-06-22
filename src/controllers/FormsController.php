@@ -152,7 +152,10 @@ class FormsController extends Controller
         $form->guestLimitKey = (string) $request->getBodyParam('guestLimitKey', Form::GUEST_LIMIT_NONE);
         $form->userLimitMessage = $request->getBodyParam('userLimitMessage');
 
-        // Custom render-template path (#137). Shared, structural; blank clears it.
+        // Custom render template (#137). Opt-in lightswitch + optional per-form
+        // path override; blank path falls back to the global default in settings.
+        // Shared, structural.
+        $form->useCustomTemplate = (bool) $request->getBodyParam('useCustomTemplate');
         $templatePath = trim((string) $request->getBodyParam('templatePath', ''));
         $form->templatePath = $templatePath !== '' ? $templatePath : null;
 

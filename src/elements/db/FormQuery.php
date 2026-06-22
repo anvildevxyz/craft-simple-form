@@ -64,6 +64,7 @@ class FormQuery extends ElementQuery
             'simpleform_forms.submissionsPerUser',
             'simpleform_forms.guestLimitKey',
             'simpleform_forms.templatePath',
+            'simpleform_forms.useCustomTemplate',
             'simpleform_forms.preventDuplicates',
             'simpleform_forms.duplicateWindowMinutes',
             'simpleform_forms.duplicateKey',

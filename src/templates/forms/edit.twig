@@ -293,15 +293,30 @@
         instructions: 'Add a “Save & continue later” button to this form so visitors can save their progress and return via a link. Applies to multi-step forms.'|t('simple-form'),
     }) }}
 
-    {{ forms.textField({
-        label: 'Custom template path'|t('simple-form'),
-        id: 'templatePath',
-        name: 'templatePath',
-        value: form.templatePath,
-        errors: form.getErrors('templatePath'),
-        instructions: 'A folder of Twig partials in your site’s templates/ that override how this form renders (e.g. `_simple-form/landing`). Overrides the global default. Leave blank to use the global default or the built-in markup.'|t('simple-form'),
-        placeholder: '_simple-form/landing',
+    {% set globalTemplatePath = craft.app.plugins.getPlugin('simple-form').settings.templatePath ?? null %}
+
+    {{ forms.lightswitchField({
+        label: 'Use a custom render template'|t('simple-form'),
+        id: 'useCustomTemplate',
+        name: 'useCustomTemplate',
+        on: form.useCustomTemplate ?? false,
+        toggle: 'sf-template-path',
+        instructions: globalTemplatePath
+            ? 'Render this form with custom Twig partials instead of the built-in markup. Uses the global default from plugin settings (`{path}`) unless you set a per-form path below.'|t('simple-form', { path: globalTemplatePath })
+            : 'Render this form with custom Twig partials instead of the built-in markup. Set a per-form path below, or define a global default under Settings → General.'|t('simple-form'),
     }) }}
+
+    <div id="sf-template-path" {{ (form.useCustomTemplate ?? false) ? '' : 'class="hidden"' }}>
+        {{ forms.textField({
+            label: 'Custom template path'|t('simple-form'),
+            id: 'templatePath',
+            name: 'templatePath',
+            value: form.templatePath,
+            errors: form.getErrors('templatePath'),
+            instructions: 'A folder of Twig partials in your site’s templates/ that override how this form renders (e.g. `_simple-form/landing`). Leave blank to use the global default from plugin settings.'|t('simple-form'),
+            placeholder: globalTemplatePath ?: '_simple-form/landing',
+        }) }}
+    </div>
 </div>
 
 {# ===========================================================================

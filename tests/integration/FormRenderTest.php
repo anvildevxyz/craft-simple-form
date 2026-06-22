@@ -19,13 +19,17 @@ class FormRenderTest extends SimpleFormTestCase
     /**
      * Seed a form with one text field and a current-site field set.
      */
-    private function seedForm(string $handle, ?string $templatePath = null): Form
+    private function seedForm(string $handle, ?string $templatePath = null, bool $useCustomTemplate = false): Form
     {
         $form = $this->createForm('Contact', $handle);
         $this->createField((int) $form->id, 'text', 'name', 'Your name', true);
 
-        if ($templatePath !== null) {
+        // A per-form path implies opting into custom templating.
+        $useCustomTemplate = $useCustomTemplate || $templatePath !== null;
+
+        if ($useCustomTemplate) {
             $form->templatePath = $templatePath;
+            $form->useCustomTemplate = true;
             Craft::$app->getElements()->saveElement($form);
         }
 
@@ -73,13 +77,33 @@ class FormRenderTest extends SimpleFormTestCase
         $settings->templatePath = '_sf-theme';
 
         try {
-            $this->seedForm('render_global');
+            // The form opts into custom templating but sets no per-form path, so
+            // it falls back to the global default.
+            $this->seedForm('render_global', null, true);
             $html = Plugin::getInstance()->getFormRender()->renderForm('render_global');
             $this->assertStringContainsString('class="my-field"', $html, 'Global path should apply.');
 
             // theme option overrides for this render only.
             $plain = Plugin::getInstance()->getFormRender()->renderForm('render_global', ['theme' => '']);
             $this->assertStringNotContainsString('class="my-field"', $plain);
+        } finally {
+            $settings->templatePath = $original;
+        }
+    }
+
+    public function testGlobalIgnoredWhenSwitchOff(): void
+    {
+        $this->requireCraft();
+        $settings = Plugin::getInstance()->getSettings();
+        $original = $settings->templatePath;
+        $settings->templatePath = '_sf-theme';
+
+        try {
+            // Switch off: the global default must NOT apply — built-in markup only.
+            $this->seedForm('render_optout');
+            $html = Plugin::getInstance()->getFormRender()->renderForm('render_optout');
+            $this->assertStringNotContainsString('class="my-field"', $html);
+            $this->assertStringContainsString('<form class="simple-form"', $html);
         } finally {
             $settings->templatePath = $original;
         }

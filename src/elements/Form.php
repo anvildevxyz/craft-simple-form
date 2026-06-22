@@ -101,10 +101,19 @@ class Form extends Element
     /** How to key the per-user limit for guests: 'none' | 'email' | 'ip' (shared). */
     public string $guestLimitKey = self::GUEST_LIMIT_NONE;
     /**
+     * Per-form opt-in for custom render templating (shared, not translatable).
+     * When off, the form always renders with the plugin's built-in markup,
+     * regardless of any global {@see Settings::$templatePath}. When on, the form
+     * uses its own {@see self::$templatePath} override, falling back to the
+     * global default.
+     */
+    public bool $useCustomTemplate = false;
+    /**
      * Per-form custom render-template path (#137), a site-templates directory of
      * Twig partials (e.g. `_simple-form/landing`) that override the plugin's
-     * built-in form markup. Overrides {@see Settings::$templatePath}. Shared
-     * across sites (structural, not translatable). Null = use the global/built-in.
+     * built-in form markup. Only consulted when {@see self::$useCustomTemplate}
+     * is on; blank then falls back to the global {@see Settings::$templatePath}.
+     * Shared across sites (structural, not translatable).
      */
     public ?string $templatePath = null;
     /** Per-form duplicate-submission prevention (#140; shared, not translatable). */
@@ -452,6 +461,7 @@ class Form extends Element
 
         // Custom render-template path (#137).
         $rules[] = [['templatePath'], 'string', 'max' => 255];
+        $rules[] = [['useCustomTemplate'], 'boolean'];
 
         // Duplicate prevention (#140).
         $rules[] = [['preventDuplicates'], 'boolean'];
@@ -540,6 +550,7 @@ class Form extends Element
             'submissionsPerUser' => $this->submissionsPerUser,
             'guestLimitKey' => $this->guestLimitKey,
             'templatePath' => $this->templatePath,
+            'useCustomTemplate' => $this->useCustomTemplate,
             'preventDuplicates' => $this->preventDuplicates,
             'duplicateWindowMinutes' => $this->duplicateWindowMinutes,
             'duplicateKey' => $this->duplicateKey,

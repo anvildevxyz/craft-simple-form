@@ -29,10 +29,14 @@ use yii\base\Component;
  *
  * ## Template resolution order (most specific first), per partial:
  *
- *   1. Per-form path — {@see Form::$templatePath}, e.g. `_simple-form/landing`.
- *   2. Global default — {@see Settings::$templatePath}, e.g. `_simple-form`.
- *   3. Plugin built-in — the `simple-form/<partial>` site template root, mapped
- *      to `src/templates/_form/` in {@see Plugin::init()}.
+ *   1. Runtime `theme` option — overrides everything for that single render.
+ *   2. Per-form path — {@see Form::$templatePath}, only when the form opted in
+ *      via {@see Form::$useCustomTemplate}; e.g. `_simple-form/landing`.
+ *   3. Global default — {@see Settings::$templatePath} (same opt-in gate),
+ *      e.g. `_simple-form`.
+ *   4. Plugin built-in — the `simple-form/<partial>` site template root, mapped
+ *      to `src/templates/_form/` in {@see Plugin::init()}. Also the result when
+ *      a form has not opted into custom templating.
  *
  * Resolution is per partial, not all-or-nothing: a theme that ships only
  * `field.twig` falls through to the built-in `form.twig`, which includes the
@@ -432,6 +436,14 @@ class FormRenderService extends Component
             return is_string($theme) && $theme !== '' ? $theme : null;
         }
 
+        // Custom templating is opt-in per form: with the switch off the form
+        // always renders with the built-in markup, ignoring any global default.
+        if (!$form->useCustomTemplate) {
+            return null;
+        }
+
+        // Opted in: the per-form path overrides; blank falls back to the global
+        // default; an unset global then falls through to the built-in markup.
         if (is_string($form->templatePath) && $form->templatePath !== '') {
             return $form->templatePath;
         }

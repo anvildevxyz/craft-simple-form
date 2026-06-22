@@ -2,5 +2,10 @@ actor: SmokeTester
 modules:
   enabled:
     - Asserts
-    - \craft\test\Craft
+    - \craft\test\Craft:
+        # See integration.suite.yml — register post-baseline column migrations so
+        # the harness applies their DDL on setup.
+        migrations:
+          - class: fabianhaef\simpleform\migrations\m260622_000002_form_use_custom_template
+            params: []
     - \Helper\Integration
