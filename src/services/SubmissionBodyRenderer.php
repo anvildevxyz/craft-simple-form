@@ -92,9 +92,12 @@ class SubmissionBodyRenderer extends Component
             return self::EMPTY;
         }
 
+        // One query for all referenced assets instead of one per id (N+1).
+        $assets = Asset::find()->id(array_map('intval', $ids))->indexBy('id')->all();
+
         $links = [];
         foreach ($ids as $id) {
-            $asset = Asset::find()->id((int) $id)->one();
+            $asset = $assets[(int) $id] ?? null;
             if (!$asset instanceof Asset) {
                 continue;
             }
