@@ -237,11 +237,6 @@ abstract class FieldType
     }
 
     /**
-     * The value-less control attributes (name, required, placeholder) shared by
-     * every field control. Inputs add a value via {@see self::getInputAttributes()};
-     * <textarea>/<select> carry the value in their markup, so they use this directly.
-     */
-    /**
      * Whether this type renders a group of choice inputs (radio/checkbox) that
      * each need their own id + <label for>, rather than a single control the
      * group's <label for> can point at. Overridden by the choice types.
@@ -276,11 +271,17 @@ abstract class FieldType
         return false;
     }
 
+    /**
+     * The value-less control attributes (name, required, placeholder) shared by
+     * every field control. Inputs add a value via {@see self::getInputAttributes()};
+     * <textarea>/<select> carry the value in their markup, so they use this directly.
+     */
     protected function controlAttributes(string $name): string
     {
         // id mirrors the field name so the group's <label for> associates with
         // the control (a11y, #105).
-        $attrs = sprintf('id="%s" name="%s"', htmlspecialchars($name), htmlspecialchars($name));
+        $escaped = htmlspecialchars($name);
+        $attrs = sprintf('id="%s" name="%s"', $escaped, $escaped);
         if ($this->config['required'] ?? false) {
             $attrs .= ' required';
         }
