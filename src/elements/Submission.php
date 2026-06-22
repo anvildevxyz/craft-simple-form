@@ -217,15 +217,16 @@ class Submission extends Element
             return Html::tag('span', '—', ['class' => 'light']);
         }
 
-        $labels = [
-            self::PAYMENT_PENDING => Craft::t('simple-form', 'Pending'),
-            self::PAYMENT_PAID => Craft::t('simple-form', 'Paid'),
-            self::PAYMENT_CANCELED => Craft::t('simple-form', 'Canceled'),
-        ];
-
+        // match evaluates only the hit arm, so a single Craft::t runs per row
+        // (the array form translated all three labels to use just one).
         return Html::tag(
             'span',
-            $labels[$this->paymentStatus] ?? StringHelper::titleize($this->paymentStatus),
+            match ($this->paymentStatus) {
+                self::PAYMENT_PENDING => Craft::t('simple-form', 'Pending'),
+                self::PAYMENT_PAID => Craft::t('simple-form', 'Paid'),
+                self::PAYMENT_CANCELED => Craft::t('simple-form', 'Canceled'),
+                default => StringHelper::titleize($this->paymentStatus),
+            },
             ['class' => "status-label status-{$this->paymentStatus}"],
         );
     }
