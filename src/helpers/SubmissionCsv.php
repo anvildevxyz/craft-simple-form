@@ -287,7 +287,9 @@ final class SubmissionCsv
      */
     private static function isRepeaterValue(array $value): bool
     {
-        if ($value === [] || array_keys($value) !== range(0, count($value) - 1)) {
+        // array_is_list is the allocation-free stdlib form of the 0..n-1 key
+        // check (was array_keys() !== range()); empty is excluded explicitly.
+        if ($value === [] || !array_is_list($value)) {
             return false;
         }
         return is_array($value[0]);
@@ -302,7 +304,8 @@ final class SubmissionCsv
      */
     public static function neutralizeFormula(string $value): string
     {
-        if ($value !== '' && in_array($value[0], ['=', '+', '-', '@', "\t", "\r"], true)) {
+        // First-char membership via a needle string — no per-cell array literal.
+        if ($value !== '' && str_contains("=+-@\t\r", $value[0])) {
             return "'" . $value;
         }
         return $value;
