@@ -7,6 +7,7 @@ use craft\elements\Asset;
 use fabianhaef\simpleform\elements\Submission;
 use fabianhaef\simpleform\fields\CompositeFieldType;
 use fabianhaef\simpleform\fields\ElementRelationFieldType;
+use fabianhaef\simpleform\fields\FieldType;
 use fabianhaef\simpleform\Plugin;
 use fabianhaef\simpleform\services\FieldTypeRegistry;
 
@@ -39,10 +40,31 @@ final class SubmissionCsv
     private const ASSET_TYPES = ['file', 'signature'];
 
     /**
+     * Per-export id => resolved asset reference (public URL, or `Asset #id` when
+     * the volume has no public URL / the asset is gone). Seeded once per export by
+     * {@see self::warmAssetCache()} so asset cells resolve from a single batched
+     * query instead of one lookup each. Null when not yet warmed.
+     *
+     * @var array<int, string>|null
+     */
+    private static ?array $assetUrlCache = null;
+
+    /**
+     * Process-lifetime memo of config-less field-type instances keyed by type.
+     * The export always resolves field types without config, and the instances
+     * are only used for stateless `exportValue()`/`instanceof` checks, so one
+     * instance per type is reused across every cell rather than re-instantiated.
+     *
+     * @var array<string, FieldType|null>
+     */
+    private static array $fieldTypeMemo = [];
+
+    /**
      * @param array<int, Submission> $submissions
      */
     public static function fromSubmissions(array $submissions): string
     {
+        self::warmAssetCache($submissions);
         $columns = self::discoverColumns($submissions);
 
         $handle = fopen('php://temp', 'r+');
@@ -81,6 +103,7 @@ final class SubmissionCsv
      */
     public static function toRows(array $submissions): array
     {
+        self::warmAssetCache($submissions);
         $columns = self::discoverColumns($submissions);
 
         $rows = [];
@@ -149,7 +172,7 @@ final class SubmissionCsv
         }
 
         if ($type !== '') {
-            $fieldType = Plugin::getInstance()->getFieldTypeRegistry()->getFieldType($type);
+            $fieldType = self::fieldTypeFor($type);
             if ($fieldType !== null) {
                 return self::neutralizeFormula($fieldType->exportValue($value));
             }
@@ -182,9 +205,81 @@ final class SubmissionCsv
         ));
     }
 
+    /**
+     * Pre-resolve every asset referenced by the result set in one query, so the
+     * per-cell {@see self::assetReference()} reads a map instead of issuing a
+     * lookup per id (was an N+1 across the whole export). Re-seeded each call so a
+     * batched element-exporter run scopes the cache to its current chunk.
+     *
+     * @param array<int, Submission> $submissions
+     */
+    private static function warmAssetCache(array $submissions): void
+    {
+        /** @var array<int, true> $ids */
+        $ids = [];
+        foreach ($submissions as $submission) {
+            foreach (($submission->data ?? []) as $entry) {
+                self::collectAssetIds($entry, $ids);
+            }
+        }
+
+        /** @var array<int, string> $cache */
+        $cache = [];
+        if ($ids !== []) {
+            /** @var array<int, Asset> $assets */
+            $assets = Asset::find()->id(array_keys($ids))->indexBy('id')->all();
+            foreach (array_keys($ids) as $id) {
+                $id = (int) $id;
+                $url = ($asset = $assets[$id] ?? null) instanceof Asset ? $asset->getUrl() : null;
+                $cache[$id] = is_string($url) && $url !== '' ? $url : 'Asset #' . $id;
+            }
+        }
+
+        self::$assetUrlCache = $cache;
+    }
+
+    /**
+     * Collect the numeric asset ids from one stored entry into $ids (used as a
+     * set: id => true). Typed `mixed` and tolerant of legacy/partial entries that
+     * lack a `type` key — mirrors the per-cell resolution in {@see self::cell()}.
+     *
+     * @param array<int, true> $ids
+     */
+    private static function collectAssetIds(mixed $entry, array &$ids): void
+    {
+        if (!is_array($entry) || !in_array($entry['type'] ?? null, self::ASSET_TYPES, true)) {
+            return;
+        }
+        foreach ((array) ($entry['value'] ?? []) as $id) {
+            if (is_numeric($id)) {
+                $ids[(int) $id] = true;
+            }
+        }
+    }
+
+    /**
+     * A config-less field-type instance for $type, memoised for the process. The
+     * export only needs stateless `exportValue()`/`instanceof` behaviour, so the
+     * same instance is reused across cells rather than re-instantiated per cell.
+     */
+    private static function fieldTypeFor(string $type): ?FieldType
+    {
+        if (!array_key_exists($type, self::$fieldTypeMemo)) {
+            self::$fieldTypeMemo[$type] = Plugin::getInstance()->getFieldTypeRegistry()->getFieldType($type);
+        }
+
+        return self::$fieldTypeMemo[$type];
+    }
+
     /** The public URL for an asset, or an `Asset #id` reference as a fallback. */
     private static function assetReference(int $assetId): string
     {
+        // Served from the per-export batch when warmed; any uncached id (cold
+        // cache, or a path that bypassed warming) falls back to a single lookup.
+        if (isset(self::$assetUrlCache[$assetId])) {
+            return self::$assetUrlCache[$assetId];
+        }
+
         $asset = Asset::find()->id($assetId)->one();
         $url = $asset instanceof Asset ? $asset->getUrl() : null;
         return is_string($url) && $url !== '' ? $url : 'Asset #' . $assetId;
@@ -212,7 +307,7 @@ final class SubmissionCsv
             return $value;
         }
 
-        $field = Plugin::getInstance()->getFieldTypeRegistry()->getFieldType($type);
+        $field = self::fieldTypeFor($type);
         if (!$field instanceof ElementRelationFieldType) {
             return $value;
         }
@@ -422,11 +517,7 @@ final class SubmissionCsv
             return false;
         }
 
-        $fieldType = Plugin::getInstance()
-            ->getFieldTypeRegistry()
-            ->getFieldType((string) $entry['type']);
-
-        return $fieldType instanceof CompositeFieldType;
+        return self::fieldTypeFor((string) $entry['type']) instanceof CompositeFieldType;
     }
 
     /**
@@ -441,9 +532,7 @@ final class SubmissionCsv
     {
         $value = is_array($entry['value'] ?? null) ? $entry['value'] : [];
 
-        $fieldType = Plugin::getInstance()
-            ->getFieldTypeRegistry()
-            ->getFieldType((string) ($entry['type'] ?? ''));
+        $fieldType = self::fieldTypeFor((string) ($entry['type'] ?? ''));
 
         $labels = [];
         if ($fieldType instanceof CompositeFieldType) {
