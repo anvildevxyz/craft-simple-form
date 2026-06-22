@@ -63,7 +63,7 @@ class FieldBuilderTest extends TestCase
 
     public function testEditTemplateUsesBuilderNotLegacyModal(): void
     {
-        $code = $this->source('templates/forms/edit.html');
+        $code = $this->source('templates/forms/edit.twig');
 
         // New builder surface.
         $this->assertStringContainsString('id="sf-canvas"', $code);

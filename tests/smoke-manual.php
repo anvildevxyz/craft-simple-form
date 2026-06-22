@@ -18,8 +18,8 @@ $checks = [
     '✓ Services registered (FieldTypeRegistry, EmailService, SubmissionService)' => file_exists('src/services/FieldTypeRegistry.php') && file_exists('src/services/EmailService.php') && file_exists('src/services/SubmissionService.php'),
     '✓ Database migration exists' => file_exists('migrations/m240614_000001_init.php'),
     '✓ Twig extension registered' => file_exists('src/TwigExtension.php'),
-    '✓ CP templates present' => file_exists('templates/forms/index.html') && file_exists('templates/forms/edit.html'),
-    '✓ Submission templates present' => file_exists('templates/submissions/index.html') && file_exists('templates/submissions/view.html'),
+    '✓ CP templates present' => file_exists('src/templates/forms/index.twig') && file_exists('src/templates/forms/edit.twig'),
+    '✓ Submission templates present' => file_exists('src/templates/submissions/index.twig') && file_exists('src/templates/submissions/view.twig'),
     '✓ Event classes defined' => file_exists('src/events/SubmissionEvent.php'),
     '✓ Testing guide present' => file_exists('docs/testing/TESTING.md'),
 ];
