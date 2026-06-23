@@ -8,6 +8,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- Full-fidelity form export (#226): the portable form document now carries **all
+  form-level settings** — post-submit action, availability windows, submission
+  limits, login-required, per-user limits, editing window, duplicate prevention,
+  render template path — so import/export and forms-as-code round-trip a complete
+  form, not just its structure. A post-submit "redirect to entry" travels as the
+  entry's URI (resolved on import, falling back to the inline message with a
+  warning if absent). The document is schema-versioned (v2); older (v1) files
+  still import with the new settings keeping their defaults.
 - Forms as code (#218, #225): keep form definitions in
   `config/simple-form/forms/<handle>.json` and deploy them with
   `simple-form/forms/apply` — creates missing forms and **updates existing ones

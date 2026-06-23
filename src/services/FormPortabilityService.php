@@ -4,7 +4,9 @@ namespace fabianhaef\simpleform\services;
 
 use Craft;
 use craft\db\Query;
+use craft\elements\Entry;
 use craft\enums\PropagationMethod;
+use craft\helpers\DateTimeHelper;
 use fabianhaef\simpleform\elements\Form;
 use fabianhaef\simpleform\helpers\FieldQueryHelper;
 use fabianhaef\simpleform\helpers\FormContentHelper;
@@ -41,8 +43,12 @@ class FormPortabilityService extends Component
     // Const Properties
     // =========================================================================
 
-    /** Current export schema version. Bump when the document shape changes. */
-    public const SCHEMA_VERSION = 1;
+    /**
+     * Current export schema version. Bump when the document shape changes.
+     * v2 (#226) adds the full form-level settings block; it is additive, so a v1
+     * document still imports (the missing keys keep the element defaults).
+     */
+    public const SCHEMA_VERSION = 2;
 
     /** Conflict mode: derive a unique handle when the target handle exists. */
     public const MODE_RENAME = 'rename';
@@ -87,6 +93,23 @@ class FormPortabilityService extends Component
                 'name' => $form->name,
                 'propagationMethod' => $form->propagationMethod->value,
                 'allowSaveResume' => $form->allowSaveResume,
+                // Full form-level settings (#226). redirectEntryId is an
+                // install-local element id, so it travels as the target entry's URI.
+                'postSubmitAction' => $form->postSubmitAction,
+                'redirectEntry' => $this->exportRedirectEntry($form),
+                'openDate' => $form->openDate?->format(\DateTime::ATOM),
+                'closeDate' => $form->closeDate?->format(\DateTime::ATOM),
+                'submissionLimit' => $form->submissionLimit,
+                'submissionsPerUser' => $form->submissionsPerUser,
+                'requireLogin' => $form->requireLogin,
+                'guestLimitKey' => $form->guestLimitKey,
+                'allowEditing' => $form->allowEditing,
+                'editWindowMinutes' => $form->editWindowMinutes,
+                'preventDuplicates' => $form->preventDuplicates,
+                'duplicateWindowMinutes' => $form->duplicateWindowMinutes,
+                'duplicateKey' => $form->duplicateKey,
+                'useCustomTemplate' => $form->useCustomTemplate,
+                'templatePath' => $form->templatePath,
                 'content' => $this->exportFormContent($formId, $supportedSiteIds),
             ],
             'fields' => $this->exportFields($formId, $supportedSiteIds),
@@ -286,6 +309,7 @@ class FormPortabilityService extends Component
         $form->name = (string)($formNode['name'] ?? $form->name);
         $form->allowSaveResume = (bool)($formNode['allowSaveResume'] ?? $form->allowSaveResume);
         $this->applyFormContent($form, is_array($content[$canonicalSite->handle] ?? null) ? $content[$canonicalSite->handle] : []);
+        $this->applyFormSettings($form, $formNode, $result);
         Craft::$app->getElements()->saveElement($form);
 
         foreach ($this->resolveSiteHandles(array_keys($content), $result) as $siteHandle) {
@@ -408,6 +432,23 @@ class FormPortabilityService extends Component
         }
 
         return $content;
+    }
+
+    /**
+     * Export the post-submit redirect target as a portable reference: an entry's
+     * id is install-local, so travel the entry's URI instead. Null unless the form
+     * redirects to an entry that resolves.
+     *
+     * @return array{uri: string}|null
+     */
+    private function exportRedirectEntry(Form $form): ?array
+    {
+        if ($form->postSubmitAction !== 'entry' || $form->redirectEntryId === null) {
+            return null;
+        }
+        $entry = Entry::find()->id($form->redirectEntryId)->siteId('*')->status(null)->one();
+        $uri = $entry instanceof Entry ? $entry->uri : null;
+        return $uri !== null && $uri !== '' ? ['uri' => $uri] : null;
     }
 
     /**
@@ -638,6 +679,7 @@ class FormPortabilityService extends Component
         $element->allowSaveResume = (bool)($form['allowSaveResume'] ?? false);
         $element->propagationMethod = $this->resolvePropagation((string)($form['propagationMethod'] ?? 'none'));
         $this->applyFormContent($element, $content[$canonicalHandle] ?? []);
+        $this->applyFormSettings($element, $form, $result);
 
         if (!Craft::$app->getElements()->saveElement($element)) {
             throw new InvalidArgumentException(Craft::t(
@@ -701,6 +743,103 @@ class FormPortabilityService extends Component
         $form->emailSubject = $content['emailSubject'] ?? null;
         $form->emailReplyTo = $content['emailReplyTo'] ?? null;
         $form->emailBody = $content['emailBody'] ?? null;
+    }
+
+    /**
+     * Apply the file's full form-level settings (#226) onto a form. Each key is
+     * applied only when present in the document, so a v1 document (which lacks
+     * them) preserves the form's existing settings instead of resetting them.
+     *
+     * @param array<string, mixed> $node the export document's `form` node
+     */
+    private function applyFormSettings(Form $form, array $node, ImportResult $result): void
+    {
+        if (array_key_exists('postSubmitAction', $node) && in_array($node['postSubmitAction'], Form::POST_SUBMIT_ACTIONS, true)) {
+            $form->postSubmitAction = (string)$node['postSubmitAction'];
+        }
+        if (array_key_exists('redirectEntry', $node)) {
+            $form->redirectEntryId = $this->resolveRedirectEntry($node['redirectEntry'], $result);
+        }
+        if (array_key_exists('openDate', $node)) {
+            $form->openDate = $this->parseDate($node['openDate']);
+        }
+        if (array_key_exists('closeDate', $node)) {
+            $form->closeDate = $this->parseDate($node['closeDate']);
+        }
+        if (array_key_exists('submissionLimit', $node)) {
+            $form->submissionLimit = $node['submissionLimit'] !== null ? (int)$node['submissionLimit'] : null;
+        }
+        if (array_key_exists('submissionsPerUser', $node)) {
+            $form->submissionsPerUser = $node['submissionsPerUser'] !== null ? (int)$node['submissionsPerUser'] : null;
+        }
+        if (array_key_exists('requireLogin', $node)) {
+            $form->requireLogin = (bool)$node['requireLogin'];
+        }
+        if (array_key_exists('guestLimitKey', $node) && in_array($node['guestLimitKey'], Form::GUEST_LIMIT_KEYS, true)) {
+            $form->guestLimitKey = (string)$node['guestLimitKey'];
+        }
+        if (array_key_exists('allowEditing', $node)) {
+            $form->allowEditing = (bool)$node['allowEditing'];
+        }
+        if (array_key_exists('editWindowMinutes', $node)) {
+            $form->editWindowMinutes = (int)$node['editWindowMinutes'];
+        }
+        if (array_key_exists('preventDuplicates', $node)) {
+            $form->preventDuplicates = (bool)$node['preventDuplicates'];
+        }
+        if (array_key_exists('duplicateWindowMinutes', $node)) {
+            $form->duplicateWindowMinutes = (int)$node['duplicateWindowMinutes'];
+        }
+        if (array_key_exists('duplicateKey', $node) && in_array($node['duplicateKey'], Form::DUPLICATE_KEYS, true)) {
+            $form->duplicateKey = (string)$node['duplicateKey'];
+        }
+        if (array_key_exists('useCustomTemplate', $node)) {
+            $form->useCustomTemplate = (bool)$node['useCustomTemplate'];
+        }
+        if (array_key_exists('templatePath', $node)) {
+            $form->templatePath = $node['templatePath'] !== null ? (string)$node['templatePath'] : null;
+        }
+
+        // A "redirect to entry" action with no resolvable target would fail
+        // validation; degrade gracefully to the inline message instead of aborting
+        // the whole import (resolveRedirectEntry already warned about the entry).
+        if ($form->postSubmitAction === 'entry' && $form->redirectEntryId === null) {
+            $form->postSubmitAction = 'message';
+        }
+    }
+
+    /**
+     * Resolve a portable redirect-entry reference (`{uri}`) to a local entry id,
+     * warning (and returning null) when it can't be found on this install.
+     *
+     * @param mixed $ref
+     */
+    private function resolveRedirectEntry(mixed $ref, ImportResult $result): ?int
+    {
+        if (!is_array($ref) || trim((string)($ref['uri'] ?? '')) === '') {
+            return null;
+        }
+        $uri = (string)$ref['uri'];
+        $entry = Entry::find()->uri($uri)->siteId('*')->status(null)->one();
+        if (!$entry instanceof Entry) {
+            $result->addWarning(Craft::t('simple-form', 'Redirect entry “{uri}” was not found on this install; the post-submit redirect was left unset.', ['uri' => $uri]));
+            return null;
+        }
+        return (int)$entry->id;
+    }
+
+    /**
+     * Parse an exported ATOM date string back to a DateTime, or null.
+     *
+     * @param mixed $value
+     */
+    private function parseDate(mixed $value): ?\DateTime
+    {
+        if (!is_string($value) || trim($value) === '') {
+            return null;
+        }
+        $date = DateTimeHelper::toDateTime($value);
+        return $date instanceof \DateTime ? $date : null;
     }
 
     private function resolvePropagation(string $value): PropagationMethod

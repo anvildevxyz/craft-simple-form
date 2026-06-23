@@ -64,15 +64,24 @@ Lists every form as `[config]` (a matching config file exists) or `[db]`
 
 ## What's in the file (and what isn't)
 
-- **In:** structural definition (fields, handles, layout, propagation), per-site
-  content (titles, labels, option labels, messages), notifications, and the
-  integration list.
+- **In:** the full form definition — fields, layout, and **all form-level
+  settings** (post-submit action, availability open/close dates, submission
+  limits, login-required, per-user limits, editing window, duplicate prevention,
+  render template path, save-&-resume, propagation), per-site content (titles,
+  labels, option labels, messages), notifications, and the integration list.
 - **Out:** integration **secrets/credentials** (an integration applies as a
   *disabled* placeholder until you add its credentials), submissions, and
-  install-local ids. Fields travel by **handle**, so conditional rules re-bind
-  correctly; submit values use the local `field_<id>` assigned on create — prefer
-  the handle-based [`craft.simpleForm.field()`](twig-and-api.md#rendering) helper
-  over hardcoding ids.
+  install-local ids. Two ids that *can't* travel are handled for you:
+  - **Fields** travel by **handle**, so conditional rules re-bind correctly;
+    submit values use the local `field_<id>` assigned on create — prefer the
+    handle-based [`craft.simpleForm.field()`](twig-and-api.md#rendering) helper
+    over hardcoding ids.
+  - A **post-submit "redirect to entry"** target travels as the entry's **URI**
+    and is resolved to a local entry on import; if it can't be found, the form
+    falls back to its inline message (with a warning) rather than failing.
+
+The document is **schema-versioned** — a file exported by an older plugin still
+imports, with any newer settings keeping their defaults.
 
 ## Updating a managed form
 
