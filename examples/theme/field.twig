@@ -1,0 +1,38 @@
+{#
+  Example theme override — a single field group.
+
+  Drop this file at templates/_simple-form/field.twig (or any folder you point a
+  form's "Custom template path" at). You only override the partials you want; any
+  you don't ship fall through to the plugin's built-in. The plugin still emits the
+  control itself via `partials.input`, so you never re-implement inputs, CSRF,
+  conditional logic or save-&-resume — you only restyle the wrapper.
+
+  This override adds a `mytheme-field` wrapper class and renders help text *above*
+  the control instead of below. See docs/render-templates.md for the full field
+  row + render-context contract.
+
+  Scaffold the whole partial set with:  php craft simple-form/make/theme
+#}
+{%- apply spaceless -%}
+{%- if field.displayMode == 'layout' or field.displayMode == 'bare' -%}
+{{ field.rawHtml }}
+{%- else -%}
+<div class="mytheme-field simple-form-group" data-sf-handle="{{ field.name }}"{% if field.conditional %} data-sf-conditional="{{ field.conditional|json_encode }}"{% endif %}>
+{%- if field.label and not field.rendersOwnLabel -%}
+  {%- if field.isChoice -%}
+    <span class="mytheme-field__label" id="{{ field.labelId }}">{{ field.label }}{% if field.required %} <span class="required" aria-hidden="true">*</span>{% endif %}</span>
+  {%- else -%}
+    <label class="mytheme-field__label" for="{{ field.fieldName }}">{{ field.label }}{% if field.required %} <span class="required" aria-hidden="true">*</span>{% endif %}</label>
+  {%- endif -%}
+{%- endif -%}
+{%- if field.helpText %}<small class="mytheme-field__help">{{ field.helpText }}</small>{% endif -%}
+{%- if field.isChoice -%}
+  <div class="input-wrapper" role="group"{% if field.label %} aria-labelledby="{{ field.labelId }}"{% endif %}>
+{%- else -%}
+  <div class="input-wrapper">
+{%- endif -%}
+{% include partials.input with { field: field, values: values } only %}
+</div>
+</div>
+{%- endif -%}
+{%- endapply -%}

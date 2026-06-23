@@ -81,6 +81,7 @@ Full documentation lives in **[`docs/`](docs/README.md)**. Feature guides:
 - [Spam protection](docs/spam-protection.md) · [Availability & limits](docs/form-availability.md)
 - [Notifications](docs/notifications.md) · [Integrations](docs/integrations.md) · [Submissions](docs/submissions.md)
 - [Theming / render templates](docs/render-templates.md) · [Import / export](docs/import-export.md) · [Twig & developer API](docs/twig-and-api.md)
+- [API stability](docs/extending/api-stability.md) · [Upgrade guide](docs/upgrading.md) · copy-paste [`examples/`](examples/) (custom field type, integration, captcha, theme)
 
 ## License & Pricing
 

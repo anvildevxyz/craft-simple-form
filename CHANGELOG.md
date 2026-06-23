@@ -8,6 +8,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- Copy-paste `examples/` (#221): a working custom field type, outbound
+  integration, captcha provider, and theme partial override, each with its
+  registration snippet — the fastest path to a first custom extension.
 - Scaffolding generators (#222): `simple-form/make/field-type`,
   `simple-form/make/integration`, and `simple-form/make/theme` console commands
   that generate a ready-to-edit stub (and print the registration one-liner) so a
