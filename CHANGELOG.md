@@ -8,6 +8,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- Front-end JavaScript hook API (#220): the bundled form script now dispatches
+  namespaced `CustomEvent`s on the form element — `simpleform:beforeSubmit`
+  (cancelable; `preventDefault()` aborts the send), `simpleform:afterSubmit`,
+  `simpleform:validationFailed` and `simpleform:stepChange` — so host pages can
+  observe and gate the form lifecycle. See
+  [Custom Render Templates](docs/render-templates.md#front-end-javascript-events).
 - Developer extension surface (#219): a `EVENT_REGISTER_FIELD_TYPES` event so
   custom field types register the same way as integrations, captcha providers and
   stencils, plus five lifecycle seam events — `EVENT_DEFINE_FIELD_SET`,

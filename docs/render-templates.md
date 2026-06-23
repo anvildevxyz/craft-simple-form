@@ -128,3 +128,37 @@ By default the form CSS/JS load as a versioned, cache-bustable
 render a form). The `inlineFormAssets` setting switches to inline output. Either
 way, a fully-themed build can suppress the plugin assets by shipping an **empty**
 `assets.twig` override and providing its own CSS/JS.
+
+## Front-end JavaScript events
+
+The bundled script dispatches namespaced `CustomEvent`s on the `<form>` element
+at each lifecycle moment, so a host page can observe (and, where cancelable,
+veto) the form without forking the script. All events bubble.
+
+| Event | Cancelable | `detail` |
+| --- | --- | --- |
+| `simpleform:beforeSubmit` | **yes** — `preventDefault()` aborts the AJAX send | `{ form, formData }` |
+| `simpleform:afterSubmit` | no | `{ form, success, data }` (the parsed JSON response; fires on success *and* validation failure) |
+| `simpleform:validationFailed` | no | `{ form, errors }` (server error map, keyed by `field_<id>` / `form`) |
+| `simpleform:stepChange` | no | `{ form, from, to, total }` (multi-step navigation) |
+
+```js
+const form = document.querySelector('.simple-form');
+
+// Veto / gate submission (e.g. a custom client-side check or analytics consent).
+form.addEventListener('simpleform:beforeSubmit', (e) => {
+    if (!window.myConsentGiven) { e.preventDefault(); }
+});
+
+// React to the outcome.
+form.addEventListener('simpleform:afterSubmit', (e) => {
+    if (e.detail.success) { dataLayer.push({ event: 'form_submit' }); }
+});
+
+form.addEventListener('simpleform:stepChange', (e) => {
+    console.log(`step ${e.detail.from} → ${e.detail.to} of ${e.detail.total}`);
+});
+```
+
+These fire only when the bundled script runs; a theme that ships an empty
+`assets.twig` and its own JS is responsible for its own events.

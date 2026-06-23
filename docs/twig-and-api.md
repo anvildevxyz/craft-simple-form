@@ -7,8 +7,9 @@ submission lifecycle is open through a small set of events.
 
 This guide is the developer's map of those entry points. For restyling the
 front-end markup (overridable Twig partials, the render context, class hooks)
+and the [front-end JavaScript events](render-templates.md#front-end-javascript-events)
 see [Custom Render Templates](render-templates.md) — this page focuses on the
-*programmatic* surface.
+*programmatic* (server-side) surface.
 
 Every name and signature below is taken from the shipped source; nothing here is
 aspirational.

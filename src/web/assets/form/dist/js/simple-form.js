@@ -7,6 +7,23 @@
     // The server is authoritative; this is for live UX. Keep the two in sync —
     // tests/js/conditional-evaluator.test.js asserts parity against the PHP cases.
     var SF = {
+        // ---- front-end hook API (#220) -----------------------------------
+        // Dispatch a namespaced CustomEvent on the form element so host pages can
+        // observe (and, when cancelable, veto) the form lifecycle. Returns false
+        // only when a cancelable event was preventDefault()-ed by a listener.
+        // Event names: simpleform:beforeSubmit (cancelable), simpleform:afterSubmit,
+        // simpleform:validationFailed, simpleform:stepChange.
+        emit: function (form, name, detail, cancelable) {
+            if (!form || typeof form.dispatchEvent !== "function" || typeof CustomEvent === "undefined") {
+                return true;
+            }
+            var evt = new CustomEvent("simpleform:" + name, {
+                bubbles: true,
+                cancelable: !!cancelable,
+                detail: detail || {}
+            });
+            return form.dispatchEvent(evt);
+        },
         scalar: function (v) {
             if (v === null || v === undefined || v === false) { return ""; }
             if (v === true) { return "1"; }
@@ -436,12 +453,22 @@
 
         if (nextBtn) {
             nextBtn.addEventListener("click", function () {
-                if (currentStepValid() && current < steps.length - 1) { current++; render(); }
+                if (currentStepValid() && current < steps.length - 1) {
+                    var from = current;
+                    current++;
+                    render();
+                    SF.emit(form, "stepChange", { form: form, from: from, to: current, total: steps.length }, false);
+                }
             });
         }
         if (backBtn) {
             backBtn.addEventListener("click", function () {
-                if (current > 0) { current--; render(); }
+                if (current > 0) {
+                    var from = current;
+                    current--;
+                    render();
+                    SF.emit(form, "stepChange", { form: form, from: from, to: current, total: steps.length }, false);
+                }
             });
         }
 
@@ -713,6 +740,10 @@
         form.addEventListener("submit", function (e) {
             e.preventDefault();
             var formData = new FormData(form); // disabled (hidden) inputs are excluded
+            // Cancelable hook: a listener calling preventDefault() aborts the send.
+            if (!SF.emit(form, "beforeSubmit", { form: form, formData: formData }, true)) {
+                return;
+            }
             fetch(form.action, {
                 method: "POST",
                 body: formData,
@@ -723,6 +754,8 @@
                 .then(function (response) { return response.json(); })
                 .then(function (data) {
                     clearErrors();
+                    // Observable hook: fires for both success and validation failure.
+                    SF.emit(form, "afterSubmit", { form: form, success: !!data.success, data: data }, false);
                     if (data.success) {
                         var next = SF.successAction(data);
                         // A resolved redirect wins: navigate the browser to the
@@ -735,6 +768,7 @@
                         showSuccess(next.message);
                         form.reset();
                     } else if (data.errors) {
+                        SF.emit(form, "validationFailed", { form: form, errors: data.errors }, false);
                         var generalErrors = [];
                         Object.keys(data.errors).forEach(function (fieldKey) {
                             var errorMessages = data.errors[fieldKey];
