@@ -2,6 +2,7 @@
 
 namespace fabianhaef\simpleform\console\controllers;
 
+use Craft;
 use craft\console\Controller;
 use craft\helpers\Console;
 use fabianhaef\simpleform\elements\Form;
@@ -33,6 +34,9 @@ class FormsController extends Controller
     /** Conflict mode on import: rename (default), replace, or abort. */
     public string $mode = FormPortabilityService::MODE_RENAME;
 
+    /** apply: report what would happen without writing anything. */
+    public bool $dryRun = false;
+
     // =========================================================================
     // Public Methods
     // =========================================================================
@@ -46,8 +50,18 @@ class FormsController extends Controller
         return match ($actionID) {
             'export' => ['form', 'out'],
             'import' => ['mode'],
+            'apply' => ['dryRun'],
             default => [],
         };
+    }
+
+    /**
+     * The directory holding code-defined form definitions
+     * (`config/simple-form/forms/<handle>.json`).
+     */
+    private function configDir(): string
+    {
+        return (string)Craft::getAlias('@config') . '/simple-form/forms';
     }
 
     /**
@@ -111,6 +125,121 @@ class FormsController extends Controller
 
         foreach ($result->warnings as $warning) {
             $this->stdout('  - ' . $warning . "\n", Console::FG_YELLOW);
+        }
+
+        return ExitCode::OK;
+    }
+
+    /**
+     * Apply code-defined forms from `config/simple-form/forms/*.json` to this
+     * install — the "forms as code" deploy path (e.g. on `craft up`).
+     *
+     * A form whose handle does not yet exist here is **created** from its file.
+     * A form that already exists is **left untouched** (this command never
+     * mutates or deletes a form, so live submissions are always safe); update an
+     * existing form's structure from code by re-importing explicitly. Idempotent:
+     * re-running only creates what is missing.
+     *
+     * Usage: `simple-form/forms/apply [--dry-run]`
+     */
+    public function actionApply(): int
+    {
+        $dir = $this->configDir();
+        $files = is_dir($dir) ? (glob($dir . '/*.json') ?: []) : [];
+
+        if ($files === []) {
+            $this->stdout("No form definitions found in {$dir}\n", Console::FG_YELLOW);
+            return ExitCode::OK;
+        }
+
+        $created = 0;
+        $skipped = 0;
+        foreach ($files as $file) {
+            $json = (string)file_get_contents($file);
+            $decoded = json_decode($json, true);
+            $handle = is_array($decoded) && is_array($decoded['form'] ?? null)
+                ? trim((string)($decoded['form']['handle'] ?? ''))
+                : '';
+
+            if ($handle === '') {
+                $this->stdout('  - ' . basename($file) . ": no form handle, skipped\n", Console::FG_YELLOW);
+                $skipped++;
+                continue;
+            }
+
+            if (Form::find()->handle($handle)->siteId('*')->status(null)->exists()) {
+                $this->stdout("  = {$handle}: already exists, left untouched\n");
+                $skipped++;
+                continue;
+            }
+
+            if ($this->dryRun) {
+                $this->stdout("  + {$handle}: would be created (dry run)\n", Console::FG_GREEN);
+                $created++;
+                continue;
+            }
+
+            try {
+                $result = Plugin::getInstance()->getPortability()->importJson($json, ['mode' => FormPortabilityService::MODE_ABORT]);
+            } catch (\Throwable $e) {
+                $this->stderr("  ! {$handle}: " . $e->getMessage() . "\n", Console::FG_RED);
+                return ExitCode::DATAERR;
+            }
+
+            $this->stdout("  + {$handle}: created (id {$result->form?->id})\n", Console::FG_GREEN);
+            foreach ($result->warnings as $warning) {
+                $this->stdout('      ' . $warning . "\n", Console::FG_YELLOW);
+            }
+            $created++;
+        }
+
+        $verb = $this->dryRun ? 'Would create' : 'Created';
+        $this->stdout("\n{$verb} {$created} form(s); {$skipped} skipped.\n", Console::FG_GREEN);
+        return ExitCode::OK;
+    }
+
+    /**
+     * Report which forms are defined in code vs. only in the database, and which
+     * config files have not been applied yet.
+     *
+     * Usage: `simple-form/forms/status`
+     */
+    public function actionStatus(): int
+    {
+        $dir = $this->configDir();
+        $files = is_dir($dir) ? (glob($dir . '/*.json') ?: []) : [];
+
+        // Map config handles -> file.
+        $configHandles = [];
+        foreach ($files as $file) {
+            $decoded = json_decode((string)file_get_contents($file), true);
+            $handle = is_array($decoded) && is_array($decoded['form'] ?? null)
+                ? trim((string)($decoded['form']['handle'] ?? ''))
+                : '';
+            if ($handle !== '') {
+                $configHandles[$handle] = basename($file);
+            }
+        }
+
+        $this->stdout("Forms in this install:\n");
+        $dbHandles = [];
+        foreach (Form::find()->siteId('*')->status(null)->all() as $form) {
+            $handle = (string)$form->handle;
+            $dbHandles[$handle] = true;
+            $managed = isset($configHandles[$handle]);
+            $this->stdout(sprintf(
+                "  %s %s\n",
+                $managed ? '[config]' : '[db]    ',
+                $handle,
+            ), $managed ? Console::FG_GREEN : Console::FG_GREY);
+        }
+
+        $pending = array_diff_key($configHandles, $dbHandles);
+        if ($pending !== []) {
+            $this->stdout("\nConfig files not yet applied (run forms/apply):\n", Console::FG_YELLOW);
+            foreach ($pending as $handle => $file) {
+                $this->stdout("  + {$handle} ({$file})\n", Console::FG_YELLOW);
+            }
         }
 
         return ExitCode::OK;

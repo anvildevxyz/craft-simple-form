@@ -8,6 +8,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- Forms as code (#218): keep form definitions in
+  `config/simple-form/forms/<handle>.json` and deploy them with
+  `simple-form/forms/apply` (creates missing forms; non-destructive and
+  idempotent — existing forms are never mutated, so submissions are safe), plus
+  `simple-form/forms/status` to see what's config-managed vs database-only. See
+  [Forms as code](docs/forms-as-code.md). (Id-stable in-place updates are the
+  documented next step.)
 - Copy-paste `examples/` (#221): a working custom field type, outbound
   integration, captcha provider, and theme partial override, each with its
   registration snippet — the fastest path to a first custom extension.

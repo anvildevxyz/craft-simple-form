@@ -82,6 +82,7 @@ Full documentation lives in **[`docs/`](docs/README.md)**. Feature guides:
 - [Notifications](docs/notifications.md) · [Integrations](docs/integrations.md) · [Submissions](docs/submissions.md)
 - [Theming / render templates](docs/render-templates.md) · [Import / export](docs/import-export.md) · [Twig & developer API](docs/twig-and-api.md)
 - [API stability](docs/extending/api-stability.md) · [Upgrade guide](docs/upgrading.md) · copy-paste [`examples/`](examples/) (custom field type, integration, captcha, theme)
+- [Forms as code](docs/forms-as-code.md) — version-controlled form definitions deployed with `forms/apply`
 
 ## License & Pricing
 

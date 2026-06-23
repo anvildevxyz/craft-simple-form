@@ -37,6 +37,9 @@ first form, and what to configure first.
   fields render with your own Twig partials.
 - **[Import / export](import-export.md)** — move a form's full definition between
   installs as a portable, versioned, secret-free JSON file, via console or the CP.
+- **[Forms as code](forms-as-code.md)** — keep form definitions in
+  `config/simple-form/forms/` and deploy them across environments with
+  `forms/apply`.
 - **[Twig & developer API](twig-and-api.md)** — Twig rendering, the PHP API,
   GraphQL, events, the MCP server, and console commands.
 
