@@ -12,10 +12,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `config/simple-form/forms/<handle>.json` and deploy them with
   `simple-form/forms/apply` — creates missing forms and **updates existing ones
   in place, id-stably** (form + fields matched by handle keep their ids, so
-  submissions and conditional references survive). `--prune` removes fields no
-  longer in the file, except any field that still holds submission data (always
-  kept). `simple-form/forms/status` reports config-managed vs database-only forms.
-  See [Forms as code](docs/forms-as-code.md).
+  submissions and conditional references survive). An update reconciles the form's
+  name, fields, and per-site content from the file (the file is authoritative).
+  `--prune` removes fields no longer in the file, except any field that still
+  holds submission data (always kept). `simple-form/forms/status` reports
+  config-managed vs database-only forms. `forms/export --out=` creates the target
+  directory if needed. See [Forms as code](docs/forms-as-code.md).
 - Copy-paste `examples/` (#221): a working custom field type, outbound
   integration, captcha provider, and theme partial override, each with its
   registration snippet — the fastest path to a first custom extension.

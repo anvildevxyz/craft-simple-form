@@ -77,10 +77,27 @@ Lists every form as `[config]` (a matching config file exists) or `[db]`
 ## Updating a managed form
 
 Because the file is authoritative, change a code-defined form by editing its file
-and re-running `apply`. Field **types** are immutable once created — changing a
-field's type in the file is ignored (with a warning); give the new control a new
-handle instead. Per-site translations are restored from the file on every apply,
-so the workflow for content edits made in the CP is **re-export, then commit**:
+and re-running `apply`. On update, `apply` reconciles the form's **name, fields,
+and per-site content** from the file. A few behaviours to know about — each is
+covered by a test in `tests/integration/ApplyEdgeCasesTest.php`:
+
+- **The file wins over CP edits.** Re-applying restores field labels, help text
+  and titles from the file, so a translation an editor changed in the CP is
+  **overwritten on the next apply**. Treat a config-managed form as code: edit the
+  file, or edit in the CP and immediately **re-export, then commit** to keep the
+  file the source of truth.
+- **Renaming a handle creates a new field.** A field is matched by handle, so
+  changing `fullName` → `name` in the file adds a fresh (empty) `name` field and
+  **keeps the old `fullName` field and its submissions** (it's now "absent from
+  the file", so it survives unless you `--prune`). To rename without losing data,
+  do it in the CP and re-export.
+- **Field types are immutable.** Changing a field's `type` in the file is ignored
+  (with a warning); give the new control a new handle instead.
+- **A truncated file won't silently wipe fields.** Without `--prune`, fields not
+  in the file are kept — only an explicit `--prune` removes them (and never a
+  field that still holds submission data).
+- **Propagation isn't changed on an existing form.** Changing `propagationMethod`
+  in the file is applied only on first create; change it deliberately in the CP.
 
 ```bash
 php craft simple-form/forms/export --form=contact --out=config/simple-form/forms/contact.json

@@ -189,6 +189,13 @@ class FormPortabilityService extends Component
         $canonicalSiteId = (int)$form->siteId;
         $canonicalSite = $sites->getSiteById($canonicalSiteId) ?? $sites->getPrimarySite();
 
+        // Apply form-level changes from the file (name, save-resume, per-site
+        // content). Propagation is intentionally NOT changed on an existing form —
+        // that re-propagates/removes site rows and is a deliberate CP action.
+        if (is_array($data['form'] ?? null)) {
+            $this->updateFormLevel($form, $data['form'], $result);
+        }
+
         $idByHandle = FormContentHelper::fieldIdsByHandle($formId);
         $existingRows = FieldQueryHelper::fieldsForForm($formId, $canonicalSiteId);
         $typeByHandle = [];
@@ -261,6 +268,41 @@ class FormPortabilityService extends Component
 
         $result->form = $form;
         Plugin::getInstance()->getAudit()->log(AuditService::ACTION_FORM_IMPORT, AuditService::TARGET_FORM, $formId, (string)($form->title ?? $form->name));
+    }
+
+    /**
+     * Apply the file's form-level definition (name, save-resume, per-site content)
+     * onto an existing form and its sibling-site rows. Propagation is left as-is
+     * (changing it on a live form re-propagates rows — a deliberate CP action).
+     *
+     * @param array<string, mixed> $formNode the export document's `form` node
+     */
+    private function updateFormLevel(Form $form, array $formNode, ImportResult $result): void
+    {
+        $sites = Craft::$app->getSites();
+        $content = is_array($formNode['content'] ?? null) ? $formNode['content'] : [];
+        $canonicalSite = $sites->getSiteById((int)$form->siteId) ?? $sites->getPrimarySite();
+
+        $form->name = (string)($formNode['name'] ?? $form->name);
+        $form->allowSaveResume = (bool)($formNode['allowSaveResume'] ?? $form->allowSaveResume);
+        $this->applyFormContent($form, is_array($content[$canonicalSite->handle] ?? null) ? $content[$canonicalSite->handle] : []);
+        Craft::$app->getElements()->saveElement($form);
+
+        foreach ($this->resolveSiteHandles(array_keys($content), $result) as $siteHandle) {
+            if ($siteHandle === $canonicalSite->handle) {
+                continue;
+            }
+            $site = $sites->getSiteByHandle($siteHandle);
+            if ($site === null) {
+                continue;
+            }
+            $sibling = Form::find()->id($form->id)->siteId($site->id)->status(null)->one();
+            if ($sibling === null) {
+                continue;
+            }
+            $this->applyFormContent($sibling, is_array($content[$siteHandle] ?? null) ? $content[$siteHandle] : []);
+            Craft::$app->getElements()->saveElement($sibling);
+        }
     }
 
     /**
