@@ -4,6 +4,10 @@
   "type": "craft-plugin",
   "license": "proprietary",
   "keywords": ["craft", "cms", "craftcms", "forms", "form-builder", "translatable"],
+  "support": {
+    "issues": "https://github.com/fabianhaef/craft-simple-form/issues",
+    "source": "https://github.com/fabianhaef/craft-simple-form"
+  },
   "require": {
     "php": "^8.2",
     "craftcms/cms": "^5.0"
@@ -34,8 +38,13 @@
     }
   },
   "extra": {
+    "name": "Simple Form",
     "handle": "simple-form",
-    "class": "fabianhaef\\simpleform\\Plugin"
+    "class": "fabianhaef\\simpleform\\Plugin",
+    "developer": "Fabian Haefliger",
+    "developerUrl": "https://github.com/fabianhaef",
+    "documentationUrl": "https://github.com/fabianhaef/craft-simple-form/tree/main/docs",
+    "changelogUrl": "https://raw.githubusercontent.com/fabianhaef/craft-simple-form/main/CHANGELOG.md"
   },
   "config": {
     "allow-plugins": {

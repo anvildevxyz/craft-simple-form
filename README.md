@@ -15,6 +15,10 @@ A lightweight, translatable form builder for Craft CMS. Create forms in the Cont
 - **Translatable** — form titles, descriptions, field labels, options, and messages translate per site
 - **Developer API** — Twig + PHP rendering, GraphQL queries/mutations, lifecycle events, console commands, and an MCP server ([guide](docs/twig-and-api.md))
 
+## Requirements
+
+Craft CMS 5.x and PHP 8.2 or later.
+
 ## Installation
 
 1. Install the plugin via Composer:
@@ -61,12 +65,13 @@ $fields = $form->getFields();
 
 ## Translations
 
-The control-panel UI ships with English plus machine-translated **German, French,
-Spanish, and Italian** catalogs (`src/translations/`). These use the English
-source string as the key, so any untranslated string degrades gracefully to
-English. The non-English catalogs are machine-translated and **pending native
-review** — corrections welcome. A unit test enforces key parity across all
-catalogs so they can't silently drift.
+The control-panel UI ships with English plus machine-translated **German,
+Spanish, French, Italian, Japanese, Dutch, and Portuguese** catalogs
+(`src/translations/`). These use the English source string as the key, so any
+untranslated string degrades gracefully to English. The non-English catalogs are
+machine-translated and **pending native review** — corrections welcome. A unit
+test enforces key parity and non-empty values across all catalogs so they can't
+silently drift.
 
 ## Documentation
 
@@ -77,7 +82,8 @@ Full documentation lives in **[`docs/`](docs/README.md)**. Feature guides:
 - [Notifications](docs/notifications.md) · [Integrations](docs/integrations.md) · [Submissions](docs/submissions.md)
 - [Theming / render templates](docs/render-templates.md) · [Import / export](docs/import-export.md) · [Twig & developer API](docs/twig-and-api.md)
 
-## License
+## License & Pricing
 
-This is commercial software. Simple Form ships a single **Pro** edition; see
-[LICENSE.md](LICENSE.md) for the terms.
+Simple Form is commercial software, licensed as a single **Pro** edition. See
+[LICENSE.md](LICENSE.md) for the full terms. Licensing and updates are handled
+through the Craft Plugin Store.
