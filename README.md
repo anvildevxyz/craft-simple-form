@@ -13,7 +13,7 @@ A lightweight, translatable form builder for Craft CMS. Create forms in the Cont
 - **Outbound Integrations** — webhooks, Slack/Discord, Mailchimp/ActiveCampaign, HubSpot/Pipedrive, Google Sheets, or create Craft entries/users — async, with retries, dispatch logs, and resend ([guide](docs/integrations.md))
 - **Submissions** — native Craft elements with CP management, CSV/Excel export, trash/restore, retention/GDPR controls, analytics, an audit log, and secure front-end editing ([guide](docs/submissions.md))
 - **Translatable** — form titles, descriptions, field labels, options, and messages translate per site
-- **Developer API** — Twig + PHP rendering, GraphQL queries/mutations, lifecycle events, console commands, and an MCP server ([guide](docs/twig-and-api.md))
+- **Developer API** — Twig + PHP rendering, GraphQL queries/mutations, lifecycle events, console commands, and an MCP server ([guide](docs/twig-and-api.md)), with a documented [public-API stability contract](docs/extending/api-stability.md)
 
 ## Requirements
 

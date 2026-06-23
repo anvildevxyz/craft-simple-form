@@ -47,8 +47,18 @@ first form, and what to configure first.
 - [Smoke-test scenarios](smoke-tests/SMOKE_TESTS.md) — the Playwright / CP-UI
   scenario library, run via the `/craft-smoke-test` skill.
 
+## Extending & API stability
+
+- **[Twig & developer API](twig-and-api.md)** — the programmatic surface (Twig,
+  PHP, GraphQL, events, MCP, console).
+- **[API stability & backward compatibility](extending/api-stability.md)** — what
+  counts as public API, the semver policy, and what's internal.
+- **[Upgrade guide](upgrading.md)** — breaking changes and how to adopt them.
+
 ## Reference
 
 - [Settings](reference/SETTINGS.md) — every plugin setting in one place: default,
   purpose, and a link to the guide for each.
 - [PERMISSIONS.md](reference/PERMISSIONS.md) — user permissions the plugin registers.
+- [GraphQL schema (SDL)](reference/schema.graphql) — the SimpleForm GraphQL types,
+  queries, and mutations for headless clients.

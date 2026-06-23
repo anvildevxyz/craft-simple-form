@@ -8,6 +8,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- API stability contract (#223): documented which surfaces are public and
+  backward-compatibility-guaranteed vs. internal, the semver policy
+  (`docs/extending/api-stability.md`), and an upgrade guide (`docs/upgrading.md`).
+  This changelog and that policy together define what a major/minor/patch means
+  for the public API.
 - IDE & headless ergonomics (#224): a committed GraphQL SDL of the Simple Form
   types at `docs/reference/schema.graphql` (regenerate with
   `php craft graphql/print-schema --full-schema=1`), and a `.phpstorm.meta.php`
