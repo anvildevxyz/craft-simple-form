@@ -6,6 +6,7 @@ use Craft;
 use craft\console\Controller;
 use craft\helpers\Console;
 use fabianhaef\simpleform\elements\Form;
+use fabianhaef\simpleform\models\ImportResult;
 use fabianhaef\simpleform\Plugin;
 use fabianhaef\simpleform\services\FormPortabilityService;
 use yii\console\ExitCode;
@@ -37,6 +38,9 @@ class FormsController extends Controller
     /** apply: report what would happen without writing anything. */
     public bool $dryRun = false;
 
+    /** apply: remove fields no longer in the file (data-bearing fields are kept). */
+    public bool $prune = false;
+
     // =========================================================================
     // Public Methods
     // =========================================================================
@@ -50,7 +54,7 @@ class FormsController extends Controller
         return match ($actionID) {
             'export' => ['form', 'out'],
             'import' => ['mode'],
-            'apply' => ['dryRun'],
+            'apply' => ['dryRun', 'prune'],
             default => [],
         };
     }
@@ -134,13 +138,13 @@ class FormsController extends Controller
      * Apply code-defined forms from `config/simple-form/forms/*.json` to this
      * install — the "forms as code" deploy path (e.g. on `craft up`).
      *
-     * A form whose handle does not yet exist here is **created** from its file.
-     * A form that already exists is **left untouched** (this command never
-     * mutates or deletes a form, so live submissions are always safe); update an
-     * existing form's structure from code by re-importing explicitly. Idempotent:
-     * re-running only creates what is missing.
+     * A handle that does not exist yet is **created** from its file. A handle that
+     * already exists is **updated in place** (#225): the form keeps its element id
+     * and fields are reconciled by handle, so field ids — and their submissions —
+     * survive. Fields absent from the file are kept unless `--prune` is passed,
+     * and even then a field that still holds submission data is kept. Idempotent.
      *
-     * Usage: `simple-form/forms/apply [--dry-run]`
+     * Usage: `simple-form/forms/apply [--dry-run] [--prune]`
      */
     public function actionApply(): int
     {
@@ -153,6 +157,7 @@ class FormsController extends Controller
         }
 
         $created = 0;
+        $updated = 0;
         $skipped = 0;
         foreach ($files as $file) {
             $json = (string)file_get_contents($file);
@@ -161,40 +166,45 @@ class FormsController extends Controller
                 ? trim((string)($decoded['form']['handle'] ?? ''))
                 : '';
 
-            if ($handle === '') {
+            if ($handle === '' || !is_array($decoded)) {
                 $this->stdout('  - ' . basename($file) . ": no form handle, skipped\n", Console::FG_YELLOW);
                 $skipped++;
                 continue;
             }
 
-            if (Form::find()->handle($handle)->siteId('*')->status(null)->exists()) {
-                $this->stdout("  = {$handle}: already exists, left untouched\n");
-                $skipped++;
-                continue;
-            }
+            $existing = Form::find()->handle($handle)->siteId('*')->status(null)->one();
+            $portability = Plugin::getInstance()->getPortability();
 
             if ($this->dryRun) {
-                $this->stdout("  + {$handle}: would be created (dry run)\n", Console::FG_GREEN);
-                $created++;
+                $verb = $existing ? 'updated in place' : 'created';
+                $this->stdout("  ~ {$handle}: would be {$verb} (dry run)\n", Console::FG_GREEN);
+                $existing ? $updated++ : $created++;
                 continue;
             }
 
             try {
-                $result = Plugin::getInstance()->getPortability()->importJson($json, ['mode' => FormPortabilityService::MODE_ABORT]);
+                if ($existing !== null) {
+                    $result = new ImportResult();
+                    $portability->applyToExistingForm($existing, $decoded, $this->prune, $result);
+                    $this->stdout("  ~ {$handle}: updated in place (id {$existing->id})\n", Console::FG_GREEN);
+                    $updated++;
+                } else {
+                    $result = $portability->importJson($json, ['mode' => FormPortabilityService::MODE_ABORT]);
+                    $this->stdout("  + {$handle}: created (id {$result->form?->id})\n", Console::FG_GREEN);
+                    $created++;
+                }
             } catch (\Throwable $e) {
                 $this->stderr("  ! {$handle}: " . $e->getMessage() . "\n", Console::FG_RED);
                 return ExitCode::DATAERR;
             }
 
-            $this->stdout("  + {$handle}: created (id {$result->form?->id})\n", Console::FG_GREEN);
             foreach ($result->warnings as $warning) {
                 $this->stdout('      ' . $warning . "\n", Console::FG_YELLOW);
             }
-            $created++;
         }
 
-        $verb = $this->dryRun ? 'Would create' : 'Created';
-        $this->stdout("\n{$verb} {$created} form(s); {$skipped} skipped.\n", Console::FG_GREEN);
+        $prefix = $this->dryRun ? 'Would apply — ' : '';
+        $this->stdout("\n{$prefix}created {$created}, updated {$updated}, skipped {$skipped}.\n", Console::FG_GREEN);
         return ExitCode::OK;
     }
 

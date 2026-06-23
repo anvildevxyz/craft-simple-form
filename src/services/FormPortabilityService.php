@@ -3,6 +3,7 @@
 namespace fabianhaef\simpleform\services;
 
 use Craft;
+use craft\db\Query;
 use craft\enums\PropagationMethod;
 use fabianhaef\simpleform\elements\Form;
 use fabianhaef\simpleform\helpers\FieldQueryHelper;
@@ -164,6 +165,168 @@ class FormPortabilityService extends Component
         }
 
         return $this->import($decoded, $opts);
+    }
+
+    /**
+     * Apply a form definition onto an **existing** form, in place and id-stable
+     * (#225). The form's element id is kept and fields are reconciled by handle —
+     * a matched field keeps its id (so its submissions and conditional references
+     * survive), a new handle is inserted, and a handle missing from the file is
+     * kept unless `$prune` is set. Even with `$prune`, a field that still holds
+     * submission data is kept (with a warning) rather than silently dropped.
+     *
+     * The file is authoritative for structure and content (re-applying restores
+     * both), so manage a code-defined form by editing its file — or edit it in
+     * the CP and re-export. Runs in one transaction (via FieldSyncService).
+     *
+     * @param array<string, mixed> $data the decoded export document
+     */
+    public function applyToExistingForm(Form $form, array $data, bool $prune, ImportResult $result): void
+    {
+        $fields = is_array($data['fields'] ?? null) ? $data['fields'] : [];
+        $formId = (int)$form->id;
+        $sites = Craft::$app->getSites();
+        $canonicalSiteId = (int)$form->siteId;
+        $canonicalSite = $sites->getSiteById($canonicalSiteId) ?? $sites->getPrimarySite();
+
+        $idByHandle = FormContentHelper::fieldIdsByHandle($formId);
+        $existingRows = FieldQueryHelper::fieldsForForm($formId, $canonicalSiteId);
+        $typeByHandle = [];
+        foreach ($existingRows as $row) {
+            $typeByHandle[(string)$row['name']] = (string)$row['type'];
+        }
+
+        // File fields first, in file order. Inject the existing id for a matched
+        // handle so the sync updates that row in place (keeping its id).
+        $fileHandles = [];
+        $items = [];
+        foreach ($this->fieldsToBuilderItems($fields, $canonicalSite->handle) as $item) {
+            $handle = (string)$item['handle'];
+            if ($handle === '') {
+                continue;
+            }
+            $fileHandles[$handle] = true;
+
+            if (isset($idByHandle[$handle])) {
+                $item['id'] = $idByHandle[$handle];
+                // Field type is immutable once created; the sync keeps the stored
+                // type, so flag a file/DB mismatch rather than silently ignoring it.
+                if (isset($typeByHandle[$handle]) && $typeByHandle[$handle] !== (string)$item['type']) {
+                    $result->warnings[] = Craft::t('simple-form', 'Field “{handle}” type cannot change ({from} → {to}); kept as {from}.', [
+                        'handle' => $handle,
+                        'from' => $typeByHandle[$handle],
+                        'to' => (string)$item['type'],
+                    ]);
+                }
+            }
+            $items[] = $item;
+        }
+
+        // Fields in the DB but absent from the file: keep by default; with prune,
+        // drop only those with no submission data.
+        $withData = $this->fieldIdsWithSubmissionData($formId);
+        foreach ($existingRows as $row) {
+            $handle = (string)$row['name'];
+            if (isset($fileHandles[$handle])) {
+                continue;
+            }
+            $id = (int)$row['id'];
+
+            if ($prune && !in_array($id, $withData, true)) {
+                $result->warnings[] = Craft::t('simple-form', 'Pruned field “{handle}” (no submission data).', ['handle' => $handle]);
+                continue; // omitted from items => the sync deletes it
+            }
+            if ($prune) {
+                $result->warnings[] = Craft::t('simple-form', 'Kept field “{handle}”: it has submission data and was not pruned.', ['handle' => $handle]);
+            }
+            // Keep: re-add with its existing id, config and content (no-op update).
+            $items[] = $this->existingRowToItem($row);
+        }
+
+        // One transactional sync owns the canonical site's structure + content.
+        Plugin::getInstance()->getFieldSync()->sync($form, $items, $canonicalSiteId);
+
+        // Overlay each sibling site's translated content from the file.
+        $supportedSiteIds = array_filter(
+            $form->supportedSiteIds() ?: [$canonicalSiteId],
+            static fn(int $id): bool => $id !== $canonicalSiteId,
+        );
+        foreach ($supportedSiteIds as $siteId) {
+            $site = $sites->getSiteById($siteId);
+            if ($site === null) {
+                continue;
+            }
+            $this->overlaySiteContent($formId, $siteId, $fields, $site->handle);
+        }
+
+        $result->form = $form;
+        Plugin::getInstance()->getAudit()->log(AuditService::ACTION_FORM_IMPORT, AuditService::TARGET_FORM, $formId, (string)($form->title ?? $form->name));
+    }
+
+    /**
+     * Build a FieldSyncService builder item from an existing resolved field row,
+     * folding its per-site option labels back into the config as `siteLabel` so
+     * the sync round-trips the content unchanged.
+     *
+     * @param array<string, mixed> $row
+     * @return array<string, mixed>
+     */
+    private function existingRowToItem(array $row): array
+    {
+        $config = is_array($row['config'] ?? null) ? $row['config'] : [];
+        unset($config['required']); // exposed as its own column
+
+        $optionLabels = is_array($row['optionLabels'] ?? null) ? $row['optionLabels'] : [];
+        if ($optionLabels !== [] && isset($config['options']) && is_array($config['options'])) {
+            foreach ($config['options'] as &$opt) {
+                if (is_array($opt) && isset($opt['value'])) {
+                    $opt['siteLabel'] = (string)($optionLabels[(string)$opt['value']] ?? '');
+                }
+            }
+            unset($opt);
+        }
+
+        return [
+            'id' => (int)$row['id'],
+            'type' => (string)$row['type'],
+            'handle' => (string)$row['name'],
+            'label' => (string)($row['label'] ?? $row['name'] ?? ''),
+            'required' => (bool)($row['required'] ?? false),
+            'helpText' => (string)($row['helpText'] ?? ''),
+            'errorMessage' => (string)($row['errorMessage'] ?? ''),
+            'config' => $config,
+        ];
+    }
+
+    /**
+     * Field ids that appear in at least one of the form's stored submissions
+     * (data is keyed by `field_<id>`). Used so a prune never silently drops a
+     * field that still holds answers.
+     *
+     * @return list<int>
+     */
+    private function fieldIdsWithSubmissionData(int $formId): array
+    {
+        $ids = [];
+        $rows = (new Query())
+            ->select(['data'])
+            ->from('{{%simpleform_submissions}}')
+            ->where(['formId' => $formId])
+            ->column();
+
+        foreach ($rows as $json) {
+            $data = is_string($json) ? json_decode($json, true) : (is_array($json) ? $json : null);
+            if (!is_array($data)) {
+                continue;
+            }
+            foreach (array_keys($data) as $key) {
+                if (preg_match('/^field_(\d+)$/', (string)$key, $m) === 1) {
+                    $ids[(int)$m[1]] = true;
+                }
+            }
+        }
+
+        return array_keys($ids);
     }
 
     // =========================================================================

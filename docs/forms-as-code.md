@@ -5,12 +5,11 @@ of clicking them into the database on every install. Simple Form reuses the same
 versioned, secret-free JSON document as [import/export](import-export.md) and
 adds an **apply** step so a form can be created from code on `craft up`.
 
-> **Status (v1).** `apply` **creates** forms that don't exist yet on the target —
-> the core "deploy a form definition to staging/prod" workflow. It is
-> deliberately **non-destructive**: a form that already exists is left untouched,
-> so a re-apply can never orphan submissions. Updating an existing form's
-> *structure* from code (an id-stable, in-place merge) is the next step — see
-> [Roadmap](#roadmap).
+`apply` **creates** a form that doesn't exist on the target and **updates an
+existing one in place** — the form keeps its element id and fields are reconciled
+by handle, so field ids (and therefore their submissions) survive a re-apply. The
+file is authoritative: re-applying restores a form's structure and content from
+its file.
 
 ## Where forms live
 
@@ -34,13 +33,19 @@ php craft simple-form/forms/export --form=contact --out=config/simple-form/forms
 ## Applying on another environment
 
 ```bash
-php craft simple-form/forms/apply            # create any missing config forms
+php craft simple-form/forms/apply            # create missing forms, update existing ones in place
 php craft simple-form/forms/apply --dry-run  # show what would happen, change nothing
+php craft simple-form/forms/apply --prune    # also remove fields no longer in the file
 ```
 
 - A handle that doesn't exist on the target is **created** from its file.
-- A handle that already exists is **left untouched** (never mutated or deleted).
-- It's **idempotent**: re-running only creates what's missing.
+- A handle that already exists is **updated in place**, id-stable: the form keeps
+  its element id and matched fields (by handle) keep their ids, so submissions and
+  conditional references are never orphaned.
+- A field present on the form but **absent from the file** is **kept** by default;
+  pass `--prune` to remove it — except a field that still holds **submission data**
+  is always kept (with a warning), never silently dropped.
+- It's **idempotent**: re-applying an unchanged file is a no-op.
 
 Wire it into your deploy so forms ship with the code, e.g. after `craft up`:
 
@@ -69,12 +74,18 @@ Lists every form as `[config]` (a matching config file exists) or `[db]`
   the handle-based [`craft.simpleForm.field()`](twig-and-api.md#rendering) helper
   over hardcoding ids.
 
+## Updating a managed form
+
+Because the file is authoritative, change a code-defined form by editing its file
+and re-running `apply`. Field **types** are immutable once created — changing a
+field's type in the file is ignored (with a warning); give the new control a new
+handle instead. Per-site translations are restored from the file on every apply,
+so the workflow for content edits made in the CP is **re-export, then commit**:
+
+```bash
+php craft simple-form/forms/export --form=contact --out=config/simple-form/forms/contact.json
+```
+
 ## Roadmap
 
-- **Id-stable in-place update.** Apply an edited file onto an *existing* form,
-  matching fields by handle and updating in place (so field ids — and submissions
-  — survive), with an opt-in `--prune` for fields removed from the file.
-- **`craft up` hook** to run `apply` automatically.
-
-Until then, to change a live form keep editing it in the CP (and re-export to keep
-its file in sync), or recreate it on a fresh environment.
+- **`craft up` hook** to run `apply` automatically as part of a deploy.

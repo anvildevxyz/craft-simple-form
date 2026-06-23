@@ -483,7 +483,7 @@ All commands live under the `simple-form/` namespace:
 | `simple-form/cache/clear` | Invalidate the cached structure for every form. |
 | `simple-form/forms/export --form=<handle> [--out=path.json]` | Export a form definition to JSON. |
 | `simple-form/forms/import <path.json> [--mode=rename\|replace\|abort]` | Import a form definition from JSON. |
-| `simple-form/forms/apply [--dry-run]` | Create any forms defined in `config/simple-form/forms/*.json` that don't exist yet (non-destructive). See [Forms as code](forms-as-code.md). |
+| `simple-form/forms/apply [--dry-run] [--prune]` | Create or **id-stably update** the forms defined in `config/simple-form/forms/*.json` (matched by handle, so submissions survive). See [Forms as code](forms-as-code.md). |
 | `simple-form/forms/status` | Report which forms are config-managed vs database-only. |
 | `simple-form/submissions/purge --days=<n> [--form=<handle>]` | Delete (or anonymize) submissions older than `--days`. |
 | `simple-form/submissions/export [--form=<handle>] [--out=<path>]` | Export submissions as CSV to stdout or a file. |
