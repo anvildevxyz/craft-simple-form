@@ -105,4 +105,26 @@ class ConfigApplyTest extends SimpleFormTestCase
         $this->controller()->actionApply();
         $this->assertSame(ExitCode::OK, $this->controller()->actionStatus());
     }
+
+    public function testExportCreatesMissingTargetDirectory(): void
+    {
+        $this->requireCraft();
+        $form = $this->createForm('Export Dir', 'exportDirForm');
+        $this->createField((int) $form->id, 'text', 'name', 'Name', true);
+
+        // The documented adoption path writes into a not-yet-existing folder.
+        $nested = (string) Craft::getAlias('@config') . '/simple-form/forms/exportDirForm.json';
+        @unlink($nested);
+
+        $c = $this->controller();
+        $c->form = 'exportDirForm';
+        $c->out = $nested;
+        $this->assertSame(ExitCode::OK, $c->actionExport(), 'export should create the target dir');
+        $this->assertFileExists($nested);
+
+        // cleanup
+        @unlink($nested);
+        @rmdir(dirname($nested));
+        @rmdir(dirname($nested, 2));
+    }
 }

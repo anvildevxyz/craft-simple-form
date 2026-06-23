@@ -5,6 +5,7 @@ namespace fabianhaef\simpleform\console\controllers;
 use Craft;
 use craft\console\Controller;
 use craft\helpers\Console;
+use craft\helpers\FileHelper;
 use fabianhaef\simpleform\elements\Form;
 use fabianhaef\simpleform\models\ImportResult;
 use fabianhaef\simpleform\Plugin;
@@ -89,6 +90,12 @@ class FormsController extends Controller
         $json = Plugin::getInstance()->getPortability()->exportJson($form);
 
         if ($this->out !== null) {
+            // Create the target directory so exporting straight into the (not yet
+            // existing) config/simple-form/forms/ folder works on a fresh project.
+            $dir = dirname($this->out);
+            if ($dir !== '' && $dir !== '.' && !is_dir($dir)) {
+                FileHelper::createDirectory($dir);
+            }
             file_put_contents($this->out, $json);
             $this->stdout("Wrote {$this->out}\n", Console::FG_GREEN);
         } else {
