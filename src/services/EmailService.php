@@ -6,6 +6,7 @@ use Craft;
 use craft\helpers\App;
 use fabianhaef\simpleform\elements\Form;
 use fabianhaef\simpleform\elements\Submission;
+use fabianhaef\simpleform\events\BeforeSendNotificationEvent;
 use fabianhaef\simpleform\fields\FileFieldType;
 use fabianhaef\simpleform\jobs\SendNotifications;
 use fabianhaef\simpleform\models\FieldModel;
@@ -35,11 +36,32 @@ class EmailService extends Component
             return $this->sendLegacy($form, $submission, $data);
         }
 
+        $plugin = Plugin::getInstance();
+        $hasHandlers = $plugin !== null && $plugin->hasEventHandlers(Plugin::EVENT_BEFORE_SEND_NOTIFICATION);
+
         $allSent = true;
         foreach ($resolved as $entry) {
             $notification = $entry['notification'];
+            $recipients = $entry['recipients'];
+
+            // Let third parties rewrite recipients or suppress this notification.
+            if ($hasHandlers) {
+                $event = new BeforeSendNotificationEvent([
+                    'form' => $form,
+                    'submission' => $submission,
+                    'notification' => $notification,
+                    'recipients' => array_values($recipients),
+                    'submissionData' => $data,
+                ]);
+                $plugin->trigger(Plugin::EVENT_BEFORE_SEND_NOTIFICATION, $event);
+                if (!$event->send || $event->recipients === []) {
+                    continue;
+                }
+                $recipients = $event->recipients;
+            }
+
             $allSent = $this->send(
-                $entry['recipients'],
+                $recipients,
                 $this->renderSubjectFor($notification->subject, $form),
                 $this->renderBodyFor($notification->body, $form, $submission, $data),
                 $notification->replyTo,
@@ -167,8 +189,28 @@ class EmailService extends Component
             return false;
         }
 
+        $recipients = [$form->emailTo];
+
+        // Same suppression/recipient-rewrite seam as the resolved path, so a form
+        // configured with the simple emailTo column is equally controllable.
+        $plugin = Plugin::getInstance();
+        if ($plugin !== null && $plugin->hasEventHandlers(Plugin::EVENT_BEFORE_SEND_NOTIFICATION)) {
+            $event = new BeforeSendNotificationEvent([
+                'form' => $form,
+                'submission' => $submission,
+                'notification' => null,
+                'recipients' => $recipients,
+                'submissionData' => $data,
+            ]);
+            $plugin->trigger(Plugin::EVENT_BEFORE_SEND_NOTIFICATION, $event);
+            if (!$event->send || $event->recipients === []) {
+                return true;
+            }
+            $recipients = $event->recipients;
+        }
+
         return $this->send(
-            $form->emailTo,
+            $recipients,
             $this->renderSubjectFor($form->emailSubject, $form),
             $this->renderBodyFor($form->emailBody, $form, $submission, $data),
             $form->emailReplyTo,

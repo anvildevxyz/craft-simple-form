@@ -8,6 +8,7 @@ use craft\helpers\Db;
 use craft\helpers\Json;
 use craft\helpers\StringHelper;
 use fabianhaef\simpleform\elements\Submission;
+use fabianhaef\simpleform\events\BeforeIntegrationDispatchEvent;
 use fabianhaef\simpleform\integrations\DispatchStatus;
 use fabianhaef\simpleform\integrations\IntegrationResult;
 use fabianhaef\simpleform\jobs\SendIntegrationJob;
@@ -242,6 +243,24 @@ class IntegrationsService extends Component
         // the element connector's resend-idempotency lookup). Underscore-prefixed
         // so it never collides with a real setting.
         $settings['__integrationId'] = $integrationId;
+
+        // Let third parties adjust settings or skip this dispatch. A skip is
+        // logged as a successful no-op so it is not retried.
+        $plugin = Plugin::getInstance();
+        if ($plugin !== null && $plugin->hasEventHandlers(Plugin::EVENT_BEFORE_INTEGRATION_DISPATCH)) {
+            $event = new BeforeIntegrationDispatchEvent([
+                'integration' => $integration,
+                'submission' => $submission,
+                'settings' => $settings,
+            ]);
+            $plugin->trigger(Plugin::EVENT_BEFORE_INTEGRATION_DISPATCH, $event);
+            if (!$event->send) {
+                $message = 'Skipped by EVENT_BEFORE_INTEGRATION_DISPATCH';
+                $this->logDispatch($integrationId, $submissionId, DispatchStatus::SUCCESS, $attempt, null, $message);
+                return IntegrationResult::success(null, $message);
+            }
+            $settings = $event->settings;
+        }
 
         try {
             $result = $type->send($submission, $settings);

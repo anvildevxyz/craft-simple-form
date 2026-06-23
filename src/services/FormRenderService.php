@@ -7,6 +7,7 @@ use craft\helpers\Template;
 use craft\helpers\UrlHelper;
 use craft\web\View;
 use fabianhaef\simpleform\elements\Form;
+use fabianhaef\simpleform\events\ModifyRenderContextEvent;
 use fabianhaef\simpleform\fields\FileFieldType;
 use fabianhaef\simpleform\helpers\FieldQueryHelper;
 use fabianhaef\simpleform\helpers\FormRows;
@@ -282,7 +283,7 @@ class FormRenderService extends Component
         $rows = FormRows::group($resolvedFields);
         $stepRows = array_map(static fn(array $stepFields): array => FormRows::group($stepFields), $steps);
 
-        return [
+        $context = [
             'form' => $form,
             'handle' => $form->handle,
             'fields' => $resolvedFields,
@@ -309,6 +310,17 @@ class FormRenderService extends Component
             'resume' => $resume,
             'partials' => $this->_resolvePartials($form, $options),
         ];
+
+        // Let third parties add to or rewrite the render context before output.
+        // Only fires when a handler is attached.
+        $plugin = Plugin::getInstance();
+        if ($plugin !== null && $plugin->hasEventHandlers(Plugin::EVENT_MODIFY_RENDER_CONTEXT)) {
+            $event = new ModifyRenderContextEvent(['form' => $form, 'context' => $context]);
+            $plugin->trigger(Plugin::EVENT_MODIFY_RENDER_CONTEXT, $event);
+            $context = $event->context;
+        }
+
+        return $context;
     }
 
     // =========================================================================

@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- Developer extension surface (#219): a `EVENT_REGISTER_FIELD_TYPES` event so
+  custom field types register the same way as integrations, captcha providers and
+  stencils, plus five lifecycle seam events — `EVENT_DEFINE_FIELD_SET`,
+  `EVENT_MODIFY_RENDER_CONTEXT`, `EVENT_BEFORE_VALIDATE`,
+  `EVENT_BEFORE_SEND_NOTIFICATION` and `EVENT_BEFORE_INTEGRATION_DISPATCH` — for
+  modifying or cancelling rendering, validation, notifications and dispatch
+  without forking the plugin. See [Developer API](docs/twig-and-api.md#events).
+
 ## [1.0.0] - 2026-06-23
 
 ### Fixed

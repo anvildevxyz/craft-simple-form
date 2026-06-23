@@ -2,6 +2,7 @@
 
 namespace fabianhaef\simpleform\services;
 
+use fabianhaef\simpleform\events\RegisterFieldTypesEvent;
 use fabianhaef\simpleform\fields\AddressFieldType;
 use fabianhaef\simpleform\fields\AssetRelationFieldType;
 use fabianhaef\simpleform\fields\CalculationFieldType;
@@ -31,6 +32,7 @@ use fabianhaef\simpleform\fields\TagRelationFieldType;
 use fabianhaef\simpleform\fields\TextareaFieldType;
 use fabianhaef\simpleform\fields\TextFieldType;
 use fabianhaef\simpleform\fields\UserRelationFieldType;
+use fabianhaef\simpleform\Plugin;
 use yii\base\Component;
 
 class FieldTypeRegistry extends Component
@@ -110,6 +112,21 @@ class FieldTypeRegistry extends Component
         ] as $class) {
             $this->registerFieldType($class);
         }
+
+        // Let third parties contribute their own. Fired on the Plugin class so the
+        // registration ergonomics match integration types / captcha providers /
+        // stencils. Guarded on the Craft app so unit tests (no bootstrap, no `Yii`
+        // alias) skip it cleanly.
+        if (!class_exists(\Craft::class) || \Craft::$app === null) {
+            return;
+        }
+
+        if (($plugin = Plugin::getInstance()) !== null) {
+            $plugin->trigger(Plugin::EVENT_REGISTER_FIELD_TYPES, $event = new RegisterFieldTypesEvent());
+            foreach ($event->types as $class) {
+                $this->registerFieldType($class);
+            }
+        }
     }
 
     /**
@@ -133,6 +150,9 @@ class FieldTypeRegistry extends Component
     {
         if (!class_exists($class)) {
             throw new \InvalidArgumentException("Field type class does not exist: $class");
+        }
+        if (!is_subclass_of($class, FieldType::class)) {
+            throw new \InvalidArgumentException("Field type must extend FieldType: $class");
         }
 
         $type = $class::getType();

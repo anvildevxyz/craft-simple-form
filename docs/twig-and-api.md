@@ -278,18 +278,83 @@ Event::on(
 | `Plugin::EVENT_BEFORE_SUBMISSION_SAVE` | Before the submission is persisted. |
 | `Plugin::EVENT_AFTER_SUBMISSION_SAVE` | After it is persisted (the plugin's own outbound integrations dispatch off this). |
 
+### Lifecycle seam events (modify / cancel)
+
+Five seam events let you reach into rendering, validation, notification and
+dispatch without forking the plugin. Each is fired on `Plugin::class` and — for
+performance — only fires when a handler is attached, so the default fast paths
+(including the field-set cache) are untouched.
+
+```php
+use fabianhaef\simpleform\Plugin;
+use fabianhaef\simpleform\events\DefineFieldSetEvent;
+use fabianhaef\simpleform\events\ModifyRenderContextEvent;
+use fabianhaef\simpleform\events\BeforeValidateSubmissionEvent;
+use fabianhaef\simpleform\events\BeforeSendNotificationEvent;
+use fabianhaef\simpleform\events\BeforeIntegrationDispatchEvent;
+use yii\base\Event;
+
+// Add / remove / reorder a form's resolved fields for a site.
+Event::on(Plugin::class, Plugin::EVENT_DEFINE_FIELD_SET, function(DefineFieldSetEvent $e): void {
+    $e->fields = array_filter($e->fields, fn($row) => $row['name'] !== 'internal');
+});
+
+// Add to or rewrite the Twig render context.
+Event::on(Plugin::class, Plugin::EVENT_MODIFY_RENDER_CONTEXT, function(ModifyRenderContextEvent $e): void {
+    $e->context['brand'] = 'acme';
+});
+
+// Normalize or augment submitted values before validation/storage.
+Event::on(Plugin::class, Plugin::EVENT_BEFORE_VALIDATE, function(BeforeValidateSubmissionEvent $e): void {
+    if (isset($e->valuesByHandle['email'])) {
+        $e->valuesByHandle['email'] = strtolower(trim($e->valuesByHandle['email']));
+    }
+});
+
+// Rewrite recipients or suppress a notification (covers the emailTo path too,
+// where $e->notification is null).
+Event::on(Plugin::class, Plugin::EVENT_BEFORE_SEND_NOTIFICATION, function(BeforeSendNotificationEvent $e): void {
+    if (($e->submissionData['field_12'] ?? '') === 'internal') {
+        $e->send = false;
+    }
+});
+
+// Adjust settings or skip a single outbound dispatch (a skip is a successful no-op).
+Event::on(Plugin::class, Plugin::EVENT_BEFORE_INTEGRATION_DISPATCH, function(BeforeIntegrationDispatchEvent $e): void {
+    if ($e->submission->getStatus() === 'spam') {
+        $e->send = false;
+    }
+});
+```
+
+| Event | Fired from | Mutate | Cancel |
+| --- | --- | --- | --- |
+| `EVENT_DEFINE_FIELD_SET` | `FormStructureService::getFieldSet()` | `$e->fields` | — |
+| `EVENT_MODIFY_RENDER_CONTEXT` | `FormRenderService::buildContext()` | `$e->context` | — |
+| `EVENT_BEFORE_VALIDATE` | `SubmissionService` (every channel, create + edit) | `$e->valuesByHandle` | — |
+| `EVENT_BEFORE_SEND_NOTIFICATION` | `EmailService` (per notification) | `$e->recipients` | `$e->send = false` |
+| `EVENT_BEFORE_INTEGRATION_DISPATCH` | `IntegrationsService::runOnce()` | `$e->settings` | `$e->send = false` |
+
 ### Register events (extending the plugin)
 
-Three register events let third parties extend the plugin. All are fired on
+Four register events let third parties extend the plugin. All are fired on
 `Plugin::class`:
 
 ```php
 use fabianhaef\simpleform\Plugin;
+use fabianhaef\simpleform\events\RegisterFieldTypesEvent;
 use fabianhaef\simpleform\events\RegisterIntegrationTypesEvent;
 use fabianhaef\simpleform\events\RegisterCaptchaProvidersEvent;
 use fabianhaef\simpleform\events\RegisterStencilsEvent;
 use fabianhaef\simpleform\stencils\Stencil;
 use yii\base\Event;
+
+// Add a custom field type.
+Event::on(
+    Plugin::class,
+    Plugin::EVENT_REGISTER_FIELD_TYPES,
+    fn(RegisterFieldTypesEvent $e) => $e->types[] = MyFieldType::class,
+);
 
 // Add an outbound-integration connector.
 Event::on(
@@ -319,13 +384,14 @@ Event::on(
 
 | Event | Add to | Implement |
 | --- | --- | --- |
+| `EVENT_REGISTER_FIELD_TYPES` | `$e->types[]` | `fields\FieldType` (subclass) |
 | `EVENT_REGISTER_INTEGRATION_TYPES` | `$e->types[]` | `integrations\IntegrationTypeInterface` |
 | `EVENT_REGISTER_CAPTCHA_PROVIDERS` | `$e->providers[]` | `captcha\CaptchaProviderInterface` |
 | `EVENT_REGISTER_STENCILS` | `$e->stencils[]` | a `stencils\Stencil` instance |
 
-Custom field types are registered internally via the field-type registry
-(`Plugin::getInstance()->getFieldTypeRegistry()->registerFieldType(MyField::class)`),
-not through a register event — call it from your own plugin's `init()`.
+Calling `Plugin::getInstance()->getFieldTypeRegistry()->registerFieldType(MyField::class)`
+from your own `init()` still works and is equivalent; `EVENT_REGISTER_FIELD_TYPES`
+is the recommended, uniform entry point.
 
 ## MCP server (Model Context Protocol)
 

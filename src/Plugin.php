@@ -78,6 +78,39 @@ class Plugin extends BasePlugin
     public const EVENT_AFTER_SUBMISSION_SAVE = 'afterSubmissionSave';
 
     /**
+     * @event BeforeValidateSubmissionEvent Fired after the submitted values are
+     * resolved but before any field is validated, so a handler can normalize or
+     * augment the values (see BeforeValidateSubmissionEvent).
+     */
+    public const EVENT_BEFORE_VALIDATE = 'beforeValidate';
+
+    /**
+     * @event DefineFieldSetEvent Fired so a handler can add/remove/reorder the
+     * resolved field rows for a form + site (see DefineFieldSetEvent).
+     */
+    public const EVENT_DEFINE_FIELD_SET = 'defineFieldSet';
+
+    /**
+     * @event ModifyRenderContextEvent Fired so a handler can adjust the Twig
+     * render context before a form is rendered (see ModifyRenderContextEvent).
+     */
+    public const EVENT_MODIFY_RENDER_CONTEXT = 'modifyRenderContext';
+
+    /**
+     * @event BeforeSendNotificationEvent Fired before each notification email is
+     * sent, so a handler can rewrite recipients or suppress it (see
+     * BeforeSendNotificationEvent).
+     */
+    public const EVENT_BEFORE_SEND_NOTIFICATION = 'beforeSendNotification';
+
+    /**
+     * @event BeforeIntegrationDispatchEvent Fired before a single integration
+     * dispatch, so a handler can adjust settings or skip it (see
+     * BeforeIntegrationDispatchEvent).
+     */
+    public const EVENT_BEFORE_INTEGRATION_DISPATCH = 'beforeIntegrationDispatch';
+
+    /**
      * @event RegisterIntegrationTypesEvent Fired so third parties can register
      * outbound-integration connectors (see RegisterIntegrationTypesEvent).
      */
@@ -94,6 +127,12 @@ class Plugin extends BasePlugin
      * stencils (see RegisterStencilsEvent).
      */
     public const EVENT_REGISTER_STENCILS = 'registerStencils';
+
+    /**
+     * @event RegisterFieldTypesEvent Fired so third parties can register custom
+     * field types (see RegisterFieldTypesEvent).
+     */
+    public const EVENT_REGISTER_FIELD_TYPES = 'registerFieldTypes';
 
     /** The plugin's single commercial edition. */
     public const EDITION_PRO = 'pro';

@@ -11,6 +11,7 @@ use craft\web\UploadedFile;
 use fabianhaef\simpleform\elements\Form;
 use fabianhaef\simpleform\elements\Submission;
 use fabianhaef\simpleform\elements\SubmissionStatus;
+use fabianhaef\simpleform\events\BeforeValidateSubmissionEvent;
 use fabianhaef\simpleform\events\SubmissionEvent;
 use fabianhaef\simpleform\fields\CalculationFieldType;
 use fabianhaef\simpleform\fields\CompositeFieldType;
@@ -359,6 +360,7 @@ class SubmissionService extends Component
 
         // An edit runs through the identical spam + validation + conditional-logic
         // core as a create, so an edit can never be a spam-laundering bypass.
+        $context['_isEdit'] = true;
         $core = $this->processSubmission($form, $values, $context);
         if ($core['result'] !== null) {
             return $core['result'];
@@ -442,7 +444,7 @@ class SubmissionService extends Component
      * guarantees identical validation/spam/conditional behavior.
      *
      * @param array<int|string, mixed> $values
-     * @param array{honeypot?: string, captchaToken?: ?string, skipCaptcha?: bool, userId?: ?int, siteId?: ?int} $context
+     * @param array{honeypot?: string, captchaToken?: ?string, skipCaptcha?: bool, userId?: ?int, siteId?: ?int, _isEdit?: bool} $context
      * @return array{result: array{submission: null, errors: array<string, mixed>|null}|null, data: array<string, mixed>, isSpam: bool, spamReason?: ?string}
      */
     private function processSubmission(Form $form, array $values, array $context): array
@@ -520,6 +522,22 @@ class SubmissionService extends Component
                 continue;
             }
             $valuesByHandle[$field->getName()] = $this->valueForField($values, (int) $fieldId);
+        }
+
+        // (3b) Let third parties normalize or augment the resolved values before
+        // validation, conditional evaluation and storage all read them. Fires on
+        // every channel (front-end, GraphQL, MCP) and for both creates and edits.
+        $plugin = Plugin::getInstance();
+        if ($plugin !== null && $plugin->hasEventHandlers(Plugin::EVENT_BEFORE_VALIDATE)) {
+            $event = new BeforeValidateSubmissionEvent([
+                'form' => $form,
+                'values' => $values,
+                'valuesByHandle' => $valuesByHandle,
+                'context' => $context,
+                'isNew' => empty($context['_isEdit']),
+            ]);
+            $plugin->trigger(Plugin::EVENT_BEFORE_VALIDATE, $event);
+            $valuesByHandle = $event->valuesByHandle;
         }
 
         // (4) Validate every visible field and build the persisted data payload.

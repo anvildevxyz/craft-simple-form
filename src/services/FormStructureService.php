@@ -4,6 +4,7 @@ namespace fabianhaef\simpleform\services;
 
 use Craft;
 use craft\helpers\App;
+use fabianhaef\simpleform\events\DefineFieldSetEvent;
 use fabianhaef\simpleform\helpers\FieldQueryHelper;
 use fabianhaef\simpleform\Plugin;
 use yii\base\Component;
@@ -43,7 +44,7 @@ class FormStructureService extends Component
         $siteId ??= Craft::$app->getSites()->getCurrentSite()->id;
 
         if (!$this->cachingEnabled()) {
-            return FieldQueryHelper::fieldsForForm($formId, $siteId);
+            return $this->applyFieldSetEvent($formId, $siteId, FieldQueryHelper::fieldsForForm($formId, $siteId));
         }
 
         $cache = Craft::$app->getCache();
@@ -51,13 +52,39 @@ class FormStructureService extends Component
 
         $cached = $cache->get($key);
         if (is_array($cached)) {
-            return $cached;
+            return $this->applyFieldSetEvent($formId, $siteId, $cached);
         }
 
         $fieldSet = FieldQueryHelper::fieldsForForm($formId, $siteId);
         $cache->set($key, $fieldSet, null, new TagDependency(['tags' => [$this->tagForForm($formId)]]));
 
-        return $fieldSet;
+        return $this->applyFieldSetEvent($formId, $siteId, $fieldSet);
+    }
+
+    /**
+     * Give third parties a chance to add/remove/reorder a form's resolved field
+     * rows. The event fires (and the cached value is copied) only when a handler
+     * is attached, so the default cached fast path is untouched. The cache always
+     * stores the unmodified core field set; mutations are applied per read.
+     *
+     * @param list<ResolvedFieldRow> $fieldSet
+     * @return list<ResolvedFieldRow>
+     */
+    private function applyFieldSetEvent(int $formId, int $siteId, array $fieldSet): array
+    {
+        $plugin = Plugin::getInstance();
+        if (!$plugin->hasEventHandlers(Plugin::EVENT_DEFINE_FIELD_SET)) {
+            return $fieldSet;
+        }
+
+        $event = new DefineFieldSetEvent([
+            'formId' => $formId,
+            'siteId' => $siteId,
+            'fields' => $fieldSet,
+        ]);
+        $plugin->trigger(Plugin::EVENT_DEFINE_FIELD_SET, $event);
+
+        return array_values($event->fields);
     }
 
     /**
