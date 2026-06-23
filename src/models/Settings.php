@@ -98,6 +98,14 @@ class Settings extends Model
      */
     public ?string $templatePath = null;
     public string $storageLocation = 'database';
+
+    /**
+     * When true, `craft up` automatically runs `simple-form/forms/apply` after it
+     * finishes — so code-defined forms in `config/simple-form/forms/*.json` deploy
+     * with the rest of the project. Off by default (opt-in); apply is always
+     * available to run manually. Never prunes on the automatic run.
+     */
+    public bool $applyFormsConfigOnUp = false;
     public string $submitMessage = 'Thank you! Your submission has been received.';
     public string $errorMessage = 'There was an error submitting your form. Please try again.';
 

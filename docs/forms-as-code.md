@@ -53,6 +53,11 @@ Wire it into your deploy so forms ship with the code, e.g. after `craft up`:
 php craft up && php craft simple-form/forms/apply
 ```
 
+Or have `craft up` do it for you: set **`applyFormsConfigOnUp = true`** (Settings →
+General, or `config/simple-form.php`) and every `craft up` runs `apply` when it
+finishes. The automatic run never prunes (safe by default); run
+`forms/apply --prune` manually when you intend to remove fields.
+
 ## Seeing what's managed
 
 ```bash
@@ -111,7 +116,3 @@ covered by a test in `tests/integration/ApplyEdgeCasesTest.php`:
 ```bash
 php craft simple-form/forms/export --form=contact --out=config/simple-form/forms/contact.json
 ```
-
-## Roadmap
-
-- **`craft up` hook** to run `apply` automatically as part of a deploy.

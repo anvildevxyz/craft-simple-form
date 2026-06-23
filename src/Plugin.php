@@ -327,6 +327,26 @@ class Plugin extends BasePlugin
                 }
             );
         }
+
+        // Optionally deploy code-defined forms after `craft up` (#226 follow-up).
+        // Off by default; the handler only acts on the `up` index action with the
+        // setting on (UpController runs only in console, so this is console-only in
+        // practice). Registered unconditionally so it is testable.
+        Event::on(
+            \craft\console\controllers\UpController::class,
+            \craft\console\Controller::EVENT_AFTER_ACTION,
+            function(\yii\base\ActionEvent $e): void {
+                if ($e->action->id !== 'index' || !$this->getSettings()->applyFormsConfigOnUp) {
+                    return;
+                }
+                try {
+                    // Never prunes on the automatic run (safe by default).
+                    (new \fabianhaef\simpleform\console\controllers\FormsController('forms', Craft::$app))->actionApply();
+                } catch (\Throwable $ex) {
+                    Craft::error('forms/apply after `up` failed: ' . $ex->getMessage(), 'simple-form');
+                }
+            }
+        );
     }
 
     /**

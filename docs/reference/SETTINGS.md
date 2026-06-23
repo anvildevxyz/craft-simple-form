@@ -70,6 +70,12 @@ Each section links to the guide that explains the feature in depth.
 | `cacheFormStructure` | `true` | **Code-only.** Cache the resolved form structure between renders (auto-bypassed in dev mode / when Craft's cache is disabled). Set `false` to force a fresh DB read every render. |
 | `inlineFormAssets` | `false` | **Code-only.** Emit the form's CSS/JS inline instead of via a cache-bustable asset bundle. Escape hatch for self-contained output (e.g. email previews). |
 
+## Forms as code — see [Forms as code](../forms-as-code.md)
+
+| Setting | Default | Purpose |
+| --- | --- | --- |
+| `applyFormsConfigOnUp` | `false` | **Code-only.** When on, `craft up` automatically runs `simple-form/forms/apply` after it finishes, deploying code-defined forms from `config/simple-form/forms/*.json`. Never prunes on the automatic run; `apply` is always available to run manually. |
+
 ## Integrations — see [Outbound integrations](../integrations.md)
 
 | Setting | Default | Purpose |

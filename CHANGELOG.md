@@ -8,6 +8,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- Auto-apply forms on deploy: a new `applyFormsConfigOnUp` setting (off by
+  default) makes `craft up` run `simple-form/forms/apply` when it finishes, so
+  code-defined forms deploy with the rest of the project. The automatic run never
+  prunes. See [Forms as code](docs/forms-as-code.md).
 - Full-fidelity form export (#226): the portable form document now carries **all
   form-level settings** — post-submit action, availability windows, submission
   limits, login-required, per-user limits, editing window, duplicate prevention,

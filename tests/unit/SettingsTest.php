@@ -41,6 +41,7 @@ class SettingsTest extends TestCase
         $this->assertSame(0.5, $defaults['recaptchaV3MinScore']);
         $this->assertNotEmpty($defaults['submitMessage']);
         $this->assertNotEmpty($defaults['errorMessage']);
+        $this->assertFalse($defaults['applyFormsConfigOnUp'], 'Auto-apply on `up` is opt-in (off by default)');
     }
 
     public function testSecretsAreEnvParseable(): void
