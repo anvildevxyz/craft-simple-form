@@ -487,5 +487,11 @@ All commands live under the `simple-form/` namespace:
 | `simple-form/submissions/export [--form=<handle>] [--out=<path>]` | Export submissions as CSV to stdout or a file. |
 | `simple-form/submissions/expire-payments` | Cancel submissions whose payment stayed pending past the TTL (also runs on GC). See [Payments](payments.md). |
 | `simple-form/integrations/redispatch …` | Re-queue integration dispatch for a submission (all enabled, or one `--integration`). |
+| `simple-form/make/field-type [Class] [--namespace=] [--path=]` | Scaffold a custom field type (extends `fields\FieldType`) from a working stub. |
+| `simple-form/make/integration [Class] [--namespace=] [--path=]` | Scaffold a custom outbound integration (implements `IntegrationTypeInterface`). |
+| `simple-form/make/theme [--path=]` | Copy the built-in render partials into a `templates/` folder to theme. |
 
 Run any command with `--help` for its full option list.
+
+The `make/*` generators write a ready-to-edit stub and print the `Event::on(…)`
+line that registers it. Pair them with the copy-paste [`examples/`](../examples/).

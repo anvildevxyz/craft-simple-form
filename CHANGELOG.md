@@ -8,6 +8,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- Scaffolding generators (#222): `simple-form/make/field-type`,
+  `simple-form/make/integration`, and `simple-form/make/theme` console commands
+  that generate a ready-to-edit stub (and print the registration one-liner) so a
+  custom extension starts from working code.
 - API stability contract (#223): documented which surfaces are public and
   backward-compatibility-guaranteed vs. internal, the semver policy
   (`docs/extending/api-stability.md`), and an upgrade guide (`docs/upgrading.md`).
