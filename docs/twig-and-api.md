@@ -110,6 +110,11 @@ server-side on submit — these helpers only render the UI.
 
 ## PHP API
 
+The plugin ships a [`.phpstorm.meta.php`](../.phpstorm.meta.php) so
+`Craft::$app->getPlugins()->getPlugin('simple-form')` resolves to the concrete
+`Plugin` in PhpStorm — its `getSubmissionService()`, `getFormStructure()` and the
+other service accessors then autocomplete with full return types.
+
 ### Loading a form and its fields
 
 `Form` is a standard Craft element, so the element query is the entry point:
@@ -175,6 +180,11 @@ request); prefer `submit()` for your own integrations.
 The schema exposes form *definitions* and a submit/update path. Submission data
 is deliberately **not** queryable — there is no submissions query and no
 submission object type, so a read token can never read what people submitted.
+
+A committed SDL of the Simple Form types lives at
+[`docs/reference/schema.graphql`](reference/schema.graphql) so a headless client
+has the schema without booting Craft (the running schema is authoritative;
+regenerate with `php craft graphql/print-schema --full-schema=1`).
 
 ### Schema components (scopes)
 

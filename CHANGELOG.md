@@ -8,6 +8,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- IDE & headless ergonomics (#224): a committed GraphQL SDL of the Simple Form
+  types at `docs/reference/schema.graphql` (regenerate with
+  `php craft graphql/print-schema --full-schema=1`), and a `.phpstorm.meta.php`
+  so `getPlugin('simple-form')` resolves to the concrete `Plugin` for service
+  autocomplete.
 - Front-end JavaScript hook API (#220): the bundled form script now dispatches
   namespaced `CustomEvent`s on the form element — `simpleform:beforeSubmit`
   (cancelable; `preventDefault()` aborts the send), `simpleform:afterSubmit`,
