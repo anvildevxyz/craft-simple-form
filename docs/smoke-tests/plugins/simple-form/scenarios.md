@@ -483,6 +483,64 @@ dogfood harness (`modules/sfdx/`, form `dxSmoke`) — see the profile. Run repor
 2. EXECUTE: `ddev exec 'php craft up'`.
 3. VERIFY: output shows `forms/apply` ran (`~ dxSmoke: updated in place`). (Event wiring also covered by `ApplyOnUpTest`.)
 
+## N. Signature, Repeater & Calculation fields (#127, #129, #131)
+
+Previously uncovered by the browser smoke library (data-layer behaviour lives in
+`CalculationSubmissionTest`, the repeater integration tests, and the signature
+assertion in `SubmissionExportTest`; the canvas/row/preview UI is browser-only).
+
+### S34 — Build a form with a Signature field ⬜
+1. EXECUTE (UI): edit the S0 form → drag **Signature** from the palette onto the canvas → inspector: Label = "Sign here", Required = on, Asset Volume = `uploads` → Save.
+2. VERIFY (DB): `SELECT type,config FROM simpleform_fields WHERE formId={id} AND type='signature';` → one row; config has `required:true` (and `volume:"uploads"` if set).
+3. VERIFY (UI): re-open the builder → the Signature inspector shows the saved values (no drift).
+
+### S35 — Public render: canvas pad → drawn signature stored as an asset ⬜
+1. EXECUTE (UI): render the public S0 form.
+2. VERIFY (UI): the Signature field renders an HTML `<canvas>` pad + a `<input type="hidden">` (the data-URL), a **Clear** control, and a `role="img"` + `<noscript>` no-JS fallback.
+3. EXECUTE (UI): draw a few pointer strokes on the canvas → VERIFY (UI) the hidden input now holds a `data:image/png;base64,…` value; clicking **Clear** empties it.
+4. EXECUTE (UI): fill the other required fields → submit.
+5. VERIFY (DB): `SELECT data FROM simpleform_submissions WHERE id={sid};` → the signature value is an **asset-id list** (e.g. `[123]`), not a base64 blob; `SELECT id,filename FROM assets WHERE id={assetId};` → a `.png` exists in the `uploads` volume.
+6. VERIFY (UI): the submission detail shows the signature as an image / asset link (not raw base64).
+
+### S36 — Required signature blocks submit; export shows an asset ref ⬜
+1. EXECUTE (UI): submit leaving the Signature untouched → VERIFY (UI) a "This field is required." error on the field, VERIFY (DB) no new submission row and no orphan asset.
+2. EXECUTE (UI): export the form's submissions to CSV → VERIFY (content) the Signature column holds an asset reference (filename/URL), **never** an inline base64 string.
+
+### S37 — Build a Repeater with inner fields + row limits ⬜
+1. EXECUTE (UI): edit the S0 form → drag **Repeater** onto the canvas → inspector: Label = "Attendees", Add-button label = "Add attendee", Min rows = 1, Max rows = 3; add two inner fields — Text "Full name" (`attendeeName`) and Email "Email" (`attendeeEmail`) → Save.
+2. VERIFY (DB): `SELECT type,config FROM simpleform_fields WHERE formId={id} AND type='repeater';` → config has `minRows:1`, `maxRows:3`, `addButtonLabel:"Add attendee"`, and a `fields` array with the two inner defs.
+3. VERIFY (UI): re-open the builder → inner fields + limits persist.
+
+### S38 — Public render: add/remove rows → ordered structured list stored ⬜
+1. EXECUTE (UI): render the public S0 form → VERIFY (UI) one initial row (min=1) with the two inner inputs + an **Add attendee** button.
+2. EXECUTE (UI, JS): click **Add attendee** twice → 2nd and 3rd rows appear, each with a **Remove** control; remove the 3rd. VERIFY (UI) a further add is blocked at max=3.
+3. EXECUTE (UI): fill row 1 (Ada / ada@example.test) and row 2 (Linus / linus@example.test) → submit.
+4. VERIFY (DB): `SELECT data FROM simpleform_submissions WHERE id={sid};` → the repeater value is a **list of 2 row maps**, each `{attendeeName, attendeeEmail}`, in order.
+5. VERIFY (UI): the submission detail shows both rows, labelled.
+
+### S39 — Repeater row limits enforced server-side ⬜
+1. EXECUTE (UI): with Min rows = 1, submit with the row emptied → VERIFY (UI) a required / min-rows error, VERIFY (DB) no new submission row.
+2. EXECUTE (rejection): forge a POST with 4 rows (above max=3) → VERIFY (server) the surplus row is rejected or trimmed — confirm no more than `maxRows` rows persist in `data`.
+
+### S40 — Build a Calculation field with a formula ⬜
+1. SETUP: the S0 form has two Number fields with handles `quantity` and `price`.
+2. EXECUTE (UI): drag **Calculation** onto the canvas → inspector: Label = "Total", Formula = `quantity * price`, Decimals = 2, Prefix = "$", Thousands separator = on, Missing-as-zero = on → Save.
+3. VERIFY (DB): `SELECT type,config FROM simpleform_fields WHERE formId={id} AND type='calculation';` → config has `formula:"quantity * price"`, `decimals:2`, `prefix:"$"`.
+4. VERIFY (UI): re-open the builder → formula + format options persist.
+
+### S41 — Live preview + server-computed total stored ⬜
+1. EXECUTE (UI): render the public S0 form → VERIFY (UI) the Calculation field shows a read-only **live total** (`<output>` / `.sf-calc`) starting at `$0.00`.
+2. EXECUTE (UI, JS): type `quantity` = 3 and `price` = 4 → VERIFY (UI) the live total updates to `$12.00` as you type.
+3. EXECUTE (UI): submit.
+4. VERIFY (DB): `SELECT data FROM simpleform_submissions WHERE id={sid};` → the calculation value is the **server-computed** total (`$12.00` / `12`), independent of any posted value.
+5. VERIFY (UI): the submission detail shows `$12.00`.
+
+### S42 — Forged total ignored; hidden calculation does not store ⬜
+1. EXECUTE (rejection): forge a POST with the calculation input set to `999999` while `quantity=3`, `price=4` → VERIFY (DB) the stored total is the recomputed `12` (`$12.00`), **not** the forged value — the server never trusts the posted total.
+2. EXECUTE (UI): hide the Calculation field (conditional rule) and submit → VERIFY (DB) no value is stored for the hidden calculation, consistent with hidden-field handling.
+
+---
+
 ## Coverage notes / known limits
 - **DX suite (Section H)** verifies via console/HTTP/DB + sentinel files, not Playwright — the browser backend has no route to the DDEV site. Equivalent automated coverage lives in the plugin's integration suite (`DeveloperEventsTest`, `ConfigApplyTest`, `IdStableApplyTest`, `ApplyEdgeCasesTest`, `FullFidelityExportTest`, `MakeCommandsTest`, `ApplyOnUpTest`) + `tests/js/hook-events.test.js`.
 - **External-dependent** (need real endpoints/keys, not in CP smoke): live Slack/Discord/Mailchimp/ActiveCampaign/HubSpot/Pipedrive dispatch, real Turnstile/hCaptcha/reCAPTCHA verification, real Akismet verdicts. These are covered by the unit/integration suites with mocked transports — smoke only confirms the CP config surface (S5/S6/S7).
