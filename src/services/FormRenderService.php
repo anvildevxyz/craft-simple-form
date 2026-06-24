@@ -44,6 +44,8 @@ use yii\base\Component;
  * resolved (overridden) `field` partial. An unset/invalid path logs a
  * `simple-form` warning and falls back — never a hard error on a public page.
  *
+ * @phpstan-type ResumePrefill array{values: array<string, mixed>, token: string}
+ *
  * @author Fabian Haefliger
  * @since 2.11.0
  */
@@ -601,7 +603,7 @@ class FormRenderService extends Component
      * The saved prefill values + token for a `?sfresume=<token>` page load, or an
      * empty set. Independent of the (multi-)step grouping.
      *
-     * @return array{values: array<string, mixed>, token: string}
+     * @return ResumePrefill
      */
     private function _resumeValues(Form $form): array
     {
@@ -628,7 +630,7 @@ class FormRenderService extends Component
      * or null when the form has not opted in.
      *
      * @param list<list<array<string, mixed>>> $steps
-     * @param array{values: array<string, mixed>, token: string} $prefill
+     * @param ResumePrefill $prefill
      * @return array<string, mixed>|null
      */
     private function _buildResume(Form $form, array $steps, array $prefill): ?array

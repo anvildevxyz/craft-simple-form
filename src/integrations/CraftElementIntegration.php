@@ -26,6 +26,8 @@ use fabianhaef\simpleform\Plugin;
  * - `fieldMapping` — `submissionHandle => targetHandle` onto native attributes
  *   (title/slug/email/username) and the target's custom fields.
  *
+ * @phpstan-import-type SelectOption from ElementMapping
+ *
  * @author Fabian Haefliger
  * @since 1.0.0
  */
@@ -362,7 +364,7 @@ class CraftElementIntegration implements IntegrationTypeInterface
     }
 
     /**
-     * @return list<array{label: string, value: string}>
+     * @return list<SelectOption>
      */
     private function elementTypeOptions(): array
     {
@@ -373,7 +375,7 @@ class CraftElementIntegration implements IntegrationTypeInterface
     }
 
     /**
-     * @return list<array{label: string, value: string}>
+     * @return list<SelectOption>
      */
     private function authorModeOptions(): array
     {
@@ -385,7 +387,7 @@ class CraftElementIntegration implements IntegrationTypeInterface
 
     /**
      * @param list<string> $statuses
-     * @return list<array{label: string, value: string}>
+     * @return list<SelectOption>
      */
     private function statusOptions(array $statuses): array
     {

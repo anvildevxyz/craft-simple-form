@@ -29,6 +29,8 @@ use fabianhaef\simpleform\helpers\HiddenValueResolver;
  *  - cookieName:    cookie name (source = cookie)
  *  - maxLength:     optional sanity bound (default 255)
  *
+ * @phpstan-import-type HiddenUserAttrs from HiddenValueResolver
+ *
  * @author Fabian Haefliger
  * @since 1.0.0
  */
@@ -172,7 +174,7 @@ class HiddenFieldType extends FieldType
     /**
      * The currently authenticated user's safe attributes, or null for a guest.
      *
-     * @return array{email: ?string, id: int|null, username: ?string}|null
+     * @return HiddenUserAttrs|null
      */
     private function currentUserAttributes(): ?array
     {
@@ -184,7 +186,7 @@ class HiddenFieldType extends FieldType
     /**
      * Resolve a user by id to their safe attributes, or null when absent.
      *
-     * @return array{email: ?string, id: int|null, username: ?string}|null
+     * @return HiddenUserAttrs|null
      */
     private function userAttributesById(?int $userId): ?array
     {
@@ -200,7 +202,7 @@ class HiddenFieldType extends FieldType
     /**
      * Extract the three safe attributes from a user element.
      *
-     * @return array{email: ?string, id: int|null, username: ?string}
+     * @return HiddenUserAttrs
      */
     private function attributesFor(User $user): array
     {

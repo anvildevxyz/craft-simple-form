@@ -29,6 +29,9 @@ use fabianhaef\simpleform\models\Settings;
 use fabianhaef\simpleform\Plugin;
 use yii\base\Component;
 
+/**
+ * @phpstan-type SubmissionResult array{submission: Submission|null, errors: array<string, mixed>|null, data?: array<string, mixed>, paymentRedirectUrl?: string}
+ */
 class SubmissionService extends Component
 {
     /**
@@ -43,7 +46,7 @@ class SubmissionService extends Component
      *
      * @param FormModel|Form|string $form Form instance, element, or handle
      * @param Request|null $request Request object (uses Craft request if null)
-     * @return array{submission: Submission|null, errors: array<string, mixed>|null, data?: array<string, mixed>, paymentRedirectUrl?: string}
+     * @return SubmissionResult
      */
     public function createFromRequest(FormModel|Form|string $form, ?Request $request = null): array
     {
@@ -247,7 +250,7 @@ class SubmissionService extends Component
      * @param Form $form
      * @param array<int|string, mixed> $values posted values keyed by field id (or `field_<id>`)
      * @param array{honeypot?: string, captchaToken?: ?string, skipCaptcha?: bool, userId?: ?int, siteId?: ?int, payment?: array<string, mixed>} $context
-     * @return array{submission: Submission|null, errors: array<string, mixed>|null, data?: array<string, mixed>, paymentRedirectUrl?: string}
+     * @return SubmissionResult
      */
     public function submit(Form $form, array $values, array $context = []): array
     {

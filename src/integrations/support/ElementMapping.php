@@ -10,6 +10,8 @@ use craft\helpers\StringHelper;
  * settings UI: section / entry-type / user-group option lists and a compact,
  * human-readable summary of an element's validation errors for the dispatch log.
  *
+ * @phpstan-type SelectOption array{label: string, value: string}
+ *
  * @author Fabian Haefliger
  * @since 1.0.0
  */
@@ -18,7 +20,7 @@ final class ElementMapping
     /**
      * Section UID => name options for the target-section dropdown.
      *
-     * @return list<array{label: string, value: string}>
+     * @return list<SelectOption>
      */
     public static function sectionOptions(): array
     {
@@ -61,7 +63,7 @@ final class ElementMapping
     /**
      * User-group UID => name options for the target-group dropdown.
      *
-     * @return list<array{label: string, value: string}>
+     * @return list<SelectOption>
      */
     public static function userGroupOptions(): array
     {

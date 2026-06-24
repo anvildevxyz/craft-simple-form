@@ -13,6 +13,8 @@ namespace fabianhaef\simpleform\helpers;
  * Resolved values are always plain text: trimmed and bounded by the optional
  * `maxLength`, never interpreted as markup. The caller escapes for output.
  *
+ * @phpstan-type HiddenUserAttrs array{email?: ?string, id?: int|string|null, username?: ?string}
+ *
  * @author Fabian Haefliger
  * @since 1.0.0
  */
@@ -75,7 +77,7 @@ class HiddenValueResolver
      * posted value is never consulted.
      *
      * @param array<string, mixed> $config the field config
-     * @param array{email?: ?string, id?: int|string|null, username?: ?string}|null $userAttributes
+     * @param HiddenUserAttrs|null $userAttributes
      *        the authenticated user's attributes, or null for a guest
      */
     public static function resolveUser(array $config, ?array $userAttributes): string
