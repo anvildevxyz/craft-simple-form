@@ -45,11 +45,12 @@ class FieldsService extends Component
         $now = date('Y-m-d H:i:s');
         $helpText = $helpText !== '' ? $helpText : null;
 
+        // [[...]]-quote the column: Yii interpolates the max() argument raw, so an
+        // unquoted camelCase identifier is case-folded to "sortorder" on Postgres.
         $maxSort = (new Query())
-            ->select(['sortOrder'])
             ->from('{{%simpleform_fields}}')
             ->where(['formId' => $formId])
-            ->max('sortOrder') ?? 0;
+            ->max('[[sortOrder]]') ?? 0;
 
         $fieldId = $db->transaction(function() use ($db, $formId, $type, $handle, $required, $config, $label, $helpText, $siteIds, $now, $maxSort): int {
             // Structural (shared) row. Pass the array as-is; Craft's json column

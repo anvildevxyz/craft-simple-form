@@ -974,9 +974,15 @@ class SubmissionService extends Component
 
             // Best-effort guest dedup: count prior submissions whose stored email
             // field value matches. Documented as advisory, not a security control.
+            // Postgres stores `data` as jsonb, which has no LIKE operator, so match
+            // against its text form there; MySQL's json LIKEs as-is.
+            $dataColumn = Craft::$app->getDb()->getIsPgsql()
+                ? '[[simpleform_submissions.data]]::text'
+                : '[[simpleform_submissions.data]]';
+
             return (int) $query
                 ->andWhere(Db::parseParam('simpleform_submissions.userId', ':empty:'))
-                ->andWhere(['like', '[[simpleform_submissions.data]]', $email])
+                ->andWhere(['like', $dataColumn, $email])
                 ->count();
         }
 
