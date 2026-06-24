@@ -7,7 +7,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.0.0] - 2026-06-24
+
+### Fixed
+- Duplicating a form now copies translated field labels for every site, not just
+  the primary site.
+- Calculation-field values that are whole numbers no longer compare unequal after
+  the submission-data round-trip.
+- Chat/notification "Label: value" lines no longer error on legacy submissions
+  whose rows were stored as bare scalars.
+
+### Changed
+- Simple Form is now commercial software with a single **Pro** edition
+  (`Plugin::editions()`); the license changed from MIT to proprietary
+  (see LICENSE.md).
+
 ### Added
+- Runs on both **MySQL 8** and **PostgreSQL 16**; the integration suite runs
+  against both databases in CI.
 - Auto-apply forms on deploy: a new `applyFormsConfigOnUp` setting (off by
   default) makes `craft up` run `simple-form/forms/apply` when it finishes, so
   code-defined forms deploy with the rest of the project. The automatic run never
@@ -60,23 +77,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `EVENT_BEFORE_SEND_NOTIFICATION` and `EVENT_BEFORE_INTEGRATION_DISPATCH` — for
   modifying or cancelling rendering, validation, notifications and dispatch
   without forking the plugin. See [Developer API](docs/twig-and-api.md#events).
-
-## [1.0.0] - 2026-06-23
-
-### Fixed
-- Duplicating a form now copies translated field labels for every site, not just
-  the primary site.
-- Calculation-field values that are whole numbers no longer compare unequal after
-  the submission-data round-trip.
-- Chat/notification "Label: value" lines no longer error on legacy submissions
-  whose rows were stored as bare scalars.
-
-### Changed
-- Simple Form is now commercial software with a single **Pro** edition
-  (`Plugin::editions()`); the license changed from MIT to proprietary
-  (see LICENSE.md).
-
-### Added
 - **Payments via Craft Commerce** ([guide](docs/payments.md)): a Payment field
   collects a payment on submit through the configured gateway's embedded form
   (pay-to-submit — a decline saves nothing). Notifications and integrations are
