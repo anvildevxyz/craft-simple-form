@@ -15,11 +15,9 @@ modules:
       configFile: 'tests/_craft/config/test.php'
       entryUrl: 'https://craft-plugin-dev.ddev.site/index.php'
       projectConfig: {}
-      # The full schema is one consolidated Install migration; apply it so the
-      # test DB has the plugin tables.
-      migrations:
-        - class: fabianhaef\simpleform\migrations\Install
-          params: {}
+      # Installing the plugin runs its Install migration, which creates the full
+      # schema — so no explicit `migrations:` entry is needed (listing Install
+      # here too would run it twice and collide on the existing tables).
       plugins:
         - handle: simple-form
           class: fabianhaef\simpleform\Plugin
