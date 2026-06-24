@@ -12,7 +12,7 @@ class MultiSiteSchemaTest extends TestCase
 {
     private function migration(): string
     {
-        $code = file_get_contents(__DIR__ . '/../../src/migrations/m240614_000001_init.php');
+        $code = file_get_contents(__DIR__ . '/../../src/migrations/Install.php');
         $this->assertNotFalse($code);
         return $code;
     }

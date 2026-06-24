@@ -422,6 +422,68 @@ and front-end UX checks.
 /craft-smoke-test plugin:simple-form theme S17: suppress plugin assets via an empty assets.twig override
 ```
 
+## H. Developer Experience & Extensibility (#218–#226)
+
+Executed 2026-06-23 via console/HTTP/DB (the Playwright backend can't reach the
+local DDEV site, and these are CLI/HTTP/extensibility features). Backed by the DX
+dogfood harness (`modules/sfdx/`, form `dxSmoke`) — see the profile. Run report:
+`test-runs/2026-06-23-simple-form-dx.md`.
+
+### SF-DX-01 — Extension points registered ✅
+1. EXECUTE (console): `ddev exec 'php scripts/sfdx-check.php'`.
+2. VERIFY: prints `color` field type, `sfdxLog` integration, `sfdxNull` captcha all **registered: YES** — proving `EVENT_REGISTER_FIELD_TYPES/INTEGRATION_TYPES/CAPTCHA_PROVIDERS`.
+
+### SF-DX-02 — Forms-as-code apply + status ✅
+1. SETUP: `config/simple-form/forms/dxSmoke.json` present (uses the custom `color` type).
+2. EXECUTE: `ddev exec 'php craft simple-form/forms/apply'` → `+ dxSmoke: created (id …)`.
+3. VERIFY (DB): `SELECT handle FROM simpleform_forms WHERE handle='dxSmoke';` → 1 row.
+4. VERIFY (console): `forms/status` lists `[config] dxSmoke`.
+
+### SF-DX-03 — Id-stable update keeps ids + submissions ✅
+1. EXECUTE: edit the file (add a field) + re-`apply` → `~ dxSmoke: updated in place (id N)` (same id).
+2. VERIFY (DB): the form id and existing field ids are unchanged; an existing submission still resolves its `field_<id>` values. (Also covered by `IdStableApplyTest`.)
+
+### SF-DX-04 — Prune guards submission data ✅
+1. EXECUTE: remove a field from the file, `apply --prune`.
+2. VERIFY: a field with submission data is **kept** (warning); an empty field is removed. (Covered by `IdStableApplyTest`.)
+
+### SF-DX-05 — Full-fidelity export round-trip + v1 back-compat ✅
+1. VERIFY: a v2 export carries every form-level setting; re-import restores them; a v1 doc (no settings block) preserves existing settings; an unresolvable `redirectEntry` URI degrades to the inline message with a warning. (Covered by `FullFidelityExportTest`.)
+
+### SF-DX-06 — Custom field type renders + stores ✅
+1. EXECUTE (HTTP): `curl /smoke/sfdx` → markup contains `type="color"` + `sfdx-color-input`.
+2. EXECUTE (HTTP): submit (CSRF round-trip) `field_<favColor>=#ff8800`.
+3. VERIFY (DB): submission `data->>'$.field_<id>.value'` = `#ff8800`, type `color`.
+
+### SF-DX-07 — Custom render theme applied ✅
+1. VERIFY (HTTP): `/smoke/sfdx` markup contains the theme marker class `sfdx-themed` (per-form `templatePath=_sfdx-theme` resolved).
+
+### SF-DX-08 — Lifecycle seam events fire ✅
+1. VERIFY (sentinel): rendering writes `storage/sfdx-context.txt` = `SFDX-CONTEXT-OK` (`EVENT_MODIFY_RENDER_CONTEXT`).
+2. VERIFY (sentinel): submitting writes `storage/sfdx-aftersave.txt` = `SFDX-AFTERSAVE id=… new=1` (`EVENT_AFTER_SUBMISSION_SAVE`).
+
+### SF-DX-09 — Custom captcha provider, scoped bypass ✅
+1. VERIFY (HTTP): `dxSmoke` submit (no captcha token) → `success:true` (scoped bypass).
+2. VERIFY (HTTP): a different form (`smokeForm`) submit → `success:false` `captcha` error (real turnstile still enforced).
+
+### SF-DX-10 — Custom integration dispatches ✅
+1. SETUP: attach `sfdxLog` to `dxSmoke` (`scripts/sfdx-attach.php`), sync dispatch on.
+2. EXECUTE: submit `dxSmoke`.
+3. VERIFY (sentinel): `storage/sfdx-integration.txt` = `SFDX-INTEGRATION submission=…`.
+
+### SF-DX-11 — Front-end JS hook events present ✅
+1. VERIFY (HTTP): the served `simple-form.js` contains `simpleform:beforeSubmit|afterSubmit|validationFailed|stepChange`. (Dispatch/cancel logic covered by `tests/js/hook-events.test.js`.)
+
+### SF-DX-12 — make/* generators ✅
+1. EXECUTE (console): `make/field-type`, `make/integration`, `make/theme` into a temp dir.
+2. VERIFY: each output is valid PHP and satisfies its contract; theme copies the 9 partials. (Covered by `MakeCommandsTest`; CLI `--help` confirmed.)
+
+### SF-DX-13 — apply-on-craft-up ✅
+1. SETUP: `applyFormsConfigOnUp=true` (config) + a pending config form.
+2. EXECUTE: `ddev exec 'php craft up'`.
+3. VERIFY: output shows `forms/apply` ran (`~ dxSmoke: updated in place`). (Event wiring also covered by `ApplyOnUpTest`.)
+
 ## Coverage notes / known limits
+- **DX suite (Section H)** verifies via console/HTTP/DB + sentinel files, not Playwright — the browser backend has no route to the DDEV site. Equivalent automated coverage lives in the plugin's integration suite (`DeveloperEventsTest`, `ConfigApplyTest`, `IdStableApplyTest`, `ApplyEdgeCasesTest`, `FullFidelityExportTest`, `MakeCommandsTest`, `ApplyOnUpTest`) + `tests/js/hook-events.test.js`.
 - **External-dependent** (need real endpoints/keys, not in CP smoke): live Slack/Discord/Mailchimp/ActiveCampaign/HubSpot/Pipedrive dispatch, real Turnstile/hCaptcha/reCAPTCHA verification, real Akismet verdicts. These are covered by the unit/integration suites with mocked transports — smoke only confirms the CP config surface (S5/S6/S7).
 - **File asset persistence** needs a real asset volume (dev has `uploads`); the integration test for this skips in CI where no volume exists, so S9 is the primary real-asset check.

@@ -1,5 +1,6 @@
 # Simple Form Plugin Profile
-Generated: 2026-06-18 | Plugin schemaVersion: 2.4.0
+Generated: 2026-06-23 | Plugin schemaVersion: 2.13.0
+(Refreshed for the developer-experience work #218–#226; earlier sections still apply.)
 
 ## Elements
 - **Form** — table: `simpleform_forms` (+ `simpleform_forms_sites` per-site), statuses: none
@@ -74,6 +75,35 @@ Phone stores a normalized `{raw, e164, country}` map (no new table).
 ## Twig / Frontend
 - `{{ simpleForm('handle') }}` renders the form (multipart when a file field exists; multi-step containers when fields span pages)
 - Frontend JS: `src/web/assets/form/dist/js/simple-form.js` — conditional logic + multi-step nav, fetch+FormData submit
+
+## Developer Experience & Extensibility (#218–#226)
+
+### Extension events (all on `Plugin::class`)
+- Register events: `EVENT_REGISTER_FIELD_TYPES` (→ `RegisterFieldTypesEvent::$types`, classes extend `fields\FieldType`), `EVENT_REGISTER_INTEGRATION_TYPES`, `EVENT_REGISTER_CAPTCHA_PROVIDERS`, `EVENT_REGISTER_STENCILS`.
+- Lifecycle seams: `EVENT_BEFORE_VALIDATE`, `EVENT_DEFINE_FIELD_SET`, `EVENT_MODIFY_RENDER_CONTEXT`, `EVENT_BEFORE_SEND_NOTIFICATION` (cancel via `$e->send=false`), `EVENT_BEFORE_INTEGRATION_DISPATCH` (cancel), plus the existing `EVENT_BEFORE/AFTER_SUBMISSION_SAVE`. Each only fires when a handler is attached.
+- Extension interfaces: `integrations\IntegrationTypeInterface`, `captcha\CaptchaProviderInterface`, `fields\FieldType` (base), `stencils\Stencil`.
+
+### Console commands (added)
+- `simple-form/forms/apply [--dry-run] [--prune]` — create/id-stably-update forms from `config/simple-form/forms/*.json`.
+- `simple-form/forms/status` — `[config]` vs `[db]` inventory + unapplied files.
+- `simple-form/forms/export --form=<h> --out=<path>` — creates the target dir if missing; v2 doc carries **all** form settings.
+- `simple-form/make/field-type|integration|theme [Class] [--namespace=] [--path=]` — scaffolding generators.
+
+### Forms as code
+- File: `config/simple-form/forms/<handle>.json` (the portable, secret-free export doc; **not** Craft project config). v2 schema = full form settings; v1 files still import.
+- `applyFormsConfigOnUp` setting (default false): `craft up` runs `forms/apply` on finish (never prunes).
+- Apply is id-stable (form + fields matched by handle keep ids → submissions survive); `--prune` never drops a field that holds submission data.
+
+### Front-end JS hook API
+- `simple-form.js` dispatches CustomEvents on the `<form>`: `simpleform:beforeSubmit` (cancelable), `:afterSubmit`, `:validationFailed`, `:stepChange`.
+
+### IDE / headless
+- `docs/reference/schema.graphql` (committed SDL) · root `.phpstorm.meta.php`.
+
+### DX dogfood harness (in the craft-plugin-dev project, not the plugin repo)
+- Module `modules/sfdx/` (bootstrapped in `config/app.php`) registers: field type `color` (`ColorField`), integration `sfdxLog` (`LogIntegration`, writes `storage/sfdx-integration.txt`), captcha `sfdxNull` (`DxBypassCaptchaProvider` — bypasses captcha for the `dxSmoke` form only, delegates to turnstile otherwise). Listeners write sentinels: `storage/sfdx-context.txt` (modify-render-context), `storage/sfdx-aftersave.txt` (after-save).
+- Form `dxSmoke` (config-defined) · theme `templates/_sfdx-theme/` · route `smoke/sfdx` · `config/simple-form.php` selects the scoped captcha + sync dispatch.
+- Runner scripts: `scripts/sfdx-check.php` (registry assertions), `scripts/sfdx-submit.sh` (CSRF render+submit), `scripts/sfdx-attach.php` (attach integration), `scripts/sfdx-other-form-check.sh` (captcha-scope proof).
 
 ## Test environment notes
 - CP creds + German UI: see memory `reference_cp_credentials` / `reference_booked_test_runner`.

@@ -16,7 +16,7 @@ $checks = [
     '✓ Controllers present (Forms, Submissions, Submit)' => file_exists('src/controllers/FormsController.php') && file_exists('src/controllers/SubmissionsController.php') && file_exists('src/controllers/SubmitController.php'),
     '✓ Field types implemented (8 types)' => count(glob('src/fields/*FieldType.php')) === 8,
     '✓ Services registered (FieldTypeRegistry, EmailService, SubmissionService)' => file_exists('src/services/FieldTypeRegistry.php') && file_exists('src/services/EmailService.php') && file_exists('src/services/SubmissionService.php'),
-    '✓ Database migration exists' => file_exists('migrations/m240614_000001_init.php'),
+    '✓ Database migration exists' => file_exists('src/migrations/Install.php'),
     '✓ Twig extension registered' => file_exists('src/TwigExtension.php'),
     '✓ CP templates present' => file_exists('src/templates/forms/index.twig') && file_exists('src/templates/forms/edit.twig'),
     '✓ Submission templates present' => file_exists('src/templates/submissions/index.twig') && file_exists('src/templates/submissions/view.twig'),

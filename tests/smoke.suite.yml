@@ -2,10 +2,7 @@ actor: SmokeTester
 modules:
   enabled:
     - Asserts
-    - \craft\test\Craft:
-        # See integration.suite.yml — register post-baseline column migrations so
-        # the harness applies their DDL on setup.
-        migrations:
-          - class: fabianhaef\simpleform\migrations\m260622_000002_form_use_custom_template
-            params: []
+    # Schema comes from the consolidated Install migration configured in
+    # codeception.yml — no per-suite migration deltas needed.
+    - \craft\test\Craft
     - \Helper\Integration
