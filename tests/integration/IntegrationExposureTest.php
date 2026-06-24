@@ -134,47 +134,6 @@ class IntegrationExposureTest extends SimpleFormTestCase
         }
     }
 
-    public function testEncryptStoredSecretsBackfillsPlaintextRows(): void
-    {
-        $this->requireCraft();
-
-        $general = Craft::$app->getConfig()->getGeneral();
-        $original = $general->securityKey;
-        $integrations = Plugin::getInstance()->getIntegrations();
-
-        try {
-            // Simulate a pre-encryption row: with no key, the secret is stored
-            // in plaintext (encryption degrades to a no-op).
-            $general->securityKey = '';
-            $m = new IntegrationModel();
-            $m->type = 'webhook';
-            $m->name = 'Legacy hook';
-            $m->enabled = true;
-            $m->settings = ['url' => 'https://example.test/hook', 'secret' => self::SECRET];
-            $this->assertTrue($integrations->saveIntegration($m));
-
-            $raw = (new \craft\db\Query())->select(['settings'])
-                ->from('{{%simpleform_integrations}}')->where(['id' => $m->id])->scalar();
-            $this->assertStringContainsString(self::SECRET, (string) $raw, 'precondition: stored plaintext');
-
-            // Backfill once a key is configured.
-            $general->securityKey = str_repeat('k', 32);
-            $this->assertGreaterThanOrEqual(1, $integrations->encryptStoredSecrets());
-
-            $raw2 = (new \craft\db\Query())->select(['settings'])
-                ->from('{{%simpleform_integrations}}')->where(['id' => $m->id])->scalar();
-            $this->assertStringNotContainsString(self::SECRET, (string) $raw2);
-            $this->assertStringContainsString('sfenc:', (string) $raw2);
-
-            // Still decrypts transparently, and the backfill is idempotent.
-            $loaded = $integrations->getIntegrationById((int) $m->id);
-            $this->assertSame(self::SECRET, $loaded->settings['secret']);
-            $this->assertSame(0, $integrations->encryptStoredSecrets());
-        } finally {
-            $general->securityKey = $original;
-        }
-    }
-
     public function testDispatchLogRedactsConnectorSecret(): void
     {
         $this->requireCraft();

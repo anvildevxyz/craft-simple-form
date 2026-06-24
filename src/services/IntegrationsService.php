@@ -448,30 +448,6 @@ class IntegrationsService extends Component
     }
 
     /**
-     * One-time backfill (migration m260620_000001): encrypt any integration
-     * secret still stored as plaintext from before encryption-at-rest (F4)
-     * existed. Idempotent — already-encrypted values, env references and empty
-     * values are skipped, and a row is only rewritten when something changed.
-     * Returns the number of rows updated.
-     */
-    public function encryptStoredSecrets(): int
-    {
-        $db = Craft::$app->getDb();
-        $updated = 0;
-
-        foreach ((new \craft\db\Query())->select(['id', 'settings'])->from(self::TABLE)->all() as $row) {
-            $settings = $this->normalizeSettings($row['settings'] ?? null);
-            $encrypted = $this->encryptSettings($settings);
-            if ($encrypted !== $settings) {
-                $db->createCommand()->update(self::TABLE, ['settings' => $encrypted], ['id' => $row['id']])->execute();
-                $updated++;
-            }
-        }
-
-        return $updated;
-    }
-
-    /**
      * Normalise a raw `settings` column value into an array. Craft's json column
      * returns a JSON string on MySQL/MariaDB and may return an already-decoded
      * array on Postgres; both (and empty/null) collapse to an array here.
