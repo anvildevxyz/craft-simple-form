@@ -46,6 +46,7 @@ use fabianhaef\simpleform\services\CaptchaService;
 use fabianhaef\simpleform\services\DenylistService;
 use fabianhaef\simpleform\services\DraftService;
 use fabianhaef\simpleform\services\EmailService;
+use fabianhaef\simpleform\services\FieldsService;
 use fabianhaef\simpleform\services\FieldSyncService;
 use fabianhaef\simpleform\services\FieldTypeRegistry;
 use fabianhaef\simpleform\services\FormCloneService;
@@ -186,6 +187,7 @@ class Plugin extends BasePlugin
             'notifications' => NotificationsService::class,
             'audit' => AuditService::class,
             'payments' => PaymentsService::class,
+            'fields' => FieldsService::class,
             'fieldSync' => FieldSyncService::class,
             'portability' => FormPortabilityService::class,
             'pdf' => PdfService::class,
@@ -590,6 +592,13 @@ class Plugin extends BasePlugin
     {
         /** @var PaymentsService $service */
         $service = $this->get('payments');
+        return $service;
+    }
+
+    public function getFields(): FieldsService
+    {
+        /** @var FieldsService $service */
+        $service = $this->get('fields');
         return $service;
     }
 

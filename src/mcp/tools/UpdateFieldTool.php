@@ -113,7 +113,7 @@ class UpdateFieldTool implements ToolInterface
             return ['isError' => true, 'errors' => $errors];
         }
 
-        FieldOps::update($fieldId, $formId, $siteId, $type, $handle, $label, $required, $helpText, $config);
+        FieldOps::update($fieldId, $formId, $siteId, $handle, $label, $required, $helpText, $config);
 
         $fresh = Form::find()->id($formId)->siteId($siteId)->status(null)->one()
             ?? Form::find()->id($formId)->siteId('*')->status(null)->one();

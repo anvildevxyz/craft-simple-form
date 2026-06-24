@@ -4,24 +4,22 @@ namespace fabianhaef\simpleform\mcp\tools\support;
 
 use Craft;
 use craft\db\Query;
-use craft\helpers\StringHelper;
 use fabianhaef\simpleform\elements\Form;
 use fabianhaef\simpleform\Plugin;
 use fabianhaef\simpleform\services\FieldSyncService;
 use fabianhaef\simpleform\services\FieldTypeRegistry;
 
 /**
- * Shared field add/edit/reorder/delete logic for the MCP form-management tools.
+ * MCP-facing field add/edit/reorder/delete for the form-management tools.
  *
- * This deliberately mirrors {@see \fabianhaef\simpleform\controllers\FieldsController}
- * — the same committed CP path — so that fields created/edited/reordered/deleted
- * by an agent run the SAME structural-row + per-site label/helpText writes, the
- * SAME validation, and the SAME form-structure cache invalidation
- * ({@see \fabianhaef\simpleform\services\FormStructureService::invalidate()}).
+ * The structural-row + per-site label/helpText writes and cache invalidation are
+ * shared with the CP field builder through {@see \fabianhaef\simpleform\services\FieldsService},
+ * so an agent's field edits hit the exact same tables and cache the CP uses. This
+ * class owns only the MCP-specific parts: arg validation, conditional-rule
+ * sanitising, and the primary-site fallback when resolving a form's sites.
  *
- * It is a thin adapter, not new business logic: nothing here is reachable except
- * through a forms:manage-scoped tool, and every write goes through the existing
- * tables/cache the CP uses.
+ * It is an adapter, not new business logic: nothing here is reachable except
+ * through a forms:manage-scoped tool.
  */
 final class FieldOps
 {
@@ -170,103 +168,49 @@ final class FieldOps
     }
 
     /**
-     * Add a field to a form. Mirrors FieldsController::actionAdd: one structural
-     * row plus a per-site label/helpText row for every site the form supports.
+     * Add a field to a form: prune dangling conditional rules, then hand the
+     * write to {@see FieldsService} (one structural row plus a per-site
+     * label/helpText row for every site the form supports). Returns the new id.
      *
      * @param array<string, mixed> $config
      * @return int the new field id
      */
     public static function add(int $formId, string $type, string $handle, string $label, bool $required, string $helpText, array $config): int
     {
-        $db = Craft::$app->getDb();
-        $now = date('Y-m-d H:i:s');
-
         $config = self::sanitizeConditional($config, $formId, $handle, null);
 
-        $maxSort = (new Query())
-            ->select(['sortOrder'])
-            ->from('{{%simpleform_fields}}')
-            ->where(['formId' => $formId])
-            ->max('sortOrder') ?? 0;
-
-        $db->createCommand()->insert('{{%simpleform_fields}}', [
-            'formId' => $formId,
-            'type' => $type,
-            'name' => $handle,
-            'required' => $required,
-            // Pass the array; Craft's json column encodes it once.
-            'config' => $config,
-            'sortOrder' => $maxSort + 1,
-            'dateCreated' => $now,
-            'dateUpdated' => $now,
-            'uid' => StringHelper::UUID(),
-        ])->execute();
-
-        $fieldId = (int)$db->getLastInsertID();
-
-        foreach (self::supportedSiteIds($formId) as $siteId) {
-            $db->createCommand()->insert('{{%simpleform_fields_sites}}', [
-                'fieldId' => $fieldId,
-                'siteId' => $siteId,
-                'label' => $label,
-                'helpText' => $helpText !== '' ? $helpText : null,
-                'dateCreated' => $now,
-                'dateUpdated' => $now,
-                'uid' => StringHelper::UUID(),
-            ])->execute();
-        }
-
-        Plugin::getInstance()->getFormStructure()->invalidate($formId);
-
-        return $fieldId;
+        return Plugin::getInstance()->getFields()->add(
+            $formId,
+            $type,
+            $handle,
+            $required,
+            $config,
+            $label,
+            $helpText,
+            self::supportedSiteIds($formId),
+        );
     }
 
     /**
-     * Update a field. Mirrors FieldsController::actionEdit: structural columns
-     * updated once, the per-site label/helpText upserted for the given site.
+     * Update a field: prune dangling conditional rules, then hand the write to
+     * {@see FieldsService} (structural columns once, the per-site label/helpText
+     * upserted for the given site).
      *
      * @param array<string, mixed> $config
      */
-    public static function update(int $fieldId, int $formId, int $siteId, string $type, string $handle, string $label, bool $required, string $helpText, array $config): void
+    public static function update(int $fieldId, int $formId, int $siteId, string $handle, string $label, bool $required, string $helpText, array $config): void
     {
-        $db = Craft::$app->getDb();
-        $now = date('Y-m-d H:i:s');
-
         $config = self::sanitizeConditional($config, $formId, $handle, $fieldId);
 
-        $db->createCommand()->update('{{%simpleform_fields}}', [
-            'name' => $handle,
-            'required' => $required,
-            'config' => $config,
-            'dateUpdated' => $now,
-        ], ['id' => $fieldId])->execute();
-
-        $db->createCommand()->upsert('{{%simpleform_fields_sites}}', [
-            'fieldId' => $fieldId,
-            'siteId' => $siteId,
-            'label' => $label,
-            'helpText' => $helpText !== '' ? $helpText : null,
-            'dateCreated' => $now,
-            'dateUpdated' => $now,
-            'uid' => StringHelper::UUID(),
-        ], [
-            'label' => $label,
-            'helpText' => $helpText !== '' ? $helpText : null,
-            'dateUpdated' => $now,
-        ])->execute();
-
-        Plugin::getInstance()->getFormStructure()->invalidate($formId);
+        Plugin::getInstance()->getFields()->update($fieldId, $formId, $siteId, $handle, $required, $config, $label, $helpText);
     }
 
     /**
-     * Delete a field. Mirrors FieldsController::actionDelete (per-site rows
-     * cascade via FK).
+     * Delete a field (per-site rows cascade via FK).
      */
     public static function delete(int $fieldId, int $formId): void
     {
-        $db = Craft::$app->getDb();
-        $db->createCommand()->delete('{{%simpleform_fields}}', ['id' => $fieldId])->execute();
-        Plugin::getInstance()->getFormStructure()->invalidate($formId);
+        Plugin::getInstance()->getFields()->delete($fieldId, $formId);
     }
 
     /**

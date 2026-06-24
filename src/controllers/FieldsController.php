@@ -4,7 +4,6 @@ namespace fabianhaef\simpleform\controllers;
 
 use Craft;
 use craft\db\Query;
-use craft\helpers\StringHelper;
 use craft\web\Controller;
 use fabianhaef\simpleform\elements\Form;
 use fabianhaef\simpleform\helpers\SimpleFormPermissions;
@@ -41,54 +40,20 @@ class FieldsController extends Controller
             return $this->asJsonErrors($errors);
         }
 
-        $db = Craft::$app->getDb();
-        $now = date('Y-m-d H:i:s');
-
-        $maxSort = (new Query())
-            ->select(['sortOrder'])
-            ->from('{{%simpleform_fields}}')
-            ->where(['formId' => $formId])
-            ->max('sortOrder') ?? 0;
-
-        $transaction = $db->beginTransaction();
         try {
-            // Structural (shared) row
-            $db->createCommand()->insert('{{%simpleform_fields}}', [
-                'formId' => $formId,
-                'type' => $type,
-                'name' => $handle,
-                'required' => $required,
-                // Pass the array; Craft's json column encodes it once. json_encode()ing
-                // here would double-encode (the value becomes the string "[]").
-                'config' => $config,
-                'sortOrder' => $maxSort + 1,
-                'dateCreated' => $now,
-                'dateUpdated' => $now,
-                'uid' => StringHelper::UUID(),
-            ])->execute();
-
-            $fieldId = (int)$db->getLastInsertID();
-
-            // Per-site (translatable) rows — one per supported site, seeded with the entered label/helpText.
-            foreach ($this->supportedSiteIds((int)$formId, $site->id) as $siteId) {
-                $db->createCommand()->insert('{{%simpleform_fields_sites}}', [
-                    'fieldId' => $fieldId,
-                    'siteId' => $siteId,
-                    'label' => $label,
-                    'helpText' => $helpText ?: null,
-                    'dateCreated' => $now,
-                    'dateUpdated' => $now,
-                    'uid' => StringHelper::UUID(),
-                ])->execute();
-            }
-
-            $transaction->commit();
-
-            Plugin::getInstance()->getFormStructure()->invalidate((int)$formId);
+            $fieldId = Plugin::getInstance()->getFields()->add(
+                (int)$formId,
+                $type,
+                $handle,
+                $required,
+                $config,
+                $label,
+                (string)$helpText,
+                $this->supportedSiteIds((int)$formId, $site->id),
+            );
 
             return $this->asJsonSuccess(['fieldId' => $fieldId]);
         } catch (\Exception $e) {
-            $transaction->rollBack();
             Craft::warning('Error adding field: ' . $e->getMessage(), 'simple-form');
             return $this->asJsonError('Failed to add field');
         }
@@ -108,7 +73,6 @@ class FieldsController extends Controller
         $helpText = $request->getBodyParam('helpText', '');
         $config = $this->decodeConfigParam($request);
 
-        $db = Craft::$app->getDb();
         // Only formId (cache invalidation) and the immutable type are needed.
         $field = (new Query())->select(['formId', 'type'])->from('{{%simpleform_fields}}')->where(['id' => $fieldId])->one();
         if (!$field) {
@@ -120,41 +84,20 @@ class FieldsController extends Controller
             return $this->asJsonErrors($errors);
         }
 
-        $now = date('Y-m-d H:i:s');
-
-        $transaction = $db->beginTransaction();
         try {
-            // Structural (shared) columns — updated once, no site filter.
-            $db->createCommand()->update('{{%simpleform_fields}}', [
-                'name' => $handle,
-                'required' => $required,
-                // Pass the array; Craft's json column encodes it once (avoid double-encoding).
-                'config' => $config,
-                'dateUpdated' => $now,
-            ], ['id' => $fieldId])->execute();
-
-            // Per-site (translatable) label/helpText — only for the current site.
-            $db->createCommand()->upsert('{{%simpleform_fields_sites}}', [
-                'fieldId' => $fieldId,
-                'siteId' => $site->id,
-                'label' => $label,
-                'helpText' => $helpText ?: null,
-                'dateCreated' => $now,
-                'dateUpdated' => $now,
-                'uid' => StringHelper::UUID(),
-            ], [
-                'label' => $label,
-                'helpText' => $helpText ?: null,
-                'dateUpdated' => $now,
-            ])->execute();
-
-            $transaction->commit();
-
-            Plugin::getInstance()->getFormStructure()->invalidate((int)$field['formId']);
+            Plugin::getInstance()->getFields()->update(
+                (int)$fieldId,
+                (int)$field['formId'],
+                (int)$site->id,
+                (string)$handle,
+                $required,
+                $config,
+                (string)$label,
+                (string)$helpText,
+            );
 
             return $this->asJsonSuccess();
         } catch (\Exception $e) {
-            $transaction->rollBack();
             Craft::warning('Error updating field: ' . $e->getMessage(), 'simple-form');
             return $this->asJsonError('Failed to update field');
         }
@@ -167,7 +110,6 @@ class FieldsController extends Controller
         $request = Craft::$app->getRequest();
         $fieldId = $request->getRequiredBodyParam('fieldId');
 
-        $db = Craft::$app->getDb();
         // Only the formId is needed (existence check + cache invalidation).
         $formId = (new Query())->select(['formId'])->from('{{%simpleform_fields}}')->where(['id' => $fieldId])->scalar();
         if ($formId === false) {
@@ -175,9 +117,7 @@ class FieldsController extends Controller
         }
 
         try {
-            // _sites rows cascade via FK.
-            $db->createCommand()->delete('{{%simpleform_fields}}', ['id' => $fieldId])->execute();
-            Plugin::getInstance()->getFormStructure()->invalidate((int)$formId);
+            Plugin::getInstance()->getFields()->delete((int)$fieldId, (int)$formId);
             return $this->asJsonSuccess();
         } catch (\Exception $e) {
             Craft::warning('Error deleting field: ' . $e->getMessage(), 'simple-form');
