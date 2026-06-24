@@ -202,10 +202,7 @@ class FormRenderService extends Component
         // prefill shape the field partial expects (field_<id> => value). A legacy
         // bare-scalar entry (older rows without the {label,type,value} wrapper) is
         // carried through as-is.
-        $prefill = [];
-        foreach (($submission->data ?? []) as $key => $entry) {
-            $prefill[$key] = SubmissionValues::value($entry);
-        }
+        $prefill = array_map(SubmissionValues::value(...), $submission->data ?? []);
 
         // Prime every input with the submission's stored value via the context
         // builder (the input HTML carries the value, so the prefill must be applied

@@ -334,12 +334,8 @@ class IntegrationsService extends Component
 
         $model = new \yii\base\DynamicModel($attributes);
         foreach ($rules as $rule) {
-            $options = [];
-            foreach ($rule as $key => $value) {
-                if (!is_int($key)) {
-                    $options[$key] = $value;
-                }
-            }
+            // Named options only: the positional 0/1 entries are the attributes + validator.
+            $options = array_filter($rule, static fn($key): bool => !is_int($key), ARRAY_FILTER_USE_KEY);
             $model->addRule((array) ($rule[0] ?? []), $rule[1] ?? 'safe', $options);
         }
 

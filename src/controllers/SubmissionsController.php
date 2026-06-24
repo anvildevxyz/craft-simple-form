@@ -200,10 +200,7 @@ class SubmissionsController extends Controller
         $integrationsService = Plugin::getInstance()->getIntegrations();
         $logs = $integrationsService->getLogsForSubmission((int) $submission->id);
         $integrations = $form ? $integrationsService->getIntegrationsForForm((int) $form->id) : [];
-        $integrationNames = [];
-        foreach ($integrations as $integration) {
-            $integrationNames[(int) $integration->id] = $integration->name;
-        }
+        $integrationNames = array_column($integrations, 'name', 'id');
 
         // Deep links to elements created by element-integration dispatches (#142),
         // keyed by log id.
