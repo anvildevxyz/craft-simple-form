@@ -725,13 +725,13 @@ class SubmissionService extends Component
         $message = $this->interpolate($rawMessage, $placeholders, false);
 
         $redirectUrl = match ($form->postSubmitAction) {
-            'url' => $form->redirectUrl !== null && trim($form->redirectUrl) !== ''
+            Form::POST_SUBMIT_URL => $form->redirectUrl !== null && trim($form->redirectUrl) !== ''
                 ? $this->safeRedirectUrl(
                     $this->interpolate($form->redirectUrl, $placeholders, true),
                     (int) $submission->siteId,
                 )
                 : null,
-            'entry' => $this->resolveEntryUrl($form, $submission),
+            Form::POST_SUBMIT_ENTRY => $this->resolveEntryUrl($form, $submission),
             default => null,
         };
 

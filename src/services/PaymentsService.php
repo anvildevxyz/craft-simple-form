@@ -87,7 +87,7 @@ class PaymentsService extends Component
             return null;
         }
 
-        if (($config['amountType'] ?? 'fixed') === 'field') {
+        if (($config['amountType'] ?? PaymentFieldType::AMOUNT_TYPE_FIXED) === PaymentFieldType::AMOUNT_TYPE_FIELD) {
             $handle = (string) ($config['amountField'] ?? '');
             $amount = $handle !== '' ? ($this->valuesByHandle($form, $data)[$handle] ?? null) : null;
         } else {

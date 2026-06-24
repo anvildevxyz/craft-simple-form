@@ -118,8 +118,8 @@ class FormsController extends Controller
 
         // Post-submit behavior (#133). The message/URL/error overrides are
         // per-site translatable content; the action + entry id are shared.
-        $postSubmitAction = (string) $request->getBodyParam('postSubmitAction', 'message');
-        $form->postSubmitAction = in_array($postSubmitAction, Form::POST_SUBMIT_ACTIONS, true) ? $postSubmitAction : 'message';
+        $postSubmitAction = (string) $request->getBodyParam('postSubmitAction', Form::POST_SUBMIT_MESSAGE);
+        $form->postSubmitAction = in_array($postSubmitAction, Form::POST_SUBMIT_ACTIONS, true) ? $postSubmitAction : Form::POST_SUBMIT_MESSAGE;
         $redirectEntryId = $request->getBodyParam('redirectEntryId');
         if (is_array($redirectEntryId)) {
             $redirectEntryId = reset($redirectEntryId) ?: null;

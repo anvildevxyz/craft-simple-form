@@ -31,6 +31,13 @@ class Form extends Element
      */
     public const SUPPORTED_PROPAGATION_METHODS = ['none', 'siteGroup', 'language', 'all'];
 
+    /** Post-submit action: show an inline message (default). */
+    public const POST_SUBMIT_MESSAGE = 'message';
+    /** Post-submit action: redirect to a URL. */
+    public const POST_SUBMIT_URL = 'url';
+    /** Post-submit action: redirect to a Craft entry. */
+    public const POST_SUBMIT_ENTRY = 'entry';
+
     /**
      * Post-submit action: show an inline message (default), redirect to a URL,
      * or redirect to a Craft entry. The choice is structural, so it is shared
@@ -38,7 +45,7 @@ class Form extends Element
      *
      * @var list<string>
      */
-    public const POST_SUBMIT_ACTIONS = ['message', 'url', 'entry'];
+    public const POST_SUBMIT_ACTIONS = [self::POST_SUBMIT_MESSAGE, self::POST_SUBMIT_URL, self::POST_SUBMIT_ENTRY];
 
     /** {@see getClosedReason()}: the open date has not arrived yet. */
     public const CLOSED_NOT_YET = 'not_yet';
@@ -445,9 +452,9 @@ class Form extends Element
         $rules[] = [['submitMessage', 'errorMessage', 'redirectUrl'], 'string'];
         $rules[] = [['postSubmitAction'], 'in', 'range' => self::POST_SUBMIT_ACTIONS];
         $rules[] = [['redirectEntryId'], 'integer'];
-        $rules[] = [['redirectUrl'], 'required', 'when' => fn(): bool => $this->postSubmitAction === 'url'];
-        $rules[] = [['redirectUrl'], 'validateRedirectUrl', 'when' => fn(): bool => $this->postSubmitAction === 'url'];
-        $rules[] = [['redirectEntryId'], 'required', 'when' => fn(): bool => $this->postSubmitAction === 'entry'];
+        $rules[] = [['redirectUrl'], 'required', 'when' => fn(): bool => $this->postSubmitAction === self::POST_SUBMIT_URL];
+        $rules[] = [['redirectUrl'], 'validateRedirectUrl', 'when' => fn(): bool => $this->postSubmitAction === self::POST_SUBMIT_URL];
+        $rules[] = [['redirectEntryId'], 'required', 'when' => fn(): bool => $this->postSubmitAction === self::POST_SUBMIT_ENTRY];
 
         // Scheduling + quota. The date properties are typed ?DateTime, so PHP
         // enforces the type on assignment and DateTimeHelper normalises CP POST

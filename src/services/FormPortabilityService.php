@@ -440,7 +440,7 @@ class FormPortabilityService extends Component
      */
     private function exportRedirectEntry(Form $form): ?array
     {
-        if ($form->postSubmitAction !== 'entry' || $form->redirectEntryId === null) {
+        if ($form->postSubmitAction !== Form::POST_SUBMIT_ENTRY || $form->redirectEntryId === null) {
             return null;
         }
         $entry = Entry::find()->id($form->redirectEntryId)->siteId('*')->status(null)->one();
@@ -803,8 +803,8 @@ class FormPortabilityService extends Component
         // A "redirect to entry" action with no resolvable target would fail
         // validation; degrade gracefully to the inline message instead of aborting
         // the whole import (resolveRedirectEntry already warned about the entry).
-        if ($form->postSubmitAction === 'entry' && $form->redirectEntryId === null) {
-            $form->postSubmitAction = 'message';
+        if ($form->postSubmitAction === Form::POST_SUBMIT_ENTRY && $form->redirectEntryId === null) {
+            $form->postSubmitAction = Form::POST_SUBMIT_MESSAGE;
         }
     }
 

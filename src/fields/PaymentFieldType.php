@@ -23,6 +23,11 @@ use fabianhaef\simpleform\Plugin;
  */
 class PaymentFieldType extends FieldType
 {
+    /** Charge a fixed amount configured on the field (default). */
+    public const AMOUNT_TYPE_FIXED = 'fixed';
+    /** Charge the amount entered into another numeric field on the form. */
+    public const AMOUNT_TYPE_FIELD = 'field';
+
     public static function getType(): string
     {
         return 'payment';
@@ -48,7 +53,7 @@ class PaymentFieldType extends FieldType
     {
         $currency = strtoupper((string) ($this->config['currency'] ?? ''));
 
-        if (($this->config['amountType'] ?? 'fixed') === 'fixed' && is_numeric($this->config['amount'] ?? null)) {
+        if (($this->config['amountType'] ?? self::AMOUNT_TYPE_FIXED) === self::AMOUNT_TYPE_FIXED && is_numeric($this->config['amount'] ?? null)) {
             $amount = number_format((float) $this->config['amount'], 2);
             $label = Craft::t('simple-form', 'Amount due:') . ' ' . trim($currency . ' ' . $amount);
         } else {
