@@ -163,7 +163,13 @@ class FileFieldType extends FieldType
 
     public function renderInput(string $name, mixed $value = null): string
     {
-        $attrs = sprintf('name="%s"', htmlspecialchars($this->isMultiple() ? $name . '[]' : $name));
+        // id is always the bare field name so the group's <label for> targets it;
+        // the [] for multiple only affects the posted name.
+        $attrs = sprintf(
+            'id="%s" name="%s"',
+            htmlspecialchars($name),
+            htmlspecialchars($this->isMultiple() ? $name . '[]' : $name),
+        );
         if ($this->config['required'] ?? false) {
             $attrs .= ' required';
         }

@@ -438,6 +438,19 @@
             if (progress) { progress.textContent = "Step " + (current + 1) + " of " + steps.length; }
         }
 
+        // Move focus into the step on user navigation so keyboard/AT users land
+        // in the new step (not on a now-hidden button). Not called on first paint.
+        function focusStep() {
+            var step = steps[current];
+            var firstControl = step.querySelector("input, select, textarea, button");
+            if (firstControl) {
+                firstControl.focus();
+            } else {
+                step.setAttribute("tabindex", "-1");
+                step.focus();
+            }
+        }
+
         function currentStepValid() {
             var controls = steps[current].querySelectorAll("input, select, textarea");
             for (var i = 0; i < controls.length; i++) {
@@ -457,6 +470,7 @@
                     var from = current;
                     current++;
                     render();
+                    focusStep();
                     SF.emit(form, "stepChange", { form: form, from: from, to: current, total: steps.length }, false);
                 }
             });
@@ -467,6 +481,7 @@
                     var from = current;
                     current--;
                     render();
+                    focusStep();
                     SF.emit(form, "stepChange", { form: form, from: from, to: current, total: steps.length }, false);
                 }
             });

@@ -49,7 +49,7 @@ class CompositeFieldTypeTest extends TestCase
     {
         $html = (new NameFieldType(self::nameConfig()))->renderInput('field_42');
 
-        $this->assertStringContainsString('<fieldset class="sf-composite" aria-labelledby="field_42-legend">', $html);
+        $this->assertStringContainsString('<fieldset class="sf-composite" aria-labelledby="field_42-label">', $html);
         // Each sub-input: unique id + explicit <label for> (a11y).
         $this->assertStringContainsString('<label for="field_42-first">First</label>', $html);
         $this->assertStringContainsString('id="field_42-first" name="field_42[first]"', $html);

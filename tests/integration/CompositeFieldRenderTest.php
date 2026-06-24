@@ -42,7 +42,7 @@ class CompositeFieldRenderTest extends SimpleFormTestCase
         $html = (new TwigExtension())->renderForm('composite_render');
 
         // Name: a <fieldset> of labelled sub-inputs, each with its own id.
-        $this->assertStringContainsString('<fieldset class="sf-composite" aria-labelledby="field_' . $nameId . '-legend">', $html);
+        $this->assertStringContainsString('<fieldset class="sf-composite" aria-labelledby="field_' . $nameId . '-label">', $html);
         $this->assertStringContainsString('<label for="field_' . $nameId . '-first">First</label>', $html);
         $this->assertStringContainsString('id="field_' . $nameId . '-first" name="field_' . $nameId . '[first]"', $html);
         $this->assertStringContainsString('<label for="field_' . $nameId . '-last">Last</label>', $html);

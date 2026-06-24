@@ -246,11 +246,12 @@ class PhoneFieldType extends FieldType
 
         return sprintf(
             '<div class="sf-phone">'
-            . '<select name="%s" id="%s" class="sf-phone-country">%s</select>'
+            . '<select name="%s" id="%s" class="sf-phone-country" aria-label="%s">%s</select>'
             . '<input type="tel" %s inputmode="tel" autocomplete="tel-national" class="text fullwidth">'
             . '</div>',
             htmlspecialchars($name . '[country]'),
             htmlspecialchars($name . '-country'),
+            htmlspecialchars(Craft::t('simple-form', 'Country calling code')),
             $options,
             $numberAttrs,
         );

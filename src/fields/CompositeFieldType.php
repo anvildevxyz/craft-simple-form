@@ -144,9 +144,11 @@ abstract class CompositeFieldType extends FieldType
     public function renderInput(string $name, mixed $value = null): string
     {
         $values = is_array($value) ? $value : [];
-        $legendId = htmlspecialchars($name) . '-legend';
+        // Point the fieldset at the group label the renderer actually emits
+        // (field.twig renders the label span with id "<name>-label").
+        $labelId = htmlspecialchars($name) . '-label';
 
-        $html = sprintf('<fieldset class="sf-composite" aria-labelledby="%s">', $legendId);
+        $html = sprintf('<fieldset class="sf-composite" aria-labelledby="%s">', $labelId);
 
         foreach ($this->enabledSubFields() as $key => $sub) {
             $id = htmlspecialchars($name) . '-' . htmlspecialchars($key);

@@ -55,7 +55,7 @@ class FieldsController extends Controller
             return $this->asJsonSuccess(['fieldId' => $fieldId]);
         } catch (\Exception $e) {
             Craft::warning('Error adding field: ' . $e->getMessage(), 'simple-form');
-            return $this->asJsonError('Failed to add field');
+            return $this->asJsonError(Craft::t('simple-form', 'Failed to add field'));
         }
     }
 
@@ -99,7 +99,7 @@ class FieldsController extends Controller
             return $this->asJsonSuccess();
         } catch (\Exception $e) {
             Craft::warning('Error updating field: ' . $e->getMessage(), 'simple-form');
-            return $this->asJsonError('Failed to update field');
+            return $this->asJsonError(Craft::t('simple-form', 'Failed to update field'));
         }
     }
 
@@ -121,7 +121,7 @@ class FieldsController extends Controller
             return $this->asJsonSuccess();
         } catch (\Exception $e) {
             Craft::warning('Error deleting field: ' . $e->getMessage(), 'simple-form');
-            return $this->asJsonError('Failed to delete field');
+            return $this->asJsonError(Craft::t('simple-form', 'Failed to delete field'));
         }
     }
 
@@ -150,7 +150,7 @@ class FieldsController extends Controller
 
         $fields = $request->getRequiredBodyParam('fields');
         if (!is_array($fields)) {
-            return $this->asJsonError('Fields parameter must be an array');
+            return $this->asJsonError(Craft::t('simple-form', 'Fields parameter must be an array'));
         }
 
         $db = Craft::$app->getDb();
@@ -174,7 +174,7 @@ class FieldsController extends Controller
                 ->where(['id' => $fieldIds])
                 ->column();
             if ($fieldIds === [] || count($formIds) !== 1) {
-                return $this->asJsonError('All reordered fields must belong to a single form.');
+                return $this->asJsonError(Craft::t('simple-form', 'All reordered fields must belong to a single form.'));
             }
             $formId = (int) $formIds[0];
 
@@ -200,7 +200,7 @@ class FieldsController extends Controller
             return $this->asJsonSuccess();
         } catch (\Exception $e) {
             Craft::warning('Error reordering fields: ' . $e->getMessage(), 'simple-form');
-            return $this->asJsonError('Failed to reorder fields');
+            return $this->asJsonError(Craft::t('simple-form', 'Failed to reorder fields'));
         }
     }
 
@@ -215,13 +215,13 @@ class FieldsController extends Controller
         $errors = [];
 
         if (empty($label)) {
-            $errors['label'][] = 'Label is required';
+            $errors['label'][] = Craft::t('simple-form', 'Label is required');
         }
 
         if (empty($handle)) {
-            $errors['handle'][] = 'Handle is required';
+            $errors['handle'][] = Craft::t('simple-form', 'Handle is required');
         } elseif (!preg_match('/^[a-zA-Z_][a-zA-Z0-9_]*$/', $handle)) {
-            $errors['handle'][] = 'Handle must start with a letter or underscore, and contain only alphanumeric characters and underscores';
+            $errors['handle'][] = Craft::t('simple-form', 'Handle must start with a letter or underscore, and contain only alphanumeric characters and underscores');
         } else {
             $dupQuery = (new Query())
                 ->from('{{%simpleform_fields}}')
@@ -230,17 +230,17 @@ class FieldsController extends Controller
                 $dupQuery->andWhere(['not', ['id' => $excludeFieldId]]);
             }
             if ($dupQuery->exists()) {
-                $errors['handle'][] = 'A field with this handle already exists in this form';
+                $errors['handle'][] = Craft::t('simple-form', 'A field with this handle already exists in this form');
             }
         }
 
         if (!in_array($type, Plugin::getInstance()->getFieldTypeRegistry()->typeHandles(), true)) {
-            $errors['type'][] = 'Invalid field type';
+            $errors['type'][] = Craft::t('simple-form', 'Invalid field type');
         }
 
         if (in_array($type, FieldTypeRegistry::OPTION_TYPES, true)
             && (empty($config['options']) || !is_array($config['options']))) {
-            $errors['config'][] = $type . ' fields must have at least one option';
+            $errors['config'][] = Craft::t('simple-form', '{type} fields must have at least one option', ['type' => $type]);
         }
 
         return $errors;
