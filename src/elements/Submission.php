@@ -217,8 +217,7 @@ class Submission extends Element
             return Html::tag('span', '—', ['class' => 'light']);
         }
 
-        // match evaluates only the hit arm, so a single Craft::t runs per row
-        // (the array form translated all three labels to use just one).
+        // match evaluates only the hit arm, so a single Craft::t runs per row.
         return Html::tag(
             'span',
             match ($this->paymentStatus) {

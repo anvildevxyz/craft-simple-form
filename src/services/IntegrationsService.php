@@ -615,8 +615,7 @@ class IntegrationsService extends Component
             ->indexBy('id')
             ->all();
 
-        // Batch-load the referenced submissions once (was an N+1 of up to $limit
-        // per-row queries); same default query semantics as the prior ->one().
+        // Batch-load the referenced submissions in one query instead of one per row.
         $submissionIds = [];
         foreach ($rows as $row) {
             if ($row['submissionId'] !== null) {

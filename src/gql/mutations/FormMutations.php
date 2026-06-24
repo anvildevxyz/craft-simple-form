@@ -135,7 +135,6 @@ class FormMutations extends BaseMutation
             return self::errorPayload([['key' => 'form', 'messages' => ['Too many submissions. Please wait a moment and try again.']]]);
         }
 
-        // Build the field-id => value map from the input list.
         $values = self::buildValueMap($args['values'] ?? null);
 
         $userId = Craft::$app->getUser()->getId();
@@ -228,7 +227,6 @@ class FormMutations extends BaseMutation
             return self::errorPayload([['key' => 'auth', 'messages' => ['You are not authorized to edit this submission.']]]);
         }
 
-        // Build the field-id => value map from the input list.
         $values = self::buildValueMap($args['values'] ?? null);
 
         $captchaToken = isset($args['captchaToken']) ? (string) $args['captchaToken'] : null;

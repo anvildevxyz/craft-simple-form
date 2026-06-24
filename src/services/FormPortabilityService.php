@@ -421,14 +421,11 @@ class FormPortabilityService extends Component
                 continue;
             }
 
-            $content[$site->handle] = [
-                'title' => $form->title,
-                'description' => $form->description,
-                'emailTo' => $form->emailTo,
-                'emailSubject' => $form->emailSubject,
-                'emailReplyTo' => $form->emailReplyTo,
-                'emailBody' => $form->emailBody,
-            ];
+            $node = [];
+            foreach (FormContentHelper::CONTENT_ATTRS as $attr) {
+                $node[$attr] = $form->$attr;
+            }
+            $content[$site->handle] = $node;
         }
 
         return $content;
@@ -579,8 +576,9 @@ class FormPortabilityService extends Component
         }
 
         // Upgrader chain: each entry migrates v(key) -> v(key+1). The map is
-        // presently empty (v1 is current); future schema bumps register a closure
-        // here, and any older document is walked forward step by step.
+        // empty because every schema bump so far has been purely additive (a
+        // newer reader ignores absent keys); a future breaking bump registers a
+        // closure here, and any older document is walked forward step by step.
         foreach ($this->schemaUpgraders() as $from => $upgrade) {
             if ($version === $from) {
                 $data = $upgrade($data);
@@ -594,7 +592,8 @@ class FormPortabilityService extends Component
 
     /**
      * The schema upgraders, keyed by the source version each one migrates *from*.
-     * Empty while v1 is current; a future bump adds `1 => fn($d) => ...` here.
+     * Empty: schema bumps so far are purely additive, so no document needs
+     * upgrading; a future breaking bump adds `1 => fn($d) => ...` here.
      *
      * @return array<int, callable(array<string, mixed>): array<string, mixed>>
      */
@@ -737,12 +736,13 @@ class FormPortabilityService extends Component
      */
     private function applyFormContent(Form $form, array $content): void
     {
+        // title is special-cased: it falls back to the form's name when absent.
         $form->title = isset($content['title']) ? (string)$content['title'] : $form->name;
-        $form->description = $content['description'] ?? null;
-        $form->emailTo = $content['emailTo'] ?? null;
-        $form->emailSubject = $content['emailSubject'] ?? null;
-        $form->emailReplyTo = $content['emailReplyTo'] ?? null;
-        $form->emailBody = $content['emailBody'] ?? null;
+        foreach (FormContentHelper::CONTENT_ATTRS as $attr) {
+            if ($attr !== 'title') {
+                $form->$attr = $content[$attr] ?? null;
+            }
+        }
     }
 
     /**
