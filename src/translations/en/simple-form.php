@@ -284,4 +284,14 @@ return [
     'Payment is calculated from your entries.' => 'Payment is calculated from your entries.',
     'Payments are not available right now. Please try again later.' => 'Payments are not available right now. Please try again later.',
     'Your payment could not be processed.' => 'Your payment could not be processed.',
+
+    // Survey report (#240)
+    'Report' => 'Report',
+    'Survey report' => 'Survey report',
+    'From' => 'From',
+    'To' => 'To',
+    'Apply' => 'Apply',
+    'Clear' => 'Clear',
+    'This form has no fields to report on.' => 'This form has no fields to report on.',
+    'Free-form answers aren’t charted.' => 'Free-form answers aren’t charted.',
 ];

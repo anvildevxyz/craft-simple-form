@@ -288,4 +288,14 @@ return [
     'Payment is calculated from your entries.' => 'Die Zahlung wird aus Ihren Eingaben berechnet.',
     'Payments are not available right now. Please try again later.' => 'Zahlungen sind derzeit nicht verfügbar. Bitte versuchen Sie es später erneut.',
     'Your payment could not be processed.' => 'Ihre Zahlung konnte nicht verarbeitet werden.',
+
+    // Survey report (#240)
+    'Report' => 'Bericht',
+    'Survey report' => 'Umfragebericht',
+    'From' => 'Von',
+    'To' => 'Bis',
+    'Apply' => 'Anwenden',
+    'Clear' => 'Zurücksetzen',
+    'This form has no fields to report on.' => 'Dieses Formular hat keine auswertbaren Felder.',
+    'Free-form answers aren’t charted.' => 'Freitextantworten werden nicht grafisch dargestellt.',
 ];

@@ -183,6 +183,41 @@ class SubmissionsController extends Controller
         ]);
     }
 
+    /**
+     * Per-form survey report (#240): per-field response counts, choice-option
+     * breakdowns, and rating/scale distributions over the stored submission
+     * data. Read-only; gated by the base viewSubmissions permission. Scoped to
+     * the current site, with an optional inclusive YYYY-MM-DD date range.
+     */
+    public function actionReport(int $formId): Response
+    {
+        /** @var \craft\web\Request $request */
+        $request = Craft::$app->getRequest();
+        $siteId = Craft::$app->getSites()->getCurrentSite()->id;
+
+        $form = Form::find()->siteId($siteId)->id($formId)->one();
+        if (!$form) {
+            throw new \yii\web\NotFoundHttpException('Form not found');
+        }
+
+        // F17 (CWE-20): only honor well-formed YYYY-MM-DD bounds.
+        $dateFrom = $request->getQueryParam('dateFrom');
+        $dateFrom = is_string($dateFrom) && preg_match('/^\d{4}-\d{2}-\d{2}$/', $dateFrom) ? $dateFrom : null;
+        $dateTo = $request->getQueryParam('dateTo');
+        $dateTo = is_string($dateTo) && preg_match('/^\d{4}-\d{2}-\d{2}$/', $dateTo) ? $dateTo : null;
+
+        $reports = Plugin::getInstance()->getReports();
+
+        return $this->renderTemplate('simple-form/submissions/report', [
+            'form' => $form,
+            'formId' => $formId,
+            'dateFrom' => $dateFrom,
+            'dateTo' => $dateTo,
+            'responses' => $reports->responseCount($siteId, $formId, $dateFrom, $dateTo),
+            'report' => $reports->fieldReport($siteId, $formId, $dateFrom, $dateTo),
+        ]);
+    }
+
     public function actionView(int $submissionId): Response
     {
         $siteId = Craft::$app->getSites()->getCurrentSite()->id;

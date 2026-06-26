@@ -681,6 +681,9 @@ class Plugin extends BasePlugin
         $event->rules['simple-form/forms/<formId:\d+>/notifications/new'] = 'simple-form/notifications/edit';
         $event->rules['simple-form/forms/<formId:\d+>/notifications/<notificationId:\d+>'] = 'simple-form/notifications/edit';
 
+        // Per-form survey report (#240).
+        $event->rules['simple-form/forms/<formId:\d+>/report'] = 'simple-form/submissions/report';
+
         $event->rules['simple-form/submissions'] = 'simple-form/submissions/index';
         $event->rules['simple-form/submissions/analytics'] = 'simple-form/submissions/analytics';
         $event->rules['simple-form/submissions/export'] = 'simple-form/submissions/export';

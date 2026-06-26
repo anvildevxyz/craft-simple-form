@@ -42,6 +42,7 @@
     {% set tabs = tabs|merge({
         notifications: { label: 'Notifications'|t('simple-form'), url: cpUrl('simple-form/forms/' ~ form.id ~ '/notifications') },
         integrations: { label: 'Integrations'|t('simple-form'), url: cpUrl('simple-form/forms/' ~ form.id ~ '/integrations') },
+        report: { label: 'Report'|t('simple-form'), url: cpUrl('simple-form/forms/' ~ form.id ~ '/report') },
     }) %}
 {% endif %}
 {% set selectedTab = 'sf-build' %}

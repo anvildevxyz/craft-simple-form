@@ -16,6 +16,11 @@ class CheckboxFieldType extends FieldType
         return 'Checkbox';
     }
 
+    public function aggregation(): AggregationKind
+    {
+        return AggregationKind::Choice;
+    }
+
     /**
      * @return string[]
      */

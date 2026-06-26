@@ -272,6 +272,45 @@ abstract class FieldType
     }
 
     /**
+     * How this field's submitted values roll up in the survey report (#240).
+     *
+     * The default is {@see AggregationKind::None} — the report lists the field
+     * with a response count but no chart. Choice types override to
+     * {@see AggregationKind::Choice} (per-option counts) and the numeric scale
+     * types to {@see AggregationKind::Scale} (distribution + average), so the
+     * report derives each field's treatment from the type itself rather than
+     * from a hardcoded list.
+     */
+    public function aggregation(): AggregationKind
+    {
+        return AggregationKind::None;
+    }
+
+    /**
+     * The closed option set (value => label) a {@see AggregationKind::Choice}
+     * field reports over, in their authored order, so the report can list every
+     * option — including ones nobody picked. Empty for non-choice types.
+     *
+     * @return array<string, string>
+     */
+    public function aggregationOptions(): array
+    {
+        return $this->getOptions();
+    }
+
+    /**
+     * The full ordered set of scale points a {@see AggregationKind::Scale} field
+     * spans, so the report's distribution shows every point (zero-filled).
+     * Empty for non-scale types.
+     *
+     * @return list<int>
+     */
+    public function aggregationScalePoints(): array
+    {
+        return [];
+    }
+
+    /**
      * The value-less control attributes (name, required, placeholder) shared by
      * every field control. Inputs add a value via {@see self::getInputAttributes()};
      * <textarea>/<select> carry the value in their markup, so they use this directly.

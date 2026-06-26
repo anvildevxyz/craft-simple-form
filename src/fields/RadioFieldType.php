@@ -14,6 +14,11 @@ class RadioFieldType extends FieldType
         return 'Radio';
     }
 
+    public function aggregation(): AggregationKind
+    {
+        return AggregationKind::Choice;
+    }
+
     /**
      * @return string[]
      */

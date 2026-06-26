@@ -55,6 +55,16 @@ class RatingFieldType extends FieldType
         return true;
     }
 
+    public function aggregation(): AggregationKind
+    {
+        return AggregationKind::Scale;
+    }
+
+    public function aggregationScalePoints(): array
+    {
+        return $this->allowedValues();
+    }
+
     /**
      * @return string[]
      */

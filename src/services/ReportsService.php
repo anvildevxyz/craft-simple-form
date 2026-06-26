@@ -7,6 +7,7 @@ use craft\helpers\Db;
 use fabianhaef\simpleform\elements\Form;
 use fabianhaef\simpleform\elements\Submission;
 use fabianhaef\simpleform\elements\SubmissionStatus;
+use fabianhaef\simpleform\fields\AggregationKind;
 use fabianhaef\simpleform\integrations\DispatchStatus;
 use fabianhaef\simpleform\Plugin;
 use yii\base\Component;
@@ -184,6 +185,240 @@ class ReportsService extends Component
         }
 
         return $result;
+    }
+
+    /**
+     * Per-field survey report for one form (#240): every input field's response
+     * count, plus per-option counts (choice fields) or a value distribution +
+     * average (rating/opinion scale fields). Read-only over the stored
+     * submission data — no migration, no new field types.
+     *
+     * Each field type names its own treatment via
+     * {@see \fabianhaef\simpleform\fields\FieldType::aggregation()}, so the report
+     * derives from the field set with no hardcoded type list. Layout blocks and
+     * unknown types are skipped. Spam is excluded; an optional inclusive
+     * YYYY-MM-DD `dateFrom`/`dateTo` scopes the window. Scoped to one site.
+     *
+     * Each row carries `key`, `label`, `type`, `kind` and `count`; choice rows
+     * add an ordered `options` list (value/label/count), scale rows add
+     * `average` + a zero-filled `distribution`.
+     *
+     * @return list<array<string, mixed>>
+     */
+    public function fieldReport(int $siteId, int $formId, ?string $dateFrom = null, ?string $dateTo = null): array
+    {
+        $fields = Plugin::getInstance()->getFormStructure()->getFieldSet($formId, $siteId);
+        $registry = Plugin::getInstance()->getFieldTypeRegistry();
+
+        $meta = [];
+        foreach ($fields as $field) {
+            $instance = $registry->getFieldType((string) $field['type'], $field['config']);
+            // Skip presentational layout blocks and any unknown/third-party type
+            // that didn't register — the report only covers value-bearing fields.
+            if ($instance === null || !$instance->isInput()) {
+                continue;
+            }
+
+            $kind = $instance->aggregation();
+            $entry = [
+                'key' => 'field_' . $field['id'],
+                'label' => (string) $field['label'],
+                'type' => (string) $field['type'],
+                'kind' => $kind->value,
+            ];
+
+            if ($kind === AggregationKind::Choice) {
+                // Layer the per-site option-label overrides over the base labels
+                // so the report reads the way the visitor saw the form.
+                $options = $instance->aggregationOptions();
+                $overrides = is_array($field['optionLabels'] ?? null) ? $field['optionLabels'] : [];
+                foreach ($overrides as $value => $label) {
+                    if (isset($options[$value]) && is_string($label) && $label !== '') {
+                        $options[$value] = $label;
+                    }
+                }
+                $entry['options'] = $options;
+            } elseif ($kind === AggregationKind::Scale) {
+                $entry['points'] = $instance->aggregationScalePoints();
+            }
+
+            $meta[] = $entry;
+        }
+
+        if ($meta === []) {
+            return [];
+        }
+
+        return $this->aggregateFieldReport($meta, $this->reportDataRows($siteId, $formId, $dateFrom, $dateTo));
+    }
+
+    /**
+     * The non-spam response count for a form on a site within the optional
+     * inclusive YYYY-MM-DD range — the headline total for the survey report,
+     * matching the window {@see self::fieldReport()} aggregates over.
+     */
+    public function responseCount(int $siteId, int $formId, ?string $dateFrom = null, ?string $dateTo = null): int
+    {
+        return (int) $this->reportBaseQuery($siteId, $formId, $dateFrom, $dateTo)->count();
+    }
+
+    /**
+     * Accumulate the per-field report from already-decoded submission payloads.
+     * Pure (no DB, no Craft) so it is directly unit-testable: feed it the field
+     * meta from {@see self::fieldReport()} plus a list of `data` payloads and it
+     * returns the rendered report rows.
+     *
+     * Each meta row carries `key`, `label`, `type` and `kind`; choice rows add
+     * an `options` value=>label map, scale rows a `points` int list.
+     *
+     * @param list<array<string, mixed>> $meta per-field meta from {@see self::fieldReport()}
+     * @param iterable<array<string, mixed>> $rows decoded submission `data` payloads
+     * @return list<array<string, mixed>>
+     */
+    public function aggregateFieldReport(array $meta, iterable $rows): array
+    {
+        $acc = [];
+        foreach ($meta as $m) {
+            $acc[$m['key']] = ['count' => 0, 'sum' => 0, 'options' => [], 'dist' => []];
+        }
+
+        foreach ($rows as $data) {
+            foreach ($meta as $m) {
+                $key = $m['key'];
+                $entry = $data[$key] ?? null;
+                // Stored shape is {label, type, value}; tolerate a bare value too.
+                $value = is_array($entry) && array_key_exists('value', $entry) ? $entry['value'] : $entry;
+
+                // A field counts as "answered" only with a non-empty value.
+                if ($value === null || $value === '' || $value === []) {
+                    continue;
+                }
+
+                if ($m['kind'] === AggregationKind::Choice->value) {
+                    // A checkbox stores a list; select/radio store a scalar.
+                    $selected = is_array($value) ? $value : [$value];
+                    $picked = false;
+                    foreach ($selected as $v) {
+                        if ($v === null || $v === '') {
+                            continue;
+                        }
+                        $v = (string) $v;
+                        $acc[$key]['options'][$v] = ($acc[$key]['options'][$v] ?? 0) + 1;
+                        $picked = true;
+                    }
+                    if ($picked) {
+                        $acc[$key]['count']++;
+                    }
+                } elseif ($m['kind'] === AggregationKind::Scale->value) {
+                    // Values persist as ints; a forged non-integer is skipped.
+                    if (!is_int($value) && !(is_string($value) && $value !== '' && (string) (int) $value === $value)) {
+                        continue;
+                    }
+                    $value = (int) $value;
+                    $acc[$key]['sum'] += $value;
+                    $acc[$key]['count']++;
+                    $acc[$key]['dist'][$value] = ($acc[$key]['dist'][$value] ?? 0) + 1;
+                } else {
+                    $acc[$key]['count']++;
+                }
+            }
+        }
+
+        $result = [];
+        foreach ($meta as $m) {
+            $key = $m['key'];
+            $a = $acc[$key];
+            $row = [
+                'key' => $key,
+                'label' => $m['label'],
+                'type' => $m['type'],
+                'kind' => $m['kind'],
+                'count' => $a['count'],
+            ];
+
+            if ($m['kind'] === AggregationKind::Choice->value) {
+                $counts = $a['options'];
+                $options = [];
+                // Configured options first, in authored order, zero-filled.
+                foreach (($m['options'] ?? []) as $value => $label) {
+                    $value = (string) $value;
+                    $options[] = [
+                        'value' => $value,
+                        'label' => (string) $label,
+                        'count' => $counts[$value] ?? 0,
+                    ];
+                    unset($counts[$value]);
+                }
+                // Then any stored value no longer in the option set (renamed or
+                // removed since), labelled by its raw value.
+                foreach ($counts as $value => $count) {
+                    $options[] = ['value' => (string) $value, 'label' => (string) $value, 'count' => $count];
+                }
+                $row['options'] = $options;
+            } elseif ($m['kind'] === AggregationKind::Scale->value) {
+                $dist = [];
+                foreach (($m['points'] ?? []) as $point) {
+                    $dist[(int) $point] = $a['dist'][(int) $point] ?? 0;
+                    unset($a['dist'][(int) $point]);
+                }
+                // Defensive: any out-of-range stored value still gets shown.
+                foreach ($a['dist'] as $point => $count) {
+                    $dist[(int) $point] = $count;
+                }
+                ksort($dist);
+                $row['average'] = $a['count'] > 0 ? round($a['sum'] / $a['count'], 1) : 0.0;
+                $row['distribution'] = $dist;
+            }
+
+            $result[] = $row;
+        }
+
+        return $result;
+    }
+
+    /**
+     * The decoded `data` payloads for a form's non-spam submissions on a site,
+     * optionally within the inclusive date range. Reads only the JSON column via
+     * a batched cursor ({@see Query::each()}) so it stays light on large
+     * submission sets — no element hydration.
+     *
+     * @return iterable<array<string, mixed>>
+     */
+    private function reportDataRows(int $siteId, int $formId, ?string $dateFrom, ?string $dateTo): iterable
+    {
+        $query = $this->reportBaseQuery($siteId, $formId, $dateFrom, $dateTo)->select(['data']);
+
+        foreach ($query->each() as $row) {
+            $data = $row['data'];
+            if (is_string($data)) {
+                $data = json_decode($data, true);
+            }
+            yield is_array($data) ? $data : [];
+        }
+    }
+
+    /**
+     * The shared submissions query for the survey report: one site, one form,
+     * spam excluded, scoped to the optional inclusive YYYY-MM-DD range. Date
+     * literals are shape-validated (CWE-20) before being compared.
+     *
+     * @return Query<int, array<string, mixed>>
+     */
+    private function reportBaseQuery(int $siteId, int $formId, ?string $dateFrom, ?string $dateTo): Query
+    {
+        $query = (new Query())
+            ->from('{{%simpleform_submissions}}')
+            ->where(['siteId' => $siteId, 'formId' => $formId])
+            ->andWhere(['not', ['readStatus' => SubmissionStatus::SPAM]]);
+
+        if (is_string($dateFrom) && preg_match('/^\d{4}-\d{2}-\d{2}$/', $dateFrom)) {
+            $query->andWhere(['>=', 'dateCreated', "$dateFrom 00:00:00"]);
+        }
+        if (is_string($dateTo) && preg_match('/^\d{4}-\d{2}-\d{2}$/', $dateTo)) {
+            $query->andWhere(['<=', 'dateCreated', "$dateTo 23:59:59"]);
+        }
+
+        return $query;
     }
 
     /**

@@ -282,4 +282,14 @@ return [
     'Payment is calculated from your entries.' => 'De betaling wordt berekend op basis van je invoer.',
     'Payments are not available right now. Please try again later.' => 'Betalingen zijn momenteel niet beschikbaar. Probeer het later opnieuw.',
     'Your payment could not be processed.' => 'Je betaling kon niet worden verwerkt.',
+
+    // Survey report (#240)
+    'Report' => 'Rapport',
+    'Survey report' => 'Enquêterapport',
+    'From' => 'Van',
+    'To' => 'Tot',
+    'Apply' => 'Toepassen',
+    'Clear' => 'Wissen',
+    'This form has no fields to report on.' => 'Dit formulier heeft geen velden om te rapporteren.',
+    'Free-form answers aren’t charted.' => 'Vrije antwoorden worden niet in grafieken weergegeven.',
 ];

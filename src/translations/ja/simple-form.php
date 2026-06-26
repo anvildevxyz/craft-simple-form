@@ -282,4 +282,14 @@ return [
     'Payment is calculated from your entries.' => 'お支払い金額は入力内容に基づいて計算されます。',
     'Payments are not available right now. Please try again later.' => '現在、お支払いはご利用いただけません。後ほど再度お試しください。',
     'Your payment could not be processed.' => 'お支払いを処理できませんでした。',
+
+    // Survey report (#240)
+    'Report' => 'レポート',
+    'Survey report' => 'アンケートレポート',
+    'From' => '開始日',
+    'To' => '終了日',
+    'Apply' => '適用',
+    'Clear' => 'クリア',
+    'This form has no fields to report on.' => 'このフォームには集計対象のフィールドがありません。',
+    'Free-form answers aren’t charted.' => '自由記述の回答はグラフ化されません。',
 ];

@@ -14,6 +14,11 @@ class SelectFieldType extends FieldType
         return 'Select';
     }
 
+    public function aggregation(): AggregationKind
+    {
+        return AggregationKind::Choice;
+    }
+
     /**
      * @return string[]
      */
