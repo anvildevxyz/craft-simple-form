@@ -159,11 +159,6 @@ class Form extends Element
         return 'Form';
     }
 
-    public static function tableName(): string
-    {
-        return 'simpleform_forms';
-    }
-
     public static function hasContent(): bool
     {
         return true;
