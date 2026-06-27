@@ -304,6 +304,10 @@ class SubmissionService extends Component
             $submission->orderId = $payment['orderId'] ?: null;
         }
 
+        // Quiz scoring (#241): compute once, here, so the stored score is stable
+        // even if the answer key changes later. No-op unless the form is a quiz.
+        $this->applyQuizScore($submission, $form, $data, (int) $siteId);
+
         // Fire the before-save event (same as the Twig path).
         $beforeEvent = new SubmissionEvent($submission, $form, $data, true);
         Plugin::getInstance()->trigger(Plugin::EVENT_BEFORE_SUBMISSION_SAVE, $beforeEvent);
@@ -382,6 +386,11 @@ class SubmissionService extends Component
             $submission->spamReason = $spamReason;
         }
 
+        // Re-score the edited answers against the current key (#241). The "no
+        // retroactive rescore" guarantee is about untouched submissions — an
+        // edit deliberately rewrites this row's content, so its score follows.
+        $this->applyQuizScore($submission, $form, $data, (int) $submission->siteId);
+
         $beforeEvent = new SubmissionEvent($submission, $form, $data, false);
         Plugin::getInstance()->trigger(Plugin::EVENT_BEFORE_SUBMISSION_SAVE, $beforeEvent);
 
@@ -402,6 +411,27 @@ class SubmissionService extends Component
         );
 
         return ['submission' => $submission, 'errors' => null];
+    }
+
+    /**
+     * Stamp the quiz score onto a submission before it is saved (#241). A no-op
+     * unless the form opted into quiz mode; otherwise the raw score, max,
+     * percentage and grade band are computed from the validated `$data` against
+     * the form's current answer key.
+     *
+     * @param array<string, mixed> $data the persisted submission data payload
+     */
+    private function applyQuizScore(Submission $submission, Form $form, array $data, int $siteId): void
+    {
+        if (!$form->quizMode) {
+            return;
+        }
+
+        $result = Plugin::getInstance()->getQuizScoring()->scoreSubmission($form, $data, $siteId);
+        $submission->quizScore = $result['score'];
+        $submission->quizMaxScore = $result['maxScore'];
+        $submission->quizPercentage = $result['percentage'];
+        $submission->quizGrade = $result['grade'];
     }
 
     /**
@@ -1065,6 +1095,12 @@ class SubmissionService extends Component
     {
         $placeholders = [
             'submissionId' => $submission->id !== null ? (string) $submission->id : '',
+            // Quiz scoring (#241): blank on non-quiz forms, so a success message
+            // referencing {quizScore} simply renders empty there.
+            'quizScore' => $submission->quizScore !== null ? (string) $submission->quizScore : '',
+            'quizMaxScore' => $submission->quizMaxScore !== null ? (string) $submission->quizMaxScore : '',
+            'quizPercentage' => $submission->quizPercentage !== null ? $submission->quizPercentage . '%' : '',
+            'quizGrade' => (string) ($submission->quizGrade ?? ''),
         ];
 
         $formModel = new FormModel($form);

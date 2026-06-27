@@ -1191,9 +1191,33 @@
             var vi = document.createElement('input'); vi.type = 'text'; vi.className = 'text'; vi.placeholder = 'Value'; vi.value = opt.value || '';
             li.addEventListener('input', function() { opt.label = li.value; serialize(); });
             vi.addEventListener('input', function() { opt.value = vi.value; serialize(); });
+            r.appendChild(li); r.appendChild(vi);
+
+            // Quiz answer key (#241): mark this option correct and weight it.
+            // Only shown while the form is in quiz mode.
+            if (quizModeOn()) {
+                var key = document.createElement('span'); key.className = 'sf-answer-key';
+                var cbId = 'sf-correct-' + (f.clientId || 'f') + '-' + idx;
+                var cb = document.createElement('input'); cb.type = 'checkbox'; cb.id = cbId; cb.checked = !!opt.correct;
+                var cbl = document.createElement('label'); cbl.setAttribute('for', cbId); cbl.textContent = 'Correct';
+                cb.addEventListener('change', function() {
+                    if (cb.checked) { opt.correct = true; } else { delete opt.correct; }
+                    serialize();
+                });
+                var pts = document.createElement('input'); pts.type = 'number'; pts.min = '0'; pts.className = 'text sf-answer-points';
+                pts.placeholder = 'Pts'; pts.title = 'Points'; pts.value = (opt.points != null ? opt.points : '');
+                pts.addEventListener('input', function() {
+                    var n = parseInt(pts.value, 10);
+                    if (pts.value === '' || isNaN(n) || n < 0) { delete opt.points; } else { opt.points = n; }
+                    serialize();
+                });
+                key.appendChild(cb); key.appendChild(cbl); key.appendChild(pts);
+                r.appendChild(key);
+            }
+
             var del = document.createElement('button'); del.type = 'button'; del.className = 'btn sf-option-del'; del.textContent = '×';
             del.addEventListener('click', function() { c.options.splice(idx, 1); redraw(); serialize(); });
-            r.appendChild(li); r.appendChild(vi); r.appendChild(del);
+            r.appendChild(del);
             return r;
         }
 
@@ -1633,6 +1657,24 @@
                     errs.forEach(function(msg) { Craft.cp.displayError(msg); });
                 }
             }
+        });
+    }
+
+    // ---- quiz mode (#241) ------------------------------------------------
+
+    // Whether the form's quiz-mode lightswitch (Rules tab) is currently on.
+    // Read live so the option editor shows/hides the per-option answer key.
+    function quizModeOn() {
+        var el = document.getElementById('quizMode');
+        return !!(el && (el.getAttribute('aria-checked') === 'true' || el.classList.contains('on')));
+    }
+
+    // Re-render the open inspector when quiz mode is toggled, so the answer-key
+    // controls appear/disappear without needing to reselect the field.
+    var quizSwitch = document.getElementById('quizMode');
+    if (quizSwitch) {
+        quizSwitch.addEventListener('change', function() {
+            if (selectedId) { renderInspector(); }
         });
     }
 

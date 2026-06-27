@@ -431,3 +431,14 @@
     color: var(--medium-text-color, #606d7b);
     font-variant-numeric: tabular-nums;
 }
+
+/* Quiz answer-key controls in the field-builder option editor (#241). */
+.sf-answer-key {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    margin-left: 4px;
+    white-space: nowrap;
+}
+.sf-answer-key label { margin: 0; color: var(--medium-text-color, #606d7b); }
+.sf-answer-points { width: 56px; }

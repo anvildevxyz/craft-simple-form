@@ -68,23 +68,31 @@ final class SubmissionCsv
     {
         self::warmAssetCache($submissions);
         $columns = self::discoverColumns($submissions);
+        $includeQuiz = self::includesQuiz($submissions);
 
         $handle = fopen('php://temp', 'r+');
         if ($handle === false) {
             return '';
         }
 
-        fputcsv($handle, ['ID', 'Form', 'Status', 'Submitted', ...array_column($columns, 'label')]);
+        $header = ['ID', 'Form', 'Status', 'Submitted'];
+        if ($includeQuiz) {
+            $header = [...$header, ...self::quizHeaders()];
+        }
+        fputcsv($handle, [...$header, ...array_column($columns, 'label')]);
 
         foreach ($submissions as $submission) {
             $form = $submission->getForm();
-            fputcsv($handle, [
+            $meta = [
                 (string) $submission->id,
                 (string) ($form?->title ?? $form?->name ?? $submission->formId),
                 (string) $submission->readStatus,
                 $submission->dateCreated?->format('Y-m-d H:i:s') ?? '',
-                ...self::rowValues($submission, $columns),
-            ]);
+            ];
+            if ($includeQuiz) {
+                $meta = [...$meta, ...self::quizValues($submission)];
+            }
+            fputcsv($handle, [...$meta, ...self::rowValues($submission, $columns)]);
         }
 
         rewind($handle);
@@ -107,6 +115,7 @@ final class SubmissionCsv
     {
         self::warmAssetCache($submissions);
         $columns = self::discoverColumns($submissions);
+        $includeQuiz = self::includesQuiz($submissions);
 
         $rows = [];
         foreach ($submissions as $submission) {
@@ -117,6 +126,10 @@ final class SubmissionCsv
                 'Status' => (string) $submission->readStatus,
                 'Submitted' => $submission->dateCreated?->format('Y-m-d H:i:s') ?? '',
             ];
+
+            if ($includeQuiz) {
+                $row += array_combine(self::quizHeaders(), self::quizValues($submission));
+            }
 
             $values = self::rowValues($submission, $columns);
             foreach ($columns as $i => $col) {
@@ -411,6 +424,53 @@ final class SubmissionCsv
     // =========================================================================
     // Private Methods
     // =========================================================================
+
+    /**
+     * Whether any submission in the set carries a quiz score, gating the quiz
+     * columns so a plain (non-quiz) export stays byte-for-byte as before (#241).
+     *
+     * @param array<int, Submission> $submissions
+     */
+    private static function includesQuiz(array $submissions): bool
+    {
+        foreach ($submissions as $submission) {
+            if ($submission->quizScore !== null) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
+     * The quiz metadata column headers, in order. Kept as raw English to match
+     * the other metadata headers (ID/Form/Status/Submitted).
+     *
+     * @return list<string>
+     */
+    private static function quizHeaders(): array
+    {
+        return ['Score', 'Max score', 'Percentage', 'Grade'];
+    }
+
+    /**
+     * One submission's quiz cell values, aligned with {@see self::quizHeaders()}.
+     * A non-quiz submission (null score) yields blanks so columns stay aligned.
+     *
+     * @return list<string>
+     */
+    private static function quizValues(Submission $submission): array
+    {
+        if ($submission->quizScore === null) {
+            return ['', '', '', ''];
+        }
+
+        return [
+            (string) $submission->quizScore,
+            $submission->quizMaxScore !== null ? (string) $submission->quizMaxScore : '',
+            $submission->quizPercentage !== null ? $submission->quizPercentage . '%' : '',
+            (string) ($submission->quizGrade ?? ''),
+        ];
+    }
 
     /**
      * Build the first-seen-ordered list of export columns across the result set.

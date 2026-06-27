@@ -42,6 +42,18 @@
                 <strong>{{ 'Date:'|t('simple-form') }}</strong>
                 {{ submission.dateCreated|date('Y-m-d H:i:s') }}
             </p>
+            {% if submission.quizScore is not null %}
+                <p>
+                    <strong>{{ 'Score:'|t('simple-form') }}</strong>
+                    {{ submission.quizScore }}{% if submission.quizMaxScore %} / {{ submission.quizMaxScore }}{% endif %}
+                    {% if submission.quizPercentage is not null %}
+                        ({{ submission.quizPercentage }}%)
+                    {% endif %}
+                    {% if submission.quizGrade %}
+                        <span class="status-label">{{ submission.quizGrade }}</span>
+                    {% endif %}
+                </p>
+            {% endif %}
             {% if submission.userId %}
                 {% set user = craft.users.id(submission.userId).one() %}
                 <p>

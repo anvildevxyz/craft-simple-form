@@ -58,6 +58,7 @@ use fabianhaef\simpleform\services\IntegrationTypeRegistry;
 use fabianhaef\simpleform\services\NotificationsService;
 use fabianhaef\simpleform\services\PaymentsService;
 use fabianhaef\simpleform\services\PdfService;
+use fabianhaef\simpleform\services\QuizScoringService;
 use fabianhaef\simpleform\services\ReportsService;
 use fabianhaef\simpleform\services\RetentionService;
 use fabianhaef\simpleform\services\SafeRenderService;
@@ -138,7 +139,7 @@ class Plugin extends BasePlugin
     /** The plugin's single commercial edition. */
     public const EDITION_PRO = 'pro';
 
-    public string $schemaVersion = '2.13.0';
+    public string $schemaVersion = '2.13.1';
     public bool $hasCpSection = true;
     public bool $hasCpSettings = false;
     public bool $hasCpPermissions = true;
@@ -184,6 +185,7 @@ class Plugin extends BasePlugin
             'integrations' => IntegrationsService::class,
             'retention' => RetentionService::class,
             'reports' => ReportsService::class,
+            'quizScoring' => QuizScoringService::class,
             'notifications' => NotificationsService::class,
             'audit' => AuditService::class,
             'payments' => PaymentsService::class,
@@ -564,6 +566,13 @@ class Plugin extends BasePlugin
     {
         /** @var ReportsService $service */
         $service = $this->get('reports');
+        return $service;
+    }
+
+    public function getQuizScoring(): QuizScoringService
+    {
+        /** @var QuizScoringService $service */
+        $service = $this->get('quizScoring');
         return $service;
     }
 

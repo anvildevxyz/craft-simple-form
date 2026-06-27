@@ -489,5 +489,31 @@
         instructions: 'How long after submission edits are accepted. 0 = no time limit while editing is allowed.'|t('simple-form'),
         errors: form.getErrors('editWindowMinutes'),
     }) }}
+
+    <hr>
+
+    <h2>{{ 'Quiz'|t('simple-form') }}</h2>
+
+    {{ forms.lightswitchField({
+        label: 'Score this form as a quiz'|t('simple-form'),
+        id: 'quizMode',
+        name: 'quizMode',
+        on: form.quizMode ?? false,
+        toggle: 'sf-quiz-settings',
+        instructions: 'When on, mark correct answers and assign points on choice fields (Build tab → a field’s options). Each submission is scored once at submit and the result is stored, shown here, and available to exports, notifications, and the success message via {quizScore}, {quizMaxScore}, {quizPercentage} and {quizGrade}.'|t('simple-form'),
+    }) }}
+
+    <div id="sf-quiz-settings"{{ (form.quizMode ?? false) ? '' : ' class="hidden"' }}>
+        {{ forms.textareaField({
+            label: 'Grade bands'|t('simple-form'),
+            id: 'quizGradeBands',
+            name: 'quizGradeBands',
+            rows: 4,
+            value: form.quizGradeBands,
+            placeholder: "90 Excellent\n70 Pass\n0 Fail",
+            instructions: 'Optional. One band per line as “min-percent label”, for example “90 Excellent”. The highest band a score reaches wins. Leave blank for a numeric score only.'|t('simple-form'),
+            errors: form.getErrors('quizGradeBands'),
+        }) }}
+    </div>
 </div>
 {% endblock %}

@@ -298,4 +298,12 @@ return [
     'Clear' => 'Cancella',
     'This form has no fields to report on.' => 'Questo modulo non ha campi da analizzare.',
     'Free-form answers aren’t charted.' => 'Le risposte libere non vengono rappresentate graficamente.',
+
+    // Quiz scoring (#241)
+    'Score:' => 'Punteggio:',
+    'Quiz' => 'Quiz',
+    'Score this form as a quiz' => 'Valuta questo modulo come un quiz',
+    'Grade bands' => 'Fasce di voto',
+    'When on, mark correct answers and assign points on choice fields (Build tab → a field’s options). Each submission is scored once at submit and the result is stored, shown here, and available to exports, notifications, and the success message via {quizScore}, {quizMaxScore}, {quizPercentage} and {quizGrade}.' => 'Se attivo, contrassegna le risposte corrette e assegna punti ai campi a scelta (scheda «Costruisci» → opzioni di un campo). Ogni invio viene valutato una volta al momento dell’invio; il risultato viene memorizzato, mostrato qui e disponibile per esportazioni, notifiche e il messaggio di successo tramite {quizScore}, {quizMaxScore}, {quizPercentage} e {quizGrade}.',
+    'Optional. One band per line as “min-percent label”, for example “90 Excellent”. The highest band a score reaches wins. Leave blank for a numeric score only.' => 'Facoltativo. Una fascia per riga come «percentuale-minima etichetta», ad esempio «90 Eccellente». Vince la fascia più alta raggiunta. Lascia vuoto per un punteggio solo numerico.',
 ];

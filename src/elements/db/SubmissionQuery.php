@@ -99,6 +99,10 @@ class SubmissionQuery extends ElementQuery
             'simpleform_submissions.paymentStatus',
             'simpleform_submissions.paymentAmount',
             'simpleform_submissions.orderId',
+            'simpleform_submissions.quizScore',
+            'simpleform_submissions.quizMaxScore',
+            'simpleform_submissions.quizPercentage',
+            'simpleform_submissions.quizGrade',
             'simpleform_submissions.editTokenHash',
             'simpleform_submissions.editTokenExpires',
         ]);

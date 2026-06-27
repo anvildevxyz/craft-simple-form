@@ -294,4 +294,12 @@ return [
     'Clear' => 'Clear',
     'This form has no fields to report on.' => 'This form has no fields to report on.',
     'Free-form answers aren’t charted.' => 'Free-form answers aren’t charted.',
+
+    // Quiz scoring (#241)
+    'Score:' => 'Score:',
+    'Quiz' => 'Quiz',
+    'Score this form as a quiz' => 'Score this form as a quiz',
+    'Grade bands' => 'Grade bands',
+    'When on, mark correct answers and assign points on choice fields (Build tab → a field’s options). Each submission is scored once at submit and the result is stored, shown here, and available to exports, notifications, and the success message via {quizScore}, {quizMaxScore}, {quizPercentage} and {quizGrade}.' => 'When on, mark correct answers and assign points on choice fields (Build tab → a field’s options). Each submission is scored once at submit and the result is stored, shown here, and available to exports, notifications, and the success message via {quizScore}, {quizMaxScore}, {quizPercentage} and {quizGrade}.',
+    'Optional. One band per line as “min-percent label”, for example “90 Excellent”. The highest band a score reaches wins. Leave blank for a numeric score only.' => 'Optional. One band per line as “min-percent label”, for example “90 Excellent”. The highest band a score reaches wins. Leave blank for a numeric score only.',
 ];

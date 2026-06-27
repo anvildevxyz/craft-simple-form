@@ -177,10 +177,17 @@ class FormMutations extends BaseMutation
             $result['data'] ?? [],
         );
 
+        $submission = $result['submission'];
+
         return [
             'success' => true,
-            'submissionId' => $result['submission']?->id !== null ? (int) $result['submission']->id : null,
+            'submissionId' => $submission?->id !== null ? (int) $submission->id : null,
             'redirectUrl' => $post['redirectUrl'],
+            // Quiz scoring (#241): null on non-quiz forms.
+            'quizScore' => $submission?->quizScore,
+            'quizMaxScore' => $submission?->quizMaxScore,
+            'quizPercentage' => $submission?->quizPercentage,
+            'quizGrade' => $submission?->quizGrade,
             'errors' => [],
         ];
     }

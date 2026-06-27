@@ -292,4 +292,12 @@ return [
     'Clear' => 'クリア',
     'This form has no fields to report on.' => 'このフォームには集計対象のフィールドがありません。',
     'Free-form answers aren’t charted.' => '自由記述の回答はグラフ化されません。',
+
+    // Quiz scoring (#241)
+    'Score:' => 'スコア：',
+    'Quiz' => 'クイズ',
+    'Score this form as a quiz' => 'このフォームをクイズとして採点する',
+    'Grade bands' => '評価バンド',
+    'When on, mark correct answers and assign points on choice fields (Build tab → a field’s options). Each submission is scored once at submit and the result is stored, shown here, and available to exports, notifications, and the success message via {quizScore}, {quizMaxScore}, {quizPercentage} and {quizGrade}.' => 'オンにすると、選択フィールドで正解をマークしポイントを割り当てられます（「ビルド」タブ → フィールドのオプション）。各送信は送信時に一度だけ採点され、結果は保存されてここに表示され、{quizScore}、{quizMaxScore}、{quizPercentage}、{quizGrade} を使ってエクスポート・通知・完了メッセージで利用できます。',
+    'Optional. One band per line as “min-percent label”, for example “90 Excellent”. The highest band a score reaches wins. Leave blank for a numeric score only.' => '任意。1 行に 1 バンドを「最小パーセント ラベル」の形式で入力します（例：「90 優秀」）。スコアが到達した最も高いバンドが採用されます。数値スコアのみの場合は空欄にします。',
 ];

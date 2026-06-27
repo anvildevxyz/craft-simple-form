@@ -38,6 +38,15 @@ class Submission extends Element
     public ?string $paymentStatus = null;
     public ?string $paymentAmount = null;
     public ?int $orderId = null;
+    /**
+     * Quiz score computed once at submit time (#241), null on non-quiz forms.
+     * Stored raw + max + percentage + grade band so the value stays stable even
+     * if the form's answer key changes later.
+     */
+    public ?int $quizScore = null;
+    public ?int $quizMaxScore = null;
+    public ?int $quizPercentage = null;
+    public ?string $quizGrade = null;
     /** SHA-256 hash of the active front-end edit token; the token itself lives only in the edit URL. */
     public ?string $editTokenHash = null;
     /** Absolute expiry of the edit token (UTC), or null when no token is active. */
@@ -162,6 +171,10 @@ class Submission extends Element
             'paymentStatus' => $this->paymentStatus,
             'paymentAmount' => $this->paymentAmount,
             'orderId' => $this->orderId,
+            'quizScore' => $this->quizScore,
+            'quizMaxScore' => $this->quizMaxScore,
+            'quizPercentage' => $this->quizPercentage,
+            'quizGrade' => $this->quizGrade,
             'editTokenHash' => $this->editTokenHash,
             'editTokenExpires' => $this->editTokenExpires,
             'dateUpdated' => $now,

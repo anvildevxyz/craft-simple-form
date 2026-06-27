@@ -168,7 +168,7 @@ class WebhookIntegration implements IntegrationTypeInterface
 
         $form = $submission->getForm();
 
-        return [
+        $payload = [
             'formHandle' => $form?->handle,
             'submissionId' => $submission->id !== null ? (int) $submission->id : null,
             'submissionUid' => $submission->uid,
@@ -176,5 +176,18 @@ class WebhookIntegration implements IntegrationTypeInterface
             'dateCreated' => $submission->dateCreated?->format(\DateTimeInterface::ATOM),
             'data' => $values,
         ];
+
+        // Quiz scoring (#241): add a `quiz` object only for quiz submissions, so
+        // a plain form's payload shape is unchanged.
+        if ($submission->quizScore !== null) {
+            $payload['quiz'] = [
+                'score' => (int) $submission->quizScore,
+                'maxScore' => $submission->quizMaxScore !== null ? (int) $submission->quizMaxScore : null,
+                'percentage' => $submission->quizPercentage !== null ? (int) $submission->quizPercentage : null,
+                'grade' => $submission->quizGrade,
+            ];
+        }
+
+        return $payload;
     }
 }

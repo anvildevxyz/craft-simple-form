@@ -292,4 +292,12 @@ return [
     'Clear' => 'Wissen',
     'This form has no fields to report on.' => 'Dit formulier heeft geen velden om te rapporteren.',
     'Free-form answers aren’t charted.' => 'Vrije antwoorden worden niet in grafieken weergegeven.',
+
+    // Quiz scoring (#241)
+    'Score:' => 'Puntenaantal:',
+    'Quiz' => 'Quizmodus',
+    'Score this form as a quiz' => 'Dit formulier als quiz scoren',
+    'Grade bands' => 'Cijferniveaus',
+    'When on, mark correct answers and assign points on choice fields (Build tab → a field’s options). Each submission is scored once at submit and the result is stored, shown here, and available to exports, notifications, and the success message via {quizScore}, {quizMaxScore}, {quizPercentage} and {quizGrade}.' => 'Wanneer ingeschakeld, markeer juiste antwoorden en ken punten toe aan keuzevelden (tabblad „Bouwen” → opties van een veld). Elke inzending wordt eenmaal bij verzending gescoord; het resultaat wordt opgeslagen, hier getoond en beschikbaar voor exports, meldingen en het succesbericht via {quizScore}, {quizMaxScore}, {quizPercentage} en {quizGrade}.',
+    'Optional. One band per line as “min-percent label”, for example “90 Excellent”. The highest band a score reaches wins. Leave blank for a numeric score only.' => 'Optioneel. Eén niveau per regel als „min-percentage label”, bijvoorbeeld „90 Uitstekend”. Het hoogste behaalde niveau telt. Laat leeg voor alleen een numerieke score.',
 ];

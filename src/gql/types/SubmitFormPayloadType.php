@@ -36,6 +36,22 @@ class SubmitFormPayloadType extends SimpleFormObjectType
                 'description' => 'The resolved post-submit redirect URL on success (per the form\'s '
                     . 'post-submit action), or null when the form shows an inline message.',
             ],
+            'quizScore' => [
+                'type' => Type::int(),
+                'description' => 'Raw quiz score on a quiz form, or null when the form is not a quiz.',
+            ],
+            'quizMaxScore' => [
+                'type' => Type::int(),
+                'description' => 'Maximum attainable quiz score, or null when the form is not a quiz.',
+            ],
+            'quizPercentage' => [
+                'type' => Type::int(),
+                'description' => 'Quiz score as a percentage (0–100), or null when not a quiz / no answer key.',
+            ],
+            'quizGrade' => [
+                'type' => Type::string(),
+                'description' => 'Quiz grade band label, or null when not a quiz / no bands configured.',
+            ],
             'errors' => [
                 'type' => Type::nonNull(Type::listOf(Type::nonNull(SubmissionErrorType::getType()))),
                 'description' => 'Validation/processing errors; empty on success.',

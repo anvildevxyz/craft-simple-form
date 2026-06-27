@@ -298,4 +298,12 @@ return [
     'Clear' => 'Effacer',
     'This form has no fields to report on.' => 'Ce formulaire n’a aucun champ à analyser.',
     'Free-form answers aren’t charted.' => 'Les réponses libres ne sont pas représentées graphiquement.',
+
+    // Quiz scoring (#241)
+    'Score:' => 'Score :',
+    'Quiz' => 'Quiz',
+    'Score this form as a quiz' => 'Noter ce formulaire comme un quiz',
+    'Grade bands' => 'Tranches de notes',
+    'When on, mark correct answers and assign points on choice fields (Build tab → a field’s options). Each submission is scored once at submit and the result is stored, shown here, and available to exports, notifications, and the success message via {quizScore}, {quizMaxScore}, {quizPercentage} and {quizGrade}.' => 'Lorsque activé, marquez les bonnes réponses et attribuez des points aux champs à choix (onglet « Construire » → options d’un champ). Chaque envoi est noté une seule fois à la soumission ; le résultat est enregistré, affiché ici et disponible pour les exports, les notifications et le message de succès via {quizScore}, {quizMaxScore}, {quizPercentage} et {quizGrade}.',
+    'Optional. One band per line as “min-percent label”, for example “90 Excellent”. The highest band a score reaches wins. Leave blank for a numeric score only.' => 'Facultatif. Une tranche par ligne sous la forme « pourcentage-min libellé », par exemple « 90 Excellent ». La tranche la plus élevée atteinte l’emporte. Laissez vide pour un score uniquement numérique.',
 ];

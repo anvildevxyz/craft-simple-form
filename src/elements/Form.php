@@ -133,6 +133,14 @@ class Form extends Element
     public bool $allowEditing = false;
     /** Minutes after a submission's creation that edits are accepted; 0 = unlimited while allowed. */
     public int $editWindowMinutes = 0;
+    /** Per-form quiz scoring (#241; shared, not translatable). Off keeps the form a plain form. */
+    public bool $quizMode = false;
+    /**
+     * Optional grade-band config: one band per line as `<minPercent> <label>`
+     * (e.g. `90 Excellent`). Parsed leniently by {@see QuizScoringService}; the
+     * highest band whose threshold a score meets wins. Blank = numeric only.
+     */
+    public ?string $quizGradeBands = null;
 
     // Per-site (translatable). title is stored in elements_sites via hasTitles().
     public ?string $title = null;
@@ -479,6 +487,10 @@ class Form extends Element
         $rules[] = [['allowEditing'], 'boolean'];
         $rules[] = [['editWindowMinutes'], 'integer', 'min' => 0];
 
+        // Quiz scoring (#241).
+        $rules[] = [['quizMode'], 'boolean'];
+        $rules[] = [['quizGradeBands'], 'string'];
+
         // handle is shared across sites, so it must be globally unique
         $rules[] = [['handle'], 'validateHandleUnique'];
 
@@ -563,6 +575,8 @@ class Form extends Element
             'duplicateKey' => $this->duplicateKey,
             'allowEditing' => $this->allowEditing,
             'editWindowMinutes' => $this->editWindowMinutes,
+            'quizMode' => $this->quizMode,
+            'quizGradeBands' => $this->quizGradeBands,
             'dateUpdated' => $now,
         ];
 

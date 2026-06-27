@@ -168,6 +168,11 @@ class FormsController extends Controller
         $form->allowEditing = (bool) $request->getBodyParam('allowEditing');
         $form->editWindowMinutes = max(0, (int) $request->getBodyParam('editWindowMinutes', 0));
 
+        // Quiz scoring (#241). The answer key (correct/points) lives in each
+        // choice field's config; only the mode flag + grade bands are form-level.
+        $form->quizMode = (bool) $request->getBodyParam('quizMode');
+        $form->quizGradeBands = trim((string) $request->getBodyParam('quizGradeBands', '')) ?: null;
+
         $form->propagationMethod = PropagationMethod::tryFrom(
             (string)$request->getBodyParam('propagationMethod', 'none')
         ) ?? PropagationMethod::None;
