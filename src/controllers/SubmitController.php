@@ -154,4 +154,62 @@ class SubmitController extends Controller
 
         return $this->asJson(['success' => true, 'token' => $token]);
     }
+
+    /**
+     * Passive partial capture (#242): the front end posts the values entered so
+     * far (debounced, on blur / step change) and they are stored as a passive
+     * partial via {@see \fabianhaef\simpleform\services\DraftService}. Distinct
+     * from save-and-continue: never surfaced to the visitor, fires no
+     * notifications/integrations/payments/spam, and is best-effort — any failure
+     * returns a quiet `success:false` rather than an error, so a capture problem
+     * never blocks or disrupts the public form.
+     */
+    public function actionCapture(): Response
+    {
+        $this->requirePostRequest();
+        /** @var \craft\web\Request $request */
+        $request = Craft::$app->getRequest();
+
+        try {
+            $siteId = Craft::$app->getSites()->getCurrentSite()->id;
+
+            $form = Form::find()
+                ->handle((string) $request->getBodyParam('formHandle', ''))
+                ->siteId($siteId)
+                ->one();
+
+            if (!$form instanceof Form || !$form->capturePartials) {
+                return $this->asJson(['success' => false]);
+            }
+
+            $plugin = Plugin::getInstance();
+            if ($plugin->getSubmissionService()->isRateLimited($request->getUserIP())) {
+                return $this->asJson(['success' => false]);
+            }
+
+            $values = array_filter(
+                $request->getBodyParams(),
+                static fn($key) => is_string($key) && str_starts_with($key, 'field_'),
+                ARRAY_FILTER_USE_KEY,
+            );
+            if ($values === []) {
+                return $this->asJson(['success' => false]);
+            }
+
+            $existingToken = (string) $request->getBodyParam('partialToken', '');
+            $token = $plugin->getDrafts()->save(
+                (int) $form->id,
+                $siteId,
+                $values,
+                $existingToken !== '' ? $existingToken : null,
+                true,
+            );
+
+            return $this->asJson(['success' => true, 'token' => $token]);
+        } catch (\Throwable $e) {
+            // Best-effort: never surface a capture failure to the visitor.
+            Craft::warning('Partial capture failed: ' . $e->getMessage(), 'simple-form');
+            return $this->asJson(['success' => false]);
+        }
+    }
 }

@@ -31,7 +31,7 @@ use yii\base\Component;
 
 /**
  * @phpstan-type SubmissionResult array{submission: Submission|null, errors: array<string, mixed>|null, data?: array<string, mixed>, paymentRedirectUrl?: string}
- * @phpstan-type SubmissionContext array{honeypot?: string, captchaToken?: ?string, skipCaptcha?: bool, userId?: ?int, siteId?: ?int, payment?: array<string, mixed>, actor?: string, _isEdit?: bool, attribution?: array<string, string>|null}
+ * @phpstan-type SubmissionContext array{honeypot?: string, captchaToken?: ?string, skipCaptcha?: bool, userId?: ?int, siteId?: ?int, payment?: array<string, mixed>, actor?: string, _isEdit?: bool, attribution?: array<string, string>|null, partialToken?: string}
  */
 class SubmissionService extends Component
 {
@@ -156,6 +156,9 @@ class SubmissionService extends Component
             'payment' => is_array($paymentForm) ? $paymentForm : [],
             // UTM/referrer auto-capture (#249): only persisted when the form opted in.
             'attribution' => $this->parseAttribution($request),
+            // Passive partial capture (#242): the token of the partial this submit
+            // completes, so it can be deleted (one Submission, zero partials).
+            'partialToken' => (string) $request->getBodyParam('partialToken', ''),
         ]);
 
         // Temp PNGs are copied into the volume by saveTempFiles(); remove the
@@ -327,6 +330,14 @@ class SubmissionService extends Component
         }
 
         $awaitingPayment = $submission->isAwaitingPayment();
+
+        // Passive partial capture (#242): completing a captured attempt removes
+        // its partial, so a completed submission yields exactly one Submission and
+        // zero partials. Best-effort — an unknown/empty token is a no-op.
+        $partialToken = (string) ($context['partialToken'] ?? '');
+        if ($partialToken !== '') {
+            Plugin::getInstance()->getDrafts()->delete($partialToken);
+        }
 
         // Fire the after-save event. The integration dispatch listener self-skips
         // while a submission is awaiting payment.

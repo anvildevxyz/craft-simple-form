@@ -307,6 +307,15 @@ class FormRenderService extends Component
             // UTM/referrer auto-capture (#249): empty hidden inputs the front-end
             // capture script fills from the URL/referrer; absent unless opted in.
             'attributionInput' => Template::raw($this->_attributionInputs($form)),
+            // Passive partial capture (#242): the debounced auto-save endpoint and
+            // the hidden token the front-end fills, so completing the form deletes
+            // its partial. Both empty unless the form opted in.
+            'captureUrl' => $form->capturePartials
+                ? Craft::$app->getUrlManager()->createUrl('simple-form/submit/capture')
+                : '',
+            'captureInput' => Template::raw($form->capturePartials
+                ? '<input type="hidden" name="partialToken" value="" data-sf-partial-token>'
+                : ''),
             'captcha' => Template::raw($this->_captcha($settings)),
             'assets' => Template::raw($this->_assets($settings)),
             'resume' => $resume,

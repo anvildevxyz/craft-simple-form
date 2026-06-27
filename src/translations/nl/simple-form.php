@@ -327,4 +327,17 @@ return [
     'A button that opens the form in a centered modal.' => 'Een knop die het formulier in een gecentreerde modal opent.',
     'Slide-in' => 'Inschuifpaneel',
     'A button that slides the form in from the side.' => 'Een knop die het formulier vanaf de zijkant inschuift.',
+
+    // Passive partial capture (#242)
+    'Partial capture' => 'Gedeeltelijke vastlegging',
+    'Capture abandoned attempts' => 'Verlaten pogingen vastleggen',
+    'Partials' => 'Gedeeltelijk',
+    'No abandoned partials.' => 'Geen verlaten gedeeltelijke records.',
+    'Captured fields' => 'Vastgelegde velden',
+    'Last updated' => 'Laatst bijgewerkt',
+    'Started' => 'Gestart',
+    '{n} fields' => '{n} velden',
+    'Partial deleted.' => 'Gedeeltelijk record verwijderd.',
+    'Abandoned attempts captured before the visitor submitted. Completing the form removes its partial automatically; these are the ones never finished.' => 'Verlaten pogingen die vóór verzending zijn vastgelegd. Het verzenden verwijdert het gedeeltelijke record automatisch; dit zijn de nooit voltooide.',
+    'When on, the form quietly auto-saves answers as they’re entered (on blur / step change). Attempts that are never submitted appear under the Partials tab for follow-up. Capturing is best-effort and fires no notifications, integrations, payments or spam checks; completing the form removes its partial.' => 'Wanneer ingeschakeld slaat het formulier ingevoerde antwoorden stil automatisch op (bij focusverlies / stapwisseling). Nooit verzonden pogingen verschijnen onder het tabblad „Gedeeltelijk” voor opvolging. Vastleggen is best-effort en activeert geen meldingen, integraties, betalingen of spamcontroles; het verzenden verwijdert het gedeeltelijke record.',
 ];

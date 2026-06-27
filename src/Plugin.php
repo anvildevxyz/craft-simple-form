@@ -139,7 +139,7 @@ class Plugin extends BasePlugin
     /** The plugin's single commercial edition. */
     public const EDITION_PRO = 'pro';
 
-    public string $schemaVersion = '2.13.2';
+    public string $schemaVersion = '2.13.3';
     public bool $hasCpSection = true;
     public bool $hasCpSettings = false;
     public bool $hasCpPermissions = true;
@@ -696,6 +696,10 @@ class Plugin extends BasePlugin
 
         // Per-form survey report (#240).
         $event->rules['simple-form/forms/<formId:\d+>/report'] = 'simple-form/submissions/report';
+
+        // Per-form passive partial capture listing (#242).
+        $event->rules['simple-form/forms/<formId:\d+>/partials'] = 'simple-form/partials/index';
+        $event->rules['simple-form/partials/delete'] = 'simple-form/partials/delete';
 
         $event->rules['simple-form/submissions'] = 'simple-form/submissions/index';
         $event->rules['simple-form/submissions/analytics'] = 'simple-form/submissions/analytics';

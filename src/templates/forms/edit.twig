@@ -45,6 +45,9 @@
         integrations: { label: 'Integrations'|t('simple-form'), url: cpUrl('simple-form/forms/' ~ form.id ~ '/integrations') },
         report: { label: 'Report'|t('simple-form'), url: cpUrl('simple-form/forms/' ~ form.id ~ '/report') },
     }) %}
+    {% if form.capturePartials ?? false %}
+        {% set tabs = tabs|merge({ partials: { label: 'Partials'|t('simple-form'), url: cpUrl('simple-form/forms/' ~ form.id ~ '/partials') } }) %}
+    {% endif %}
 {% endif %}
 {% set selectedTab = 'sf-build' %}
 
@@ -527,6 +530,18 @@
         name: 'autoCaptureAttribution',
         on: form.autoCaptureAttribution ?? false,
         instructions: 'When on, the form captures utm_source, utm_medium, utm_campaign, utm_term, utm_content, the referrer, and the landing page (first visit in the session) and stores them on the submission — shown here and available to exports, notifications, and integrations. No manual hidden fields needed.'|t('simple-form'),
+    }) }}
+
+    <hr>
+
+    <h2>{{ 'Partial capture'|t('simple-form') }}</h2>
+
+    {{ forms.lightswitchField({
+        label: 'Capture abandoned attempts'|t('simple-form'),
+        id: 'capturePartials',
+        name: 'capturePartials',
+        on: form.capturePartials ?? false,
+        instructions: 'When on, the form quietly auto-saves answers as they’re entered (on blur / step change). Attempts that are never submitted appear under the Partials tab for follow-up. Capturing is best-effort and fires no notifications, integrations, payments or spam checks; completing the form removes its partial.'|t('simple-form'),
     }) }}
 </div>
 

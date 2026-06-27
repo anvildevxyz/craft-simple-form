@@ -1,0 +1,75 @@
+{% extends '_layouts/cp.twig' %}
+
+{% set title = 'Partials'|t('simple-form') ~ ' — ' ~ (form.title ?: form.name) %}
+{% set selectedSubnavItem = 'forms' %}
+{% do craft.app.view.registerAssetBundle('fabianhaef\\simpleform\\web\\assets\\cp\\SimpleFormCpAsset') %}
+
+{% set crumbs = [
+    { label: 'Simple Form'|t('simple-form'), url: cpUrl('simple-form/forms') },
+    { label: 'Forms'|t('simple-form'), url: cpUrl('simple-form/forms') },
+    { label: (form.title ?: form.name), url: cpUrl('simple-form/forms/edit/' ~ form.id) },
+] %}
+
+{# Shared form tab strip — the partials listing is a sibling page of the form's panes. #}
+{% set editUrl = cpUrl('simple-form/forms/edit/' ~ form.id) %}
+{% set tabs = {
+    'sf-build': { label: 'Build'|t('simple-form'), url: editUrl ~ '#sf-build' },
+    'sf-details': { label: 'Details'|t('simple-form'), url: editUrl ~ '#sf-details' },
+    'sf-confirmation': { label: 'Confirmation'|t('simple-form'), url: editUrl ~ '#sf-confirmation' },
+    'sf-rules': { label: 'Rules'|t('simple-form'), url: editUrl ~ '#sf-rules' },
+    notifications: { label: 'Notifications'|t('simple-form'), url: cpUrl('simple-form/forms/' ~ form.id ~ '/notifications') },
+    integrations: { label: 'Integrations'|t('simple-form'), url: cpUrl('simple-form/forms/' ~ form.id ~ '/integrations') },
+    report: { label: 'Report'|t('simple-form'), url: cpUrl('simple-form/forms/' ~ form.id ~ '/report') },
+    partials: { label: 'Partials'|t('simple-form'), url: cpUrl('simple-form/forms/' ~ form.id ~ '/partials') },
+} %}
+{% set selectedTab = 'partials' %}
+
+{% block content %}
+    <p class="light">{{ 'Abandoned attempts captured before the visitor submitted. Completing the form removes its partial automatically; these are the ones never finished.'|t('simple-form') }}</p>
+
+    {% if not partials|length %}
+        <p class="light">{{ 'No abandoned partials.'|t('simple-form') }}</p>
+    {% else %}
+        <table class="data fullwidth">
+            <thead>
+                <tr>
+                    <th>{{ 'Captured fields'|t('simple-form') }}</th>
+                    <th>{{ 'Last updated'|t('simple-form') }}</th>
+                    <th>{{ 'Started'|t('simple-form') }}</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for partial in partials %}
+                    <tr>
+                        <td>
+                            {% set names = [] %}
+                            {% for key, value in partial.data %}
+                                {% if value is not empty %}
+                                    {% set names = names|merge([fieldLabels[key] ?? key]) %}
+                                {% endif %}
+                            {% endfor %}
+                            {% if names|length %}
+                                {{ names|join(', ') }}
+                            {% else %}
+                                <span class="light">{{ '{n} fields'|t('simple-form', { n: partial.fieldCount }) }}</span>
+                            {% endif %}
+                        </td>
+                        <td>{{ partial.dateUpdated ? partial.dateUpdated|date('Y-m-d H:i') : '' }}</td>
+                        <td>{{ partial.dateCreated ? partial.dateCreated|date('Y-m-d H:i') : '' }}</td>
+                        <td class="thin">
+                            <form method="post" accept-charset="UTF-8">
+                                {{ csrfInput() }}
+                                {{ actionInput('simple-form/partials/delete') }}
+                                {{ redirectInput('simple-form/forms/' ~ form.id ~ '/partials') }}
+                                {{ hiddenInput('formId', form.id) }}
+                                {{ hiddenInput('partialId', partial.id) }}
+                                <button type="submit" class="btn small delete">{{ 'Delete'|t('simple-form') }}</button>
+                            </form>
+                        </td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    {% endif %}
+{% endblock %}

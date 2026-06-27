@@ -333,4 +333,17 @@ return [
     'A button that opens the form in a centered modal.' => 'Un pulsante che apre il modulo in una finestra modale centrata.',
     'Slide-in' => 'Pannello laterale',
     'A button that slides the form in from the side.' => 'Un pulsante che fa scorrere il modulo dal lato.',
+
+    // Passive partial capture (#242)
+    'Partial capture' => 'Acquisizione parziale',
+    'Capture abandoned attempts' => 'Acquisisci i tentativi abbandonati',
+    'Partials' => 'Parziali',
+    'No abandoned partials.' => 'Nessun parziale abbandonato.',
+    'Captured fields' => 'Campi acquisiti',
+    'Last updated' => 'Ultimo aggiornamento',
+    'Started' => 'Iniziato',
+    '{n} fields' => '{n} campi',
+    'Partial deleted.' => 'Parziale eliminato.',
+    'Abandoned attempts captured before the visitor submitted. Completing the form removes its partial automatically; these are the ones never finished.' => 'Tentativi abbandonati acquisiti prima dell’invio. L’invio rimuove automaticamente il parziale; questi sono quelli mai completati.',
+    'When on, the form quietly auto-saves answers as they’re entered (on blur / step change). Attempts that are never submitted appear under the Partials tab for follow-up. Capturing is best-effort and fires no notifications, integrations, payments or spam checks; completing the form removes its partial.' => 'Se attivo, il modulo salva automaticamente e in silenzio le risposte mentre vengono inserite (alla perdita di focus / al cambio di passo). I tentativi mai inviati compaiono nella scheda «Parziali» per il follow-up. L’acquisizione è best-effort e non attiva notifiche, integrazioni, pagamenti o controlli antispam; l’invio rimuove il parziale.',
 ];

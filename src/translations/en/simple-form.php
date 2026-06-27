@@ -329,4 +329,17 @@ return [
     'A button that opens the form in a centered modal.' => 'A button that opens the form in a centered modal.',
     'Slide-in' => 'Slide-in',
     'A button that slides the form in from the side.' => 'A button that slides the form in from the side.',
+
+    // Passive partial capture (#242)
+    'Partial capture' => 'Partial capture',
+    'Capture abandoned attempts' => 'Capture abandoned attempts',
+    'Partials' => 'Partials',
+    'No abandoned partials.' => 'No abandoned partials.',
+    'Captured fields' => 'Captured fields',
+    'Last updated' => 'Last updated',
+    'Started' => 'Started',
+    '{n} fields' => '{n} fields',
+    'Partial deleted.' => 'Partial deleted.',
+    'Abandoned attempts captured before the visitor submitted. Completing the form removes its partial automatically; these are the ones never finished.' => 'Abandoned attempts captured before the visitor submitted. Completing the form removes its partial automatically; these are the ones never finished.',
+    'When on, the form quietly auto-saves answers as they’re entered (on blur / step change). Attempts that are never submitted appear under the Partials tab for follow-up. Capturing is best-effort and fires no notifications, integrations, payments or spam checks; completing the form removes its partial.' => 'When on, the form quietly auto-saves answers as they’re entered (on blur / step change). Attempts that are never submitted appear under the Partials tab for follow-up. Capturing is best-effort and fires no notifications, integrations, payments or spam checks; completing the form removes its partial.',
 ];

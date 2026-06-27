@@ -567,6 +567,73 @@
         });
     }
 
+    // ---- passive partial capture (#242) ----------------------------------
+    // When the form opted in (data-sf-capture = the capture endpoint), debounce-
+    // save the answers entered so far on blur / change / step change. Best-effort:
+    // any failure is swallowed so a capture problem never disrupts the form. The
+    // returned token is held in the hidden partialToken input so re-captures
+    // update the same partial and the final submit deletes it.
+    function initPartialCapture(form) {
+        var url = form.getAttribute("data-sf-capture");
+        var tokenInput = form.querySelector("input[data-sf-partial-token]");
+        if (!url || !tokenInput) { return; }
+
+        var timer = null;
+        var inFlight = false;
+
+        function hasAnswers(formData) {
+            var entries = formData.entries ? formData.entries() : null;
+            if (!entries) { return true; }
+            var e = entries.next();
+            while (!e.done) {
+                var key = e.value[0];
+                var val = e.value[1];
+                if (typeof key === "string" && key.indexOf("field_") === 0 && val !== "" && !(val instanceof File)) {
+                    return true;
+                }
+                e = entries.next();
+            }
+            return false;
+        }
+
+        function capture() {
+            if (inFlight) { return; }
+            var formData = new FormData(form);
+            // File uploads can't be captured into a partial; drop them.
+            try {
+                Array.prototype.slice.call(form.querySelectorAll("input[type=file]")).forEach(function (f) {
+                    if (f.name) { formData.delete(f.name); }
+                });
+            } catch (e) { /* best-effort */ }
+            if (!hasAnswers(formData)) { return; }
+            if (tokenInput.value) { formData.set("partialToken", tokenInput.value); }
+
+            inFlight = true;
+            fetch(url, {
+                method: "POST",
+                body: formData,
+                headers: { "X-Requested-With": "XMLHttpRequest" }
+            })
+                .then(function (r) { return r.json(); })
+                .then(function (data) {
+                    inFlight = false;
+                    if (data && data.success && data.token) { tokenInput.value = data.token; }
+                })
+                .catch(function () { inFlight = false; });
+        }
+
+        function schedule() {
+            if (timer) { clearTimeout(timer); }
+            timer = setTimeout(capture, 1200);
+        }
+
+        // Blur (focusout bubbles) + change cover typed and selected answers; a
+        // step change is an immediate good moment to persist progress.
+        form.addEventListener("focusout", schedule);
+        form.addEventListener("change", schedule);
+        form.addEventListener("simpleform:stepChange", capture);
+    }
+
     // ---- signature pad (#129) --------------------------------------------
     // Dependency-free canvas signature pad. Pointer events cover mouse, touch,
     // and stylus uniformly; the backing store is scaled to devicePixelRatio for
@@ -699,6 +766,7 @@
         initRepeaters(form);
         initSteps(form);
         initSaveResume(form);
+        initPartialCapture(form);
         initSignaturePads(form);
 
         // Remove any prior error state so re-submits don't stack duplicate

@@ -333,4 +333,17 @@ return [
     'A button that opens the form in a centered modal.' => 'Eine Schaltfläche, die das Formular in einem zentrierten Modal öffnet.',
     'Slide-in' => 'Einschub',
     'A button that slides the form in from the side.' => 'Eine Schaltfläche, die das Formular von der Seite einschiebt.',
+
+    // Passive partial capture (#242)
+    'Partial capture' => 'Teilerfassung',
+    'Capture abandoned attempts' => 'Abgebrochene Versuche erfassen',
+    'Partials' => 'Teilweise',
+    'No abandoned partials.' => 'Keine abgebrochenen Teildatensätze.',
+    'Captured fields' => 'Erfasste Felder',
+    'Last updated' => 'Zuletzt aktualisiert',
+    'Started' => 'Begonnen',
+    '{n} fields' => '{n} Felder',
+    'Partial deleted.' => 'Teildatensatz gelöscht.',
+    'Abandoned attempts captured before the visitor submitted. Completing the form removes its partial automatically; these are the ones never finished.' => 'Abgebrochene Versuche, die vor dem Absenden erfasst wurden. Das Absenden entfernt den Teildatensatz automatisch; dies sind die nie abgeschlossenen.',
+    'When on, the form quietly auto-saves answers as they’re entered (on blur / step change). Attempts that are never submitted appear under the Partials tab for follow-up. Capturing is best-effort and fires no notifications, integrations, payments or spam checks; completing the form removes its partial.' => 'Wenn aktiviert, speichert das Formular eingegebene Antworten still automatisch (bei Fokuswechsel / Schrittwechsel). Nie abgesendete Versuche erscheinen zur Nachverfolgung im Tab „Teilweise“. Die Erfassung erfolgt nach bestem Bemühen und löst keine Benachrichtigungen, Integrationen, Zahlungen oder Spam-Prüfungen aus; das Absenden entfernt den Teildatensatz.',
 ];

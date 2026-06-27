@@ -327,4 +327,17 @@ return [
     'A button that opens the form in a centered modal.' => 'Um botão que abre o formulário numa janela modal centrada.',
     'Slide-in' => 'Painel deslizante',
     'A button that slides the form in from the side.' => 'Um botão que faz deslizar o formulário a partir do lado.',
+
+    // Passive partial capture (#242)
+    'Partial capture' => 'Captura parcial',
+    'Capture abandoned attempts' => 'Capturar tentativas abandonadas',
+    'Partials' => 'Parciais',
+    'No abandoned partials.' => 'Sem parciais abandonados.',
+    'Captured fields' => 'Campos capturados',
+    'Last updated' => 'Última atualização',
+    'Started' => 'Iniciado',
+    '{n} fields' => '{n} campos',
+    'Partial deleted.' => 'Parcial eliminado.',
+    'Abandoned attempts captured before the visitor submitted. Completing the form removes its partial automatically; these are the ones never finished.' => 'Tentativas abandonadas capturadas antes do envio. Concluir o formulário remove o parcial automaticamente; estas são as nunca terminadas.',
+    'When on, the form quietly auto-saves answers as they’re entered (on blur / step change). Attempts that are never submitted appear under the Partials tab for follow-up. Capturing is best-effort and fires no notifications, integrations, payments or spam checks; completing the form removes its partial.' => 'Quando ativado, o formulário guarda automaticamente e de forma discreta as respostas à medida que são introduzidas (ao perder o foco / mudança de passo). As tentativas nunca enviadas aparecem no separador «Parciais» para acompanhamento. A captura é de melhor esforço e não dispara notificações, integrações, pagamentos nem verificações de spam; concluir o formulário remove o seu parcial.',
 ];

@@ -28,9 +28,13 @@ class DraftService extends Component
      * is supplied and matches a draft, that draft is updated in place (and its
      * expiry refreshed) so re-saving keeps the same resume URL.
      *
+     * A `$passive` draft (#242) is an auto-captured partial — distinct from a
+     * user-initiated save-and-continue draft — so the CP can list and govern the
+     * two differently.
+     *
      * @param array<string, mixed> $data field_<id> => value map entered so far
      */
-    public function save(int $formId, int $siteId, array $data, ?string $existingToken = null): string
+    public function save(int $formId, int $siteId, array $data, ?string $existingToken = null, bool $passive = false): string
     {
         $token = ($existingToken !== null && $existingToken !== '') ? $existingToken : bin2hex(random_bytes(32));
 
@@ -51,6 +55,7 @@ class DraftService extends Component
             // Craft's json() column encodes the array exactly once — pass the
             // array, not a pre-encoded string (that would double-encode).
             'data' => $data,
+            'passive' => $passive,
             'dateExpires' => $expires,
             'dateUpdated' => $now,
         ];
@@ -96,6 +101,57 @@ class DraftService extends Component
 
         $data = is_array($row['data']) ? $row['data'] : Json::decodeIfJson((string) $row['data']);
         return is_array($data) ? $data : [];
+    }
+
+    /**
+     * The passive partials (#242) captured for a form on a site, newest first,
+     * with their decoded data and timestamps — for the CP abandoned listing.
+     * The raw token never leaves the table (only its hash is stored), so a
+     * partial can be viewed and deleted by its row id but not resumed from here.
+     *
+     * @return list<array{id: int, data: array<string, mixed>, fieldCount: int, dateCreated: mixed, dateUpdated: mixed}>
+     */
+    public function listPassive(int $formId, int $siteId): array
+    {
+        $rows = (new Query())
+            ->select(['id', 'data', 'dateCreated', 'dateUpdated'])
+            ->from(self::TABLE)
+            ->where(['formId' => $formId, 'siteId' => $siteId, 'passive' => true])
+            ->orderBy(['dateUpdated' => SORT_DESC])
+            ->all();
+
+        $partials = [];
+        foreach ($rows as $row) {
+            $data = is_array($row['data']) ? $row['data'] : Json::decodeIfJson((string) $row['data']);
+            $data = is_array($data) ? $data : [];
+            // Count only fields with a non-empty value as "captured".
+            $fieldCount = 0;
+            foreach ($data as $value) {
+                if ($value !== null && $value !== '' && $value !== []) {
+                    $fieldCount++;
+                }
+            }
+            $partials[] = [
+                'id' => (int) $row['id'],
+                'data' => $data,
+                'fieldCount' => $fieldCount,
+                'dateCreated' => $row['dateCreated'],
+                'dateUpdated' => $row['dateUpdated'],
+            ];
+        }
+
+        return $partials;
+    }
+
+    /**
+     * Delete a passive partial by its row id (the CP manual-delete action).
+     * Scoped to the form so a forged id can't reach another form's drafts.
+     */
+    public function deletePassiveById(int $id, int $formId): void
+    {
+        Craft::$app->getDb()->createCommand()
+            ->delete(self::TABLE, ['id' => $id, 'formId' => $formId, 'passive' => true])
+            ->execute();
     }
 
     /**

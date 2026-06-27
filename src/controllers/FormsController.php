@@ -176,6 +176,9 @@ class FormsController extends Controller
         // UTM/referrer auto-capture (#249).
         $form->autoCaptureAttribution = (bool) $request->getBodyParam('autoCaptureAttribution');
 
+        // Passive partial capture (#242).
+        $form->capturePartials = (bool) $request->getBodyParam('capturePartials');
+
         $form->propagationMethod = PropagationMethod::tryFrom(
             (string)$request->getBodyParam('propagationMethod', 'none')
         ) ?? PropagationMethod::None;

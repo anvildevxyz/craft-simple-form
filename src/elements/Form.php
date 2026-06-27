@@ -143,6 +143,8 @@ class Form extends Element
     public ?string $quizGradeBands = null;
     /** Per-form opt-in for UTM/referrer auto-capture (#249; shared, not translatable). */
     public bool $autoCaptureAttribution = false;
+    /** Per-form opt-in for passive partial capture (#242; shared, not translatable). */
+    public bool $capturePartials = false;
 
     // Per-site (translatable). title is stored in elements_sites via hasTitles().
     public ?string $title = null;
@@ -496,6 +498,9 @@ class Form extends Element
         // UTM/referrer auto-capture (#249).
         $rules[] = [['autoCaptureAttribution'], 'boolean'];
 
+        // Passive partial capture (#242).
+        $rules[] = [['capturePartials'], 'boolean'];
+
         // handle is shared across sites, so it must be globally unique
         $rules[] = [['handle'], 'validateHandleUnique'];
 
@@ -583,6 +588,7 @@ class Form extends Element
             'quizMode' => $this->quizMode,
             'quizGradeBands' => $this->quizGradeBands,
             'autoCaptureAttribution' => $this->autoCaptureAttribution,
+            'capturePartials' => $this->capturePartials,
             'dateUpdated' => $now,
         ];
 
