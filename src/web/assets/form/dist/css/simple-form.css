@@ -314,7 +314,7 @@
 .simple-form-coupon-message.simple-form-coupon-error { color: #b91c1c; }
 
 /* Conversational render mode (#239): one screen at a time + a nav row. The
-   screens toggle via the [hidden] attribute; a gentle fade-in eases the change,
+   screens toggle via the [hidden] attribute; a gentle slide-up eases the change,
    suppressed under prefers-reduced-motion. */
 .simple-form-step-nav {
     display: flex;
@@ -329,12 +329,101 @@
     font-size: .9em;
 }
 .simple-form--conversational .simple-form-step:not([hidden]) {
-    animation: sf-screen-in .2s ease;
+    animation: sf-screen-in .25s ease;
 }
 @keyframes sf-screen-in {
-    from { opacity: 0; transform: translateY(6px); }
+    from { opacity: 0; transform: translateY(14px); }
     to { opacity: 1; transform: none; }
 }
 @media (prefers-reduced-motion: reduce) {
     .simple-form--conversational .simple-form-step:not([hidden]) { animation: none; }
+}
+
+/* Built-in conversational theme (#243): an opinionated, accessible "centered
+   card" default so conversational mode is usable with zero theming — a centered
+   card, hero-sized question, thin top progress bar, roomy inputs. Every rule is
+   scoped to .simple-form--conversational and uses a single class' worth of
+   specificity, so a host site can override any of it with its own CSS. */
+.simple-form--conversational {
+    position: relative;
+    max-width: 640px;
+    margin-inline: auto;
+    padding: 34px clamp(20px, 5vw, 48px) 28px;
+    background: #fff;
+    border: 1px solid #e5e7eb;
+    border-radius: 14px;
+    box-shadow: 0 10px 40px rgba(2, 6, 23, .08);
+}
+
+/* Thin progress bar pinned to the card's top edge. */
+.simple-form--conversational .simple-form-progressbar {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 4px;
+    background: #eef2f7;
+    border-radius: 14px 14px 0 0;
+    overflow: hidden;
+}
+.simple-form--conversational .simple-form-progressbar > span {
+    display: block;
+    height: 100%;
+    width: 0;
+    background: #2563eb;
+    transition: width .3s ease;
+}
+
+/* One question per screen, with a stable min-height so the card doesn't jump. */
+.simple-form--conversational .simple-form-step {
+    min-height: 168px;
+}
+
+/* Hero-sized question (the field label) + muted help text. */
+.simple-form--conversational .simple-form-step .simple-form-group > label,
+.simple-form--conversational .simple-form-step .simple-form-label {
+    display: block;
+    font-size: clamp(1.4rem, 1rem + 1.6vw, 2rem);
+    font-weight: 600;
+    line-height: 1.25;
+    margin-bottom: .5em;
+}
+.simple-form--conversational .simple-form-step .help-text {
+    display: block;
+    font-size: 1rem;
+    color: #6b7280;
+    margin-bottom: 1em;
+}
+
+/* Roomy, touch-friendly controls. */
+.simple-form--conversational .simple-form-step input:not([type="checkbox"]):not([type="radio"]):not([type="file"]),
+.simple-form--conversational .simple-form-step select,
+.simple-form--conversational .simple-form-step textarea {
+    width: 100%;
+    font-size: 1.1rem;
+    padding: .7em .8em;
+}
+
+/* Prominent forward action; the progress text stays muted at the end of the row. */
+.simple-form--conversational .simple-form-step-nav {
+    margin-top: 24px;
+}
+.simple-form--conversational .simple-form-step-next,
+.simple-form--conversational .simple-form-submit-btn {
+    font-size: 1.05rem;
+    padding: .6em 1.4em;
+    cursor: pointer;
+}
+
+/* Always-visible keyboard focus (a11y). */
+.simple-form--conversational :focus-visible {
+    outline: 2px solid #2563eb;
+    outline-offset: 2px;
+}
+
+@media (max-width: 600px) {
+    .simple-form--conversational {
+        border-radius: 10px;
+        padding: 28px 18px 22px;
+    }
 }

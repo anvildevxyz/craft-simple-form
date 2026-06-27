@@ -33,6 +33,9 @@
 {{- attributionInput -}}
 {{- captureInput -}}
 {%- if renderMode == 'conversational' and screens|length > 1 -%}
+  {#- Built-in conversational theme progress bar (#243); JS fills its width. The
+      text progress in step-nav stays the a11y live region. -#}
+  <div class="simple-form-progressbar" aria-hidden="true"><span data-sf-progressbar></span></div>
   {%- for i, screenRows in screens -%}
     <div class="simple-form-step" data-sf-step="{{ i }}"{% if i > 0 %} hidden{% endif %}>
     {%- for row in screenRows -%}

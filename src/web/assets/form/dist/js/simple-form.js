@@ -505,6 +505,7 @@
         var nextBtn = nav.querySelector(".simple-form-step-next");
         var submitBtn = nav.querySelector(".simple-form-submit-btn");
         var progress = nav.querySelector(".simple-form-step-progress");
+        var progressBar = form.querySelector("[data-sf-progressbar]");
         var progressTpl = nav.getAttribute("data-sf-progress") || "{current} of {total}";
         var current = 0;
         var history = [];
@@ -536,6 +537,8 @@
             if (nextBtn) { nextBtn.hidden = !st.next; }
             if (submitBtn) { submitBtn.hidden = !st.submit; }
             if (progress) { progress.textContent = SF.stepNav.progress(progressTpl, st.pos, st.total); }
+            // Built-in conversational theme progress bar (#243).
+            if (progressBar) { progressBar.style.width = Math.round((st.pos / st.total) * 100) + "%"; }
         }
 
         // Move focus into the step on user navigation so keyboard/AT users land
