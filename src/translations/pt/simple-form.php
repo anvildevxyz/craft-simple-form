@@ -313,4 +313,18 @@ return [
     'Referrer' => 'Referenciador',
     'Landing page' => 'Página de destino',
     'When on, the form captures utm_source, utm_medium, utm_campaign, utm_term, utm_content, the referrer, and the landing page (first visit in the session) and stores them on the submission — shown here and available to exports, notifications, and integrations. No manual hidden fields needed.' => 'Quando ativado, o formulário captura utm_source, utm_medium, utm_campaign, utm_term, utm_content, o referenciador e a página de destino (primeira visita na sessão) e guarda-os no envio — mostrados aqui e disponíveis para exportações, notificações e integrações. Sem campos ocultos manuais.',
+
+    // Embed & share (#247)
+    'Share & embed' => 'Partilhar e incorporar',
+    'Shareable link' => 'Ligação partilhável',
+    'A hosted page that shows just this form — share the link directly, or use it as the embed target below. The form runs the same submission, spam and validation as everywhere else.' => 'Uma página alojada que mostra apenas este formulário — partilhe a ligação diretamente ou use-a como destino de incorporação abaixo. O formulário aplica o mesmo processamento, antispam e validação que em qualquer outro lugar.',
+    'Standalone URL' => 'URL autónomo',
+    'Embed' => 'Incorporar',
+    'Paste a snippet into any HTML page on this site. Edit the button label and styling to taste.' => 'Cole um fragmento em qualquer página HTML deste site. Edite o rótulo do botão e o estilo a seu gosto.',
+    'Inline' => 'Em linha',
+    'Renders the form in place, auto-sizing to its height.' => 'Mostra o formulário no local, ajustando automaticamente a sua altura.',
+    'Popup' => 'Janela pop-up',
+    'A button that opens the form in a centered modal.' => 'Um botão que abre o formulário numa janela modal centrada.',
+    'Slide-in' => 'Painel deslizante',
+    'A button that slides the form in from the side.' => 'Um botão que faz deslizar o formulário a partir do lado.',
 ];

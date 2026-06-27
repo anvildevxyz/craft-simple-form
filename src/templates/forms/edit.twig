@@ -40,6 +40,7 @@
 } %}
 {% if form.id %}
     {% set tabs = tabs|merge({
+        'sf-share': { label: 'Share & embed'|t('simple-form'), url: '#sf-share' },
         notifications: { label: 'Notifications'|t('simple-form'), url: cpUrl('simple-form/forms/' ~ form.id ~ '/notifications') },
         integrations: { label: 'Integrations'|t('simple-form'), url: cpUrl('simple-form/forms/' ~ form.id ~ '/integrations') },
         report: { label: 'Report'|t('simple-form'), url: cpUrl('simple-form/forms/' ~ form.id ~ '/report') },
@@ -528,4 +529,45 @@
         instructions: 'When on, the form captures utm_source, utm_medium, utm_campaign, utm_term, utm_content, the referrer, and the landing page (first visit in the session) and stores them on the submission — shown here and available to exports, notifications, and integrations. No manual hidden fields needed.'|t('simple-form'),
     }) }}
 </div>
+
+{% if form.id %}
+    {% set shareUrl = siteUrl('simple-form/form/' ~ form.handle) %}
+    {% set embedJs = siteUrl('simple-form/embed.js') %}
+    <div id="sf-share" class="hidden">
+        <h2>{{ 'Shareable link'|t('simple-form') }}</h2>
+        <p class="light">{{ 'A hosted page that shows just this form — share the link directly, or use it as the embed target below. The form runs the same submission, spam and validation as everywhere else.'|t('simple-form') }}</p>
+
+        {{ forms.copyTextField({
+            label: 'Standalone URL'|t('simple-form'),
+            value: shareUrl,
+            readonly: true,
+        }) }}
+
+        <hr>
+
+        <h2>{{ 'Embed'|t('simple-form') }}</h2>
+        <p class="light">{{ 'Paste a snippet into any HTML page on this site. Edit the button label and styling to taste.'|t('simple-form') }}</p>
+
+        {{ forms.copyTextField({
+            label: 'Inline'|t('simple-form'),
+            instructions: 'Renders the form in place, auto-sizing to its height.'|t('simple-form'),
+            value: '<div data-sf-embed data-sf-mode="inline" data-sf-url="' ~ shareUrl ~ '"></div><script src="' ~ embedJs ~ '" async></script>',
+            readonly: true,
+        }) }}
+
+        {{ forms.copyTextField({
+            label: 'Popup'|t('simple-form'),
+            instructions: 'A button that opens the form in a centered modal.'|t('simple-form'),
+            value: '<button type="button" data-sf-embed data-sf-mode="modal" data-sf-url="' ~ shareUrl ~ '">Open form</button><script src="' ~ embedJs ~ '" async></script>',
+            readonly: true,
+        }) }}
+
+        {{ forms.copyTextField({
+            label: 'Slide-in'|t('simple-form'),
+            instructions: 'A button that slides the form in from the side.'|t('simple-form'),
+            value: '<button type="button" data-sf-embed data-sf-mode="slide-in" data-sf-url="' ~ shareUrl ~ '">Open form</button><script src="' ~ embedJs ~ '" async></script>',
+            readonly: true,
+        }) }}
+    </div>
+{% endif %}
 {% endblock %}

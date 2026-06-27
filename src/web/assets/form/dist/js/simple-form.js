@@ -859,8 +859,34 @@
         });
     }
 
+    // ---- embed height sync (#247) ----------------------------------------
+    // When the form is shown on its standalone page inside an embed iframe, post
+    // the document height to the parent so the embed loader can size the iframe
+    // to fit (no scrollbars). No-op when not embedded.
+    function postEmbedHeight() {
+        if (window.self === window.top) { return; }
+        var send = function () {
+            var h = Math.max(
+                document.documentElement.scrollHeight || 0,
+                document.body ? document.body.scrollHeight : 0
+            );
+            try { window.parent.postMessage({ type: "simpleform:height", height: h }, "*"); } catch (e) {}
+        };
+        send();
+        window.addEventListener("load", send);
+        window.addEventListener("resize", send);
+        document.addEventListener("input", send, true);
+        document.addEventListener("change", send, true);
+        if (typeof MutationObserver !== "undefined" && document.body) {
+            try {
+                new MutationObserver(send).observe(document.body, { childList: true, subtree: true, attributes: true });
+            } catch (e) { /* best-effort */ }
+        }
+    }
+
     function init() {
         captureAttribution();
+        postEmbedHeight();
         document.querySelectorAll(".simple-form").forEach(initForm);
     }
 

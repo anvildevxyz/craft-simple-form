@@ -319,4 +319,18 @@ return [
     'Referrer' => 'Verweis-URL',
     'Landing page' => 'Landingpage',
     'When on, the form captures utm_source, utm_medium, utm_campaign, utm_term, utm_content, the referrer, and the landing page (first visit in the session) and stores them on the submission — shown here and available to exports, notifications, and integrations. No manual hidden fields needed.' => 'Wenn aktiviert, erfasst das Formular utm_source, utm_medium, utm_campaign, utm_term, utm_content, den Referrer und die Landingpage (erster Besuch in der Sitzung) und speichert sie bei der Einsendung — hier sichtbar und verfügbar für Exporte, Benachrichtigungen und Integrationen. Keine manuellen versteckten Felder nötig.',
+
+    // Embed & share (#247)
+    'Share & embed' => 'Teilen & einbetten',
+    'Shareable link' => 'Teilbarer Link',
+    'A hosted page that shows just this form — share the link directly, or use it as the embed target below. The form runs the same submission, spam and validation as everywhere else.' => 'Eine gehostete Seite, die nur dieses Formular zeigt — teilen Sie den Link direkt oder nutzen Sie ihn unten als Einbettungsziel. Das Formular nutzt dieselbe Verarbeitung, Spam-Prüfung und Validierung wie überall sonst.',
+    'Standalone URL' => 'Eigenständige URL',
+    'Embed' => 'Einbetten',
+    'Paste a snippet into any HTML page on this site. Edit the button label and styling to taste.' => 'Fügen Sie einen Codeausschnitt in eine beliebige HTML-Seite dieser Website ein. Passen Sie Beschriftung und Stil nach Belieben an.',
+    'Inline' => 'Eingebunden',
+    'Renders the form in place, auto-sizing to its height.' => 'Stellt das Formular an Ort und Stelle dar und passt die Höhe automatisch an.',
+    'Popup' => 'Pop-up',
+    'A button that opens the form in a centered modal.' => 'Eine Schaltfläche, die das Formular in einem zentrierten Modal öffnet.',
+    'Slide-in' => 'Einschub',
+    'A button that slides the form in from the side.' => 'Eine Schaltfläche, die das Formular von der Seite einschiebt.',
 ];

@@ -313,4 +313,18 @@ return [
     'Referrer' => 'リファラー',
     'Landing page' => 'ランディングページ',
     'When on, the form captures utm_source, utm_medium, utm_campaign, utm_term, utm_content, the referrer, and the landing page (first visit in the session) and stores them on the submission — shown here and available to exports, notifications, and integrations. No manual hidden fields needed.' => 'オンにすると、フォームは utm_source、utm_medium、utm_campaign、utm_term、utm_content、リファラー、ランディングページ（セッションでの最初の訪問）を取得し、送信時に保存します。ここに表示され、エクスポート・通知・連携で利用できます。手動の隠しフィールドは不要です。',
+
+    // Embed & share (#247)
+    'Share & embed' => '共有と埋め込み',
+    'Shareable link' => '共有リンク',
+    'A hosted page that shows just this form — share the link directly, or use it as the embed target below. The form runs the same submission, spam and validation as everywhere else.' => 'このフォームだけを表示するホスト型ページです。リンクを直接共有するか、下の埋め込み先として使用します。フォームは他の場所と同じ送信処理・スパム対策・検証を実行します。',
+    'Standalone URL' => 'スタンドアロン URL',
+    'Embed' => '埋め込み',
+    'Paste a snippet into any HTML page on this site. Edit the button label and styling to taste.' => 'このサイトの任意の HTML ページにスニペットを貼り付けます。ボタンのラベルやスタイルは自由に編集してください。',
+    'Inline' => 'インライン',
+    'Renders the form in place, auto-sizing to its height.' => 'フォームをその場に表示し、高さを自動調整します。',
+    'Popup' => 'ポップアップ',
+    'A button that opens the form in a centered modal.' => '中央のモーダルでフォームを開くボタンです。',
+    'Slide-in' => 'スライドイン',
+    'A button that slides the form in from the side.' => 'フォームを横からスライドインさせるボタンです。',
 ];

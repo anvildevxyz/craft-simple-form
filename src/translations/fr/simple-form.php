@@ -319,4 +319,18 @@ return [
     'Referrer' => 'Référent',
     'Landing page' => 'Page d’atterrissage',
     'When on, the form captures utm_source, utm_medium, utm_campaign, utm_term, utm_content, the referrer, and the landing page (first visit in the session) and stores them on the submission — shown here and available to exports, notifications, and integrations. No manual hidden fields needed.' => 'Lorsque activé, le formulaire capture utm_source, utm_medium, utm_campaign, utm_term, utm_content, le référent et la page d’atterrissage (première visite de la session) et les enregistre sur l’envoi — affichés ici et disponibles pour les exports, les notifications et les intégrations. Aucun champ caché manuel nécessaire.',
+
+    // Embed & share (#247)
+    'Share & embed' => 'Partage et intégration',
+    'Shareable link' => 'Lien partageable',
+    'A hosted page that shows just this form — share the link directly, or use it as the embed target below. The form runs the same submission, spam and validation as everywhere else.' => 'Une page hébergée qui affiche uniquement ce formulaire — partagez le lien directement, ou utilisez-le comme cible d’intégration ci-dessous. Le formulaire applique le même traitement, anti-spam et validation que partout ailleurs.',
+    'Standalone URL' => 'URL autonome',
+    'Embed' => 'Intégrer',
+    'Paste a snippet into any HTML page on this site. Edit the button label and styling to taste.' => 'Collez un extrait dans n’importe quelle page HTML de ce site. Modifiez le libellé du bouton et le style à votre goût.',
+    'Inline' => 'Intégré',
+    'Renders the form in place, auto-sizing to its height.' => 'Affiche le formulaire sur place, en ajustant automatiquement sa hauteur.',
+    'Popup' => 'Fenêtre contextuelle',
+    'A button that opens the form in a centered modal.' => 'Un bouton qui ouvre le formulaire dans une fenêtre modale centrée.',
+    'Slide-in' => 'Panneau latéral',
+    'A button that slides the form in from the side.' => 'Un bouton qui fait glisser le formulaire depuis le côté.',
 ];

@@ -282,6 +282,10 @@ class Plugin extends BasePlugin
 
         Craft::$app->getUrlManager()->addRules([
             'simple-form/submit' => 'simple-form/submit/index',
+            // Embed & share (#247): the standalone shareable form page (also the
+            // iframe target for the embed modes) and the embed loader script.
+            'simple-form/embed.js' => 'simple-form/form/embed-script',
+            'simple-form/form/<handle:[a-zA-Z][\w\-]*>' => 'simple-form/form/standalone',
             // Front-end submission editing (#144): the public update transport.
             // Authorization (token/owner + window + allowEditing) is enforced in
             // the controller; an unauthorized request 403s cleanly.

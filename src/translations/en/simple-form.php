@@ -315,4 +315,18 @@ return [
     'Referrer' => 'Referrer',
     'Landing page' => 'Landing page',
     'When on, the form captures utm_source, utm_medium, utm_campaign, utm_term, utm_content, the referrer, and the landing page (first visit in the session) and stores them on the submission — shown here and available to exports, notifications, and integrations. No manual hidden fields needed.' => 'When on, the form captures utm_source, utm_medium, utm_campaign, utm_term, utm_content, the referrer, and the landing page (first visit in the session) and stores them on the submission — shown here and available to exports, notifications, and integrations. No manual hidden fields needed.',
+
+    // Embed & share (#247)
+    'Share & embed' => 'Share & embed',
+    'Shareable link' => 'Shareable link',
+    'A hosted page that shows just this form — share the link directly, or use it as the embed target below. The form runs the same submission, spam and validation as everywhere else.' => 'A hosted page that shows just this form — share the link directly, or use it as the embed target below. The form runs the same submission, spam and validation as everywhere else.',
+    'Standalone URL' => 'Standalone URL',
+    'Embed' => 'Embed',
+    'Paste a snippet into any HTML page on this site. Edit the button label and styling to taste.' => 'Paste a snippet into any HTML page on this site. Edit the button label and styling to taste.',
+    'Inline' => 'Inline',
+    'Renders the form in place, auto-sizing to its height.' => 'Renders the form in place, auto-sizing to its height.',
+    'Popup' => 'Popup',
+    'A button that opens the form in a centered modal.' => 'A button that opens the form in a centered modal.',
+    'Slide-in' => 'Slide-in',
+    'A button that slides the form in from the side.' => 'A button that slides the form in from the side.',
 ];

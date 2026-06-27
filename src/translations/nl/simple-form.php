@@ -313,4 +313,18 @@ return [
     'Referrer' => 'Verwijzer',
     'Landing page' => 'Landingspagina',
     'When on, the form captures utm_source, utm_medium, utm_campaign, utm_term, utm_content, the referrer, and the landing page (first visit in the session) and stores them on the submission — shown here and available to exports, notifications, and integrations. No manual hidden fields needed.' => 'Wanneer ingeschakeld legt het formulier utm_source, utm_medium, utm_campaign, utm_term, utm_content, de verwijzer en de landingspagina (eerste bezoek in de sessie) vast en slaat ze op bij de inzending — hier getoond en beschikbaar voor exports, meldingen en integraties. Geen handmatige verborgen velden nodig.',
+
+    // Embed & share (#247)
+    'Share & embed' => 'Delen & insluiten',
+    'Shareable link' => 'Deelbare link',
+    'A hosted page that shows just this form — share the link directly, or use it as the embed target below. The form runs the same submission, spam and validation as everywhere else.' => 'Een gehoste pagina die alleen dit formulier toont — deel de link rechtstreeks of gebruik hem hieronder als insluitdoel. Het formulier gebruikt dezelfde verwerking, spamcontrole en validatie als overal elders.',
+    'Standalone URL' => 'Zelfstandige URL',
+    'Embed' => 'Insluiten',
+    'Paste a snippet into any HTML page on this site. Edit the button label and styling to taste.' => 'Plak een fragment in een willekeurige HTML-pagina op deze site. Pas het knoplabel en de stijl naar wens aan.',
+    'Inline' => 'In de pagina',
+    'Renders the form in place, auto-sizing to its height.' => 'Toont het formulier ter plaatse en past de hoogte automatisch aan.',
+    'Popup' => 'Pop-up',
+    'A button that opens the form in a centered modal.' => 'Een knop die het formulier in een gecentreerde modal opent.',
+    'Slide-in' => 'Inschuifpaneel',
+    'A button that slides the form in from the side.' => 'Een knop die het formulier vanaf de zijkant inschuift.',
 ];

@@ -319,4 +319,18 @@ return [
     'Referrer' => 'Provenienza',
     'Landing page' => 'Pagina di destinazione',
     'When on, the form captures utm_source, utm_medium, utm_campaign, utm_term, utm_content, the referrer, and the landing page (first visit in the session) and stores them on the submission — shown here and available to exports, notifications, and integrations. No manual hidden fields needed.' => 'Se attivo, il modulo acquisisce utm_source, utm_medium, utm_campaign, utm_term, utm_content, la provenienza e la pagina di destinazione (prima visita della sessione) e li memorizza sull’invio — mostrati qui e disponibili per esportazioni, notifiche e integrazioni. Nessun campo nascosto manuale necessario.',
+
+    // Embed & share (#247)
+    'Share & embed' => 'Condividi e incorpora',
+    'Shareable link' => 'Link condivisibile',
+    'A hosted page that shows just this form — share the link directly, or use it as the embed target below. The form runs the same submission, spam and validation as everywhere else.' => 'Una pagina ospitata che mostra solo questo modulo — condividi il link direttamente o usalo come destinazione di incorporamento qui sotto. Il modulo applica lo stesso invio, controllo spam e validazione di ovunque.',
+    'Standalone URL' => 'URL autonomo',
+    'Embed' => 'Incorpora',
+    'Paste a snippet into any HTML page on this site. Edit the button label and styling to taste.' => 'Incolla uno snippet in qualsiasi pagina HTML di questo sito. Modifica l’etichetta del pulsante e lo stile a piacere.',
+    'Inline' => 'In linea',
+    'Renders the form in place, auto-sizing to its height.' => 'Mostra il modulo sul posto, adattandone automaticamente l’altezza.',
+    'Popup' => 'Finestra popup',
+    'A button that opens the form in a centered modal.' => 'Un pulsante che apre il modulo in una finestra modale centrata.',
+    'Slide-in' => 'Pannello laterale',
+    'A button that slides the form in from the side.' => 'Un pulsante che fa scorrere il modulo dal lato.',
 ];

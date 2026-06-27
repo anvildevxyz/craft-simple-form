@@ -319,4 +319,18 @@ return [
     'Referrer' => 'Referente',
     'Landing page' => 'Página de destino',
     'When on, the form captures utm_source, utm_medium, utm_campaign, utm_term, utm_content, the referrer, and the landing page (first visit in the session) and stores them on the submission — shown here and available to exports, notifications, and integrations. No manual hidden fields needed.' => 'Cuando está activado, el formulario captura utm_source, utm_medium, utm_campaign, utm_term, utm_content, el referente y la página de destino (primera visita de la sesión) y los guarda en el envío — visibles aquí y disponibles para exportaciones, notificaciones e integraciones. No se necesitan campos ocultos manuales.',
+
+    // Embed & share (#247)
+    'Share & embed' => 'Compartir e insertar',
+    'Shareable link' => 'Enlace para compartir',
+    'A hosted page that shows just this form — share the link directly, or use it as the embed target below. The form runs the same submission, spam and validation as everywhere else.' => 'Una página alojada que muestra solo este formulario — comparte el enlace directamente o úsalo como destino de inserción más abajo. El formulario aplica el mismo procesamiento, antispam y validación que en cualquier otro lugar.',
+    'Standalone URL' => 'URL independiente',
+    'Embed' => 'Insertar',
+    'Paste a snippet into any HTML page on this site. Edit the button label and styling to taste.' => 'Pega un fragmento en cualquier página HTML de este sitio. Edita la etiqueta del botón y el estilo a tu gusto.',
+    'Inline' => 'En línea',
+    'Renders the form in place, auto-sizing to its height.' => 'Muestra el formulario en el sitio, ajustando automáticamente su altura.',
+    'Popup' => 'Ventana emergente',
+    'A button that opens the form in a centered modal.' => 'Un botón que abre el formulario en una ventana modal centrada.',
+    'Slide-in' => 'Panel deslizante',
+    'A button that slides the form in from the side.' => 'Un botón que desliza el formulario desde el lateral.',
 ];
