@@ -7,6 +7,7 @@ use craft\enums\PropagationMethod;
 use craft\helpers\DateTimeHelper;
 use craft\models\Site;
 use craft\web\Controller;
+use fabianhaef\simpleform\Editions;
 use fabianhaef\simpleform\elements\Form;
 use fabianhaef\simpleform\helpers\DialCodes;
 use fabianhaef\simpleform\helpers\FieldQueryHelper;
@@ -195,6 +196,32 @@ class FormsController extends Controller
         $fieldErrors = $fieldSync->validate($items, $form->renderMode === 'conversational');
         if ($fieldErrors) {
             Craft::$app->getSession()->setError(reset($fieldErrors));
+            return $this->renderEdit($form, $site, $this->encodeBuilderJson($items));
+        }
+
+        // Edition gate (authoritative): Solo may not introduce *new* Pro field
+        // types. Pro fields already on the form survive a downgrade and stay
+        // editable; the builder palette only hides these client-side.
+        $submittedTypes = array_map(
+            static fn(array $item): string => (string)($item['type'] ?? ''),
+            array_filter($items, 'is_array'),
+        );
+        $existingTypes = $form->id
+            ? array_map(
+                static fn(array $row): string => (string)$row['type'],
+                FieldQueryHelper::fieldsForForm((int)$form->id, $site->id),
+            )
+            : [];
+        $blockedProFields = Editions::blockedNewProFields(
+            array_values($submittedTypes),
+            array_values($existingTypes),
+        );
+        if ($blockedProFields) {
+            Craft::$app->getSession()->setError(Craft::t(
+                'simple-form',
+                'These field types require the Pro edition: {types}',
+                ['types' => implode(', ', $blockedProFields)],
+            ));
             return $this->renderEdit($form, $site, $this->encodeBuilderJson($items));
         }
 

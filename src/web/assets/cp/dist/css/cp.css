@@ -320,6 +320,20 @@
 .sf-palette-item:hover { background: #eef3fb; border-color: #9aa5b1; }
 .sf-palette-item:active { cursor: grabbing; }
 
+/* Pro-only palette entries shown to Solo: visible but not interactive (no
+   .sf-palette-item class, so the builder JS never wires click/drag). */
+.sf-palette-locked {
+    display: flex; align-items: center; gap: 8px; width: 100%;
+    text-align: left; padding: 9px 10px; margin-bottom: 6px;
+    border: 1px dashed #dfe5ec; border-radius: 4px; background: #f4f6f9;
+    font-size: 14px; color: #9aa5b1; cursor: not-allowed;
+}
+.sf-pro-badge {
+    margin-left: auto; font-size: 11px; font-weight: 600;
+    text-transform: uppercase; letter-spacing: .04em;
+    color: #c2410c; background: #ffedd5; border-radius: 3px; padding: 1px 6px;
+}
+
 .sf-inspector-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
 .sf-inspector .field { margin-bottom: 14px; }
 .sf-inspector-back { padding: 4px 12px; }

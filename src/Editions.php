@@ -46,14 +46,14 @@ final class Editions
         'signature',
         'payment',
         'rating',
-        'opinionScale',
+        'opinion',
         'calculation',
         'repeater',
-        'entryRelation',
-        'categoryRelation',
-        'tagRelation',
-        'userRelation',
-        'assetRelation',
+        'entry',
+        'category',
+        'tag',
+        'user',
+        'asset',
     ];
 
     /**
@@ -63,7 +63,7 @@ final class Editions
      */
     public const SOLO_INTEGRATIONS = [
         'webhook',
-        'craftElement',
+        'craft-element',
     ];
 
     /**
@@ -108,5 +108,29 @@ final class Editions
     public static function integrationAllowed(string $handle, ?string $edition = null): bool
     {
         return self::isPro($edition) || in_array($handle, self::SOLO_INTEGRATIONS, true);
+    }
+
+    /**
+     * The Pro field-type handles in $types that are *newly introduced* relative
+     * to $existing — i.e. the escalations a save must reject on Solo. A Pro field
+     * already present in the saved form is allowed through (no-new-escalation
+     * rule), so a downgraded form stays editable without being forced to drop it.
+     *
+     * @param list<string> $types the field-type handles being saved
+     * @param list<string> $existing the field-type handles already on the form
+     * @return list<string> distinct blocked handles ([] when allowed)
+     */
+    public static function blockedNewProFields(array $types, array $existing, ?string $edition = null): array
+    {
+        if (self::isPro($edition)) {
+            return [];
+        }
+
+        $blocked = array_filter(
+            $types,
+            static fn(string $t): bool => in_array($t, self::PRO_FIELDS, true) && !in_array($t, $existing, true),
+        );
+
+        return array_values(array_unique($blocked));
     }
 }

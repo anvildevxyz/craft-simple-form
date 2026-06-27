@@ -50,10 +50,33 @@ class EditionsTest extends TestCase
             $this->assertTrue(Editions::integrationAllowed($handle, Editions::PRO));
         }
 
-        foreach (['slack', 'discord', 'mailchimp', 'activeCampaign', 'hubspot', 'pipedrive', 'googleSheets'] as $handle) {
+        foreach (['slack', 'discord', 'mailchimp', 'activecampaign', 'hubspot', 'pipedrive', 'google-sheets'] as $handle) {
             $this->assertFalse(Editions::integrationAllowed($handle, Editions::SOLO), "Solo should block $handle");
             $this->assertTrue(Editions::integrationAllowed($handle, Editions::PRO));
         }
+    }
+
+    public function testBlockedNewProFieldsAppliesNoEscalationRule(): void
+    {
+        // Pro: nothing is ever blocked.
+        $this->assertSame([], Editions::blockedNewProFields(['payment', 'signature'], [], Editions::PRO));
+
+        // Solo, fresh form: every Pro field is a blocked escalation; core fields pass.
+        $this->assertSame(
+            ['payment', 'rating'],
+            Editions::blockedNewProFields(['text', 'payment', 'email', 'rating'], [], Editions::SOLO),
+        );
+
+        // Solo, downgraded form already containing a Pro field: keeping it is allowed,
+        // adding a *new* Pro field is blocked.
+        $this->assertSame([], Editions::blockedNewProFields(['text', 'payment'], ['payment'], Editions::SOLO));
+        $this->assertSame(
+            ['signature'],
+            Editions::blockedNewProFields(['payment', 'signature'], ['payment'], Editions::SOLO),
+        );
+
+        // Duplicate blocked handles collapse to one.
+        $this->assertSame(['rating'], Editions::blockedNewProFields(['rating', 'rating'], [], Editions::SOLO));
     }
 
     public function testDefaultOpenForUnknownEdition(): void

@@ -105,6 +105,7 @@
         <div class="sf-sidebar">
             <div id="sf-palette" class="sf-panel">
                 <h3 class="sf-panel-title">{{ 'Field Types'|t('simple-form') }}</h3>
+                {% set isPro = craft.simpleForm.isPro() %}
                 {% set palette = [
                     { type: 'text', label: 'Text'|t('simple-form') },
                     { type: 'email', label: 'Email'|t('simple-form') },
@@ -118,23 +119,31 @@
                     { type: 'file', label: 'File Upload'|t('simple-form') },
                     { type: 'name', label: 'Name'|t('simple-form') },
                     { type: 'address', label: 'Address'|t('simple-form') },
-                    { type: 'payment', label: 'Payment'|t('simple-form') },
+                    { type: 'payment', label: 'Payment'|t('simple-form'), pro: true },
                     { type: 'hidden', label: 'Hidden'|t('simple-form') },
                     { type: 'consent', label: 'Agree / Consent'|t('simple-form') },
-                    { type: 'rating', label: 'Rating'|t('simple-form') },
-                    { type: 'opinion', label: 'Opinion Scale'|t('simple-form') },
-                    { type: 'entry', label: 'Entries'|t('simple-form') },
-                    { type: 'category', label: 'Categories'|t('simple-form') },
-                    { type: 'tag', label: 'Tags'|t('simple-form') },
-                    { type: 'user', label: 'Users'|t('simple-form') },
-                    { type: 'asset', label: 'Assets'|t('simple-form') },
-                    { type: 'calculation', label: 'Calculation'|t('simple-form') },
-                    { type: 'repeater', label: 'Repeater'|t('simple-form') },
+                    { type: 'rating', label: 'Rating'|t('simple-form'), pro: true },
+                    { type: 'opinion', label: 'Opinion Scale'|t('simple-form'), pro: true },
+                    { type: 'entry', label: 'Entries'|t('simple-form'), pro: true },
+                    { type: 'category', label: 'Categories'|t('simple-form'), pro: true },
+                    { type: 'tag', label: 'Tags'|t('simple-form'), pro: true },
+                    { type: 'user', label: 'Users'|t('simple-form'), pro: true },
+                    { type: 'asset', label: 'Assets'|t('simple-form'), pro: true },
+                    { type: 'calculation', label: 'Calculation'|t('simple-form'), pro: true },
+                    { type: 'repeater', label: 'Repeater'|t('simple-form'), pro: true },
                 ] %}
                 {% for p in palette %}
-                    <button type="button" class="sf-palette-item" draggable="true" data-type="{{ p.type }}">
-                        <span class="sf-grip" aria-hidden="true">⋮⋮</span>{{ p.label }}
-                    </button>
+                    {% if (p.pro ?? false) and not isPro %}
+                        <span class="sf-palette-locked" data-type="{{ p.type }}" aria-disabled="true"
+                              title="{{ 'Available in the Pro edition'|t('simple-form') }}">
+                            <span class="sf-grip" aria-hidden="true">⋮⋮</span>{{ p.label }}
+                            <span class="sf-pro-badge">{{ 'Pro'|t('simple-form') }}</span>
+                        </span>
+                    {% else %}
+                        <button type="button" class="sf-palette-item" draggable="true" data-type="{{ p.type }}">
+                            <span class="sf-grip" aria-hidden="true">⋮⋮</span>{{ p.label }}
+                        </button>
+                    {% endif %}
                 {% endfor %}
 
                 <h3 class="sf-panel-title sf-panel-title--group">{{ 'Layout'|t('simple-form') }}</h3>
