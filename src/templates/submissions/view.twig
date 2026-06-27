@@ -38,6 +38,30 @@
                     {{ submission.readStatus|upper }}
                 </span>
             </p>
+            {% if workflowEnabled %}
+                <p>
+                    <strong>{{ 'Stage:'|t('simple-form') }}</strong>
+                    {% if workflowStatus %}
+                        <span class="status {{ workflowStatus.color }}"></span> {{ workflowStatus.label }}
+                    {% else %}
+                        <span class="light">{{ '—'|t('simple-form') }}</span>
+                    {% endif %}
+                </p>
+                {% if workflowTransitions is not empty %}
+                    <div class="sf-workflow-actions">
+                        {% for transition in workflowTransitions %}
+                            <form method="post" accept-charset="UTF-8" class="sf-inline-form">
+                                {{ csrfInput() }}
+                                <input type="hidden" name="action" value="simple-form/submissions/transition">
+                                <input type="hidden" name="submissionId" value="{{ submission.id }}">
+                                <input type="hidden" name="toStatus" value="{{ transition.to }}">
+                                {{ redirectInput('simple-form/submissions/' ~ submission.id) }}
+                                <button type="submit" class="btn">{{ transition.label }}</button>
+                            </form>
+                        {% endfor %}
+                    </div>
+                {% endif %}
+            {% endif %}
             <p>
                 <strong>{{ 'Date:'|t('simple-form') }}</strong>
                 {{ submission.dateCreated|date('Y-m-d H:i:s') }}

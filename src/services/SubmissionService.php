@@ -304,6 +304,12 @@ class SubmissionService extends Component
         $submission->spamReason = $spamReason;
         $submission->sourceIp = $this->sourceIp();
 
+        // Approval workflow (#248): a genuine (non-spam) submission enters the
+        // owner-defined pipeline at its initial stage. No-op when disabled.
+        if (!$isSpam) {
+            Plugin::getInstance()->getWorkflow()->applyInitialStatus($submission);
+        }
+
         // Stamp the payment state before the after-save event so the existing
         // gating (integrations self-skip + email below) keys off it: a settled
         // payment releases immediately, a pending one is withheld until the order

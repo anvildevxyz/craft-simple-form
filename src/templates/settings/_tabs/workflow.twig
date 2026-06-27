@@ -1,0 +1,151 @@
+{% import "_includes/forms.twig" as forms %}
+
+{% set statusColors = ['green', 'blue', 'orange', 'red', 'yellow', 'pink', 'purple', 'turquoise', 'light', 'gray', 'black'] %}
+{% set colorOptions = [] %}
+{% for c in statusColors %}{% set colorOptions = colorOptions|merge([{ label: c|capitalize, value: c }]) %}{% endfor %}
+
+<h2>{{ 'Approval Workflow'|t('simple-form') }}</h2>
+<p class="light">
+    {{ 'Move submissions through an owner-defined approval pipeline (e.g. submitted → in review → approved / rejected). Each move can be limited to specific user groups, is recorded in the audit log, and fires an event your notifications or integrations can react to. When off, submission statuses behave exactly as before.'|t('simple-form') }}
+</p>
+
+{# 1. Enable toggle — its own minimal form posting to settings/save. #}
+<form method="post" accept-charset="UTF-8">
+    {{ csrfInput() }}
+    <input type="hidden" name="action" value="simple-form/settings/save">
+    <input type="hidden" name="tab" value="workflow">
+    {{ redirectInput('simple-form/settings/workflow') }}
+
+    {{ forms.lightswitchField({
+        label: 'Enable Workflow'|t('simple-form'),
+        name: 'enableWorkflow',
+        on: settings.enableWorkflow ?? false,
+        instructions: 'When on, new (non-spam) submissions enter the first stage below and can be moved along the allowed transitions.'|t('simple-form'),
+    }) }}
+
+    <div class="buttons">
+        <button type="submit" class="btn submit">{{ 'Save'|t('simple-form') }}</button>
+    </div>
+</form>
+
+<hr>
+
+{# 2. Stages. #}
+<h2>{{ 'Stages'|t('simple-form') }}</h2>
+{% if workflowStatuses is not empty %}
+    <table class="data fullwidth">
+        <thead>
+            <tr>
+                <th>{{ 'Stage'|t('simple-form') }}</th>
+                <th>{{ 'Handle'|t('simple-form') }}</th>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for status in workflowStatuses %}
+                <tr>
+                    <td>
+                        <span class="status {{ status.color }}"></span>
+                        {{ status.label }}
+                        {% if loop.first %}<span class="light">— {{ 'initial'|t('simple-form') }}</span>{% endif %}
+                    </td>
+                    <td><code>{{ status.handle }}</code></td>
+                    <td class="thin">
+                        <form method="post" accept-charset="UTF-8" class="sf-inline-form">
+                            {{ csrfInput() }}
+                            <input type="hidden" name="action" value="simple-form/settings/delete-workflow-status">
+                            <input type="hidden" name="handle" value="{{ status.handle }}">
+                            <button type="submit" class="delete icon" title="{{ 'Delete'|t('simple-form') }}"
+                                    aria-label="{{ 'Delete stage {label}'|t('simple-form', { label: status.label }) }}"></button>
+                        </form>
+                    </td>
+                </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+{% else %}
+    <p class="light">{{ 'No stages yet. Add the first one — it becomes where new submissions start.'|t('simple-form') }}</p>
+{% endif %}
+
+<form method="post" accept-charset="UTF-8" class="sf-workflow-add">
+    {{ csrfInput() }}
+    <input type="hidden" name="action" value="simple-form/settings/add-workflow-status">
+    <div class="flex">
+        {{ forms.text({ name: 'label', placeholder: 'Stage name'|t('simple-form'), required: true }) }}
+        {{ forms.select({ name: 'color', options: colorOptions }) }}
+        <button type="submit" class="btn add icon">{{ 'Add Stage'|t('simple-form') }}</button>
+    </div>
+</form>
+
+<hr>
+
+{# 3. Transitions. #}
+<h2>{{ 'Transitions'|t('simple-form') }}</h2>
+{% if workflowStatuses|length < 2 %}
+    <p class="light">{{ 'Add at least two stages to define transitions between them.'|t('simple-form') }}</p>
+{% else %}
+    {% set stageOptions = [] %}
+    {% for status in workflowStatuses %}{% set stageOptions = stageOptions|merge([{ label: status.label, value: status.handle }]) %}{% endfor %}
+
+    {% if workflowTransitions is not empty %}
+        <table class="data fullwidth">
+            <thead>
+                <tr>
+                    <th>{{ 'From'|t('simple-form') }}</th>
+                    <th>{{ 'To'|t('simple-form') }}</th>
+                    <th>{{ 'Button label'|t('simple-form') }}</th>
+                    <th>{{ 'Allowed groups'|t('simple-form') }}</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for transition in workflowTransitions %}
+                    <tr>
+                        <td><code>{{ transition.from }}</code></td>
+                        <td><code>{{ transition.to }}</code></td>
+                        <td>{{ transition.label }}</td>
+                        <td>{{ transition.groups is empty ? 'Any manager'|t('simple-form') : transition.groups|join(', ') }}</td>
+                        <td class="thin">
+                            <form method="post" accept-charset="UTF-8" class="sf-inline-form">
+                                {{ csrfInput() }}
+                                <input type="hidden" name="action" value="simple-form/settings/delete-workflow-transition">
+                                <input type="hidden" name="index" value="{{ loop.index0 }}">
+                                <button type="submit" class="delete icon" title="{{ 'Delete'|t('simple-form') }}"
+                                        aria-label="{{ 'Delete transition'|t('simple-form') }}"></button>
+                            </form>
+                        </td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    {% endif %}
+
+    <form method="post" accept-charset="UTF-8" class="sf-workflow-add">
+        {{ csrfInput() }}
+        <input type="hidden" name="action" value="simple-form/settings/add-workflow-transition">
+        <div class="flex flex-nowrap">
+            {{ forms.select({ label: 'From'|t('simple-form'), name: 'from', options: stageOptions }) }}
+            {{ forms.select({ label: 'To'|t('simple-form'), name: 'to', options: stageOptions }) }}
+            {{ forms.text({ name: 'label', placeholder: 'Button label (optional)'|t('simple-form') }) }}
+        </div>
+        {% if userGroups is not empty %}
+            <div class="field">
+                <div class="heading">
+                    <label>{{ 'Limit to user groups'|t('simple-form') }}</label>
+                    <div class="instructions"><p>{{ 'Leave all unchecked to allow any submission manager.'|t('simple-form') }}</p></div>
+                </div>
+                <div class="input">
+                    {% for group in userGroups %}
+                        <div class="checkbox-wrapper">
+                            <input type="checkbox" id="sf-grp-{{ group.handle }}" class="checkbox" name="groups[]" value="{{ group.handle }}">
+                            <label for="sf-grp-{{ group.handle }}">{{ group.name }}</label>
+                        </div>
+                    {% endfor %}
+                </div>
+            </div>
+        {% endif %}
+        <div class="buttons">
+            <button type="submit" class="btn add icon">{{ 'Add Transition'|t('simple-form') }}</button>
+        </div>
+    </form>
+{% endif %}

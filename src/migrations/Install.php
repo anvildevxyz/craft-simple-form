@@ -117,6 +117,7 @@ class Install extends Migration
             'data' => $this->json(),
             'userId' => $this->integer(),
             'readStatus' => $this->enum('readStatus', ['new', 'read', 'archived', 'spam'])->defaultValue('new'),
+            'workflowStatus' => $this->string(64),
             'spamReason' => $this->string(64),
             'sourceIp' => $this->string(45),
             'paymentStatus' => $this->string(20),
@@ -138,6 +139,7 @@ class Install extends Migration
         $this->createIndex(null, '{{%simpleform_submissions}}', ['formId']);
         $this->createIndex(null, '{{%simpleform_submissions}}', ['siteId']);
         $this->createIndex(null, '{{%simpleform_submissions}}', ['orderId']);
+        $this->createIndex(null, '{{%simpleform_submissions}}', ['workflowStatus']);
         $this->addForeignKey(null, '{{%simpleform_submissions}}', ['id'], '{{%elements}}', ['id'], 'CASCADE', 'CASCADE');
         $this->addForeignKey(null, '{{%simpleform_submissions}}', ['formId'], '{{%simpleform_forms}}', ['id'], 'CASCADE', 'CASCADE');
         $this->addForeignKey(null, '{{%simpleform_submissions}}', ['siteId'], '{{%sites}}', ['id'], 'CASCADE', 'CASCADE');

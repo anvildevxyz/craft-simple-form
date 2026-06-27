@@ -66,6 +66,7 @@ use fabianhaef\simpleform\services\SafeRenderService;
 use fabianhaef\simpleform\services\SubmissionBodyRenderer;
 use fabianhaef\simpleform\services\SubmissionEditTokenService;
 use fabianhaef\simpleform\services\SubmissionService;
+use fabianhaef\simpleform\services\WorkflowService;
 use fabianhaef\simpleform\stencils\StencilLibrary;
 use fabianhaef\simpleform\web\twig\variables\SimpleFormVariable;
 use fabianhaef\simpleform\widgets\RecentSubmissionsWidget;
@@ -79,6 +80,13 @@ class Plugin extends BasePlugin
 {
     public const EVENT_BEFORE_SUBMISSION_SAVE = 'beforeSubmissionSave';
     public const EVENT_AFTER_SUBMISSION_SAVE = 'afterSubmissionSave';
+
+    /**
+     * @event WorkflowTransitionEvent Fired after a submission moves between
+     * workflow stages (#248), so handlers can send notifications or dispatch
+     * integrations on a transition (see WorkflowTransitionEvent).
+     */
+    public const EVENT_SUBMISSION_TRANSITIONED = 'submissionTransitioned';
 
     /**
      * Fired after a passive partial is captured (#244). Carries the captured
@@ -147,7 +155,7 @@ class Plugin extends BasePlugin
     /** The plugin's single commercial edition. */
     public const EDITION_PRO = 'pro';
 
-    public string $schemaVersion = '2.13.5';
+    public string $schemaVersion = '2.13.6';
     public bool $hasCpSection = true;
     public bool $hasCpSettings = false;
     public bool $hasCpPermissions = true;
@@ -195,6 +203,7 @@ class Plugin extends BasePlugin
             'reports' => ReportsService::class,
             'quizScoring' => QuizScoringService::class,
             'coupons' => CouponsService::class,
+            'workflow' => WorkflowService::class,
             'notifications' => NotificationsService::class,
             'audit' => AuditService::class,
             'payments' => PaymentsService::class,
@@ -592,6 +601,13 @@ class Plugin extends BasePlugin
         return $service;
     }
 
+    public function getWorkflow(): WorkflowService
+    {
+        /** @var WorkflowService $service */
+        $service = $this->get('workflow');
+        return $service;
+    }
+
     public function getQuizScoring(): QuizScoringService
     {
         /** @var QuizScoringService $service */
@@ -730,6 +746,11 @@ class Plugin extends BasePlugin
         $event->rules['simple-form/settings/save'] = 'simple-form/settings/save';
         $event->rules['simple-form/settings/mcp/create-token'] = 'simple-form/settings/create-mcp-token';
         $event->rules['simple-form/settings/mcp/revoke-token'] = 'simple-form/settings/revoke-mcp-token';
+        // Workflow (#248) stage/transition management actions.
+        $event->rules['simple-form/settings/workflow/add-status'] = 'simple-form/settings/add-workflow-status';
+        $event->rules['simple-form/settings/workflow/delete-status'] = 'simple-form/settings/delete-workflow-status';
+        $event->rules['simple-form/settings/workflow/add-transition'] = 'simple-form/settings/add-workflow-transition';
+        $event->rules['simple-form/settings/workflow/delete-transition'] = 'simple-form/settings/delete-workflow-transition';
         // Integrations management lives under Settings. Specific routes must
         // precede the generic settings/<tab> catch-all below.
         $event->rules['simple-form/settings/audit'] = 'simple-form/audit/index';

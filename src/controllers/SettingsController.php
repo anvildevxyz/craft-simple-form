@@ -3,6 +3,7 @@
 namespace fabianhaef\simpleform\controllers;
 
 use Craft;
+use craft\helpers\StringHelper;
 use craft\web\Controller;
 use fabianhaef\simpleform\helpers\SimpleFormPermissions;
 use fabianhaef\simpleform\mcp\Scopes;
@@ -18,6 +19,7 @@ class SettingsController extends Controller
     /** Settings fields grouped by tab. Drives both rendering and the per-tab save. */
     private const TAB_FIELDS = [
         'general' => ['submitMessage', 'errorMessage', 'storageLocation', 'templatePath', 'addressAutocompleteProvider', 'addressAutocompleteEndpoint', 'addressAutocompleteApiKey'],
+        'workflow' => ['enableWorkflow'],
         'email' => ['defaultEmailSender', 'defaultEmailSenderName', 'pdfStorageVolume', 'maxAttachmentSizeMb'],
         'spam' => [
             'enableHoneypot',
@@ -167,6 +169,126 @@ class SettingsController extends Controller
         return $this->redirect('simple-form/settings/mcp');
     }
 
+    /**
+     * Append a workflow stage (#248). Handle is slugified + de-duplicated; the
+     * first stage added becomes the one new submissions enter.
+     */
+    public function actionAddWorkflowStatus(): Response
+    {
+        $this->requirePostRequest();
+        /** @var \craft\web\Request $request */
+        $request = Craft::$app->getRequest();
+
+        $label = trim((string) $request->getBodyParam('label', ''));
+        $handle = StringHelper::toCamelCase((string) ($request->getBodyParam('handle') ?: $label));
+        $color = trim((string) $request->getBodyParam('color', 'blue')) ?: 'blue';
+
+        if ($handle === '' || $label === '') {
+            Craft::$app->getSession()->setError(Craft::t('simple-form', 'A stage needs a name.'));
+            return $this->redirect('simple-form/settings/workflow');
+        }
+
+        $statuses = Plugin::getInstance()->getWorkflow()->getStatuses();
+        foreach ($statuses as $s) {
+            if ($s['handle'] === $handle) {
+                Craft::$app->getSession()->setError(Craft::t('simple-form', 'A stage with that handle already exists.'));
+                return $this->redirect('simple-form/settings/workflow');
+            }
+        }
+        $statuses[] = ['handle' => $handle, 'label' => $label, 'color' => $color];
+
+        return $this->saveWorkflow(['workflowStatuses' => $statuses]);
+    }
+
+    /**
+     * Remove a workflow stage by handle, plus any transitions referencing it.
+     */
+    public function actionDeleteWorkflowStatus(): Response
+    {
+        $this->requirePostRequest();
+        /** @var \craft\web\Request $request */
+        $request = Craft::$app->getRequest();
+        $handle = (string) $request->getRequiredBodyParam('handle');
+
+        $workflow = Plugin::getInstance()->getWorkflow();
+        $statuses = array_values(array_filter(
+            $workflow->getStatuses(),
+            static fn(array $s): bool => $s['handle'] !== $handle,
+        ));
+        $transitions = array_values(array_filter(
+            $workflow->getTransitions(),
+            static fn(array $t): bool => $t['from'] !== $handle && $t['to'] !== $handle,
+        ));
+
+        return $this->saveWorkflow(['workflowStatuses' => $statuses, 'workflowTransitions' => $transitions]);
+    }
+
+    /**
+     * Append an allowed transition between two stages (#248), optionally gated to
+     * specific user groups.
+     */
+    public function actionAddWorkflowTransition(): Response
+    {
+        $this->requirePostRequest();
+        /** @var \craft\web\Request $request */
+        $request = Craft::$app->getRequest();
+
+        $from = (string) $request->getBodyParam('from', '');
+        $to = (string) $request->getBodyParam('to', '');
+        $label = trim((string) $request->getBodyParam('label', ''));
+        /** @var list<string> $groups */
+        $groups = array_values(array_filter(
+            (array) $request->getBodyParam('groups', []),
+            static fn($g): bool => is_string($g) && $g !== '',
+        ));
+
+        if ($from === '' || $to === '' || $from === $to) {
+            Craft::$app->getSession()->setError(Craft::t('simple-form', 'Pick two different stages.'));
+            return $this->redirect('simple-form/settings/workflow');
+        }
+
+        $transitions = Plugin::getInstance()->getWorkflow()->getTransitions();
+        $transitions[] = ['from' => $from, 'to' => $to, 'label' => $label ?: $to, 'groups' => $groups];
+
+        return $this->saveWorkflow(['workflowTransitions' => $transitions]);
+    }
+
+    /**
+     * Remove a transition by its index in the configured list.
+     */
+    public function actionDeleteWorkflowTransition(): Response
+    {
+        $this->requirePostRequest();
+        /** @var \craft\web\Request $request */
+        $request = Craft::$app->getRequest();
+        $index = (int) $request->getRequiredBodyParam('index');
+
+        $transitions = Plugin::getInstance()->getWorkflow()->getTransitions();
+        unset($transitions[$index]);
+
+        return $this->saveWorkflow(['workflowTransitions' => array_values($transitions)]);
+    }
+
+    /**
+     * Persist a partial workflow-settings change, preserving every other setting,
+     * then return to the Workflow tab.
+     *
+     * @param array<string, mixed> $changes
+     */
+    private function saveWorkflow(array $changes): Response
+    {
+        $plugin = Plugin::getInstance();
+        $values = array_merge($plugin->getSettings()->getAttributes(), $changes);
+
+        if (Craft::$app->getPlugins()->savePluginSettings($plugin, $values)) {
+            Craft::$app->getSession()->setNotice(Craft::t('simple-form', 'Workflow updated.'));
+        } else {
+            Craft::$app->getSession()->setError(Craft::t('simple-form', 'Couldn’t update the workflow.'));
+        }
+
+        return $this->redirect('simple-form/settings/workflow');
+    }
+
     private function renderTab(string $tab): Response
     {
         $vars = [
@@ -176,6 +298,13 @@ class SettingsController extends Controller
 
         if ($tab === 'spam') {
             $vars['captchaProviders'] = Plugin::getInstance()->getCaptchaProviderRegistry()->all();
+        }
+
+        if ($tab === 'workflow') {
+            $workflow = Plugin::getInstance()->getWorkflow();
+            $vars['workflowStatuses'] = $workflow->getStatuses();
+            $vars['workflowTransitions'] = $workflow->getTransitions();
+            $vars['userGroups'] = Craft::$app->getUserGroups()->getAllGroups();
         }
 
         if ($tab === 'mcp') {

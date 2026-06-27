@@ -38,6 +38,8 @@ class Submission extends Element
     public ?string $paymentStatus = null;
     public ?string $paymentAmount = null;
     public ?int $orderId = null;
+    /** Owner-defined approval-workflow stage handle (#248), null = not in a pipeline. */
+    public ?string $workflowStatus = null;
     /** Applied discount code (#246), null when none was used. */
     public ?string $couponCode = null;
     /** Discount the coupon took off the amount due (#246). */
@@ -178,6 +180,7 @@ class Submission extends Element
             'data' => $this->data,
             'userId' => $this->userId,
             'readStatus' => $this->readStatus,
+            'workflowStatus' => $this->workflowStatus,
             'spamReason' => $this->spamReason,
             'sourceIp' => $this->sourceIp,
             'paymentStatus' => $this->paymentStatus,

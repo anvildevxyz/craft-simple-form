@@ -32,6 +32,21 @@
         {% endfor %}
     </div>
 {% endif %}
+{% if hasAnySubmissions and workflowEnabled and workflowStatuses is not empty %}
+    {# Approval-workflow stage filter (#248). Links so it works without JS. #}
+    <div class="submission-stats sf-workflow-filter">
+        <a class="stat-card{{ not workflowFilter ? ' is-active' : '' }}"
+           href="{{ cpUrl('simple-form/submissions', { formId: formId, status: 'all', search: search }) }}">
+            <span class="stat-label">{{ 'All Stages'|t('simple-form') }}</span>
+        </a>
+        {% for wfStatus in workflowStatuses %}
+            <a class="stat-card{{ workflowFilter == wfStatus.handle ? ' is-active' : '' }}"
+               href="{{ cpUrl('simple-form/submissions', { formId: formId, status: 'all', search: search, workflow: wfStatus.handle }) }}">
+                <span class="stat-label"><span class="status {{ wfStatus.color }}"></span> {{ wfStatus.label }}</span>
+            </a>
+        {% endfor %}
+    </div>
+{% endif %}
 {% if hasAnySubmissions %}
 <div class="buttons">
     <input type="text" class="text" id="search-input" placeholder="{{ 'Search submissions…'|t('simple-form') }}" value="{{ search ?? '' }}">
@@ -68,6 +83,7 @@
                 <th>{{ 'Date'|t('simple-form') }}</th>
                 <th>{{ 'Form'|t('simple-form') }}</th>
                 <th>{{ 'Status'|t('simple-form') }}</th>
+                {% if workflowEnabled %}<th>{{ 'Stage'|t('simple-form') }}</th>{% endif %}
                 {% if status == 'spam' %}<th>{{ 'Reason'|t('simple-form') }}</th>{% endif %}
                 <th>{{ 'User'|t('simple-form') }}</th>
                 <th></th>
@@ -87,6 +103,17 @@
                             {{ submission.readStatus|upper }}
                         </span>
                     </td>
+                    {% if workflowEnabled %}
+                        <td>
+                            {% set stage = null %}
+                            {% for wfStatus in workflowStatuses|filter(s => s.handle == submission.workflowStatus) %}{% set stage = wfStatus %}{% endfor %}
+                            {% if stage %}
+                                <span class="status {{ stage.color }}"></span> {{ stage.label }}
+                            {% else %}
+                                <span class="light">—</span>
+                            {% endif %}
+                        </td>
+                    {% endif %}
                     {% if status == 'spam' %}
                         <td class="light">
                             {%- set reason = submission.spamReason -%}

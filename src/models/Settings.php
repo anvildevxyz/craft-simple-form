@@ -258,6 +258,34 @@ class Settings extends Model
     public ?string $addressAutocompleteApiKey = null;
 
     /**
+     * Configurable submission approval workflow (#248). When off (default), the
+     * submission status behaves exactly as today (new/read/archived/spam); when
+     * on, submissions also move through the owner-defined pipeline below.
+     */
+    public bool $enableWorkflow = false;
+
+    /**
+     * Ordered workflow stages, each `['handle' => string, 'label' => string,
+     * 'color' => string]`. The first stage is the one new submissions enter (#248).
+     * Loosely typed because the raw stored config may be partial; WorkflowService
+     * normalizes it.
+     *
+     * @var list<array<string, mixed>>
+     */
+    public array $workflowStatuses = [];
+
+    /**
+     * Allowed stage-to-stage moves, each `['from' => handle, 'to' => handle,
+     * 'label' => string, 'groups' => list<string>]`. `groups` are the user-group
+     * handles permitted to perform the transition; empty = any submission manager
+     * (admins always may) (#248). Loosely typed because the raw stored config may
+     * be partial; WorkflowService normalizes it.
+     *
+     * @var list<array<string, mixed>>
+     */
+    public array $workflowTransitions = [];
+
+    /**
      * @return array<string, array{class: class-string, attributes: list<string>}>
      */
     public function behaviors(): array
@@ -321,6 +349,8 @@ class Settings extends Model
             [['hcaptchaSiteKey', 'hcaptchaSecretKey'], 'required', 'when' => fn(): bool => $provider('hcaptcha')],
             [['addressAutocompleteProvider'], 'in', 'range' => ['photon', 'nominatim', 'google']],
             [['addressAutocompleteEndpoint', 'addressAutocompleteApiKey'], 'string'],
+            [['enableWorkflow'], 'boolean'],
+            [['workflowStatuses', 'workflowTransitions'], 'safe'],
         ];
     }
 

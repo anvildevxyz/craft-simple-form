@@ -382,6 +382,25 @@
     border: 1px solid #e3a3a3;
 }
 
+/* Approval workflow (#248): inline transition forms + add-row forms. */
+.sf-inline-form {
+    display: inline-block;
+    margin: 0;
+}
+.sf-workflow-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin: 6px 0 2px;
+}
+.sf-workflow-add {
+    margin: 12px 0;
+}
+.sf-workflow-add .flex {
+    align-items: flex-end;
+    gap: 8px;
+}
+
 /* Survey report (#240): date-range filter, per-field cards, horizontal bars. */
 .sf-report-filter {
     display: flex;

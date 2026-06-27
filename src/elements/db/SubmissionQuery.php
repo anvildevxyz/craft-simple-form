@@ -18,6 +18,7 @@ class SubmissionQuery extends ElementQuery
 {
     public ?int $formId = null;
     public ?string $readStatus = null;
+    public mixed $workflowStatus = null;
     public mixed $userId = null;
     public mixed $paymentStatus = null;
     public mixed $orderId = null;
@@ -47,6 +48,16 @@ class SubmissionQuery extends ElementQuery
     public function readStatus(?string $value = null): static
     {
         $this->readStatus = $value;
+        return $this;
+    }
+
+    /**
+     * Filter submissions by approval-workflow stage handle (#248). Accepts any
+     * value {@see Db::parseParam()} understands.
+     */
+    public function workflowStatus(mixed $value = null): static
+    {
+        $this->workflowStatus = $value;
         return $this;
     }
 
@@ -94,6 +105,7 @@ class SubmissionQuery extends ElementQuery
             'simpleform_submissions.data',
             'simpleform_submissions.userId',
             'simpleform_submissions.readStatus',
+            'simpleform_submissions.workflowStatus',
             'simpleform_submissions.spamReason',
             'simpleform_submissions.sourceIp',
             'simpleform_submissions.paymentStatus',
@@ -119,6 +131,12 @@ class SubmissionQuery extends ElementQuery
         if ($this->readStatus !== null) {
             $this->subQuery->andWhere(
                 Db::parseParam('simpleform_submissions.readStatus', $this->readStatus)
+            );
+        }
+
+        if ($this->workflowStatus !== null) {
+            $this->subQuery->andWhere(
+                Db::parseParam('simpleform_submissions.workflowStatus', $this->workflowStatus)
             );
         }
 

@@ -25,7 +25,7 @@ class SubmissionsController extends Controller
         }
 
         // Mutating actions additionally require MANAGE_SUBMISSIONS.
-        if (in_array($action->id, ['toggle-status', 'mark-not-spam', 'delete'], true)) {
+        if (in_array($action->id, ['toggle-status', 'mark-not-spam', 'delete', 'transition'], true)) {
             $this->requirePermission(SimpleFormPermissions::MANAGE_SUBMISSIONS);
         }
 
@@ -53,6 +53,10 @@ class SubmissionsController extends Controller
         }
         if ($search = $request->getQueryParam('search')) {
             $query->search($search);
+        }
+        // Approval-workflow stage filter (#248).
+        if ($workflow = $request->getQueryParam('workflow')) {
+            $query->workflowStatus($workflow);
         }
         // F17 (CWE-20): only accept well-formed YYYY-MM-DD dates. The value is
         // already bound as a query parameter (no SQL injection), but validating
@@ -116,6 +120,10 @@ class SubmissionsController extends Controller
             'dateTo' => $dateTo,
             'forms' => Form::find()->siteId($siteId)->orderBy(['title' => SORT_ASC])->all(),
             'stats' => Plugin::getInstance()->getReports()->statusBreakdown($siteId, $formId !== null ? (int) $formId : null),
+            // Approval-workflow column + filter (#248); empty/false when off.
+            'workflowEnabled' => Plugin::getInstance()->getWorkflow()->isEnabled(),
+            'workflowStatuses' => Plugin::getInstance()->getWorkflow()->getStatuses(),
+            'workflowFilter' => $request->getQueryParam('workflow'),
         ]);
     }
 
@@ -246,6 +254,11 @@ class SubmissionsController extends Controller
             }
         }
 
+        // Approval workflow (#248): the submission's current stage + the moves
+        // the current user may make from it. Empty/null when the workflow is off.
+        $workflow = Plugin::getInstance()->getWorkflow();
+        $canManageSubmissions = Craft::$app->getUser()->checkPermission(SimpleFormPermissions::MANAGE_SUBMISSIONS);
+
         return $this->renderTemplate('simple-form/submissions/view', [
             'submission' => $submission,
             'form' => $form,
@@ -255,6 +268,11 @@ class SubmissionsController extends Controller
             'elementLinks' => $elementLinks,
             'canManageIntegrations' => Craft::$app->getUser()->checkPermission(SimpleFormPermissions::MANAGE_INTEGRATIONS),
             'pdfAvailable' => Plugin::getInstance()->getPdf()->isAvailable(),
+            'workflowEnabled' => $workflow->isEnabled(),
+            'workflowStatus' => $workflow->isEnabled() ? $workflow->getStatus((string) $submission->workflowStatus) : null,
+            'workflowTransitions' => ($workflow->isEnabled() && $canManageSubmissions)
+                ? $workflow->allowedTransitions($submission->workflowStatus, Craft::$app->getUser()->getIdentity())
+                : [],
         ]);
     }
 
@@ -327,6 +345,37 @@ class SubmissionsController extends Controller
         }
 
         return $this->asJsonSuccess(['status' => $submission->readStatus]);
+    }
+
+    /**
+     * Move a submission to a workflow stage (#248). The WorkflowService enforces
+     * that the transition is configured and that the current user may perform it
+     * (role-gated); an unauthorized/invalid move changes nothing. Redirects back
+     * to the submission with a notice.
+     */
+    public function actionTransition(): Response
+    {
+        $this->requirePostRequest();
+        /** @var \craft\web\Request $request */
+        $request = Craft::$app->getRequest();
+
+        $submissionId = (int) $request->getRequiredBodyParam('submissionId');
+        $toStatus = (string) $request->getRequiredBodyParam('toStatus');
+        $siteId = Craft::$app->getSites()->getCurrentSite()->id;
+
+        $submission = Submission::find()->siteId($siteId)->id($submissionId)->one();
+        if (!$submission instanceof Submission) {
+            throw new \yii\web\NotFoundHttpException('Submission not found');
+        }
+
+        $user = Craft::$app->getUser()->getIdentity();
+        if (Plugin::getInstance()->getWorkflow()->transition($submission, $toStatus, $user)) {
+            Craft::$app->getSession()->setNotice(Craft::t('simple-form', 'Submission moved.'));
+        } else {
+            Craft::$app->getSession()->setError(Craft::t('simple-form', 'Couldn’t move the submission.'));
+        }
+
+        return $this->redirectToPostedUrl();
     }
 
     /**
