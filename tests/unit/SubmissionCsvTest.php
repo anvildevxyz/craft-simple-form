@@ -1,8 +1,8 @@
 <?php
 
-namespace fabianhaef\simpleform\tests\unit;
+namespace anvildev\simpleform\tests\unit;
 
-use fabianhaef\simpleform\helpers\SubmissionCsv;
+use anvildev\simpleform\helpers\SubmissionCsv;
 use PHPUnit\Framework\TestCase;
 
 /**
@@ -12,7 +12,6 @@ use PHPUnit\Framework\TestCase;
  */
 class SubmissionCsvTest extends TestCase
 {
-
     /**
      * @return array<string, array{0: string, 1: string}>
      */

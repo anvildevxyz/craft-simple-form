@@ -1,6 +1,6 @@
 <?php
 
-namespace fabianhaef\simpleform\web\assets\form;
+namespace anvildev\simpleform\web\assets\form;
 
 use craft\web\AssetBundle;
 use craft\web\View;

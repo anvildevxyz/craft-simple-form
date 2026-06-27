@@ -1,12 +1,12 @@
 <?php
 
-namespace fabianhaef\simpleform\integrations\support;
+namespace anvildev\simpleform\integrations\support;
 
 use Craft;
 use craft\helpers\StringHelper;
 
 /**
- * Read helpers for the {@see \fabianhaef\simpleform\integrations\CraftElementIntegration}
+ * Read helpers for the {@see \anvildev\simpleform\integrations\CraftElementIntegration}
  * settings UI: section / entry-type / user-group option lists and a compact,
  * human-readable summary of an element's validation errors for the dispatch log.
  *

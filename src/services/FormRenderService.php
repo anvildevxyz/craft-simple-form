@@ -1,23 +1,23 @@
 <?php
 
-namespace fabianhaef\simpleform\services;
+namespace anvildev\simpleform\services;
 
+use anvildev\simpleform\elements\Form;
+use anvildev\simpleform\events\ModifyRenderContextEvent;
+use anvildev\simpleform\fields\FileFieldType;
+use anvildev\simpleform\helpers\FieldQueryHelper;
+use anvildev\simpleform\helpers\FormRows;
+use anvildev\simpleform\helpers\FormScreens;
+use anvildev\simpleform\helpers\FormSteps;
+use anvildev\simpleform\helpers\JumpResolver;
+use anvildev\simpleform\integrations\support\SubmissionValues;
+use anvildev\simpleform\models\Settings;
+use anvildev\simpleform\Plugin;
+use anvildev\simpleform\web\assets\form\FormAsset;
 use Craft;
 use craft\helpers\Template;
 use craft\helpers\UrlHelper;
 use craft\web\View;
-use fabianhaef\simpleform\elements\Form;
-use fabianhaef\simpleform\events\ModifyRenderContextEvent;
-use fabianhaef\simpleform\fields\FileFieldType;
-use fabianhaef\simpleform\helpers\FieldQueryHelper;
-use fabianhaef\simpleform\helpers\FormRows;
-use fabianhaef\simpleform\helpers\FormScreens;
-use fabianhaef\simpleform\helpers\FormSteps;
-use fabianhaef\simpleform\helpers\JumpResolver;
-use fabianhaef\simpleform\integrations\support\SubmissionValues;
-use fabianhaef\simpleform\models\Settings;
-use fabianhaef\simpleform\Plugin;
-use fabianhaef\simpleform\web\assets\form\FormAsset;
 use Twig\Markup;
 use yii\base\Component;
 
@@ -188,12 +188,12 @@ class FormRenderService extends Component
      * edit token. Server-side authorization (allowEditing + window + token/owner)
      * is re-checked on submit — this only renders the UI.
      *
-     * @param \fabianhaef\simpleform\elements\Submission $submission the submission to edit
+     * @param \anvildev\simpleform\elements\Submission $submission the submission to edit
      * @param array<string, mixed> $options `token` (string) for the anonymous path; `submitText`
      * @return string the edit-form markup, or an HTML comment when editing is disabled
      * @throws \Throwable from the underlying View render
      */
-    public function renderEditForm(\fabianhaef\simpleform\elements\Submission $submission, array $options = []): string
+    public function renderEditForm(\anvildev\simpleform\elements\Submission $submission, array $options = []): string
     {
         $form = $submission->getForm();
         if (!$form instanceof Form || !$form->allowEditing) {

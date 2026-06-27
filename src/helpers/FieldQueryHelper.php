@@ -1,6 +1,6 @@
 <?php
 
-namespace fabianhaef\simpleform\helpers;
+namespace anvildev\simpleform\helpers;
 
 use Craft;
 use craft\db\Query;

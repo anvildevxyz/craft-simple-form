@@ -1,8 +1,8 @@
 <?php
 
-namespace fabianhaef\simpleform\tests\unit;
+namespace anvildev\simpleform\tests\unit;
 
-use fabianhaef\simpleform\fields\CalculationFieldType;
+use anvildev\simpleform\fields\CalculationFieldType;
 use PHPUnit\Framework\TestCase;
 
 /**

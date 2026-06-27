@@ -1,8 +1,8 @@
 <?php
 
-namespace fabianhaef\simpleform\tests\unit;
+namespace anvildev\simpleform\tests\unit;
 
-use fabianhaef\simpleform\helpers\SignaturePng;
+use anvildev\simpleform\helpers\SignaturePng;
 use PHPUnit\Framework\TestCase;
 
 /**

@@ -1,12 +1,12 @@
 <?php
 
-namespace fabianhaef\simpleform\tests\integration;
+namespace anvildev\simpleform\tests\integration;
 
+use anvildev\simpleform\fields\SignatureFieldType;
+use anvildev\simpleform\Plugin;
+use anvildev\simpleform\services\AssetUploadService;
 use Craft;
 use craft\db\Query;
-use fabianhaef\simpleform\fields\SignatureFieldType;
-use fabianhaef\simpleform\Plugin;
-use fabianhaef\simpleform\services\AssetUploadService;
 
 /**
  * #129 — Signature field: the Craft-bound validation messages, the data-URL →
@@ -64,7 +64,7 @@ class SignatureFieldTest extends SimpleFormTestCase
 
         // Capture the staged file's bytes (the service deletes the temp file
         // after the call) so we can assert it is a PNG.
-        $stub = new class extends AssetUploadService {
+        $stub = new class() extends AssetUploadService {
             public string $bytes = '';
             public string $filename = '';
             public function saveTempFiles(array $files, array $fieldConfig): array
@@ -102,7 +102,7 @@ class SignatureFieldTest extends SimpleFormTestCase
         $form = $this->createForm('Waiver Empty', 'waiver_empty');
         $sigId = $this->createField($form->id, 'signature', 'sig', 'Signature', true);
 
-        $stub = new class extends AssetUploadService {
+        $stub = new class() extends AssetUploadService {
             public bool $saveCalled = false;
             public function saveTempFiles(array $files, array $fieldConfig): array
             {
@@ -132,7 +132,7 @@ class SignatureFieldTest extends SimpleFormTestCase
         $form = $this->createForm('Waiver Junk', 'waiver_junk');
         $sigId = $this->createField($form->id, 'signature', 'sig', 'Signature', true);
 
-        $stub = new class extends AssetUploadService {
+        $stub = new class() extends AssetUploadService {
             public bool $saveCalled = false;
             public function saveTempFiles(array $files, array $fieldConfig): array
             {
@@ -166,7 +166,7 @@ class SignatureFieldTest extends SimpleFormTestCase
         $requiredTextId = $this->createField($form->id, 'text', 'name', 'Name', true);
         $sigId = $this->createField($form->id, 'signature', 'sig', 'Signature');
 
-        $stub = new class extends AssetUploadService {
+        $stub = new class() extends AssetUploadService {
             /** @var list<int> */
             public array $deleted = [];
             public function saveTempFiles(array $files, array $fieldConfig): array

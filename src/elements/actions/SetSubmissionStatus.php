@@ -1,12 +1,12 @@
 <?php
 
-namespace fabianhaef\simpleform\elements\actions;
+namespace anvildev\simpleform\elements\actions;
 
+use anvildev\simpleform\elements\SubmissionStatus;
+use anvildev\simpleform\Plugin;
 use Craft;
 use craft\base\ElementAction;
 use craft\elements\db\ElementQueryInterface;
-use fabianhaef\simpleform\elements\SubmissionStatus;
-use fabianhaef\simpleform\Plugin;
 
 /**
  * Bulk-set the read status on selected submissions from the element index (#109).

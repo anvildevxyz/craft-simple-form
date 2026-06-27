@@ -1,8 +1,8 @@
 <?php
 
-namespace fabianhaef\simpleform\tests\unit;
+namespace anvildev\simpleform\tests\unit;
 
-use fabianhaef\simpleform\helpers\ConditionalEvaluator;
+use anvildev\simpleform\helpers\ConditionalEvaluator;
 use PHPUnit\Framework\TestCase;
 
 /**

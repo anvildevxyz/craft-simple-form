@@ -1,9 +1,8 @@
 <?php
 
-namespace fabianhaef\simpleform\tests\unit;
+namespace anvildev\simpleform\tests\unit;
 
 use PHPUnit\Framework\TestCase;
-use ReflectionClass;
 
 class MultiSiteTranslationTest extends TestCase
 {

@@ -1,6 +1,6 @@
 <?php
 
-namespace fabianhaef\simpleform\mcp;
+namespace anvildev\simpleform\mcp;
 
 /**
  * A single MCP access token as persisted in plugin settings.

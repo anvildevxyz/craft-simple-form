@@ -1,6 +1,6 @@
 <?php
 
-namespace fabianhaef\simpleform\web\assets\cp;
+namespace anvildev\simpleform\web\assets\cp;
 
 use craft\web\AssetBundle;
 use craft\web\assets\cp\CpAsset;

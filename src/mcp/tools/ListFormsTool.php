@@ -1,9 +1,9 @@
 <?php
 
-namespace fabianhaef\simpleform\mcp\tools;
+namespace anvildev\simpleform\mcp\tools;
 
-use fabianhaef\simpleform\elements\Form;
-use fabianhaef\simpleform\mcp\Scopes;
+use anvildev\simpleform\elements\Form;
+use anvildev\simpleform\mcp\Scopes;
 
 /**
  * MCP tool: list the plugin's forms (id, handle, name, field count).

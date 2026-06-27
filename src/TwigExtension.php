@@ -1,6 +1,6 @@
 <?php
 
-namespace fabianhaef\simpleform;
+namespace anvildev\simpleform;
 
 use Twig\Extension\AbstractExtension;
 use Twig\TwigFunction;
@@ -8,7 +8,7 @@ use Twig\TwigFunction;
 /**
  * Registers the `{{ simpleForm(handle, options) }}` Twig function.
  *
- * Rendering is delegated to {@see \fabianhaef\simpleform\services\FormRenderService},
+ * Rendering is delegated to {@see \anvildev\simpleform\services\FormRenderService},
  * which resolves the form's (overridable) Twig theme. With no custom template
  * path configured the output is identical to the built-in default theme.
  *

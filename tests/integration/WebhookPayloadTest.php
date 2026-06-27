@@ -1,10 +1,10 @@
 <?php
 
-namespace fabianhaef\simpleform\tests\integration;
+namespace anvildev\simpleform\tests\integration;
 
+use anvildev\simpleform\elements\Submission;
+use anvildev\simpleform\integrations\WebhookIntegration;
 use Craft;
-use fabianhaef\simpleform\elements\Submission;
-use fabianhaef\simpleform\integrations\WebhookIntegration;
 
 /**
  * Payload construction needs a real form (id -> handle resolution), so it lives

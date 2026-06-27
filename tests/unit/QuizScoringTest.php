@@ -1,8 +1,8 @@
 <?php
 
-namespace fabianhaef\simpleform\tests\unit;
+namespace anvildev\simpleform\tests\unit;
 
-use fabianhaef\simpleform\services\QuizScoringService;
+use anvildev\simpleform\services\QuizScoringService;
 use PHPUnit\Framework\TestCase;
 
 /**

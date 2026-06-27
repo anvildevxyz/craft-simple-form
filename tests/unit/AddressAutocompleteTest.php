@@ -1,8 +1,8 @@
 <?php
 
-namespace fabianhaef\simpleform\tests\unit;
+namespace anvildev\simpleform\tests\unit;
 
-use fabianhaef\simpleform\fields\AddressFieldType;
+use anvildev\simpleform\fields\AddressFieldType;
 use PHPUnit\Framework\TestCase;
 
 /**

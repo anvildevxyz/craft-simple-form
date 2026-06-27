@@ -1,12 +1,12 @@
 <?php
 
-namespace fabianhaef\simpleform\tests\integration;
+namespace anvildev\simpleform\tests\integration;
 
+use anvildev\simpleform\elements\Form;
 use Craft;
 use craft\enums\PropagationMethod;
 use craft\models\Site;
 use craft\models\SiteGroup;
-use fabianhaef\simpleform\elements\Form;
 
 /**
  * A localized Form propagates across sites; per-site content (title/description)

@@ -1,14 +1,14 @@
 <?php
 
-namespace fabianhaef\simpleform\tests\integration;
+namespace anvildev\simpleform\tests\integration;
 
+use anvildev\simpleform\elements\Submission;
+use anvildev\simpleform\Plugin;
+use anvildev\simpleform\services\SubmissionService;
 use Craft;
 use craft\db\Query;
 use craft\elements\User;
 use craft\helpers\StringHelper;
-use fabianhaef\simpleform\elements\Submission;
-use fabianhaef\simpleform\Plugin;
-use fabianhaef\simpleform\services\SubmissionService;
 
 /**
  * Server-side capture of Hidden fields (#124) through the real submission entry
@@ -107,7 +107,7 @@ class HiddenFieldSubmissionTest extends SimpleFormTestCase
      * @param array<int, mixed> $valuesByFieldId
      * @return array{submission: Submission|null, errors: array<string, mixed>|null}
      */
-    private function submit(\fabianhaef\simpleform\elements\Form $form, array $valuesByFieldId, ?int $userId = null): array
+    private function submit(\anvildev\simpleform\elements\Form $form, array $valuesByFieldId, ?int $userId = null): array
     {
         return $this->submissionService()->submit($form, $valuesByFieldId, [
             'honeypot' => '',

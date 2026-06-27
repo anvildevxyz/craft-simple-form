@@ -1,12 +1,12 @@
 <?php
 
-namespace fabianhaef\simpleform\tests\integration;
+namespace anvildev\simpleform\tests\integration;
 
+use anvildev\simpleform\elements\Form;
 use Craft;
 use craft\enums\PropagationMethod;
 use craft\models\Site;
 use craft\models\SiteGroup;
-use fabianhaef\simpleform\elements\Form;
 
 /**
  * Storage round-trip for the post-submit columns (#133): the 5 new properties

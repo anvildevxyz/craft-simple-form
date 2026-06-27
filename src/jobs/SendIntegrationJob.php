@@ -1,16 +1,16 @@
 <?php
 
-namespace fabianhaef\simpleform\jobs;
+namespace anvildev\simpleform\jobs;
 
+use anvildev\simpleform\elements\Submission;
+use anvildev\simpleform\Plugin;
 use Craft;
 use craft\queue\BaseJob;
-use fabianhaef\simpleform\elements\Submission;
-use fabianhaef\simpleform\Plugin;
 use yii\queue\RetryableJobInterface;
 
 /**
  * Dispatches one outbound integration for one submission, off the queue. Pushed
- * by {@see \fabianhaef\simpleform\services\IntegrationsService::dispatchForSubmission()}
+ * by {@see \anvildev\simpleform\services\IntegrationsService::dispatchForSubmission()}
  * so a slow/failing third party never blocks the visitor's submit.
  *
  * A failed attempt throws so the queue retries (up to {@see canRetry()}); each

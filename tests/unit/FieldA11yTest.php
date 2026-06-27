@@ -1,10 +1,10 @@
 <?php
 
-namespace fabianhaef\simpleform\tests\unit;
+namespace anvildev\simpleform\tests\unit;
 
-use fabianhaef\simpleform\fields\CheckboxFieldType;
-use fabianhaef\simpleform\fields\RadioFieldType;
-use fabianhaef\simpleform\fields\TextFieldType;
+use anvildev\simpleform\fields\CheckboxFieldType;
+use anvildev\simpleform\fields\RadioFieldType;
+use anvildev\simpleform\fields\TextFieldType;
 use PHPUnit\Framework\TestCase;
 
 /**

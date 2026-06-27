@@ -1,14 +1,14 @@
 <?php
 
-namespace fabianhaef\simpleform\captcha;
+namespace anvildev\simpleform\captcha;
 
-use fabianhaef\simpleform\models\Settings;
+use anvildev\simpleform\models\Settings;
 
 /**
  * A captcha provider: renders the frontend widget and verifies the response
  * server-side. Implementations let alternative captchas (Turnstile, hCaptcha,
  * …) slot in without touching the submit path or the form renderer — the
- * {@see \fabianhaef\simpleform\services\CaptchaService} and Twig renderer
+ * {@see \anvildev\simpleform\services\CaptchaService} and Twig renderer
  * delegate to the selected provider.
  */
 interface CaptchaProviderInterface

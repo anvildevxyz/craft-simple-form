@@ -1,10 +1,10 @@
 <?php
 
-namespace fabianhaef\simpleform\services;
+namespace anvildev\simpleform\services;
 
+use anvildev\simpleform\elements\Submission;
 use Craft;
 use craft\helpers\Db;
-use fabianhaef\simpleform\elements\Submission;
 use yii\base\Component;
 
 /**

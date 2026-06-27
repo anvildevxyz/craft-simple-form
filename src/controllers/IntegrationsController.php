@@ -1,15 +1,15 @@
 <?php
 
-namespace fabianhaef\simpleform\controllers;
+namespace anvildev\simpleform\controllers;
 
+use anvildev\simpleform\Editions;
+use anvildev\simpleform\elements\Submission;
+use anvildev\simpleform\helpers\SimpleFormPermissions;
+use anvildev\simpleform\jobs\SendIntegrationJob;
+use anvildev\simpleform\models\IntegrationModel;
+use anvildev\simpleform\Plugin;
 use Craft;
 use craft\web\Controller;
-use fabianhaef\simpleform\Editions;
-use fabianhaef\simpleform\elements\Submission;
-use fabianhaef\simpleform\helpers\SimpleFormPermissions;
-use fabianhaef\simpleform\jobs\SendIntegrationJob;
-use fabianhaef\simpleform\models\IntegrationModel;
-use fabianhaef\simpleform\Plugin;
 use yii\web\NotFoundHttpException;
 use yii\web\Response;
 
@@ -38,7 +38,7 @@ class IntegrationsController extends Controller
         ]);
     }
 
-    private function service(): \fabianhaef\simpleform\services\IntegrationsService
+    private function service(): \anvildev\simpleform\services\IntegrationsService
     {
         return Plugin::getInstance()->getIntegrations();
     }
@@ -49,7 +49,7 @@ class IntegrationsController extends Controller
      *
      * @return array<string, string>
      */
-    private function availableTypesFor(\fabianhaef\simpleform\services\IntegrationTypeRegistry $registry): array
+    private function availableTypesFor(\anvildev\simpleform\services\IntegrationTypeRegistry $registry): array
     {
         $all = $registry->getAllTypes();
         if (Editions::isPro()) {
@@ -59,7 +59,7 @@ class IntegrationsController extends Controller
         return array_intersect_key($all, array_flip(Editions::SOLO_INTEGRATIONS));
     }
 
-    private function proIntegrationMessage(?\fabianhaef\simpleform\integrations\IntegrationTypeInterface $type): string
+    private function proIntegrationMessage(?\anvildev\simpleform\integrations\IntegrationTypeInterface $type): string
     {
         return Craft::t('simple-form', 'The {type} integration requires the Pro edition.', [
             'type' => $type !== null ? $type::displayName() : Craft::t('simple-form', 'selected'),

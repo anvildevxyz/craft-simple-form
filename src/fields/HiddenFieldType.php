@@ -1,10 +1,10 @@
 <?php
 
-namespace fabianhaef\simpleform\fields;
+namespace anvildev\simpleform\fields;
 
+use anvildev\simpleform\helpers\HiddenValueResolver;
 use Craft;
 use craft\elements\User;
-use fabianhaef\simpleform\helpers\HiddenValueResolver;
 
 /**
  * Hidden field (#124). A non-visible field whose value is populated at render

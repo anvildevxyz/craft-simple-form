@@ -1,6 +1,6 @@
 <?php
 
-namespace fabianhaef\simpleform\mcp\resources;
+namespace anvildev\simpleform\mcp\resources;
 
 /**
  * Contract for an MCP resource provider — a family of read-only resources
@@ -9,7 +9,7 @@ namespace fabianhaef\simpleform\mcp\resources;
  *
  * Resources let an agent read plugin state without a tool round-trip. Each
  * provider declares the single scope a token must hold to see and read its
- * resources; the dispatcher ({@see \fabianhaef\simpleform\mcp\McpServer})
+ * resources; the dispatcher ({@see \anvildev\simpleform\mcp\McpServer})
  * enforces it BOTH when listing (scope-aware visibility) and when reading
  * (deny-by-default) — for resources, hiding an out-of-scope URI is part of the
  * privacy boundary, not merely cosmetic.
@@ -17,7 +17,7 @@ namespace fabianhaef\simpleform\mcp\resources;
  * Resource contents reuse the same presenters/serialisation as the tool layer
  * so a resource and the equivalent tool never disagree about the schema.
  *
- * @phpstan-import-type McpError from \fabianhaef\simpleform\mcp\tools\ToolInterface
+ * @phpstan-import-type McpError from \anvildev\simpleform\mcp\tools\ToolInterface
  * @phpstan-type ResourceDescriptor array{uri:string, name:string, mimeType:string, title?:string, description?:string}
  * @phpstan-type ResourceContentsEntry array{uri:string, mimeType:string, text:string}
  * @phpstan-type McpResourceContents array{contents:list<ResourceContentsEntry>}

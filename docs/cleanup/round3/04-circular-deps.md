@@ -1,6 +1,6 @@
 # Round 3 — 04 Circular Dependencies & Tangled Coupling
 
-Scope: full re-audit of `src/` (210 PHP files, namespace `fabianhaef\simpleform\`),
+Scope: full re-audit of `src/` (210 PHP files, namespace `anvildev\simpleform\`),
 covering the ~39 commits since `c5b8fe7` (payments #116, forms-as-code #218/#225/#226,
 dev events #219, JS hooks #220, make/* generators #222, tabbed editor, multi-field
 rows, Install-migration collapse, leanify passes). Research-only; no source touched.

@@ -1,10 +1,10 @@
 <?php
 
-namespace fabianhaef\simpleform\widgets;
+namespace anvildev\simpleform\widgets;
 
+use anvildev\simpleform\elements\Form;
+use anvildev\simpleform\helpers\SimpleFormPermissions;
 use Craft;
-use fabianhaef\simpleform\elements\Form;
-use fabianhaef\simpleform\helpers\SimpleFormPermissions;
 
 /**
  * Shared scaffolding for the submission dashboard widgets: the "Form" scope

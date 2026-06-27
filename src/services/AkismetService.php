@@ -1,15 +1,15 @@
 <?php
 
-namespace fabianhaef\simpleform\services;
+namespace anvildev\simpleform\services;
 
+use anvildev\simpleform\Editions;
+use anvildev\simpleform\elements\Form;
+use anvildev\simpleform\elements\Submission;
+use anvildev\simpleform\fields\EmailFieldType;
+use anvildev\simpleform\fields\TextFieldType;
+use anvildev\simpleform\Plugin;
 use Craft;
 use craft\helpers\App;
-use fabianhaef\simpleform\Editions;
-use fabianhaef\simpleform\elements\Form;
-use fabianhaef\simpleform\elements\Submission;
-use fabianhaef\simpleform\fields\EmailFieldType;
-use fabianhaef\simpleform\fields\TextFieldType;
-use fabianhaef\simpleform\Plugin;
 use GuzzleHttp\Client;
 use yii\base\Component;
 

@@ -1,6 +1,6 @@
 # 04 — Circular Dependencies & Tangled Coupling
 
-Scope: all of `src/` (222 internal classes, PSR-4 `fabianhaef\simpleform\`) plus the
+Scope: all of `src/` (222 internal classes, PSR-4 `anvildev\simpleform\`) plus the
 hand-written JS under `src/web/assets/*/dist/js/`. Research-only; no source modified.
 Re-run focused on the recently-shipped code (coupons, address autocomplete, workflow,
 conversational theme, payments #116, logic jumps #245, review-fix commit) but the whole

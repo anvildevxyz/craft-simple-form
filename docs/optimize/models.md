@@ -1,7 +1,7 @@
 # Optimisation audit — `src/models/`
 
 Veteran-PHP-optimiser pass over all 6 files in `src/models/` of the
-`fabianhaef\simpleform` plugin (PHP 8.3, Craft CMS 5). Research only — no source
+`anvildev\simpleform` plugin (PHP 8.3, Craft CMS 5). Research only — no source
 was modified.
 
 **Scope (files reviewed):**

@@ -1,15 +1,15 @@
 <?php
 
-namespace fabianhaef\simpleform\tests\integration;
+namespace anvildev\simpleform\tests\integration;
 
+use anvildev\simpleform\elements\Submission;
+use anvildev\simpleform\integrations\DispatchStatus;
+use anvildev\simpleform\models\IntegrationModel;
+use anvildev\simpleform\Plugin;
+use anvildev\simpleform\services\AssetUploadService;
 use Craft;
 use craft\db\Query;
 use craft\helpers\Db;
-use fabianhaef\simpleform\elements\Submission;
-use fabianhaef\simpleform\integrations\DispatchStatus;
-use fabianhaef\simpleform\models\IntegrationModel;
-use fabianhaef\simpleform\Plugin;
-use fabianhaef\simpleform\services\AssetUploadService;
 
 /**
  * Data-retention sweeps (#107): submission purge/anonymize + integration-log
@@ -90,7 +90,7 @@ class RetentionServiceTest extends SimpleFormTestCase
     /** A stub asset service that records which asset ids it was asked to delete. */
     private function recordingAssetStub(): AssetUploadService
     {
-        return new class extends AssetUploadService {
+        return new class() extends AssetUploadService {
             /** @var list<int> */
             public array $deleted = [];
             public function deleteAssets(int ...$ids): void

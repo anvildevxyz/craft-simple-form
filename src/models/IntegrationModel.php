@@ -1,6 +1,6 @@
 <?php
 
-namespace fabianhaef\simpleform\models;
+namespace anvildev\simpleform\models;
 
 use craft\base\Model;
 

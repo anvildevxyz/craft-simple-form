@@ -1,11 +1,11 @@
 <?php
 
-namespace fabianhaef\simpleform\tests\unit;
+namespace anvildev\simpleform\tests\unit;
 
-use fabianhaef\simpleform\fields\DividerFieldType;
-use fabianhaef\simpleform\fields\HeadingFieldType;
-use fabianhaef\simpleform\fields\HtmlFieldType;
-use fabianhaef\simpleform\fields\TextFieldType;
+use anvildev\simpleform\fields\DividerFieldType;
+use anvildev\simpleform\fields\HeadingFieldType;
+use anvildev\simpleform\fields\HtmlFieldType;
+use anvildev\simpleform\fields\TextFieldType;
 use PHPUnit\Framework\TestCase;
 
 /**

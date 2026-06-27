@@ -1,8 +1,8 @@
 <?php
 
-namespace fabianhaef\simpleform\tests\smoke;
+namespace anvildev\simpleform\tests\smoke;
 
-use fabianhaef\simpleform\Plugin;
+use anvildev\simpleform\Plugin;
 use SmokeTester;
 
 /**
@@ -59,7 +59,7 @@ class AddressAutocompleteSmokeCest extends BaseSmokeCest
     // PRIVATE METHODS
     // =========================================================================
 
-    private function addressForm(string $handle, bool $autocomplete): \fabianhaef\simpleform\elements\Form
+    private function addressForm(string $handle, bool $autocomplete): \anvildev\simpleform\elements\Form
     {
         $form = $this->createForm('Address', $handle);
         $config = $autocomplete ? ['enableAutocomplete' => true] : [];

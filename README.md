@@ -23,7 +23,7 @@ Craft CMS 5.x and PHP 8.2 or later.
 
 1. Install the plugin via Composer:
    ```bash
-   composer require fabianhaef/craft-simple-form
+   composer require anvildev/craft-simple-form
    ```
 
 2. Install the plugin in Craft:
@@ -55,7 +55,7 @@ Craft CMS 5.x and PHP 8.2 or later.
 ### Build Custom Forms (PHP API)
 
 ```php
-$form = \fabianhaef\simpleform\elements\Form::find()
+$form = \anvildev\simpleform\elements\Form::find()
     ->handle('contact')
     ->one();
 

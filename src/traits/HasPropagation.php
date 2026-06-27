@@ -1,6 +1,6 @@
 <?php
 
-namespace fabianhaef\simpleform\traits;
+namespace anvildev\simpleform\traits;
 
 use Craft;
 use craft\enums\PropagationMethod;

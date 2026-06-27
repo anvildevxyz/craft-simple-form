@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace fabianhaef\simpleform;
+namespace anvildev\simpleform;
 
 /**
  * Edition + capability gate — the single source of truth for what each edition
@@ -10,7 +10,7 @@ namespace fabianhaef\simpleform;
  *
  * This is deliberately NOT used to gate rendering, validation, or storage of
  * already-saved data: that path stays edition-blind (see
- * {@see \fabianhaef\simpleform\services\FieldTypeRegistry}) so a Pro form keeps
+ * {@see \anvildev\simpleform\services\FieldTypeRegistry}) so a Pro form keeps
  * working after a downgrade to Solo. The gate only governs adding/enabling new
  * Pro capabilities. See docs/launch/editions-implementation.md.
  *
@@ -160,7 +160,7 @@ final class Editions
 
     /**
      * Whether a field set spans more than one page (any field on `config.page`
-     * >= 2). Mirrors {@see \fabianhaef\simpleform\helpers\FormSteps}.
+     * >= 2). Mirrors {@see \anvildev\simpleform\helpers\FormSteps}.
      *
      * @param iterable<array<string, mixed>> $items
      */

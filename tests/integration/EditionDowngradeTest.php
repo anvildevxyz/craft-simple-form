@@ -1,10 +1,10 @@
 <?php
 
-namespace fabianhaef\simpleform\tests\integration;
+namespace anvildev\simpleform\tests\integration;
 
-use fabianhaef\simpleform\Editions;
-use fabianhaef\simpleform\Plugin;
-use fabianhaef\simpleform\TwigExtension;
+use anvildev\simpleform\Editions;
+use anvildev\simpleform\Plugin;
+use anvildev\simpleform\TwigExtension;
 
 /**
  * The edition gate governs *authoring*, never *runtime*: a form built on Pro
@@ -94,8 +94,8 @@ class EditionDowngradeTest extends SimpleFormTestCase
     {
         $this->requireCraft();
 
-        $audit = new \fabianhaef\simpleform\services\AuditService();
-        $pdf = new \fabianhaef\simpleform\services\PdfService();
+        $audit = new \anvildev\simpleform\services\AuditService();
+        $pdf = new \anvildev\simpleform\services\PdfService();
 
         $this->setEdition(Editions::SOLO);
 
@@ -105,8 +105,8 @@ class EditionDowngradeTest extends SimpleFormTestCase
         // The audit log is a no-op on Solo: logging adds no rows.
         $before = count($audit->recent(1000));
         $audit->log(
-            \fabianhaef\simpleform\services\AuditService::ACTION_FORM_SAVE,
-            \fabianhaef\simpleform\services\AuditService::TARGET_FORM,
+            \anvildev\simpleform\services\AuditService::ACTION_FORM_SAVE,
+            \anvildev\simpleform\services\AuditService::TARGET_FORM,
             1,
             'solo-noop',
         );

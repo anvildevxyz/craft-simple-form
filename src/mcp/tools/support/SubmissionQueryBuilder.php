@@ -1,10 +1,10 @@
 <?php
 
-namespace fabianhaef\simpleform\mcp\tools\support;
+namespace anvildev\simpleform\mcp\tools\support;
 
-use fabianhaef\simpleform\elements\db\SubmissionQuery;
-use fabianhaef\simpleform\elements\Form;
-use fabianhaef\simpleform\elements\Submission;
+use anvildev\simpleform\elements\db\SubmissionQuery;
+use anvildev\simpleform\elements\Form;
+use anvildev\simpleform\elements\Submission;
 
 /**
  * Builds a {@see SubmissionQuery} from the filter arguments shared by the
@@ -14,7 +14,7 @@ use fabianhaef\simpleform\elements\Submission;
  * Routes through the existing {@see Submission} element query — submissions are
  * read here, never written.
  *
- * @phpstan-import-type McpError from \fabianhaef\simpleform\mcp\tools\ToolInterface
+ * @phpstan-import-type McpError from \anvildev\simpleform\mcp\tools\ToolInterface
  */
 final class SubmissionQueryBuilder
 {

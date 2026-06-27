@@ -1,8 +1,8 @@
 <?php
 
-namespace fabianhaef\simpleform\tests\unit;
+namespace anvildev\simpleform\tests\unit;
 
-use fabianhaef\simpleform\services\DenylistService;
+use anvildev\simpleform\services\DenylistService;
 use PHPUnit\Framework\TestCase;
 use ReflectionMethod;
 

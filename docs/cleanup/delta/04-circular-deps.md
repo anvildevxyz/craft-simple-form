@@ -2,7 +2,7 @@
 
 Scope: PHP source changed since `c5b8fe7` (delta list per brief; WIP files
 read-only for context, never patched). Builds on `docs/cleanup/04-circular-deps.md`.
-Dependency graph mapped statically via `use fabianhaef\...` imports +
+Dependency graph mapped statically via `use anvildev\...` imports +
 `Plugin::getInstance()->getXxx()` locator calls + `new` instantiations. madge
 (JS) not applicable to PHP and not used.
 

@@ -1,18 +1,18 @@
 <?php
 
-namespace fabianhaef\simpleform\mcp\tools\support;
+namespace anvildev\simpleform\mcp\tools\support;
 
+use anvildev\simpleform\elements\Form;
+use anvildev\simpleform\Plugin;
+use anvildev\simpleform\services\FieldSyncService;
 use Craft;
 use craft\db\Query;
-use fabianhaef\simpleform\elements\Form;
-use fabianhaef\simpleform\Plugin;
-use fabianhaef\simpleform\services\FieldSyncService;
 
 /**
  * MCP-facing field add/edit/reorder/delete for the form-management tools.
  *
  * The structural-row + per-site label/helpText writes and cache invalidation are
- * shared with the CP field builder through {@see \fabianhaef\simpleform\services\FieldsService},
+ * shared with the CP field builder through {@see \anvildev\simpleform\services\FieldsService},
  * so an agent's field edits hit the exact same tables and cache the CP uses. This
  * class owns only the MCP-specific parts: arg validation, conditional-rule
  * sanitising, and the primary-site fallback when resolving a form's sites.
@@ -218,7 +218,7 @@ final class FieldOps
     /**
      * Site IDs the field should exist on, derived from the form's propagation
      * method, falling back to the primary site. Delegates to the shared
-     * {@see \fabianhaef\simpleform\services\FieldsService::supportedSiteIds()}.
+     * {@see \anvildev\simpleform\services\FieldsService::supportedSiteIds()}.
      *
      * @return list<int>
      */

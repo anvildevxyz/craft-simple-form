@@ -1,6 +1,6 @@
 <?php
 
-namespace fabianhaef\simpleform\pdf;
+namespace anvildev\simpleform\pdf;
 
 use Dompdf\Dompdf;
 use Dompdf\Options;

@@ -1,10 +1,10 @@
 <?php
 
-namespace fabianhaef\simpleform\tests\smoke;
+namespace anvildev\simpleform\tests\smoke;
 
+use anvildev\simpleform\elements\Submission;
 use Craft;
 use craft\models\GqlSchema;
-use fabianhaef\simpleform\elements\Submission;
 use SmokeTester;
 
 /**

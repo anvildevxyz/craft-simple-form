@@ -5,7 +5,7 @@
     ? 'Edit Coupon'|t('simple-form')
     : 'New Coupon'|t('simple-form') %}
 {% set selectedSubnavItem = 'settings' %}
-{% do craft.app.view.registerAssetBundle('fabianhaef\\simpleform\\web\\assets\\cp\\SimpleFormCpAsset') %}
+{% do craft.app.view.registerAssetBundle('anvildev\\simpleform\\web\\assets\\cp\\SimpleFormCpAsset') %}
 
 {% set crumbs = [
     { label: 'Simple Form'|t('simple-form'), url: cpUrl('simple-form/forms') },

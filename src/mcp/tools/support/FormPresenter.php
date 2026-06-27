@@ -1,15 +1,15 @@
 <?php
 
-namespace fabianhaef\simpleform\mcp\tools\support;
+namespace anvildev\simpleform\mcp\tools\support;
 
-use fabianhaef\simpleform\elements\Form;
+use anvildev\simpleform\elements\Form;
 
 /**
  * Shapes {@see Form} elements and their resolved field sets into the structured
  * JSON returned by the form-management MCP tools, so every tool reports a form
  * the same way.
  *
- * @phpstan-import-type McpError from \fabianhaef\simpleform\mcp\tools\ToolInterface
+ * @phpstan-import-type McpError from \anvildev\simpleform\mcp\tools\ToolInterface
  */
 final class FormPresenter
 {

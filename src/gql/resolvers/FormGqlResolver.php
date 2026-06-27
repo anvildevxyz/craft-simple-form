@@ -1,18 +1,18 @@
 <?php
 
-namespace fabianhaef\simpleform\gql\resolvers;
+namespace anvildev\simpleform\gql\resolvers;
 
+use anvildev\simpleform\elements\Form;
+use anvildev\simpleform\fields\ElementRelationFieldType;
+use anvildev\simpleform\fields\OpinionScaleFieldType;
+use anvildev\simpleform\fields\RatingFieldType;
+use anvildev\simpleform\helpers\ConditionalEvaluator;
+use anvildev\simpleform\helpers\FieldQueryHelper;
+use anvildev\simpleform\Plugin;
 use craft\base\ElementInterface;
-use fabianhaef\simpleform\elements\Form;
-use fabianhaef\simpleform\fields\ElementRelationFieldType;
-use fabianhaef\simpleform\fields\OpinionScaleFieldType;
-use fabianhaef\simpleform\fields\RatingFieldType;
-use fabianhaef\simpleform\helpers\ConditionalEvaluator;
-use fabianhaef\simpleform\helpers\FieldQueryHelper;
-use fabianhaef\simpleform\Plugin;
 
 /**
- * Transforms a Form element into the array shape consumed by {@see \fabianhaef\simpleform\gql\types\FormType}.
+ * Transforms a Form element into the array shape consumed by {@see \anvildev\simpleform\gql\types\FormType}.
  *
  * Field resolution reuses the same single-source-of-truth field set the CP and
  * Twig rendering use (via FormStructureService → FieldQueryHelper), so the
@@ -62,7 +62,7 @@ final class FormGqlResolver
     }
 
     /**
-     * Map a resolved field row (see {@see \fabianhaef\simpleform\helpers\FieldQueryHelper})
+     * Map a resolved field row (see {@see \anvildev\simpleform\helpers\FieldQueryHelper})
      * to the GraphQL field shape.
      *
      * @param ResolvedFieldRow $row

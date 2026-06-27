@@ -1,22 +1,22 @@
 <?php
 
-namespace fabianhaef\simpleform\tests\smoke;
+namespace anvildev\simpleform\tests\smoke;
 
-use fabianhaef\simpleform\elements\Form;
-use fabianhaef\simpleform\Plugin;
+use anvildev\simpleform\elements\Form;
+use anvildev\simpleform\Plugin;
 use SmokeTester;
 
 /**
  * Form Rendering Smoke Tests (functional).
  *
  * Exercises the public form render path end-to-end through the real
- * {@see \fabianhaef\simpleform\services\FormRenderService} the `simpleForm()`
+ * {@see \anvildev\simpleform\services\FormRenderService} the `simpleForm()`
  * Twig function delegates to: HTML structure, CSRF + honeypot, the hidden
  * `formHandle`, and per-field markup for every field type. Forms and fields are
  * seeded through the data layer (see {@see BaseSmokeCest}).
  *
  * The rendered string is a bare `<form>` — CSS/JS live in the registered
- * {@see \fabianhaef\simpleform\web\assets\form\FormAsset} bundle, not inline in
+ * {@see \anvildev\simpleform\web\assets\form\FormAsset} bundle, not inline in
  * the markup, unless the `inlineFormAssets` setting forces the escape hatch.
  *
  * @author Fabian Haefliger

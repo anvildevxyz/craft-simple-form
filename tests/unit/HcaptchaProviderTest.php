@@ -1,9 +1,9 @@
 <?php
 
-namespace fabianhaef\simpleform\tests\unit;
+namespace anvildev\simpleform\tests\unit;
 
-use fabianhaef\simpleform\captcha\HcaptchaProvider;
-use fabianhaef\simpleform\services\CaptchaProviderRegistry;
+use anvildev\simpleform\captcha\HcaptchaProvider;
+use anvildev\simpleform\services\CaptchaProviderRegistry;
 use PHPUnit\Framework\TestCase;
 
 class HcaptchaProviderTest extends TestCase

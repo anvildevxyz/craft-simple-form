@@ -1,9 +1,9 @@
 <?php
 
-namespace fabianhaef\simpleform\fields;
+namespace anvildev\simpleform\fields;
 
+use anvildev\simpleform\Plugin;
 use Craft;
-use fabianhaef\simpleform\Plugin;
 
 /**
  * Payment field (#116). Marks a form as requiring payment and defines the

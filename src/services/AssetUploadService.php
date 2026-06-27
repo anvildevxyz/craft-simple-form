@@ -1,6 +1,6 @@
 <?php
 
-namespace fabianhaef\simpleform\services;
+namespace anvildev\simpleform\services;
 
 use Craft;
 use craft\elements\Asset;

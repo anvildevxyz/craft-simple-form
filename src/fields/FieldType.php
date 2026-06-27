@@ -1,6 +1,6 @@
 <?php
 
-namespace fabianhaef\simpleform\fields;
+namespace anvildev\simpleform\fields;
 
 use Craft;
 
@@ -27,7 +27,7 @@ abstract class FieldType
      * Presentational/layout blocks (heading, divider, html) return false: they
      * render on the public form but are never validated, stored, or exported.
      * The rest of the pipeline keys off this one seam, so a non-input field
-     * never lands in {@see \fabianhaef\simpleform\elements\Submission::$data},
+     * never lands in {@see \anvildev\simpleform\elements\Submission::$data},
      * never produces a column, and can never block submission.
      */
     public function isInput(): bool
@@ -69,7 +69,7 @@ abstract class FieldType
      * submission `data` payload. Most field types store the value verbatim, so
      * the base is a passthrough; types that normalize (e.g. Phone, which stores
      * a `{raw, e164, country}` map) override this. Runs in
-     * {@see \fabianhaef\simpleform\services\SubmissionService::submit()} after
+     * {@see \anvildev\simpleform\services\SubmissionService::submit()} after
      * validation passes, so both the AJAX and GraphQL paths persist the same
      * normalized shape.
      */

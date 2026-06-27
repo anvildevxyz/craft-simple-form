@@ -1,12 +1,12 @@
 <?php
 
-namespace fabianhaef\simpleform\widgets;
+namespace anvildev\simpleform\widgets;
 
+use anvildev\simpleform\elements\Submission;
 use Craft;
 use craft\base\Widget;
 use craft\helpers\Cp;
 use craft\helpers\UrlHelper;
-use fabianhaef\simpleform\elements\Submission;
 
 /**
  * Dashboard widget: the most recent submissions for the current site, linking to

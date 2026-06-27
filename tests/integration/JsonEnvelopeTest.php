@@ -1,10 +1,10 @@
 <?php
 
-namespace fabianhaef\simpleform\tests\integration;
+namespace anvildev\simpleform\tests\integration;
 
+use anvildev\simpleform\controllers\SimpleFormControllerTrait;
+use anvildev\simpleform\Plugin;
 use craft\web\Controller;
-use fabianhaef\simpleform\controllers\SimpleFormControllerTrait;
-use fabianhaef\simpleform\Plugin;
 use yii\web\Response;
 
 /**

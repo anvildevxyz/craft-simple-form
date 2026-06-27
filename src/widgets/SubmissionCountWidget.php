@@ -1,12 +1,12 @@
 <?php
 
-namespace fabianhaef\simpleform\widgets;
+namespace anvildev\simpleform\widgets;
 
+use anvildev\simpleform\elements\Submission;
 use Craft;
 use craft\base\Widget;
 use craft\helpers\Cp;
 use craft\helpers\Db;
-use fabianhaef\simpleform\elements\Submission;
 
 /**
  * Dashboard widget: a submission count for the current site over a selectable
@@ -111,7 +111,7 @@ class SubmissionCountWidget extends Widget
         return (int) $this->buildCountQuery()->count();
     }
 
-    private function buildCountQuery(): \fabianhaef\simpleform\elements\db\SubmissionQuery
+    private function buildCountQuery(): \anvildev\simpleform\elements\db\SubmissionQuery
     {
         $query = Submission::find()->siteId(Craft::$app->getSites()->getCurrentSite()->id);
         if ($this->formId) {

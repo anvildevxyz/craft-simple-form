@@ -1,8 +1,8 @@
 <?php
 
-namespace fabianhaef\simpleform\tests\unit;
+namespace anvildev\simpleform\tests\unit;
 
-use fabianhaef\simpleform\integrations\support\SubmissionValues;
+use anvildev\simpleform\integrations\support\SubmissionValues;
 use PHPUnit\Framework\TestCase;
 
 /**

@@ -1,11 +1,11 @@
 <?php
 
-namespace fabianhaef\simpleform\tests\integration;
+namespace anvildev\simpleform\tests\integration;
 
+use anvildev\simpleform\Plugin;
+use anvildev\simpleform\TwigExtension;
 use Craft;
 use craft\db\Query;
-use fabianhaef\simpleform\Plugin;
-use fabianhaef\simpleform\TwigExtension;
 
 /**
  * #90 — multi-step forms: fields render grouped into ordered step containers,

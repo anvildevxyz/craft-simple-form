@@ -1,12 +1,12 @@
 <?php
 
-namespace fabianhaef\simpleform\tests\integration;
+namespace anvildev\simpleform\tests\integration;
 
+use anvildev\simpleform\elements\Form;
+use anvildev\simpleform\Plugin;
 use Craft;
 use craft\console\Controller as ConsoleController;
 use craft\console\controllers\UpController;
-use fabianhaef\simpleform\elements\Form;
-use fabianhaef\simpleform\Plugin;
 use yii\base\ActionEvent;
 use yii\base\Event;
 use yii\base\InlineAction;

@@ -1,11 +1,11 @@
 <?php
 
-namespace fabianhaef\simpleform\integrations\support;
+namespace anvildev\simpleform\integrations\support;
 
+use anvildev\simpleform\elements\Submission;
+use anvildev\simpleform\helpers\SafeUrl;
+use anvildev\simpleform\integrations\IntegrationResult;
 use Craft;
-use fabianhaef\simpleform\elements\Submission;
-use fabianhaef\simpleform\helpers\SafeUrl;
-use fabianhaef\simpleform\integrations\IntegrationResult;
 use GuzzleHttp\Client;
 use Psr\Http\Message\ResponseInterface;
 

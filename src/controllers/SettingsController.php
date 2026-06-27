@@ -1,13 +1,13 @@
 <?php
 
-namespace fabianhaef\simpleform\controllers;
+namespace anvildev\simpleform\controllers;
 
+use anvildev\simpleform\helpers\SimpleFormPermissions;
+use anvildev\simpleform\mcp\Scopes;
+use anvildev\simpleform\Plugin;
 use Craft;
 use craft\helpers\StringHelper;
 use craft\web\Controller;
-use fabianhaef\simpleform\helpers\SimpleFormPermissions;
-use fabianhaef\simpleform\mcp\Scopes;
-use fabianhaef\simpleform\Plugin;
 use yii\web\Response;
 
 class SettingsController extends Controller

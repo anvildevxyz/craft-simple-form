@@ -4,7 +4,7 @@
 {% set title = form.id ? 'Edit Form'|t('simple-form') : 'Create Form'|t('simple-form') %}
 {% set selectedSubnavItem = 'forms' %}
 {% set fullPageForm = true %}
-{% do craft.app.view.registerAssetBundle('fabianhaef\\simpleform\\web\\assets\\cp\\SimpleFormCpAsset') %}
+{% do craft.app.view.registerAssetBundle('anvildev\\simpleform\\web\\assets\\cp\\SimpleFormCpAsset') %}
 
 {% set crumbs = [
     { label: 'Simple Form'|t('simple-form'), url: cpUrl('simple-form/forms') },

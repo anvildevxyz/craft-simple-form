@@ -1,16 +1,16 @@
 <?php
 
-namespace fabianhaef\simpleform\tests\integration;
+namespace anvildev\simpleform\tests\integration;
 
+use anvildev\simpleform\elements\Form;
+use anvildev\simpleform\elements\Submission;
+use anvildev\simpleform\models\NotificationModel;
+use anvildev\simpleform\Plugin;
 use Craft;
 use craft\db\Query;
 use craft\enums\PropagationMethod;
 use craft\models\Site;
 use craft\models\SiteGroup;
-use fabianhaef\simpleform\elements\Form;
-use fabianhaef\simpleform\elements\Submission;
-use fabianhaef\simpleform\models\NotificationModel;
-use fabianhaef\simpleform\Plugin;
 
 /**
  * Deep-copy of a form (#138): duplicate produces an independent form with new
@@ -103,7 +103,7 @@ class FormCloneServiceTest extends SimpleFormTestCase
         $source = $this->createForm('Lead', 'lead', 'Lead');
         $this->createField((int) $source->id, 'email', 'email', 'Email', true);
 
-        $integration = new \fabianhaef\simpleform\models\IntegrationModel();
+        $integration = new \anvildev\simpleform\models\IntegrationModel();
         $integration->type = 'webhook';
         $integration->name = 'Hook';
         $integration->settings = ['url' => 'https://example.test/hook'];

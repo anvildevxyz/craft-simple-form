@@ -1,12 +1,12 @@
 <?php
 
-namespace fabianhaef\simpleform\tests\integration;
+namespace anvildev\simpleform\tests\integration;
 
+use anvildev\simpleform\elements\Form;
+use anvildev\simpleform\events\PartialCaptureEvent;
+use anvildev\simpleform\Plugin;
 use Craft;
 use craft\db\Query;
-use fabianhaef\simpleform\elements\Form;
-use fabianhaef\simpleform\events\PartialCaptureEvent;
-use fabianhaef\simpleform\Plugin;
 use yii\base\Event;
 
 /**
@@ -67,7 +67,7 @@ class PartialGovernanceTest extends SimpleFormTestCase
         Plugin::getInstance()->getFormStructure()->invalidate((int) $form->id);
 
         $captured = null;
-        $handler = static function (PartialCaptureEvent $e) use (&$captured): void {
+        $handler = static function(PartialCaptureEvent $e) use (&$captured): void {
             $captured = $e;
         };
         Event::on(Plugin::class, Plugin::EVENT_PARTIAL_CAPTURED, $handler);

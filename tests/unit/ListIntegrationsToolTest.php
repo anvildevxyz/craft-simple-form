@@ -1,10 +1,10 @@
 <?php
 
-namespace fabianhaef\simpleform\tests\unit;
+namespace anvildev\simpleform\tests\unit;
 
-use fabianhaef\simpleform\gql\types\FormIntegrationType;
-use fabianhaef\simpleform\mcp\Scopes;
-use fabianhaef\simpleform\mcp\tools\ListIntegrationsTool;
+use anvildev\simpleform\gql\types\FormIntegrationType;
+use anvildev\simpleform\mcp\Scopes;
+use anvildev\simpleform\mcp\tools\ListIntegrationsTool;
 use PHPUnit\Framework\TestCase;
 
 class ListIntegrationsToolTest extends TestCase

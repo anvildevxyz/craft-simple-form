@@ -2,7 +2,7 @@
 
 {% set title = 'Submissions'|t('simple-form') %}
 {% set selectedSubnavItem = 'submissions' %}
-{% do craft.app.view.registerAssetBundle('fabianhaef\\simpleform\\web\\assets\\cp\\SimpleFormCpAsset') %}
+{% do craft.app.view.registerAssetBundle('anvildev\\simpleform\\web\\assets\\cp\\SimpleFormCpAsset') %}
 
 {% block actionButton %}
     <a class="btn" href="{{ cpUrl('simple-form/submissions/analytics') }}">{{ 'Analytics'|t('simple-form') }}</a>

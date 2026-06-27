@@ -1,10 +1,10 @@
 <?php
 
-namespace fabianhaef\simpleform\mcp\tools;
+namespace anvildev\simpleform\mcp\tools;
 
-use fabianhaef\simpleform\mcp\Scopes;
-use fabianhaef\simpleform\mcp\tools\support\FormPresenter;
-use fabianhaef\simpleform\Plugin;
+use anvildev\simpleform\mcp\Scopes;
+use anvildev\simpleform\mcp\tools\support\FormPresenter;
+use anvildev\simpleform\Plugin;
 
 /**
  * MCP tool: list the outbound integrations configured on a form, with recent

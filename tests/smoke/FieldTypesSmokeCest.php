@@ -1,9 +1,9 @@
 <?php
 
-namespace fabianhaef\simpleform\tests\smoke;
+namespace anvildev\simpleform\tests\smoke;
 
+use anvildev\simpleform\elements\Submission;
 use craft\db\Query;
-use fabianhaef\simpleform\elements\Submission;
 use SmokeTester;
 
 /**

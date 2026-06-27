@@ -1,11 +1,11 @@
 <?php
 
-namespace fabianhaef\simpleform\mcp;
+namespace anvildev\simpleform\mcp;
 
+use anvildev\simpleform\models\Settings;
+use anvildev\simpleform\Plugin;
 use Craft;
 use craft\helpers\StringHelper;
-use fabianhaef\simpleform\models\Settings;
-use fabianhaef\simpleform\Plugin;
 
 /**
  * Generates, hashes, stores, and validates MCP bearer tokens.

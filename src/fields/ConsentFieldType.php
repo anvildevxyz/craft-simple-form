@@ -1,10 +1,10 @@
 <?php
 
-namespace fabianhaef\simpleform\fields;
+namespace anvildev\simpleform\fields;
 
+use anvildev\simpleform\helpers\ConsentText;
 use Craft;
 use craft\helpers\DateTimeHelper;
-use fabianhaef\simpleform\helpers\ConsentText;
 
 /**
  * Agree / Consent field (#125, GDPR). A single, normally-required checkbox with

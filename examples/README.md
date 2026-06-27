@@ -21,7 +21,7 @@ The PHP examples carry the registration snippet in their class doc-block. In
 short, from your own plugin/module `init()`:
 
 ```php
-use fabianhaef\simpleform\Plugin;
+use anvildev\simpleform\Plugin;
 use yii\base\Event;
 
 Event::on(

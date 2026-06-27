@@ -1,6 +1,6 @@
 <?php
 
-namespace fabianhaef\simpleform\integrations;
+namespace anvildev\simpleform\integrations;
 
 /**
  * Immutable outcome of a single integration dispatch attempt. Connectors return

@@ -1,8 +1,8 @@
 <?php
 
-namespace fabianhaef\simpleform\tests\unit;
+namespace anvildev\simpleform\tests\unit;
 
-use fabianhaef\simpleform\Editions;
+use anvildev\simpleform\Editions;
 use PHPUnit\Framework\TestCase;
 
 /**

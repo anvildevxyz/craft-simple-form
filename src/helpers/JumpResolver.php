@@ -1,6 +1,6 @@
 <?php
 
-namespace fabianhaef\simpleform\helpers;
+namespace anvildev\simpleform\helpers;
 
 /**
  * Logic jumps (#245): page-level branching for multi-step + conversational

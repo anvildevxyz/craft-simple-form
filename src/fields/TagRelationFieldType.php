@@ -1,6 +1,6 @@
 <?php
 
-namespace fabianhaef\simpleform\fields;
+namespace anvildev\simpleform\fields;
 
 use craft\elements\db\ElementQueryInterface;
 use craft\elements\db\TagQuery;

@@ -1,12 +1,12 @@
 <?php
 
-namespace fabianhaef\simpleform\tests\integration;
+namespace anvildev\simpleform\tests\integration;
 
+use anvildev\simpleform\elements\Submission;
+use anvildev\simpleform\fields\FieldType;
+use anvildev\simpleform\models\FieldModel;
+use anvildev\simpleform\Plugin;
 use Craft;
-use fabianhaef\simpleform\elements\Submission;
-use fabianhaef\simpleform\fields\FieldType;
-use fabianhaef\simpleform\models\FieldModel;
-use fabianhaef\simpleform\Plugin;
 
 /**
  * Locks in the failure-mode changes from issues #152 and #153: genuine errors

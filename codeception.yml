@@ -20,7 +20,7 @@ modules:
       # here too would run it twice and collide on the existing tables).
       plugins:
         - handle: simple-form
-          class: fabianhaef\simpleform\Plugin
+          class: anvildev\simpleform\Plugin
       cleanup: true
       transaction: true
       dbSetup:

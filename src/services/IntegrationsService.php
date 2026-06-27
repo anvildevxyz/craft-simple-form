@@ -1,19 +1,19 @@
 <?php
 
-namespace fabianhaef\simpleform\services;
+namespace anvildev\simpleform\services;
 
+use anvildev\simpleform\elements\Submission;
+use anvildev\simpleform\events\BeforeIntegrationDispatchEvent;
+use anvildev\simpleform\integrations\DispatchStatus;
+use anvildev\simpleform\integrations\IntegrationResult;
+use anvildev\simpleform\jobs\SendIntegrationJob;
+use anvildev\simpleform\models\IntegrationModel;
+use anvildev\simpleform\Plugin;
 use Craft;
 use craft\helpers\App;
 use craft\helpers\Db;
 use craft\helpers\Json;
 use craft\helpers\StringHelper;
-use fabianhaef\simpleform\elements\Submission;
-use fabianhaef\simpleform\events\BeforeIntegrationDispatchEvent;
-use fabianhaef\simpleform\integrations\DispatchStatus;
-use fabianhaef\simpleform\integrations\IntegrationResult;
-use fabianhaef\simpleform\jobs\SendIntegrationJob;
-use fabianhaef\simpleform\models\IntegrationModel;
-use fabianhaef\simpleform\Plugin;
 use yii\base\Component;
 
 /**
@@ -320,7 +320,7 @@ class IntegrationsService extends Component
      * @param array<string, mixed> $settings
      * @return array<string, array<int, string>> attribute => errors (empty if valid)
      */
-    public function validateSettings(\fabianhaef\simpleform\integrations\IntegrationTypeInterface $type, array $settings): array
+    public function validateSettings(\anvildev\simpleform\integrations\IntegrationTypeInterface $type, array $settings): array
     {
         $rules = $type->defineSettingsRules();
 

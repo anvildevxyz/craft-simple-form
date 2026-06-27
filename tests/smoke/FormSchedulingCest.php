@@ -1,10 +1,10 @@
 <?php
 
-namespace fabianhaef\simpleform\tests\smoke;
+namespace anvildev\simpleform\tests\smoke;
 
+use anvildev\simpleform\elements\Form;
+use anvildev\simpleform\elements\Submission;
 use Craft;
-use fabianhaef\simpleform\elements\Form;
-use fabianhaef\simpleform\elements\Submission;
 use SmokeTester;
 
 /**
@@ -12,7 +12,7 @@ use SmokeTester;
  *
  * Exercises the public-facing behaviour of open/close dates and the submission
  * cap: the rendered form is replaced by the closed message (via the real
- * {@see \fabianhaef\simpleform\services\FormRenderService}), and a crafted
+ * {@see \anvildev\simpleform\services\FormRenderService}), and a crafted
  * submission to the shared service path is rejected server-side even when the
  * HTML form was never rendered. Forms and fields are seeded through the data
  * layer (see {@see BaseSmokeCest}).

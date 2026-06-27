@@ -1,13 +1,13 @@
 <?php
 
-namespace fabianhaef\simpleform\stencils;
+namespace anvildev\simpleform\stencils;
 
 /**
  * A built-in form starter: a translated display name/description, an ordered set
  * of fields in the field-builder/sync-item shape, and optional default
  * notifications. Stencils are pure data (no element rows, no project config);
- * {@see \fabianhaef\simpleform\services\FormCloneService::createFromStencil()}
- * instantiates one into a real {@see \fabianhaef\simpleform\elements\Form}.
+ * {@see \anvildev\simpleform\services\FormCloneService::createFromStencil()}
+ * instantiates one into a real {@see \anvildev\simpleform\elements\Form}.
  *
  * Notification recipients that read a form field declare their `recipient` as
  * the stencil's own field handle (e.g. the email field); the field is copied
@@ -33,7 +33,7 @@ class Stencil
 
     /**
      * Ordered field set in the sync-item shape consumed by
-     * {@see \fabianhaef\simpleform\services\FieldSyncService::sync()}:
+     * {@see \anvildev\simpleform\services\FieldSyncService::sync()}:
      * `{type, handle, label, required, helpText?, errorMessage?, config?}`.
      *
      * @var array<int,array<string,mixed>>

@@ -1,8 +1,8 @@
 <?php
 
-namespace fabianhaef\simpleform\captcha;
+namespace anvildev\simpleform\captcha;
 
-use fabianhaef\simpleform\models\Settings;
+use anvildev\simpleform\models\Settings;
 
 /**
  * hCaptcha provider. The widget injects its own `h-captcha-response` field;

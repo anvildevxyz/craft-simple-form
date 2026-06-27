@@ -1,9 +1,9 @@
 <?php
 
-namespace fabianhaef\simpleform\integrations;
+namespace anvildev\simpleform\integrations;
 
-use fabianhaef\simpleform\elements\Submission;
-use fabianhaef\simpleform\integrations\support\ApiConnector;
+use anvildev\simpleform\elements\Submission;
+use anvildev\simpleform\integrations\support\ApiConnector;
 
 /**
  * Shared base for email-marketing connectors (Mailchimp, ActiveCampaign) that

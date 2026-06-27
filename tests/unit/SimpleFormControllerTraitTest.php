@@ -1,9 +1,9 @@
 <?php
 
-namespace fabianhaef\simpleform\tests\unit;
+namespace anvildev\simpleform\tests\unit;
 
-use fabianhaef\simpleform\controllers\SimpleFormControllerTrait;
-use fabianhaef\simpleform\helpers\SimpleFormPermissions;
+use anvildev\simpleform\controllers\SimpleFormControllerTrait;
+use anvildev\simpleform\helpers\SimpleFormPermissions;
 use PHPUnit\Framework\TestCase;
 
 class SimpleFormControllerTraitTest extends TestCase

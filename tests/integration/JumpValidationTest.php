@@ -1,8 +1,8 @@
 <?php
 
-namespace fabianhaef\simpleform\tests\integration;
+namespace anvildev\simpleform\tests\integration;
 
-use fabianhaef\simpleform\Plugin;
+use anvildev\simpleform\Plugin;
 
 /**
  * #245 — logic-jump save validation through the real FieldSyncService::validate()

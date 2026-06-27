@@ -156,11 +156,11 @@ Implement `IntegrationTypeInterface` and register the class on
 `Plugin::EVENT_REGISTER_INTEGRATION_TYPES`:
 
 ```php
-use fabianhaef\simpleform\Plugin;
-use fabianhaef\simpleform\events\RegisterIntegrationTypesEvent;
-use fabianhaef\simpleform\integrations\IntegrationTypeInterface;
-use fabianhaef\simpleform\integrations\IntegrationResult;
-use fabianhaef\simpleform\elements\Submission;
+use anvildev\simpleform\Plugin;
+use anvildev\simpleform\events\RegisterIntegrationTypesEvent;
+use anvildev\simpleform\integrations\IntegrationTypeInterface;
+use anvildev\simpleform\integrations\IntegrationResult;
+use anvildev\simpleform\elements\Submission;
 use yii\base\Event;
 
 class MyConnector implements IntegrationTypeInterface

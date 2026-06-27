@@ -1,9 +1,9 @@
 <?php
 
-namespace fabianhaef\simpleform\fields;
+namespace anvildev\simpleform\fields;
 
+use anvildev\simpleform\helpers\DialCodes;
 use Craft;
-use fabianhaef\simpleform\helpers\DialCodes;
 
 /**
  * A telephone field (#123). Renders an `<input type="tel">`, optionally preceded

@@ -1,10 +1,10 @@
 <?php
 
-namespace fabianhaef\simpleform\tests\integration;
+namespace anvildev\simpleform\tests\integration;
 
+use anvildev\simpleform\elements\Form;
+use anvildev\simpleform\elements\Submission;
 use Craft;
-use fabianhaef\simpleform\elements\Form;
-use fabianhaef\simpleform\elements\Submission;
 
 /**
  * @group requires-craft
@@ -67,7 +67,7 @@ class EagerLoadingTest extends SimpleFormTestCase
         $listedNaive = Form::find()->siteId($siteId)->id($formIds)->all();
         $naive = $this->countQueries(function() use ($listedNaive): void {
             foreach ($listedNaive as $form) {
-                \fabianhaef\simpleform\helpers\FieldQueryHelper::fieldsForForm((int)$form->id, (int)$form->siteId);
+                \anvildev\simpleform\helpers\FieldQueryHelper::fieldsForForm((int)$form->id, (int)$form->siteId);
             }
         });
         $this->assertGreaterThanOrEqual(count($forms), $naive, 'Naive per-form load should be at least N queries');

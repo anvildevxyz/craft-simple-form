@@ -1,11 +1,11 @@
 <?php
 
-namespace fabianhaef\simpleform\tests\smoke;
+namespace anvildev\simpleform\tests\smoke;
 
+use anvildev\simpleform\elements\Submission;
+use anvildev\simpleform\models\NotificationModel;
+use anvildev\simpleform\Plugin;
 use Craft;
-use fabianhaef\simpleform\elements\Submission;
-use fabianhaef\simpleform\models\NotificationModel;
-use fabianhaef\simpleform\Plugin;
 use SmokeTester;
 
 /**
@@ -32,8 +32,8 @@ class NotificationsSmokeCest extends BaseSmokeCest
         $reloaded = $this->reloadForm($form);
 
         $result = null;
-        $sent = $this->captureSentMessages(function () use ($reloaded, $fieldId, &$result): void {
-            $result = $this->withSyncSideEffects(function () use ($reloaded, $fieldId) {
+        $sent = $this->captureSentMessages(function() use ($reloaded, $fieldId, &$result): void {
+            $result = $this->withSyncSideEffects(function() use ($reloaded, $fieldId) {
                 return $this->submitDirect($reloaded, ['field_' . $fieldId => 'Grace Hopper']);
             });
         });
@@ -61,8 +61,8 @@ class NotificationsSmokeCest extends BaseSmokeCest
         $notification->body = 'Email: {{ email }}';
         Plugin::getInstance()->getNotifications()->save($notification);
 
-        $sent = $this->captureSentMessages(function () use ($form, $emailId): void {
-            $this->withSyncSideEffects(function () use ($form, $emailId): void {
+        $sent = $this->captureSentMessages(function() use ($form, $emailId): void {
+            $this->withSyncSideEffects(function() use ($form, $emailId): void {
                 $this->submitDirect($form, ['field_' . $emailId => 'lead@example.com']);
             });
         });
@@ -78,8 +78,8 @@ class NotificationsSmokeCest extends BaseSmokeCest
         $fieldId = $this->createField((int) $form->id, 'text', 'name', 'Name');
 
         $result = null;
-        $sent = $this->captureSentMessages(function () use ($form, $fieldId, &$result): void {
-            $result = $this->withSyncSideEffects(function () use ($form, $fieldId) {
+        $sent = $this->captureSentMessages(function() use ($form, $fieldId, &$result): void {
+            $result = $this->withSyncSideEffects(function() use ($form, $fieldId) {
                 return $this->submitDirect($form, ['field_' . $fieldId => 'Ada']);
             });
         });
@@ -101,8 +101,8 @@ class NotificationsSmokeCest extends BaseSmokeCest
         $notification->subject = 'We received your message';
         Plugin::getInstance()->getNotifications()->save($notification);
 
-        $sent = $this->captureSentMessages(function () use ($form, $emailId): void {
-            $this->withSyncSideEffects(function () use ($form, $emailId): void {
+        $sent = $this->captureSentMessages(function() use ($form, $emailId): void {
+            $this->withSyncSideEffects(function() use ($form, $emailId): void {
                 $this->submitDirect($form, ['field_' . $emailId => 'visitor@example.com']);
             });
         });

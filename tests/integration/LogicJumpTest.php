@@ -1,12 +1,12 @@
 <?php
 
-namespace fabianhaef\simpleform\tests\integration;
+namespace anvildev\simpleform\tests\integration;
 
+use anvildev\simpleform\elements\Form;
+use anvildev\simpleform\elements\Submission;
+use anvildev\simpleform\Plugin;
+use anvildev\simpleform\services\SubmissionService;
 use Craft;
-use fabianhaef\simpleform\elements\Form;
-use fabianhaef\simpleform\elements\Submission;
-use fabianhaef\simpleform\Plugin;
-use fabianhaef\simpleform\services\SubmissionService;
 
 /**
  * Logic jumps (#245) end-to-end: the server replays the jump path so a required

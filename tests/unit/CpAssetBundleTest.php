@@ -1,6 +1,6 @@
 <?php
 
-namespace fabianhaef\simpleform\tests\unit;
+namespace anvildev\simpleform\tests\unit;
 
 use PHPUnit\Framework\TestCase;
 

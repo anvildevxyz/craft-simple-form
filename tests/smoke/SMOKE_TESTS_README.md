@@ -94,7 +94,7 @@ class MyCest extends BaseSmokeCest
         $result = $this->submitRequest($form->handle, ['field_' . $fieldId => 'Ada']);
 
         $I->assertNull($result['errors']);
-        $I->assertInstanceOf(\fabianhaef\simpleform\elements\Submission::class, $result['submission']);
+        $I->assertInstanceOf(\anvildev\simpleform\elements\Submission::class, $result['submission']);
     }
 }
 ```

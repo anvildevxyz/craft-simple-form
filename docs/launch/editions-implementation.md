@@ -70,7 +70,7 @@ This "no new escalation" rule (vs "must remove Pro") avoids both data loss and a
 
 declare(strict_types=1);
 
-namespace fabianhaef\simpleform;
+namespace anvildev\simpleform;
 
 /**
  * Edition + capability gate. The single source of truth for what each edition

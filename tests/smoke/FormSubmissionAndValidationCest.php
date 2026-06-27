@@ -1,15 +1,15 @@
 <?php
 
-namespace fabianhaef\simpleform\tests\smoke;
+namespace anvildev\simpleform\tests\smoke;
 
-use fabianhaef\simpleform\elements\Submission;
+use anvildev\simpleform\elements\Submission;
 use SmokeTester;
 
 /**
  * Form Submission & Validation Smoke Tests (functional).
  *
  * Exercises the public submit path through the real shared entry point
- * {@see \fabianhaef\simpleform\services\SubmissionService::createFromRequest()}
+ * {@see \anvildev\simpleform\services\SubmissionService::createFromRequest()}
  * — the same method the front-end SubmitController calls — seeding the form and
  * fields through the data layer (see {@see BaseSmokeCest}). Assertions are made
  * against the returned envelope and the persisted {@see Submission} element.

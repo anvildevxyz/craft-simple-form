@@ -1,8 +1,8 @@
 <?php
 
-namespace fabianhaef\simpleform\tests\unit;
+namespace anvildev\simpleform\tests\unit;
 
-use fabianhaef\simpleform\helpers\SafeUrl;
+use anvildev\simpleform\helpers\SafeUrl;
 use PHPUnit\Framework\TestCase;
 
 /**
@@ -164,7 +164,7 @@ class SafeUrlTest extends TestCase
     {
         [, $validator] = SafeUrl::settingUrlRule('url');
 
-        $model = new class {
+        $model = new class() {
             /** @var list<string> */
             public array $flagged = [];
 

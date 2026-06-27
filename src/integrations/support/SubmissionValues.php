@@ -1,9 +1,9 @@
 <?php
 
-namespace fabianhaef\simpleform\integrations\support;
+namespace anvildev\simpleform\integrations\support;
 
-use fabianhaef\simpleform\elements\Submission;
-use fabianhaef\simpleform\models\FormModel;
+use anvildev\simpleform\elements\Submission;
+use anvildev\simpleform\models\FormModel;
 
 /**
  * Shared read helpers that turn a submission's stored `field_<id> => {label,

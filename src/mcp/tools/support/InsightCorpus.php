@@ -1,9 +1,9 @@
 <?php
 
-namespace fabianhaef\simpleform\mcp\tools\support;
+namespace anvildev\simpleform\mcp\tools\support;
 
-use fabianhaef\simpleform\elements\Form;
-use fabianhaef\simpleform\elements\Submission;
+use anvildev\simpleform\elements\Form;
+use anvildev\simpleform\elements\Submission;
 
 /**
  * Shared helpers for the AI-insight tools (#67): resolving which form fields

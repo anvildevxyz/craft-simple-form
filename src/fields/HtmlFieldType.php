@@ -1,20 +1,20 @@
 <?php
 
-namespace fabianhaef\simpleform\fields;
+namespace anvildev\simpleform\fields;
 
+use anvildev\simpleform\Plugin;
 use Craft;
 use craft\helpers\HtmlPurifier;
-use fabianhaef\simpleform\Plugin;
 
 /**
  * A presentational, CP-authored HTML/Twig block. Collects no submission value:
  * the author content is rendered through the plugin's forced-sandbox Twig path
- * ({@see \fabianhaef\simpleform\services\SafeRenderService}) and then passed
+ * ({@see \anvildev\simpleform\services\SafeRenderService}) and then passed
  * through an allowlist HTML purifier, so `<script>`, inline event handlers and
  * `javascript:` URLs are stripped and `craft.app`/queries stay out of reach.
  *
  * Authoring the body requires the `editHtmlBlocks` permission
- * ({@see \fabianhaef\simpleform\helpers\SimpleFormPermissions::EDIT_HTML_BLOCKS});
+ * ({@see \anvildev\simpleform\helpers\SimpleFormPermissions::EDIT_HTML_BLOCKS});
  * the block is skipped by validation, storage, and export like every layout block.
  */
 class HtmlFieldType extends FieldType

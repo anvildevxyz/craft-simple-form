@@ -1,8 +1,8 @@
 <?php
 
-namespace fabianhaef\simpleform\events;
+namespace anvildev\simpleform\events;
 
-use fabianhaef\simpleform\elements\Form;
+use anvildev\simpleform\elements\Form;
 use yii\base\Event;
 
 /**

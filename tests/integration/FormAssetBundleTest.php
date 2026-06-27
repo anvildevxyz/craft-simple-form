@@ -1,11 +1,11 @@
 <?php
 
-namespace fabianhaef\simpleform\tests\integration;
+namespace anvildev\simpleform\tests\integration;
 
+use anvildev\simpleform\Plugin;
+use anvildev\simpleform\TwigExtension;
+use anvildev\simpleform\web\assets\form\FormAsset;
 use Craft;
-use fabianhaef\simpleform\Plugin;
-use fabianhaef\simpleform\TwigExtension;
-use fabianhaef\simpleform\web\assets\form\FormAsset;
 
 /**
  * @group requires-craft

@@ -1,14 +1,14 @@
 <?php
 
-namespace fabianhaef\simpleform\tests\integration;
+namespace anvildev\simpleform\tests\integration;
 
+use anvildev\simpleform\Plugin;
 use Craft;
 use craft\db\Query;
-use fabianhaef\simpleform\Plugin;
 
 /**
  * Covers the per-field write path shared by the CP field builder and the MCP
- * field tools ({@see \fabianhaef\simpleform\services\FieldsService}): the
+ * field tools ({@see \anvildev\simpleform\services\FieldsService}): the
  * structural row, the per-site label/helpText rows, sort ordering, the
  * helpText empty-string coercion, and FK-cascade on delete.
  *
@@ -16,7 +16,7 @@ use fabianhaef\simpleform\Plugin;
  */
 class FieldsServiceTest extends SimpleFormTestCase
 {
-    private function fields(): \fabianhaef\simpleform\services\FieldsService
+    private function fields(): \anvildev\simpleform\services\FieldsService
     {
         return Plugin::getInstance()->getFields();
     }

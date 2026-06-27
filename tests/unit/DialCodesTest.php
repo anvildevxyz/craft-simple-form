@@ -1,8 +1,8 @@
 <?php
 
-namespace fabianhaef\simpleform\tests\unit;
+namespace anvildev\simpleform\tests\unit;
 
-use fabianhaef\simpleform\helpers\DialCodes;
+use anvildev\simpleform\helpers\DialCodes;
 use PHPUnit\Framework\TestCase;
 
 /**

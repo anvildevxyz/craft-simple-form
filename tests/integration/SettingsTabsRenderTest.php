@@ -1,10 +1,10 @@
 <?php
 
-namespace fabianhaef\simpleform\tests\integration;
+namespace anvildev\simpleform\tests\integration;
 
+use anvildev\simpleform\models\Settings;
 use Craft;
 use craft\web\View;
-use fabianhaef\simpleform\models\Settings;
 
 /**
  * Render-smoke the settings tab templates. The unit/parity gate doesn't render

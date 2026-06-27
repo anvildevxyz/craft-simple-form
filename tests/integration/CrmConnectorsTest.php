@@ -1,12 +1,12 @@
 <?php
 
-namespace fabianhaef\simpleform\tests\integration;
+namespace anvildev\simpleform\tests\integration;
 
+use anvildev\simpleform\elements\Submission;
+use anvildev\simpleform\integrations\HubSpotIntegration;
+use anvildev\simpleform\integrations\PipedriveIntegration;
+use anvildev\simpleform\Plugin;
 use Craft;
-use fabianhaef\simpleform\elements\Submission;
-use fabianhaef\simpleform\integrations\HubSpotIntegration;
-use fabianhaef\simpleform\integrations\PipedriveIntegration;
-use fabianhaef\simpleform\Plugin;
 use GuzzleHttp\Client;
 use GuzzleHttp\Handler\MockHandler;
 use GuzzleHttp\HandlerStack;

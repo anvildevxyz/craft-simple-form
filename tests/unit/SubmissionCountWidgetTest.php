@@ -1,8 +1,8 @@
 <?php
 
-namespace fabianhaef\simpleform\tests\unit;
+namespace anvildev\simpleform\tests\unit;
 
-use fabianhaef\simpleform\widgets\SubmissionCountWidget;
+use anvildev\simpleform\widgets\SubmissionCountWidget;
 use PHPUnit\Framework\TestCase;
 
 class SubmissionCountWidgetTest extends TestCase

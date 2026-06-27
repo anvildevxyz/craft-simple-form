@@ -1,15 +1,15 @@
 <?php
 
-namespace fabianhaef\simpleform\tests\integration;
+namespace anvildev\simpleform\tests\integration;
 
+use anvildev\simpleform\controllers\SubmitController;
+use anvildev\simpleform\fields\FileFieldType;
+use anvildev\simpleform\Plugin;
+use anvildev\simpleform\services\AssetUploadService;
 use Craft;
 use craft\db\Query;
 use craft\web\Response;
 use craft\web\UploadedFile;
-use fabianhaef\simpleform\controllers\SubmitController;
-use fabianhaef\simpleform\fields\FileFieldType;
-use fabianhaef\simpleform\Plugin;
-use fabianhaef\simpleform\services\AssetUploadService;
 
 /**
  * #89 — file-upload field: server-side upload validation, the asset-id storage
@@ -120,7 +120,7 @@ class FileUploadTest extends SimpleFormTestCase
         $fileId = $this->createField($form->id, 'file', 'attachment', 'Attachment'); // no ext restriction
 
         // Stub the asset service so the assertion is volume-independent.
-        Plugin::getInstance()->set('assetUploadService', new class extends AssetUploadService {
+        Plugin::getInstance()->set('assetUploadService', new class() extends AssetUploadService {
             public function saveUploads(array $files, array $fieldConfig): array
             {
                 return [9999];
@@ -175,7 +175,7 @@ class FileUploadTest extends SimpleFormTestCase
         $requiredTextId = $this->createField($form->id, 'text', 'name', 'Name', true); // required
         $fileId = $this->createField($form->id, 'file', 'attachment', 'Attachment');
 
-        $stub = new class extends AssetUploadService {
+        $stub = new class() extends AssetUploadService {
             /** @var list<int> */
             public array $deleted = [];
             public function saveUploads(array $files, array $fieldConfig): array

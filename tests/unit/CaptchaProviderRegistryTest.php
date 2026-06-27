@@ -1,9 +1,9 @@
 <?php
 
-namespace fabianhaef\simpleform\tests\unit;
+namespace anvildev\simpleform\tests\unit;
 
-use fabianhaef\simpleform\captcha\RecaptchaProvider;
-use fabianhaef\simpleform\services\CaptchaProviderRegistry;
+use anvildev\simpleform\captcha\RecaptchaProvider;
+use anvildev\simpleform\services\CaptchaProviderRegistry;
 use PHPUnit\Framework\TestCase;
 
 class NotACaptchaProvider

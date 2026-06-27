@@ -1,9 +1,9 @@
 <?php
 
-namespace fabianhaef\simpleform\tests\unit;
+namespace anvildev\simpleform\tests\unit;
 
-use fabianhaef\simpleform\pdf\DompdfEngine;
-use fabianhaef\simpleform\pdf\PdfEngineInterface;
+use anvildev\simpleform\pdf\DompdfEngine;
+use anvildev\simpleform\pdf\PdfEngineInterface;
 use PHPUnit\Framework\TestCase;
 use ReflectionClass;
 
@@ -68,7 +68,7 @@ class PdfServiceTest extends TestCase
         $this->assertStringContainsString('validatePdfAvailable', $code);
         $this->assertStringContainsString('getPdf()->isAvailable()', $code);
 
-        $defaults = (new ReflectionClass(\fabianhaef\simpleform\models\NotificationModel::class))->getDefaultProperties();
+        $defaults = (new ReflectionClass(\anvildev\simpleform\models\NotificationModel::class))->getDefaultProperties();
         $this->assertFalse($defaults['attachPdf'], 'attachPdf should default to off');
         $this->assertFalse($defaults['attachUploads'], 'attachUploads should default to off');
     }

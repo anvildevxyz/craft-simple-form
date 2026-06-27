@@ -1,10 +1,10 @@
 <?php
 
-namespace fabianhaef\simpleform\services;
+namespace anvildev\simpleform\services;
 
-use fabianhaef\simpleform\elements\Form;
-use fabianhaef\simpleform\fields\AggregationKind;
-use fabianhaef\simpleform\Plugin;
+use anvildev\simpleform\elements\Form;
+use anvildev\simpleform\fields\AggregationKind;
+use anvildev\simpleform\Plugin;
 use yii\base\Component;
 
 /**

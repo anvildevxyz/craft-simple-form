@@ -1,9 +1,9 @@
 <?php
 
-namespace fabianhaef\simpleform\tests\integration;
+namespace anvildev\simpleform\tests\integration;
 
-use fabianhaef\simpleform\helpers\FieldQueryHelper;
-use fabianhaef\simpleform\services\FieldSyncService;
+use anvildev\simpleform\helpers\FieldQueryHelper;
+use anvildev\simpleform\services\FieldSyncService;
 
 /**
  * Save-time conditional guarantees through FieldSyncService: self-reference and

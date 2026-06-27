@@ -1,11 +1,11 @@
 <?php
 
-namespace fabianhaef\simpleform\mcp\tools;
+namespace anvildev\simpleform\mcp\tools;
 
-use fabianhaef\simpleform\elements\Form;
-use fabianhaef\simpleform\mcp\Scopes;
-use fabianhaef\simpleform\mcp\tools\support\InsightCorpus;
-use fabianhaef\simpleform\mcp\tools\support\SubmissionQueryBuilder;
+use anvildev\simpleform\elements\Form;
+use anvildev\simpleform\mcp\Scopes;
+use anvildev\simpleform\mcp\tools\support\InsightCorpus;
+use anvildev\simpleform\mcp\tools\support\SubmissionQueryBuilder;
 
 /**
  * AI-insight tool: shape the free-text corpus of a filtered submission set for
@@ -106,7 +106,7 @@ class SummarizeSubmissionsTool implements ToolInterface
 
     /**
      * @param array<string, mixed> $arguments
-     * @param list<\fabianhaef\simpleform\elements\Submission> $submissions
+     * @param list<\anvildev\simpleform\elements\Submission> $submissions
      * @return list<string>
      */
     private function resolveHandles(array $arguments, array $submissions): array

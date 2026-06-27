@@ -1,11 +1,11 @@
 <?php
 
-namespace fabianhaef\simpleform\tests\integration;
+namespace anvildev\simpleform\tests\integration;
 
+use anvildev\simpleform\elements\Submission;
+use anvildev\simpleform\elements\SubmissionStatus;
+use anvildev\simpleform\Plugin;
 use Craft;
-use fabianhaef\simpleform\elements\Submission;
-use fabianhaef\simpleform\elements\SubmissionStatus;
-use fabianhaef\simpleform\Plugin;
 
 /**
  * #99 — the submissions-index stat cards count through the same element query
@@ -30,7 +30,7 @@ class SubmissionStatsTest extends SimpleFormTestCase
      */
     private function stats(int $siteId, int $formId): array
     {
-        $count = function (?string $status) use ($siteId, $formId): int {
+        $count = function(?string $status) use ($siteId, $formId): int {
             $query = Submission::find()->siteId($siteId)->formId($formId);
             if ($status !== null) {
                 $query->status($status);

@@ -1,15 +1,15 @@
 <?php
 
-namespace fabianhaef\simpleform\tests\unit;
+namespace anvildev\simpleform\tests\unit;
 
-use fabianhaef\simpleform\mcp\tools\support\SubmissionQueryBuilder;
+use anvildev\simpleform\mcp\tools\support\SubmissionQueryBuilder;
 use PHPUnit\Framework\TestCase;
 
 /**
  * Unit coverage for the DB-free accessors of {@see SubmissionQueryBuilder} —
  * the shared `fieldMatch` argument coercion (#168). Query construction
  * ({@see SubmissionQueryBuilder::build()} / ::buildWithForm()) is covered by
- * {@see \fabianhaef\simpleform\tests\integration\McpSubmissionToolsTest} where a
+ * {@see \anvildev\simpleform\tests\integration\McpSubmissionToolsTest} where a
  * Craft app and DB are available.
  */
 class SubmissionQueryBuilderTest extends TestCase

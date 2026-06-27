@@ -1,11 +1,11 @@
 <?php
 
-namespace fabianhaef\simpleform\tests\integration;
+namespace anvildev\simpleform\tests\integration;
 
+use anvildev\simpleform\controllers\SubmitController;
+use anvildev\simpleform\Plugin;
 use Craft;
 use craft\web\Response;
-use fabianhaef\simpleform\controllers\SubmitController;
-use fabianhaef\simpleform\Plugin;
 
 /**
  * The front-end submit endpoint throttles per visitor IP per minute when

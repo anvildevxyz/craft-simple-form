@@ -1,15 +1,15 @@
 <?php
 
-namespace fabianhaef\simpleform\services;
+namespace anvildev\simpleform\services;
 
+use anvildev\simpleform\elements\Form;
+use anvildev\simpleform\elements\Submission;
+use anvildev\simpleform\elements\SubmissionStatus;
+use anvildev\simpleform\fields\AggregationKind;
+use anvildev\simpleform\integrations\DispatchStatus;
+use anvildev\simpleform\Plugin;
 use craft\db\Query;
 use craft\helpers\Db;
-use fabianhaef\simpleform\elements\Form;
-use fabianhaef\simpleform\elements\Submission;
-use fabianhaef\simpleform\elements\SubmissionStatus;
-use fabianhaef\simpleform\fields\AggregationKind;
-use fabianhaef\simpleform\integrations\DispatchStatus;
-use fabianhaef\simpleform\Plugin;
 use yii\base\Component;
 
 /**
@@ -120,7 +120,7 @@ class ReportsService extends Component
      * the response count, average (rounded to one decimal), and a per-value
      * distribution (count keyed by the integer scale point, in ascending order).
      *
-     * Submission values are stored as ints (see {@see \fabianhaef\simpleform\fields\FieldType::normalizeValue()}),
+     * Submission values are stored as ints (see {@see \anvildev\simpleform\fields\FieldType::normalizeValue()}),
      * so they aggregate numerically. A non-numeric or out-of-set stored value is
      * skipped defensively.
      *
@@ -194,7 +194,7 @@ class ReportsService extends Component
      * submission data — no migration, no new field types.
      *
      * Each field type names its own treatment via
-     * {@see \fabianhaef\simpleform\fields\FieldType::aggregation()}, so the report
+     * {@see \anvildev\simpleform\fields\FieldType::aggregation()}, so the report
      * derives from the field set with no hardcoded type list. Layout blocks and
      * unknown types are skipped. Spam is excluded; an optional inclusive
      * YYYY-MM-DD `dateFrom`/`dateTo` scopes the window. Scoped to one site.

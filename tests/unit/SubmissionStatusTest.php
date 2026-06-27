@@ -1,8 +1,8 @@
 <?php
 
-namespace fabianhaef\simpleform\tests\unit;
+namespace anvildev\simpleform\tests\unit;
 
-use fabianhaef\simpleform\elements\SubmissionStatus;
+use anvildev\simpleform\elements\SubmissionStatus;
 use PHPUnit\Framework\TestCase;
 
 class SubmissionStatusTest extends TestCase

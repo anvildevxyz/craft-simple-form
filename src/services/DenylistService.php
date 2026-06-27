@@ -1,12 +1,12 @@
 <?php
 
-namespace fabianhaef\simpleform\services;
+namespace anvildev\simpleform\services;
 
+use anvildev\simpleform\Editions;
+use anvildev\simpleform\elements\Form;
+use anvildev\simpleform\fields\EmailFieldType;
+use anvildev\simpleform\Plugin;
 use Craft;
-use fabianhaef\simpleform\Editions;
-use fabianhaef\simpleform\elements\Form;
-use fabianhaef\simpleform\fields\EmailFieldType;
-use fabianhaef\simpleform\Plugin;
 use yii\base\Component;
 
 /**
@@ -16,7 +16,7 @@ use yii\base\Component;
  * `keyword:casino`, `email:bob@x.tld`, `ip:203.0.113.5`) that becomes the
  * submission's `spamReason`, so the CP quarantine queue can show *why*.
  *
- * The lists live as newline-separated text blobs in {@see \fabianhaef\simpleform\models\Settings};
+ * The lists live as newline-separated text blobs in {@see \anvildev\simpleform\models\Settings};
  * this service parses/normalises them and performs the matching.
  *
  * @author Fabian Haefliger
@@ -72,7 +72,7 @@ class DenylistService extends Component
 
     /**
      * Whether a single denylist line is a valid IPv4/IPv6 address or CIDR range.
-     * Shared with {@see \fabianhaef\simpleform\models\Settings::validateBlockedIps()}
+     * Shared with {@see \anvildev\simpleform\models\Settings::validateBlockedIps()}
      * so the save-time validation and the runtime matcher agree on what is parseable.
      */
     public static function isValidIpEntry(string $entry): bool

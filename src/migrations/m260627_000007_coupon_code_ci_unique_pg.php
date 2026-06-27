@@ -1,6 +1,6 @@
 <?php
 
-namespace fabianhaef\simpleform\migrations;
+namespace anvildev\simpleform\migrations;
 
 use craft\db\Migration;
 use craft\db\Query;

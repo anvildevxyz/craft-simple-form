@@ -1,13 +1,13 @@
 <?php
 
-namespace fabianhaef\simpleform\helpers;
+namespace anvildev\simpleform\helpers;
 
 use craft\db\Query;
 
 /**
  * Shared form-content helpers used by the clone and import/export paths
- * ({@see \fabianhaef\simpleform\services\FormCloneService},
- * {@see \fabianhaef\simpleform\services\FormPortabilityService}), so the
+ * ({@see \anvildev\simpleform\services\FormCloneService},
+ * {@see \anvildev\simpleform\services\FormPortabilityService}), so the
  * per-site content schema and the field/handle lookups have a single home.
  */
 class FormContentHelper

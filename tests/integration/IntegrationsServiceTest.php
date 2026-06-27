@@ -1,11 +1,11 @@
 <?php
 
-namespace fabianhaef\simpleform\tests\integration;
+namespace anvildev\simpleform\tests\integration;
 
+use anvildev\simpleform\integrations\DispatchStatus;
+use anvildev\simpleform\models\IntegrationModel;
+use anvildev\simpleform\Plugin;
 use Craft;
-use fabianhaef\simpleform\integrations\DispatchStatus;
-use fabianhaef\simpleform\models\IntegrationModel;
-use fabianhaef\simpleform\Plugin;
 
 /**
  * Proves the integrations migration applied and the service round-trips global
@@ -185,7 +185,7 @@ class IntegrationsServiceTest extends SimpleFormTestCase
     }
 
     /**
-     * Every connector that uses {@see \fabianhaef\simpleform\helpers\SafeUrl::settingUrlRule()}
+     * Every connector that uses {@see \anvildev\simpleform\helpers\SafeUrl::settingUrlRule()}
      * must still reject a private/IMDS URL on its own URL setting, proving the
      * shared closure's `$this->addError(...)` rebinds to each connector's
      * validated model and flags the right attribute.
@@ -240,7 +240,7 @@ class IntegrationsServiceTest extends SimpleFormTestCase
 
         // The guard returns a failure before any HTTP call, so the real
         // (un-mocked) connector never touches the network.
-        $result = (new \fabianhaef\simpleform\integrations\WebhookIntegration())
+        $result = (new \anvildev\simpleform\integrations\WebhookIntegration())
             ->requestWebhook('POST', 'http://127.0.0.1:6379/', '{}', 'application/json', null);
 
         $this->assertFalse($result->success);

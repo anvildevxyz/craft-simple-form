@@ -1,6 +1,6 @@
 <?php
 
-namespace fabianhaef\simpleform\tests\unit;
+namespace anvildev\simpleform\tests\unit;
 
 use PHPUnit\Framework\TestCase;
 
@@ -20,7 +20,7 @@ class HasPropagationTest extends TestCase
 
     public function testTraitExists(): void
     {
-        $this->assertTrue(trait_exists(\fabianhaef\simpleform\traits\HasPropagation::class));
+        $this->assertTrue(trait_exists(\anvildev\simpleform\traits\HasPropagation::class));
     }
 
     public function testTraitCoversAllPropagationMethods(): void

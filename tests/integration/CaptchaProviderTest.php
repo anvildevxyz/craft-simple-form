@@ -1,10 +1,10 @@
 <?php
 
-namespace fabianhaef\simpleform\tests\integration;
+namespace anvildev\simpleform\tests\integration;
 
-use fabianhaef\simpleform\captcha\RecaptchaProvider;
-use fabianhaef\simpleform\models\Settings;
-use fabianhaef\simpleform\Plugin;
+use anvildev\simpleform\captcha\RecaptchaProvider;
+use anvildev\simpleform\models\Settings;
+use anvildev\simpleform\Plugin;
 
 /**
  * #85 — captcha provider abstraction. Verifies the default delegates to

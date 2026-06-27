@@ -1,13 +1,13 @@
 <?php
 
-namespace fabianhaef\simpleform\tests\integration;
+namespace anvildev\simpleform\tests\integration;
 
+use anvildev\simpleform\elements\Form;
+use anvildev\simpleform\elements\Submission;
+use anvildev\simpleform\models\NotificationModel;
+use anvildev\simpleform\Plugin;
+use anvildev\simpleform\services\EmailService;
 use Craft;
-use fabianhaef\simpleform\elements\Form;
-use fabianhaef\simpleform\elements\Submission;
-use fabianhaef\simpleform\models\NotificationModel;
-use fabianhaef\simpleform\Plugin;
-use fabianhaef\simpleform\services\EmailService;
 
 /**
  * Per-form notifications (#112): recipient resolution (fixed + autoresponder),

@@ -1,10 +1,10 @@
 <?php
 
-namespace fabianhaef\simpleform\captcha;
+namespace anvildev\simpleform\captcha;
 
+use anvildev\simpleform\models\Settings;
 use Craft;
 use craft\helpers\App;
-use fabianhaef\simpleform\models\Settings;
 use GuzzleHttp\Exception\GuzzleException;
 
 /**

@@ -1,8 +1,8 @@
 <?php
 
-namespace fabianhaef\simpleform\tests\unit;
+namespace anvildev\simpleform\tests\unit;
 
-use fabianhaef\simpleform\fields\SignatureFieldType;
+use anvildev\simpleform\fields\SignatureFieldType;
 use PHPUnit\Framework\TestCase;
 
 /**

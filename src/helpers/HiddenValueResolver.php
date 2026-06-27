@@ -1,6 +1,6 @@
 <?php
 
-namespace fabianhaef\simpleform\helpers;
+namespace anvildev\simpleform\helpers;
 
 /**
  * Pure resolver for a Hidden field's render-time / submit-time value (#124).
@@ -8,7 +8,7 @@ namespace fabianhaef\simpleform\helpers;
  * Every method here is side-effect free and takes its inputs explicitly (the
  * request params, the authenticated user attributes, the cookies) so the
  * resolution logic is unit-testable without a Craft bootstrap. The thin Craft
- * accessors live in {@see \fabianhaef\simpleform\fields\HiddenFieldType}.
+ * accessors live in {@see \anvildev\simpleform\fields\HiddenFieldType}.
  *
  * Resolved values are always plain text: trimmed and bounded by the optional
  * `maxLength`, never interpreted as markup. The caller escapes for output.

@@ -1,13 +1,12 @@
 <?php
 
-namespace fabianhaef\simpleform\tests\smoke;
+namespace anvildev\simpleform\tests\smoke;
 
+use anvildev\simpleform\elements\Form;
+use anvildev\simpleform\Plugin;
+use anvildev\simpleform\TwigExtension;
 use Craft;
 use craft\db\Query;
-use fabianhaef\simpleform\elements\Form;
-use fabianhaef\simpleform\elements\Submission;
-use fabianhaef\simpleform\Plugin;
-use fabianhaef\simpleform\TwigExtension;
 use SmokeTester;
 
 /**

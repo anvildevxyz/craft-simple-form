@@ -1,9 +1,9 @@
 <?php
 
-namespace fabianhaef\simpleform\tests\unit;
+namespace anvildev\simpleform\tests\unit;
 
-use fabianhaef\simpleform\elements\Form;
-use fabianhaef\simpleform\mcp\resources\AbstractFormResource;
+use anvildev\simpleform\elements\Form;
+use anvildev\simpleform\mcp\resources\AbstractFormResource;
 use PHPUnit\Framework\TestCase;
 
 /**
@@ -11,14 +11,14 @@ use PHPUnit\Framework\TestCase;
  * (#169): scheme-based {@code handles()} matching. The element-layer paths
  * ({@code list()}, {@code read()}, {@code resolveForm()}) and the
  * {@code contents()} envelope are covered by
- * {@see \fabianhaef\simpleform\tests\integration\McpResourcesTest} where a Craft
+ * {@see \anvildev\simpleform\tests\integration\McpResourcesTest} where a Craft
  * app and DB are available.
  */
 class AbstractFormResourceTest extends TestCase
 {
     public function testHandlesMatchesOwnSchemeOnly(): void
     {
-        $resource = new class extends AbstractFormResource {
+        $resource = new class() extends AbstractFormResource {
             public function requiredScope(): string
             {
                 return 'noop';

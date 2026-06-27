@@ -1,12 +1,12 @@
 <?php
 
-namespace fabianhaef\simpleform\services;
+namespace anvildev\simpleform\services;
 
+use anvildev\simpleform\Editions;
 use Craft;
 use craft\db\Query;
 use craft\helpers\Db;
 use craft\helpers\StringHelper;
-use fabianhaef\simpleform\Editions;
 use yii\base\Component;
 
 /**

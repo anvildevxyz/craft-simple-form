@@ -1,10 +1,10 @@
 <?php
 
-namespace fabianhaef\simpleform\gql\types;
+namespace anvildev\simpleform\gql\types;
 
 use GraphQL\Type\Definition\Type;
 
-/** @phpstan-import-type GqlFieldDefinitionMap from \fabianhaef\simpleform\gql\types\SimpleFormObjectType */
+/** @phpstan-import-type GqlFieldDefinitionMap from \anvildev\simpleform\gql\types\SimpleFormObjectType */
 class SubmissionErrorType extends SimpleFormObjectType
 {
     public static function getName(): string

@@ -1,14 +1,14 @@
 <?php
 
-namespace fabianhaef\simpleform\events;
+namespace anvildev\simpleform\events;
 
-use fabianhaef\simpleform\elements\Form;
-use fabianhaef\simpleform\elements\Submission;
-use fabianhaef\simpleform\models\NotificationModel;
+use anvildev\simpleform\elements\Form;
+use anvildev\simpleform\elements\Submission;
+use anvildev\simpleform\models\NotificationModel;
 use yii\base\Event;
 
 /**
- * Fired from {@see \fabianhaef\simpleform\services\EmailService} before each
+ * Fired from {@see \anvildev\simpleform\services\EmailService} before each
  * resolved notification email is sent. A handler can rewrite the recipient list
  * or suppress the notification entirely by setting {@see self::$send} to false:
  *

@@ -1,8 +1,8 @@
 <?php
 
-namespace fabianhaef\simpleform\tests\unit;
+namespace anvildev\simpleform\tests\unit;
 
-use fabianhaef\simpleform\fields\FileFieldType;
+use anvildev\simpleform\fields\FileFieldType;
 use PHPUnit\Framework\TestCase;
 
 class FileFieldTypeTest extends TestCase

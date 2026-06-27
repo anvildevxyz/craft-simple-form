@@ -1,6 +1,6 @@
 <?php
 
-namespace fabianhaef\simpleform\tests\smoke;
+namespace anvildev\simpleform\tests\smoke;
 
 use Craft;
 use SmokeTester;
@@ -57,7 +57,7 @@ class ConversationalRenderSmokeCest extends BaseSmokeCest
     // PRIVATE METHODS
     // =========================================================================
 
-    private function threeFieldForm(string $handle, string $renderMode): \fabianhaef\simpleform\elements\Form
+    private function threeFieldForm(string $handle, string $renderMode): \anvildev\simpleform\elements\Form
     {
         $form = $this->createForm('Conversational', $handle);
         $this->createField((int) $form->id, 'text', 'first', 'First name');

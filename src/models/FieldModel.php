@@ -1,10 +1,10 @@
 <?php
 
-namespace fabianhaef\simpleform\models;
+namespace anvildev\simpleform\models;
 
+use anvildev\simpleform\helpers\ConditionalEvaluator;
+use anvildev\simpleform\Plugin;
 use Craft;
-use fabianhaef\simpleform\helpers\ConditionalEvaluator;
-use fabianhaef\simpleform\Plugin;
 use yii\base\Model;
 
 class FieldModel extends Model
@@ -57,7 +57,7 @@ class FieldModel extends Model
      * Whether this field collects a submission value.
      *
      * Resolves the field type via the registry and delegates to
-     * {@see \fabianhaef\simpleform\fields\FieldType::isInput()}, mirroring how
+     * {@see \anvildev\simpleform\fields\FieldType::isInput()}, mirroring how
      * {@see self::isVisible()}/{@see self::isRequired()} delegate. Presentational
      * layout blocks (heading, divider, html) return false: they render but are
      * never validated, stored, or exported. An unknown type is treated as an
