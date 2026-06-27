@@ -182,6 +182,13 @@ class Settings extends Model
     public int $draftRetentionDays = 30;
 
     /**
+     * How long a passively-captured partial (#242/#244) is kept before garbage
+     * collection. Deliberately conservative by default — abandoned PII shouldn't
+     * linger — and independent of the save-&-resume window. Must be > 0.
+     */
+    public int $partialRetentionDays = 7;
+
+    /**
      * When pruning submissions, scrub their data + user reference in place instead
      * of deleting the row, so aggregate counts/stats survive while PII does not.
      */
@@ -270,7 +277,7 @@ class Settings extends Model
             [['enableHoneypot', 'enableCaptcha', 'cacheFormStructure', 'inlineFormAssets', 'enableMcp', 'dispatchIntegrationsSynchronously', 'enableAkismet', 'anonymizeInsteadOfDelete', 'allowGraphqlCaptchaBypass', 'enableDenylists'], 'boolean'],
             [['retainSubmissionsDays', 'retainIntegrationLogsDays', 'retainAuditLogDays', 'submitRateLimitPerMinute', 'maxAttachmentSizeMb'], 'integer', 'min' => 0],
             [['pdfStorageVolume'], 'string'],
-            [['draftRetentionDays'], 'integer', 'min' => 1],
+            [['draftRetentionDays', 'partialRetentionDays'], 'integer', 'min' => 1],
             [['akismetMode'], 'in', 'range' => [self::AKISMET_FLAG, self::AKISMET_BLOCK]],
             [['denylistMode'], 'in', 'range' => [self::DENYLIST_FLAG, self::DENYLIST_BLOCK]],
             [['blockedKeywords', 'blockedEmails', 'blockedIps'], 'string'],

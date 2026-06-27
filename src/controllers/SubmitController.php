@@ -197,13 +197,18 @@ class SubmitController extends Controller
             }
 
             $existingToken = (string) $request->getBodyParam('partialToken', '');
-            $token = $plugin->getDrafts()->save(
-                (int) $form->id,
-                $siteId,
+            // capturePartial applies the consent gate (#244) and fires the
+            // capture event; a blocked/empty capture returns null → quiet no-op.
+            $token = $plugin->getDrafts()->capturePartial(
+                $form,
                 $values,
+                $siteId,
                 $existingToken !== '' ? $existingToken : null,
-                true,
             );
+
+            if ($token === null) {
+                return $this->asJson(['success' => false]);
+            }
 
             return $this->asJson(['success' => true, 'token' => $token]);
         } catch (\Throwable $e) {

@@ -346,4 +346,8 @@ return [
     'Partial deleted.' => 'Teildatensatz gelöscht.',
     'Abandoned attempts captured before the visitor submitted. Completing the form removes its partial automatically; these are the ones never finished.' => 'Abgebrochene Versuche, die vor dem Absenden erfasst wurden. Das Absenden entfernt den Teildatensatz automatisch; dies sind die nie abgeschlossenen.',
     'When on, the form quietly auto-saves answers as they’re entered (on blur / step change). Attempts that are never submitted appear under the Partials tab for follow-up. Capturing is best-effort and fires no notifications, integrations, payments or spam checks; completing the form removes its partial.' => 'Wenn aktiviert, speichert das Formular eingegebene Antworten still automatisch (bei Fokuswechsel / Schrittwechsel). Nie abgesendete Versuche erscheinen zur Nachverfolgung im Tab „Teilweise“. Die Erfassung erfolgt nach bestem Bemühen und löst keine Benachrichtigungen, Integrationen, Zahlungen oder Spam-Prüfungen aus; das Absenden entfernt den Teildatensatz.',
+
+    // Partial capture privacy (#244)
+    'Delete captured partials after (days)' => 'Erfasste Teildatensätze löschen nach (Tagen)',
+    'Abandoned partials (passive capture) older than this are removed during garbage collection. Kept deliberately short so abandoned data doesn’t linger.' => 'Abgebrochene Teildatensätze (passive Erfassung), die älter sind, werden bei der Garbage Collection entfernt. Bewusst kurz gehalten, damit abgebrochene Daten nicht verbleiben.',
 ];

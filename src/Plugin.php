@@ -80,6 +80,13 @@ class Plugin extends BasePlugin
     public const EVENT_AFTER_SUBMISSION_SAVE = 'afterSubmissionSave';
 
     /**
+     * Fired after a passive partial is captured (#244). Carries the captured
+     * context ({@see \fabianhaef\simpleform\events\PartialCaptureEvent}) so
+     * integrators can build abandonment follow-up; the plugin sends nothing.
+     */
+    public const EVENT_PARTIAL_CAPTURED = 'partialCaptured';
+
+    /**
      * @event BeforeValidateSubmissionEvent Fired after the submitted values are
      * resolved but before any field is validated, so a handler can normalize or
      * augment the values (see BeforeValidateSubmissionEvent).

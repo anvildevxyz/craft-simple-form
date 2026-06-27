@@ -48,3 +48,15 @@
     size: 6,
     value: settings.retainAuditLogDays,
 }) }}
+
+{{ forms.textField({
+    label: 'Delete captured partials after (days)'|t('simple-form'),
+    instructions: 'Abandoned partials (passive capture) older than this are removed during garbage collection. Kept deliberately short so abandoned data doesn’t linger.'|t('simple-form'),
+    id: 'partialRetentionDays',
+    name: 'partialRetentionDays',
+    type: 'number',
+    min: 1,
+    step: 1,
+    size: 6,
+    value: settings.partialRetentionDays,
+}) }}

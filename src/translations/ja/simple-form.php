@@ -340,4 +340,8 @@ return [
     'Partial deleted.' => '途中データを削除しました。',
     'Abandoned attempts captured before the visitor submitted. Completing the form removes its partial automatically; these are the ones never finished.' => '送信前に取得された離脱した試行です。フォームを送信すると途中データは自動的に削除されます。ここに表示されるのは完了しなかったものです。',
     'When on, the form quietly auto-saves answers as they’re entered (on blur / step change). Attempts that are never submitted appear under the Partials tab for follow-up. Capturing is best-effort and fires no notifications, integrations, payments or spam checks; completing the form removes its partial.' => 'オンにすると、入力された回答を（フォーカスが外れたとき／ステップ切り替え時に）静かに自動保存します。送信されなかった試行は「途中」タブに表示され、フォローアップに使えます。取得はベストエフォートで、通知・連携・支払い・スパムチェックは発生しません。フォームを送信すると、その途中データは削除されます。',
+
+    // Partial capture privacy (#244)
+    'Delete captured partials after (days)' => '取得した途中データを削除するまでの日数',
+    'Abandoned partials (passive capture) older than this are removed during garbage collection. Kept deliberately short so abandoned data doesn’t linger.' => 'これより古い離脱した途中データ（パッシブ取得）はガベージコレクション時に削除されます。離脱データが残らないよう、意図的に短く設定しています。',
 ];

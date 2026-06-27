@@ -342,4 +342,8 @@ return [
     'Partial deleted.' => 'Partial deleted.',
     'Abandoned attempts captured before the visitor submitted. Completing the form removes its partial automatically; these are the ones never finished.' => 'Abandoned attempts captured before the visitor submitted. Completing the form removes its partial automatically; these are the ones never finished.',
     'When on, the form quietly auto-saves answers as they’re entered (on blur / step change). Attempts that are never submitted appear under the Partials tab for follow-up. Capturing is best-effort and fires no notifications, integrations, payments or spam checks; completing the form removes its partial.' => 'When on, the form quietly auto-saves answers as they’re entered (on blur / step change). Attempts that are never submitted appear under the Partials tab for follow-up. Capturing is best-effort and fires no notifications, integrations, payments or spam checks; completing the form removes its partial.',
+
+    // Partial capture privacy (#244)
+    'Delete captured partials after (days)' => 'Delete captured partials after (days)',
+    'Abandoned partials (passive capture) older than this are removed during garbage collection. Kept deliberately short so abandoned data doesn’t linger.' => 'Abandoned partials (passive capture) older than this are removed during garbage collection. Kept deliberately short so abandoned data doesn’t linger.',
 ];

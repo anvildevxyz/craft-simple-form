@@ -340,4 +340,8 @@ return [
     'Partial deleted.' => 'Gedeeltelijk record verwijderd.',
     'Abandoned attempts captured before the visitor submitted. Completing the form removes its partial automatically; these are the ones never finished.' => 'Verlaten pogingen die vóór verzending zijn vastgelegd. Het verzenden verwijdert het gedeeltelijke record automatisch; dit zijn de nooit voltooide.',
     'When on, the form quietly auto-saves answers as they’re entered (on blur / step change). Attempts that are never submitted appear under the Partials tab for follow-up. Capturing is best-effort and fires no notifications, integrations, payments or spam checks; completing the form removes its partial.' => 'Wanneer ingeschakeld slaat het formulier ingevoerde antwoorden stil automatisch op (bij focusverlies / stapwisseling). Nooit verzonden pogingen verschijnen onder het tabblad „Gedeeltelijk” voor opvolging. Vastleggen is best-effort en activeert geen meldingen, integraties, betalingen of spamcontroles; het verzenden verwijdert het gedeeltelijke record.',
+
+    // Partial capture privacy (#244)
+    'Delete captured partials after (days)' => 'Vastgelegde gedeeltelijke records verwijderen na (dagen)',
+    'Abandoned partials (passive capture) older than this are removed during garbage collection. Kept deliberately short so abandoned data doesn’t linger.' => 'Verlaten gedeeltelijke records (passieve vastlegging) ouder dan dit worden tijdens garbage collection verwijderd. Bewust kort gehouden zodat verlaten gegevens niet blijven hangen.',
 ];

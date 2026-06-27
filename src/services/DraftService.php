@@ -7,6 +7,9 @@ use craft\db\Query;
 use craft\helpers\Db;
 use craft\helpers\Json;
 use craft\helpers\StringHelper;
+use fabianhaef\simpleform\elements\Form;
+use fabianhaef\simpleform\events\PartialCaptureEvent;
+use fabianhaef\simpleform\fields\ConsentFieldType;
 use fabianhaef\simpleform\Plugin;
 use yii\base\Component;
 
@@ -38,8 +41,11 @@ class DraftService extends Component
     {
         $token = ($existingToken !== null && $existingToken !== '') ? $existingToken : bin2hex(random_bytes(32));
 
+        // A passive partial governs on its own (conservative) retention window,
+        // independent of the save-&-resume draft window.
+        $days = $passive ? $this->partialRetentionDays() : $this->retentionDays();
         $now = Db::prepareDateForDb(new \DateTime());
-        $expires = Db::prepareDateForDb((new \DateTime())->modify('+' . $this->retentionDays() . ' days'));
+        $expires = Db::prepareDateForDb((new \DateTime())->modify('+' . $days . ' days'));
         $hash = $this->hash($token);
         $db = Craft::$app->getDb();
 
@@ -101,6 +107,62 @@ class DraftService extends Component
 
         $data = is_array($row['data']) ? $row['data'] : Json::decodeIfJson((string) $row['data']);
         return is_array($data) ? $data : [];
+    }
+
+    /**
+     * Capture a passive partial for a form (#242/#244): gated on consent (a
+     * consent field present on the form must be granted in the captured values),
+     * stored on the conservative partial-retention window, and announced via
+     * {@see Plugin::EVENT_PARTIAL_CAPTURED} so integrators can build abandonment
+     * follow-up. Returns the token, or null when the capture is blocked (consent
+     * not granted) or empty — the caller treats null as a quiet no-op.
+     *
+     * @param array<string, mixed> $values field_<id> => posted value
+     */
+    public function capturePartial(Form $form, array $values, int $siteId, ?string $existingToken = null): ?string
+    {
+        if ($values === [] || !$this->consentGranted($form, $values, $siteId)) {
+            return null;
+        }
+
+        $token = $this->save((int) $form->id, $siteId, $values, $existingToken, true);
+
+        Plugin::getInstance()->trigger(
+            Plugin::EVENT_PARTIAL_CAPTURED,
+            new PartialCaptureEvent($form, $values, $siteId, $token),
+        );
+
+        return $token;
+    }
+
+    /**
+     * Whether the form's consent fields (if any) are all granted in the captured
+     * values — the consent gate (#244). A consent checkbox posts "1" only when
+     * ticked; an unticked/absent one means the visitor hasn't consented, so the
+     * capture must not store their data. No consent field → nothing to gate.
+     *
+     * @param array<string, mixed> $values
+     */
+    private function consentGranted(Form $form, array $values, int $siteId): bool
+    {
+        $fields = Plugin::getInstance()->getFormStructure()->getFieldSet((int) $form->id, $siteId);
+        foreach ($fields as $field) {
+            if ($field['type'] !== ConsentFieldType::getType()) {
+                continue;
+            }
+            $value = $values['field_' . $field['id']] ?? null;
+            if ($value !== '1' && $value !== 1 && $value !== true) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    private function partialRetentionDays(): int
+    {
+        $days = (int) Plugin::getInstance()->getSettings()->partialRetentionDays;
+        return $days > 0 ? $days : self::DEFAULT_RETENTION_DAYS;
     }
 
     /**

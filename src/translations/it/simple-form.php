@@ -346,4 +346,8 @@ return [
     'Partial deleted.' => 'Parziale eliminato.',
     'Abandoned attempts captured before the visitor submitted. Completing the form removes its partial automatically; these are the ones never finished.' => 'Tentativi abbandonati acquisiti prima dell’invio. L’invio rimuove automaticamente il parziale; questi sono quelli mai completati.',
     'When on, the form quietly auto-saves answers as they’re entered (on blur / step change). Attempts that are never submitted appear under the Partials tab for follow-up. Capturing is best-effort and fires no notifications, integrations, payments or spam checks; completing the form removes its partial.' => 'Se attivo, il modulo salva automaticamente e in silenzio le risposte mentre vengono inserite (alla perdita di focus / al cambio di passo). I tentativi mai inviati compaiono nella scheda «Parziali» per il follow-up. L’acquisizione è best-effort e non attiva notifiche, integrazioni, pagamenti o controlli antispam; l’invio rimuove il parziale.',
+
+    // Partial capture privacy (#244)
+    'Delete captured partials after (days)' => 'Elimina i parziali acquisiti dopo (giorni)',
+    'Abandoned partials (passive capture) older than this are removed during garbage collection. Kept deliberately short so abandoned data doesn’t linger.' => 'I parziali abbandonati (acquisizione passiva) più vecchi vengono rimossi durante la garbage collection. Volutamente breve, così i dati abbandonati non permangono.',
 ];
