@@ -306,4 +306,17 @@ return [
     'Grade bands' => 'Niveles de calificación',
     'When on, mark correct answers and assign points on choice fields (Build tab → a field’s options). Each submission is scored once at submit and the result is stored, shown here, and available to exports, notifications, and the success message via {quizScore}, {quizMaxScore}, {quizPercentage} and {quizGrade}.' => 'Cuando está activado, marca las respuestas correctas y asigna puntos a los campos de elección (pestaña «Construir» → opciones de un campo). Cada envío se puntúa una vez al enviarse; el resultado se guarda, se muestra aquí y está disponible para exportaciones, notificaciones y el mensaje de éxito mediante {quizScore}, {quizMaxScore}, {quizPercentage} y {quizGrade}.',
     'Optional. One band per line as “min-percent label”, for example “90 Excellent”. The highest band a score reaches wins. Leave blank for a numeric score only.' => 'Opcional. Un nivel por línea como «porcentaje-mín etiqueta», por ejemplo «90 Excelente». Gana el nivel más alto que alcanza la puntuación. Déjalo en blanco para una puntuación solo numérica.',
+
+    // UTM/referrer auto-capture (#249)
+    'Marketing attribution' => 'Atribución de marketing',
+    'Capture UTM & referrer' => 'Capturar UTM y referente',
+    'Attribution:' => 'Atribución:',
+    'UTM Source' => 'Fuente UTM',
+    'UTM Medium' => 'Medio UTM',
+    'UTM Campaign' => 'Campaña UTM',
+    'UTM Term' => 'Término UTM',
+    'UTM Content' => 'Contenido UTM',
+    'Referrer' => 'Referente',
+    'Landing page' => 'Página de destino',
+    'When on, the form captures utm_source, utm_medium, utm_campaign, utm_term, utm_content, the referrer, and the landing page (first visit in the session) and stores them on the submission — shown here and available to exports, notifications, and integrations. No manual hidden fields needed.' => 'Cuando está activado, el formulario captura utm_source, utm_medium, utm_campaign, utm_term, utm_content, el referente y la página de destino (primera visita de la sesión) y los guarda en el envío — visibles aquí y disponibles para exportaciones, notificaciones e integraciones. No se necesitan campos ocultos manuales.',
 ];

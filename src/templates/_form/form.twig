@@ -30,6 +30,7 @@
 {{- csrfInput -}}
 <input type="hidden" name="formHandle" value="{{ handle }}">
 {{- honeypot -}}
+{{- attributionInput -}}
 {%- if steps|length <= 1 -%}
   {%- for row in rows -%}
     {%- if row|length > 1 -%}

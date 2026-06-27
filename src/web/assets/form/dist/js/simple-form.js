@@ -824,7 +824,43 @@
         });
     }
 
+    // ---- UTM/referrer auto-capture (#249) --------------------------------
+    // Fill the form's hidden __sf_attr inputs from the URL's utm_* params, the
+    // referrer and the landing page. The first-seen values are persisted in
+    // sessionStorage so they survive in-session navigation to the form page;
+    // best-effort, so a private-mode storage failure never blocks the form.
+    function captureAttribution() {
+        var inputs = document.querySelectorAll("input[data-sf-attr]");
+        if (!inputs.length) { return; }
+
+        var KEY = "sfAttribution";
+        var attr = null;
+        try { attr = JSON.parse(sessionStorage.getItem(KEY) || "null"); } catch (e) { attr = null; }
+
+        if (!attr || typeof attr !== "object") {
+            var qs = null;
+            try { qs = new URLSearchParams(window.location.search); } catch (e) { qs = null; }
+            var get = function (k) { return qs ? (qs.get(k) || "") : ""; };
+            attr = {
+                utm_source: get("utm_source"),
+                utm_medium: get("utm_medium"),
+                utm_campaign: get("utm_campaign"),
+                utm_term: get("utm_term"),
+                utm_content: get("utm_content"),
+                referrer: document.referrer || "",
+                landing_page: window.location.href || ""
+            };
+            try { sessionStorage.setItem(KEY, JSON.stringify(attr)); } catch (e) {}
+        }
+
+        inputs.forEach(function (input) {
+            var key = input.getAttribute("data-sf-attr");
+            if (key && attr[key] != null) { input.value = attr[key]; }
+        });
+    }
+
     function init() {
+        captureAttribution();
         document.querySelectorAll(".simple-form").forEach(initForm);
     }
 

@@ -31,7 +31,7 @@ use yii\base\Component;
 
 /**
  * @phpstan-type SubmissionResult array{submission: Submission|null, errors: array<string, mixed>|null, data?: array<string, mixed>, paymentRedirectUrl?: string}
- * @phpstan-type SubmissionContext array{honeypot?: string, captchaToken?: ?string, skipCaptcha?: bool, userId?: ?int, siteId?: ?int, payment?: array<string, mixed>, actor?: string, _isEdit?: bool}
+ * @phpstan-type SubmissionContext array{honeypot?: string, captchaToken?: ?string, skipCaptcha?: bool, userId?: ?int, siteId?: ?int, payment?: array<string, mixed>, actor?: string, _isEdit?: bool, attribution?: array<string, string>|null}
  */
 class SubmissionService extends Component
 {
@@ -154,6 +154,8 @@ class SubmissionService extends Component
             'captchaToken' => null, // CaptchaService reads the request body itself.
             'userId' => $userId !== null ? (int) $userId : null,
             'payment' => is_array($paymentForm) ? $paymentForm : [],
+            // UTM/referrer auto-capture (#249): only persisted when the form opted in.
+            'attribution' => $this->parseAttribution($request),
         ]);
 
         // Temp PNGs are copied into the volume by saveTempFiles(); remove the
@@ -309,6 +311,13 @@ class SubmissionService extends Component
         // even if the answer key changes later. No-op unless the form is a quiz.
         $this->applyQuizScore($submission, $form, $data, (int) $siteId);
 
+        // UTM/referrer auto-capture (#249): persist the captured attribution only
+        // for forms that opted in, so a forged `__sf_attr` POST to a plain form is
+        // ignored. First-touch only — captured at create, never on edit.
+        if ($form->autoCaptureAttribution && is_array($context['attribution'] ?? null) && $context['attribution'] !== []) {
+            $submission->attribution = $context['attribution'];
+        }
+
         // Fire the before-save event (same as the Twig path).
         $beforeEvent = new SubmissionEvent($submission, $form, $data, true);
         Plugin::getInstance()->trigger(Plugin::EVENT_BEFORE_SUBMISSION_SAVE, $beforeEvent);
@@ -433,6 +442,51 @@ class SubmissionService extends Component
         $submission->quizMaxScore = $result['maxScore'];
         $submission->quizPercentage = $result['percentage'];
         $submission->quizGrade = $result['grade'];
+    }
+
+    /**
+     * Read and sanitize the marketing-attribution payload posted under the
+     * `__sf_attr` group by the front-end capture script (#249). Only the known
+     * keys are kept; each value is trimmed, length-bounded, and stripped of
+     * control characters; empty values are dropped. Returns the non-empty map or
+     * null when nothing was captured. The value is only *persisted* for forms
+     * that opted in (gated in {@see self::submit()}), so this never trusts the
+     * client beyond a bounded, opt-in plain-text record.
+     *
+     * @return array<string, string>|null
+     */
+    private function parseAttribution(Request $request): ?array
+    {
+        $raw = $request->getBodyParam('__sf_attr');
+        if (!is_array($raw)) {
+            return null;
+        }
+
+        // referrer/landing_page are URLs (longer); the utm_* are short tags.
+        $maxLengths = [
+            'utm_source' => 255,
+            'utm_medium' => 255,
+            'utm_campaign' => 255,
+            'utm_term' => 255,
+            'utm_content' => 255,
+            'referrer' => 2048,
+            'landing_page' => 2048,
+        ];
+
+        $out = [];
+        foreach ($maxLengths as $key => $max) {
+            $value = $raw[$key] ?? null;
+            if (!is_string($value)) {
+                continue;
+            }
+            $value = preg_replace('/[\x00-\x1F\x7F]/u', '', trim($value)) ?? '';
+            $value = mb_substr($value, 0, $max);
+            if ($value !== '') {
+                $out[$key] = $value;
+            }
+        }
+
+        return $out !== [] ? $out : null;
     }
 
     /**

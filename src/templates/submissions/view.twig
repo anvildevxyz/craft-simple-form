@@ -54,6 +54,26 @@
                     {% endif %}
                 </p>
             {% endif %}
+            {% if submission.attribution %}
+                {% set attrLabels = {
+                    utm_source: 'UTM Source'|t('simple-form'),
+                    utm_medium: 'UTM Medium'|t('simple-form'),
+                    utm_campaign: 'UTM Campaign'|t('simple-form'),
+                    utm_term: 'UTM Term'|t('simple-form'),
+                    utm_content: 'UTM Content'|t('simple-form'),
+                    referrer: 'Referrer'|t('simple-form'),
+                    landing_page: 'Landing page'|t('simple-form'),
+                } %}
+                <p><strong>{{ 'Attribution:'|t('simple-form') }}</strong></p>
+                <dl class="sf-attribution">
+                    {% for key, label in attrLabels %}
+                        {% if submission.attribution[key] is defined %}
+                            <dt>{{ label }}</dt>
+                            <dd>{{ submission.attribution[key] }}</dd>
+                        {% endif %}
+                    {% endfor %}
+                </dl>
+            {% endif %}
             {% if submission.userId %}
                 {% set user = craft.users.id(submission.userId).one() %}
                 <p>

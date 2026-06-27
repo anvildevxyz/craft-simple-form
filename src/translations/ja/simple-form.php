@@ -300,4 +300,17 @@ return [
     'Grade bands' => '評価バンド',
     'When on, mark correct answers and assign points on choice fields (Build tab → a field’s options). Each submission is scored once at submit and the result is stored, shown here, and available to exports, notifications, and the success message via {quizScore}, {quizMaxScore}, {quizPercentage} and {quizGrade}.' => 'オンにすると、選択フィールドで正解をマークしポイントを割り当てられます（「ビルド」タブ → フィールドのオプション）。各送信は送信時に一度だけ採点され、結果は保存されてここに表示され、{quizScore}、{quizMaxScore}、{quizPercentage}、{quizGrade} を使ってエクスポート・通知・完了メッセージで利用できます。',
     'Optional. One band per line as “min-percent label”, for example “90 Excellent”. The highest band a score reaches wins. Leave blank for a numeric score only.' => '任意。1 行に 1 バンドを「最小パーセント ラベル」の形式で入力します（例：「90 優秀」）。スコアが到達した最も高いバンドが採用されます。数値スコアのみの場合は空欄にします。',
+
+    // UTM/referrer auto-capture (#249)
+    'Marketing attribution' => 'マーケティング属性',
+    'Capture UTM & referrer' => 'UTM とリファラーを取得',
+    'Attribution:' => '属性：',
+    'UTM Source' => 'UTM ソース',
+    'UTM Medium' => 'UTM メディア',
+    'UTM Campaign' => 'UTM キャンペーン',
+    'UTM Term' => 'UTM 検索語',
+    'UTM Content' => 'UTM コンテンツ',
+    'Referrer' => 'リファラー',
+    'Landing page' => 'ランディングページ',
+    'When on, the form captures utm_source, utm_medium, utm_campaign, utm_term, utm_content, the referrer, and the landing page (first visit in the session) and stores them on the submission — shown here and available to exports, notifications, and integrations. No manual hidden fields needed.' => 'オンにすると、フォームは utm_source、utm_medium、utm_campaign、utm_term、utm_content、リファラー、ランディングページ（セッションでの最初の訪問）を取得し、送信時に保存します。ここに表示され、エクスポート・通知・連携で利用できます。手動の隠しフィールドは不要です。',
 ];

@@ -302,4 +302,17 @@ return [
     'Grade bands' => 'Grade bands',
     'When on, mark correct answers and assign points on choice fields (Build tab → a field’s options). Each submission is scored once at submit and the result is stored, shown here, and available to exports, notifications, and the success message via {quizScore}, {quizMaxScore}, {quizPercentage} and {quizGrade}.' => 'When on, mark correct answers and assign points on choice fields (Build tab → a field’s options). Each submission is scored once at submit and the result is stored, shown here, and available to exports, notifications, and the success message via {quizScore}, {quizMaxScore}, {quizPercentage} and {quizGrade}.',
     'Optional. One band per line as “min-percent label”, for example “90 Excellent”. The highest band a score reaches wins. Leave blank for a numeric score only.' => 'Optional. One band per line as “min-percent label”, for example “90 Excellent”. The highest band a score reaches wins. Leave blank for a numeric score only.',
+
+    // UTM/referrer auto-capture (#249)
+    'Marketing attribution' => 'Marketing attribution',
+    'Capture UTM & referrer' => 'Capture UTM & referrer',
+    'Attribution:' => 'Attribution:',
+    'UTM Source' => 'UTM Source',
+    'UTM Medium' => 'UTM Medium',
+    'UTM Campaign' => 'UTM Campaign',
+    'UTM Term' => 'UTM Term',
+    'UTM Content' => 'UTM Content',
+    'Referrer' => 'Referrer',
+    'Landing page' => 'Landing page',
+    'When on, the form captures utm_source, utm_medium, utm_campaign, utm_term, utm_content, the referrer, and the landing page (first visit in the session) and stores them on the submission — shown here and available to exports, notifications, and integrations. No manual hidden fields needed.' => 'When on, the form captures utm_source, utm_medium, utm_campaign, utm_term, utm_content, the referrer, and the landing page (first visit in the session) and stores them on the submission — shown here and available to exports, notifications, and integrations. No manual hidden fields needed.',
 ];

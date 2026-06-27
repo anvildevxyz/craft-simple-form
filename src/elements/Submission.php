@@ -47,6 +47,14 @@ class Submission extends Element
     public ?int $quizMaxScore = null;
     public ?int $quizPercentage = null;
     public ?string $quizGrade = null;
+    /**
+     * Marketing attribution captured at submit when the form opted in (#249):
+     * a map of utm_source/medium/campaign/term/content + referrer + landing_page
+     * (only the non-empty keys), or null on forms that don't capture it.
+     *
+     * @var array<string, string>|null
+     */
+    public ?array $attribution = null;
     /** SHA-256 hash of the active front-end edit token; the token itself lives only in the edit URL. */
     public ?string $editTokenHash = null;
     /** Absolute expiry of the edit token (UTC), or null when no token is active. */
@@ -175,6 +183,7 @@ class Submission extends Element
             'quizMaxScore' => $this->quizMaxScore,
             'quizPercentage' => $this->quizPercentage,
             'quizGrade' => $this->quizGrade,
+            'attribution' => $this->attribution,
             'editTokenHash' => $this->editTokenHash,
             'editTokenExpires' => $this->editTokenExpires,
             'dateUpdated' => $now,

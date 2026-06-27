@@ -188,6 +188,13 @@ class WebhookIntegration implements IntegrationTypeInterface
             ];
         }
 
+        // UTM/referrer auto-capture (#249): add an `attribution` object only when
+        // captured, so a plain form's payload shape is unchanged. The stored map
+        // already holds just the non-empty keys.
+        if ($submission->attribution !== null && $submission->attribution !== []) {
+            $payload['attribution'] = $submission->attribution;
+        }
+
         return $payload;
     }
 }

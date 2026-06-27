@@ -300,4 +300,17 @@ return [
     'Grade bands' => 'Faixas de nota',
     'When on, mark correct answers and assign points on choice fields (Build tab → a field’s options). Each submission is scored once at submit and the result is stored, shown here, and available to exports, notifications, and the success message via {quizScore}, {quizMaxScore}, {quizPercentage} and {quizGrade}.' => 'Quando ativado, marque as respostas corretas e atribua pontos aos campos de escolha (separador «Construir» → opções de um campo). Cada envio é pontuado uma vez no envio; o resultado é guardado, mostrado aqui e disponível para exportações, notificações e a mensagem de sucesso através de {quizScore}, {quizMaxScore}, {quizPercentage} e {quizGrade}.',
     'Optional. One band per line as “min-percent label”, for example “90 Excellent”. The highest band a score reaches wins. Leave blank for a numeric score only.' => 'Opcional. Uma faixa por linha como «percentagem-mín rótulo», por exemplo «90 Excelente». Vence a faixa mais alta que a pontuação atinge. Deixe em branco para uma pontuação apenas numérica.',
+
+    // UTM/referrer auto-capture (#249)
+    'Marketing attribution' => 'Atribuição de marketing',
+    'Capture UTM & referrer' => 'Capturar UTM e referenciador',
+    'Attribution:' => 'Atribuição:',
+    'UTM Source' => 'Origem UTM',
+    'UTM Medium' => 'Meio UTM',
+    'UTM Campaign' => 'Campanha UTM',
+    'UTM Term' => 'Termo UTM',
+    'UTM Content' => 'Conteúdo UTM',
+    'Referrer' => 'Referenciador',
+    'Landing page' => 'Página de destino',
+    'When on, the form captures utm_source, utm_medium, utm_campaign, utm_term, utm_content, the referrer, and the landing page (first visit in the session) and stores them on the submission — shown here and available to exports, notifications, and integrations. No manual hidden fields needed.' => 'Quando ativado, o formulário captura utm_source, utm_medium, utm_campaign, utm_term, utm_content, o referenciador e a página de destino (primeira visita na sessão) e guarda-os no envio — mostrados aqui e disponíveis para exportações, notificações e integrações. Sem campos ocultos manuais.',
 ];

@@ -306,4 +306,17 @@ return [
     'Grade bands' => 'Notenstufen',
     'When on, mark correct answers and assign points on choice fields (Build tab → a field’s options). Each submission is scored once at submit and the result is stored, shown here, and available to exports, notifications, and the success message via {quizScore}, {quizMaxScore}, {quizPercentage} and {quizGrade}.' => 'Wenn aktiviert, markieren Sie richtige Antworten und vergeben Punkte für Auswahlfelder (Tab „Aufbau“ → Optionen eines Feldes). Jede Einsendung wird einmal beim Absenden bewertet; das Ergebnis wird gespeichert, hier angezeigt und steht Exporten, Benachrichtigungen und der Erfolgsmeldung über {quizScore}, {quizMaxScore}, {quizPercentage} und {quizGrade} zur Verfügung.',
     'Optional. One band per line as “min-percent label”, for example “90 Excellent”. The highest band a score reaches wins. Leave blank for a numeric score only.' => 'Optional. Eine Stufe pro Zeile als „Mindestprozent Bezeichnung“, zum Beispiel „90 Ausgezeichnet“. Die höchste erreichte Stufe gilt. Leer lassen für nur eine numerische Punktzahl.',
+
+    // UTM/referrer auto-capture (#249)
+    'Marketing attribution' => 'Marketing-Attribution',
+    'Capture UTM & referrer' => 'UTM & Referrer erfassen',
+    'Attribution:' => 'Zuordnung:',
+    'UTM Source' => 'UTM-Quelle',
+    'UTM Medium' => 'UTM-Medium',
+    'UTM Campaign' => 'UTM-Kampagne',
+    'UTM Term' => 'UTM-Begriff',
+    'UTM Content' => 'UTM-Inhalt',
+    'Referrer' => 'Verweis-URL',
+    'Landing page' => 'Landingpage',
+    'When on, the form captures utm_source, utm_medium, utm_campaign, utm_term, utm_content, the referrer, and the landing page (first visit in the session) and stores them on the submission — shown here and available to exports, notifications, and integrations. No manual hidden fields needed.' => 'Wenn aktiviert, erfasst das Formular utm_source, utm_medium, utm_campaign, utm_term, utm_content, den Referrer und die Landingpage (erster Besuch in der Sitzung) und speichert sie bei der Einsendung — hier sichtbar und verfügbar für Exporte, Benachrichtigungen und Integrationen. Keine manuellen versteckten Felder nötig.',
 ];

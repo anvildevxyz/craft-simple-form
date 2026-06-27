@@ -447,6 +447,16 @@
    distribution-bar rules (only width stays computed inline). The bar colour is a
    theme token, not a hardcoded hex. */
 .sf-tight-top { margin-top: -8px; }
+
+/* Attribution detail list on the submission view (#249). */
+.sf-attribution {
+    display: grid;
+    grid-template-columns: minmax(110px, max-content) 1fr;
+    gap: 2px 12px;
+    margin: 4px 0 0;
+}
+.sf-attribution dt { font-weight: bold; color: var(--medium-text-color, #606d7b); margin: 0; }
+.sf-attribution dd { margin: 0; word-break: break-word; }
 .sf-dist-bar {
     display: inline-block;
     height: .9em;

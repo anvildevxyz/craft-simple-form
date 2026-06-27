@@ -141,6 +141,8 @@ class Form extends Element
      * highest band whose threshold a score meets wins. Blank = numeric only.
      */
     public ?string $quizGradeBands = null;
+    /** Per-form opt-in for UTM/referrer auto-capture (#249; shared, not translatable). */
+    public bool $autoCaptureAttribution = false;
 
     // Per-site (translatable). title is stored in elements_sites via hasTitles().
     public ?string $title = null;
@@ -491,6 +493,9 @@ class Form extends Element
         $rules[] = [['quizMode'], 'boolean'];
         $rules[] = [['quizGradeBands'], 'string'];
 
+        // UTM/referrer auto-capture (#249).
+        $rules[] = [['autoCaptureAttribution'], 'boolean'];
+
         // handle is shared across sites, so it must be globally unique
         $rules[] = [['handle'], 'validateHandleUnique'];
 
@@ -577,6 +582,7 @@ class Form extends Element
             'editWindowMinutes' => $this->editWindowMinutes,
             'quizMode' => $this->quizMode,
             'quizGradeBands' => $this->quizGradeBands,
+            'autoCaptureAttribution' => $this->autoCaptureAttribution,
             'dateUpdated' => $now,
         ];
 

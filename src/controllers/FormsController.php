@@ -173,6 +173,9 @@ class FormsController extends Controller
         $form->quizMode = (bool) $request->getBodyParam('quizMode');
         $form->quizGradeBands = trim((string) $request->getBodyParam('quizGradeBands', '')) ?: null;
 
+        // UTM/referrer auto-capture (#249).
+        $form->autoCaptureAttribution = (bool) $request->getBodyParam('autoCaptureAttribution');
+
         $form->propagationMethod = PropagationMethod::tryFrom(
             (string)$request->getBodyParam('propagationMethod', 'none')
         ) ?? PropagationMethod::None;

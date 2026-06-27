@@ -306,4 +306,17 @@ return [
     'Grade bands' => 'Tranches de notes',
     'When on, mark correct answers and assign points on choice fields (Build tab → a field’s options). Each submission is scored once at submit and the result is stored, shown here, and available to exports, notifications, and the success message via {quizScore}, {quizMaxScore}, {quizPercentage} and {quizGrade}.' => 'Lorsque activé, marquez les bonnes réponses et attribuez des points aux champs à choix (onglet « Construire » → options d’un champ). Chaque envoi est noté une seule fois à la soumission ; le résultat est enregistré, affiché ici et disponible pour les exports, les notifications et le message de succès via {quizScore}, {quizMaxScore}, {quizPercentage} et {quizGrade}.',
     'Optional. One band per line as “min-percent label”, for example “90 Excellent”. The highest band a score reaches wins. Leave blank for a numeric score only.' => 'Facultatif. Une tranche par ligne sous la forme « pourcentage-min libellé », par exemple « 90 Excellent ». La tranche la plus élevée atteinte l’emporte. Laissez vide pour un score uniquement numérique.',
+
+    // UTM/referrer auto-capture (#249)
+    'Marketing attribution' => 'Attribution marketing',
+    'Capture UTM & referrer' => 'Capturer UTM et référent',
+    'Attribution:' => 'Attribution :',
+    'UTM Source' => 'Source UTM',
+    'UTM Medium' => 'Support UTM',
+    'UTM Campaign' => 'Campagne UTM',
+    'UTM Term' => 'Terme UTM',
+    'UTM Content' => 'Contenu UTM',
+    'Referrer' => 'Référent',
+    'Landing page' => 'Page d’atterrissage',
+    'When on, the form captures utm_source, utm_medium, utm_campaign, utm_term, utm_content, the referrer, and the landing page (first visit in the session) and stores them on the submission — shown here and available to exports, notifications, and integrations. No manual hidden fields needed.' => 'Lorsque activé, le formulaire capture utm_source, utm_medium, utm_campaign, utm_term, utm_content, le référent et la page d’atterrissage (première visite de la session) et les enregistre sur l’envoi — affichés ici et disponibles pour les exports, les notifications et les intégrations. Aucun champ caché manuel nécessaire.',
 ];

@@ -300,4 +300,17 @@ return [
     'Grade bands' => 'Cijferniveaus',
     'When on, mark correct answers and assign points on choice fields (Build tab → a field’s options). Each submission is scored once at submit and the result is stored, shown here, and available to exports, notifications, and the success message via {quizScore}, {quizMaxScore}, {quizPercentage} and {quizGrade}.' => 'Wanneer ingeschakeld, markeer juiste antwoorden en ken punten toe aan keuzevelden (tabblad „Bouwen” → opties van een veld). Elke inzending wordt eenmaal bij verzending gescoord; het resultaat wordt opgeslagen, hier getoond en beschikbaar voor exports, meldingen en het succesbericht via {quizScore}, {quizMaxScore}, {quizPercentage} en {quizGrade}.',
     'Optional. One band per line as “min-percent label”, for example “90 Excellent”. The highest band a score reaches wins. Leave blank for a numeric score only.' => 'Optioneel. Eén niveau per regel als „min-percentage label”, bijvoorbeeld „90 Uitstekend”. Het hoogste behaalde niveau telt. Laat leeg voor alleen een numerieke score.',
+
+    // UTM/referrer auto-capture (#249)
+    'Marketing attribution' => 'Marketingattributie',
+    'Capture UTM & referrer' => 'UTM en verwijzer vastleggen',
+    'Attribution:' => 'Attributie:',
+    'UTM Source' => 'UTM-bron',
+    'UTM Medium' => 'UTM-medium',
+    'UTM Campaign' => 'UTM-campagne',
+    'UTM Term' => 'UTM-term',
+    'UTM Content' => 'UTM-inhoud',
+    'Referrer' => 'Verwijzer',
+    'Landing page' => 'Landingspagina',
+    'When on, the form captures utm_source, utm_medium, utm_campaign, utm_term, utm_content, the referrer, and the landing page (first visit in the session) and stores them on the submission — shown here and available to exports, notifications, and integrations. No manual hidden fields needed.' => 'Wanneer ingeschakeld legt het formulier utm_source, utm_medium, utm_campaign, utm_term, utm_content, de verwijzer en de landingspagina (eerste bezoek in de sessie) vast en slaat ze op bij de inzending — hier getoond en beschikbaar voor exports, meldingen en integraties. Geen handmatige verborgen velden nodig.',
 ];

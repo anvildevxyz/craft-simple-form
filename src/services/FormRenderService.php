@@ -304,6 +304,9 @@ class FormRenderService extends Component
             'honeypot' => $settings->enableHoneypot
                 ? Template::raw('<input type="hidden" name="__honeypot" value="" style="display:none;" aria-hidden="true" autocomplete="off">')
                 : Template::raw(''),
+            // UTM/referrer auto-capture (#249): empty hidden inputs the front-end
+            // capture script fills from the URL/referrer; absent unless opted in.
+            'attributionInput' => Template::raw($this->_attributionInputs($form)),
             'captcha' => Template::raw($this->_captcha($settings)),
             'assets' => Template::raw($this->_assets($settings)),
             'resume' => $resume,
@@ -670,6 +673,26 @@ class FormRenderService extends Component
      * The form's CSS/JS: register the {@see FormAsset} bundle (returns '') or emit
      * it inline as an escape hatch / when no web View can publish.
      */
+    /**
+     * The empty hidden inputs for UTM/referrer auto-capture (#249), or an empty
+     * string when the form didn't opt in. The front-end capture script fills
+     * each `value` from the URL query / referrer / landing page at submit time.
+     */
+    private function _attributionInputs(Form $form): string
+    {
+        if (!$form->autoCaptureAttribution) {
+            return '';
+        }
+
+        $keys = ['utm_source', 'utm_medium', 'utm_campaign', 'utm_term', 'utm_content', 'referrer', 'landing_page'];
+        $html = '';
+        foreach ($keys as $key) {
+            $html .= sprintf('<input type="hidden" name="__sf_attr[%s]" value="" data-sf-attr="%s" autocomplete="off">', $key, $key);
+        }
+
+        return $html;
+    }
+
     private function _assets(Settings $settings): string
     {
         $view = Craft::$app->getView();

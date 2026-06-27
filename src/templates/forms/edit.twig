@@ -515,5 +515,17 @@
             errors: form.getErrors('quizGradeBands'),
         }) }}
     </div>
+
+    <hr>
+
+    <h2>{{ 'Marketing attribution'|t('simple-form') }}</h2>
+
+    {{ forms.lightswitchField({
+        label: 'Capture UTM & referrer'|t('simple-form'),
+        id: 'autoCaptureAttribution',
+        name: 'autoCaptureAttribution',
+        on: form.autoCaptureAttribution ?? false,
+        instructions: 'When on, the form captures utm_source, utm_medium, utm_campaign, utm_term, utm_content, the referrer, and the landing page (first visit in the session) and stores them on the submission — shown here and available to exports, notifications, and integrations. No manual hidden fields needed.'|t('simple-form'),
+    }) }}
 </div>
 {% endblock %}

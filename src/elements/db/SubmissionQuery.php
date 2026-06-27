@@ -103,6 +103,7 @@ class SubmissionQuery extends ElementQuery
             'simpleform_submissions.quizMaxScore',
             'simpleform_submissions.quizPercentage',
             'simpleform_submissions.quizGrade',
+            'simpleform_submissions.attribution',
             'simpleform_submissions.editTokenHash',
             'simpleform_submissions.editTokenExpires',
         ]);

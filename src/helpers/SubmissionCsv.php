@@ -69,6 +69,7 @@ final class SubmissionCsv
         self::warmAssetCache($submissions);
         $columns = self::discoverColumns($submissions);
         $includeQuiz = self::includesQuiz($submissions);
+        $includeAttribution = self::includesAttribution($submissions);
 
         $handle = fopen('php://temp', 'r+');
         if ($handle === false) {
@@ -78,6 +79,9 @@ final class SubmissionCsv
         $header = ['ID', 'Form', 'Status', 'Submitted'];
         if ($includeQuiz) {
             $header = [...$header, ...self::quizHeaders()];
+        }
+        if ($includeAttribution) {
+            $header = [...$header, ...self::attributionHeaders()];
         }
         fputcsv($handle, [...$header, ...array_column($columns, 'label')]);
 
@@ -91,6 +95,9 @@ final class SubmissionCsv
             ];
             if ($includeQuiz) {
                 $meta = [...$meta, ...self::quizValues($submission)];
+            }
+            if ($includeAttribution) {
+                $meta = [...$meta, ...self::attributionValues($submission)];
             }
             fputcsv($handle, [...$meta, ...self::rowValues($submission, $columns)]);
         }
@@ -116,6 +123,7 @@ final class SubmissionCsv
         self::warmAssetCache($submissions);
         $columns = self::discoverColumns($submissions);
         $includeQuiz = self::includesQuiz($submissions);
+        $includeAttribution = self::includesAttribution($submissions);
 
         $rows = [];
         foreach ($submissions as $submission) {
@@ -129,6 +137,10 @@ final class SubmissionCsv
 
             if ($includeQuiz) {
                 $row += array_combine(self::quizHeaders(), self::quizValues($submission));
+            }
+
+            if ($includeAttribution) {
+                $row += array_combine(self::attributionHeaders(), self::attributionValues($submission));
             }
 
             $values = self::rowValues($submission, $columns);
@@ -470,6 +482,61 @@ final class SubmissionCsv
             $submission->quizPercentage !== null ? $submission->quizPercentage . '%' : '',
             (string) ($submission->quizGrade ?? ''),
         ];
+    }
+
+    /**
+     * The ordered attribution map keys (= column order), shared by the header
+     * and value builders (#249).
+     *
+     * @return list<string>
+     */
+    private static function attributionKeys(): array
+    {
+        return ['utm_source', 'utm_medium', 'utm_campaign', 'utm_term', 'utm_content', 'referrer', 'landing_page'];
+    }
+
+    /**
+     * Whether any submission carries captured attribution, gating the columns so
+     * a result set without it stays byte-for-byte as before (#249).
+     *
+     * @param array<int, Submission> $submissions
+     */
+    private static function includesAttribution(array $submissions): bool
+    {
+        foreach ($submissions as $submission) {
+            if ($submission->attribution !== null) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
+     * The attribution column headers, aligned with {@see self::attributionKeys()}.
+     * Raw English to match the other metadata headers.
+     *
+     * @return list<string>
+     */
+    private static function attributionHeaders(): array
+    {
+        return ['UTM Source', 'UTM Medium', 'UTM Campaign', 'UTM Term', 'UTM Content', 'Referrer', 'Landing Page'];
+    }
+
+    /**
+     * One submission's attribution cell values, aligned with
+     * {@see self::attributionHeaders()}; missing keys yield blank cells.
+     *
+     * @return list<string>
+     */
+    private static function attributionValues(Submission $submission): array
+    {
+        $attribution = $submission->attribution ?? [];
+
+        $values = [];
+        foreach (self::attributionKeys() as $key) {
+            $values[] = self::neutralizeFormula((string) ($attribution[$key] ?? ''));
+        }
+        return $values;
     }
 
     /**

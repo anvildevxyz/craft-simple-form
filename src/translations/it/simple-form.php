@@ -306,4 +306,17 @@ return [
     'Grade bands' => 'Fasce di voto',
     'When on, mark correct answers and assign points on choice fields (Build tab → a field’s options). Each submission is scored once at submit and the result is stored, shown here, and available to exports, notifications, and the success message via {quizScore}, {quizMaxScore}, {quizPercentage} and {quizGrade}.' => 'Se attivo, contrassegna le risposte corrette e assegna punti ai campi a scelta (scheda «Costruisci» → opzioni di un campo). Ogni invio viene valutato una volta al momento dell’invio; il risultato viene memorizzato, mostrato qui e disponibile per esportazioni, notifiche e il messaggio di successo tramite {quizScore}, {quizMaxScore}, {quizPercentage} e {quizGrade}.',
     'Optional. One band per line as “min-percent label”, for example “90 Excellent”. The highest band a score reaches wins. Leave blank for a numeric score only.' => 'Facoltativo. Una fascia per riga come «percentuale-minima etichetta», ad esempio «90 Eccellente». Vince la fascia più alta raggiunta. Lascia vuoto per un punteggio solo numerico.',
+
+    // UTM/referrer auto-capture (#249)
+    'Marketing attribution' => 'Attribuzione marketing',
+    'Capture UTM & referrer' => 'Acquisisci UTM e provenienza',
+    'Attribution:' => 'Attribuzione:',
+    'UTM Source' => 'Sorgente UTM',
+    'UTM Medium' => 'Mezzo UTM',
+    'UTM Campaign' => 'Campagna UTM',
+    'UTM Term' => 'Termine UTM',
+    'UTM Content' => 'Contenuto UTM',
+    'Referrer' => 'Provenienza',
+    'Landing page' => 'Pagina di destinazione',
+    'When on, the form captures utm_source, utm_medium, utm_campaign, utm_term, utm_content, the referrer, and the landing page (first visit in the session) and stores them on the submission — shown here and available to exports, notifications, and integrations. No manual hidden fields needed.' => 'Se attivo, il modulo acquisisce utm_source, utm_medium, utm_campaign, utm_term, utm_content, la provenienza e la pagina di destinazione (prima visita della sessione) e li memorizza sull’invio — mostrati qui e disponibili per esportazioni, notifiche e integrazioni. Nessun campo nascosto manuale necessario.',
 ];
