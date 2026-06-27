@@ -20,6 +20,7 @@ use fabianhaef\simpleform\fields\FileFieldType;
 use fabianhaef\simpleform\fields\HiddenFieldType;
 use fabianhaef\simpleform\fields\RepeaterFieldType;
 use fabianhaef\simpleform\fields\SignatureFieldType;
+use fabianhaef\simpleform\helpers\JumpResolver;
 use fabianhaef\simpleform\helpers\RateLimiter;
 use fabianhaef\simpleform\helpers\SafeUrl;
 use fabianhaef\simpleform\helpers\SignaturePng;
@@ -435,6 +436,51 @@ class SubmissionService extends Component
     }
 
     /**
+     * The field handles on steps the logic-jump path skips for these answers
+     * (#245), as a set. Empty when the form isn't multi-step/conversational or
+     * has no jumps. Uses {@see JumpResolver} — the same rules + sequence the
+     * front-end navigator reads — so the server and the visitor agree on the
+     * path, and a jumped-over required field can't block the submission.
+     *
+     * @param array<string, mixed> $valuesByHandle
+     * @return array<string, true>
+     */
+    private function unreachableJumpHandles(Form $form, FormModel $formModel, array $valuesByHandle): array
+    {
+        $fields = [];
+        $configByHandle = [];
+        foreach ($formModel->getFields() as $field) {
+            $handle = $field->getName();
+            $config = $field->getConfig();
+            $fields[] = ['name' => $handle, 'config' => $config, 'type' => $field->getType()];
+            $configByHandle[$handle] = $config;
+        }
+
+        $sequence = JumpResolver::stepSequence(
+            $fields,
+            $form->renderMode === 'conversational',
+            Plugin::getInstance()->getFieldTypeRegistry()->layoutTypeHandles(),
+        );
+        if (count($sequence) <= 1) {
+            return [];
+        }
+
+        $stepJumps = JumpResolver::buildStepRules($sequence, $configByHandle);
+        $reachable = array_fill_keys(JumpResolver::reachable($stepJumps, count($sequence), $valuesByHandle), true);
+
+        $unreachable = [];
+        foreach ($sequence as $i => $handles) {
+            if (!isset($reachable[$i])) {
+                foreach ($handles as $handle) {
+                    $unreachable[$handle] = true;
+                }
+            }
+        }
+
+        return $unreachable;
+    }
+
+    /**
      * Stamp the quiz score onto a submission before it is saved (#241). A no-op
      * unless the form opted into quiz mode; otherwise the raw score, max,
      * percentage and grade band are computed from the validated `$data` against
@@ -639,6 +685,12 @@ class SubmissionService extends Component
             $valuesByHandle = $event->valuesByHandle;
         }
 
+        // (3c) Logic jumps (#245): replay the jump path server-side from the same
+        // rules the navigator used, so a field on a step the answers jumped over
+        // is treated exactly like a hidden field — not validated, not stored, and
+        // unable to block submission. Mirrors the front-end SF.jumps resolution.
+        $unreachableHandles = $this->unreachableJumpHandles($form, $formModel, $valuesByHandle);
+
         // (4) Validate every visible field and build the persisted data payload.
         // Fields hidden by conditional logic are neither validated nor stored —
         // a hidden field's posted value is never trusted (so a crafted POST
@@ -660,6 +712,12 @@ class SubmissionService extends Component
             }
 
             if (!$field->isVisible($valuesByHandle)) {
+                continue;
+            }
+
+            // A field on a step the jump path skipped is not part of this
+            // submission — treat it like a hidden field (#245).
+            if (isset($unreachableHandles[$field->getName()])) {
                 continue;
             }
 

@@ -312,6 +312,16 @@
         return group.querySelectorAll("select, textarea, input:not([type=checkbox])");
     }
 
+    // The form's current answers keyed by field handle — shared by conditional
+    // logic and logic-jump (#245) evaluation.
+    function formValues(form) {
+        var values = {};
+        Array.prototype.slice.call(form.querySelectorAll("[data-sf-handle]")).forEach(function (g) {
+            values[g.dataset.sfHandle] = groupValue(g);
+        });
+        return values;
+    }
+
     function applyConditions(form, groups) {
         var values = {};
         groups.forEach(function (g) { values[g.dataset.sfHandle] = groupValue(g); });
@@ -456,6 +466,35 @@
         }
     };
 
+    // Logic jumps (#245) — page-level branching, mirroring PHP JumpResolver so
+    // the navigator and the server agree on the path. `stepRules[i]` is the list
+    // of { field, operator, value, to } rules on step i (to = target index).
+    SF.jumps = {
+        // The next step from `current` given the answers: the first matching
+        // jump's target, else the next sequential step.
+        next: function (stepRules, current, values) {
+            var rules = (stepRules && stepRules[current]) || [];
+            for (var i = 0; i < rules.length; i++) {
+                var r = rules[i];
+                if (SF.compare(r.operator || "eq", values[r.field], r.value)) {
+                    return r.to;
+                }
+            }
+            return current + 1;
+        },
+        // The step indices reached by replaying jumps from step 0.
+        reachable: function (stepRules, count, values) {
+            var visited = {};
+            var i = 0;
+            while (i >= 0 && i < count) {
+                visited[i] = true;
+                var n = SF.jumps.next(stepRules, i, values);
+                i = n > i ? n : i + 1;
+            }
+            return Object.keys(visited).map(Number);
+        }
+    };
+
     function initSteps(form) {
         var nav = form.querySelector(".simple-form-step-nav");
         if (!nav) { return; }
@@ -468,6 +507,9 @@
         var progress = nav.querySelector(".simple-form-step-progress");
         var progressTpl = nav.getAttribute("data-sf-progress") || "{current} of {total}";
         var current = 0;
+        var history = [];
+        var stepJumps = null;
+        try { stepJumps = JSON.parse(form.getAttribute("data-sf-jumps") || "null"); } catch (e) { stepJumps = null; }
 
         // A step is "active" unless every input control it holds is conditionally
         // hidden (initConditions disables hidden fields). Inactive steps — e.g. a
@@ -522,22 +564,42 @@
             return true;
         }
 
-        function go(to) {
+        function go(to, record) {
             if (to < 0 || to === current) { return; }
             var from = current;
+            if (record) { history.push(from); }
             current = to;
             render();
             focusStep();
             SF.emit(form, "stepChange", { form: form, from: from, to: current, total: steps.length }, false);
         }
 
+        // The first active step at or after `i` (a jump target may land on a
+        // conditionally-hidden screen; advance to the next shown one).
+        function firstActiveFrom(i) {
+            while (i < steps.length && !stepActive(i)) { i++; }
+            return i < steps.length ? i : -1;
+        }
+
+        // Logic jumps (#245): the next step honoring jump rules. A matched jump
+        // (target beyond the next sequential step) routes to its target screen;
+        // otherwise advance to the next active step. Back replays the history so
+        // jumped-over screens aren't revisited.
+        function nextStep() {
+            var sequential = current + 1;
+            var to = stepJumps ? SF.jumps.next(stepJumps, current, formValues(form)) : sequential;
+            return to > sequential ? firstActiveFrom(to) : SF.stepNav.seek(activeFlags(), current, 1);
+        }
+
         if (nextBtn) {
             nextBtn.addEventListener("click", function () {
-                if (currentStepValid()) { go(SF.stepNav.seek(activeFlags(), current, 1)); }
+                if (currentStepValid()) { go(nextStep(), true); }
             });
         }
         if (backBtn) {
-            backBtn.addEventListener("click", function () { go(SF.stepNav.seek(activeFlags(), current, -1)); });
+            backBtn.addEventListener("click", function () {
+                go(history.length ? history.pop() : SF.stepNav.seek(activeFlags(), current, -1), false);
+            });
         }
 
         // Conditional logic can hide/reveal later screens as answers change, so

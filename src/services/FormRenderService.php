@@ -13,6 +13,7 @@ use fabianhaef\simpleform\helpers\FieldQueryHelper;
 use fabianhaef\simpleform\helpers\FormRows;
 use fabianhaef\simpleform\helpers\FormScreens;
 use fabianhaef\simpleform\helpers\FormSteps;
+use fabianhaef\simpleform\helpers\JumpResolver;
 use fabianhaef\simpleform\integrations\support\SubmissionValues;
 use fabianhaef\simpleform\models\Settings;
 use fabianhaef\simpleform\Plugin;
@@ -296,6 +297,28 @@ class FormRenderService extends Component
             )
             : [];
 
+        // Logic jumps (#245): per-step jump rules for the rendered sequence
+        // (screens when conversational, pages otherwise). The navigator reads
+        // them from `data-sf-jumps` and the server replays the same rules, so
+        // both agree on the branch. Only meaningful when there's a navigator.
+        $jumpSequence = JumpResolver::stepSequence(
+            $resolvedFields,
+            $conversational,
+            Plugin::getInstance()->getFieldTypeRegistry()->layoutTypeHandles(),
+        );
+        $configByHandle = [];
+        foreach ($resolvedFields as $f) {
+            $configByHandle[(string) $f['name']] = is_array($f['config'] ?? null) ? $f['config'] : [];
+        }
+        $stepJumps = count($jumpSequence) > 1 ? JumpResolver::buildStepRules($jumpSequence, $configByHandle) : [];
+        $hasJumps = false;
+        foreach ($stepJumps as $rules) {
+            if ($rules !== []) {
+                $hasJumps = true;
+                break;
+            }
+        }
+
         $context = [
             'form' => $form,
             'handle' => $form->handle,
@@ -305,6 +328,9 @@ class FormRenderService extends Component
             'stepRows' => $stepRows,
             'renderMode' => $renderMode,
             'screens' => $screens,
+            // Logic jumps (#245): JSON of per-step rules for the navigator, or ''
+            // when the form has none (so standard forms emit no extra attribute).
+            'jumpsAttr' => $hasJumps ? (string) json_encode($stepJumps) : '',
             'progressLabel' => $conversational
                 ? Craft::t('simple-form', 'Question {current} of {total}')
                 : Craft::t('simple-form', 'Step {current} of {total}'),

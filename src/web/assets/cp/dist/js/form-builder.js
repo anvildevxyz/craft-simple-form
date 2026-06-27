@@ -499,6 +499,10 @@
 
         renderTypeConfig(f);
         inspector.appendChild(conditionsSection(f));
+
+        // Logic jumps (#245): branch to a later field's step based on this
+        // field's answer (input fields only — a layout block has no answer).
+        inspector.appendChild(jumpsSection(f));
     }
 
     // Tailored editor for the value-less layout blocks. The per-site
@@ -1278,11 +1282,16 @@
     function renameHandleRefs(oldHandle, newHandle) {
         fields.forEach(function(f) {
             var c = f.config && f.config.conditional;
-            if (!c) { return; }
-            [c.rules, (c.required && c.required.rules)].forEach(function(rules) {
-                if (!Array.isArray(rules)) { return; }
-                rules.forEach(function(r) { if (r.field === oldHandle) { r.field = newHandle; } });
-            });
+            if (c) {
+                [c.rules, (c.required && c.required.rules)].forEach(function(rules) {
+                    if (!Array.isArray(rules)) { return; }
+                    rules.forEach(function(r) { if (r.field === oldHandle) { r.field = newHandle; } });
+                });
+            }
+            // Logic-jump targets reference handles too (#245).
+            if (f.config && Array.isArray(f.config.jumps)) {
+                f.config.jumps.forEach(function(j) { if (j.target === oldHandle) { j.target = newHandle; } });
+            }
         });
     }
 
@@ -1427,6 +1436,102 @@
         if (req.enabled) {
             wrap.appendChild(ruleList(f, req, rerender));
         }
+
+        return wrap;
+    }
+
+    // ---- logic jumps (#245) ----------------------------------------------
+    // Branch to a later field's step based on this field's answer. Jumps only go
+    // forward (target must be a field after this one), so routes can't loop.
+
+    function laterFields(self) {
+        var idx = fields.indexOf(self);
+        return fields.filter(function(t, i) { return i > idx && t.handle && !isLayout(t.type); });
+    }
+
+    // The value widget for a jump rule, based on THIS field's type (a choice
+    // field offers its option values; others a text/number/date input). Null for
+    // operators that take no value (is empty / is not empty).
+    function jumpValueCell(self, jump) {
+        var opDef = OPERATORS.find(function(o) { return o.op === (jump.operator || 'eq'); });
+        if (opDef && opDef.noValue) { return null; }
+        if (OPTION_TYPES.indexOf(self.type) !== -1) {
+            var opts = [{ value: '', label: '— value —' }].concat(((self.config && self.config.options) || []).map(function(o) {
+                return { value: o.value, label: o.label || o.value };
+            }));
+            return selectEl(opts, jump.value != null ? jump.value : '', function(v) { jump.value = v; serialize(); });
+        }
+        var inputType = self.type === 'number' ? 'number' : (self.type === 'date' ? 'date' : 'text');
+        var cell = textInput(jump.value != null ? jump.value : '', function(v) { jump.value = v; serialize(); }, inputType);
+        cell.classList.add('sf-cond-value');
+        return cell;
+    }
+
+    function jumpRow(self, jump, laters, onRemove, rerender) {
+        var rowEl = document.createElement('div'); rowEl.className = 'sf-cond-rule';
+
+        rowEl.appendChild(selectEl(OPERATORS.map(function(o) { return { value: o.op, label: o.label }; }),
+            jump.operator || 'eq', function(v) { jump.operator = v; serialize(); rerender(); }));
+
+        var val = jumpValueCell(self, jump);
+        if (val) { rowEl.appendChild(val); }
+
+        var arrow = document.createElement('span'); arrow.className = 'sf-jump-arrow'; arrow.textContent = '→';
+        rowEl.appendChild(arrow);
+
+        var targetOpts = [{ value: '', label: '— jump to —' }].concat(laters.map(function(t) {
+            return { value: t.handle, label: t.label || t.handle };
+        }));
+        rowEl.appendChild(selectEl(targetOpts, jump.target || '', function(v) { jump.target = v; serialize(); }));
+
+        var del = document.createElement('button');
+        del.type = 'button'; del.className = 'btn sf-cond-del'; del.textContent = '×'; del.title = 'Remove jump';
+        del.addEventListener('click', onRemove);
+        rowEl.appendChild(del);
+        return rowEl;
+    }
+
+    function jumpsSection(f) {
+        f.config = f.config || {};
+        var wrap = document.createElement('div'); wrap.className = 'sf-cond sf-jumps';
+
+        var hr = document.createElement('hr'); wrap.appendChild(hr);
+        var title = document.createElement('h3'); title.className = 'sf-panel-title'; title.textContent = 'Logic jumps';
+        wrap.appendChild(title);
+
+        var laters = laterFields(f);
+        if (!laters.length) {
+            var none = document.createElement('p'); none.className = 'light';
+            none.textContent = 'Add a field after this one to jump to it.';
+            wrap.appendChild(none);
+            return wrap;
+        }
+
+        if (!Array.isArray(f.config.jumps)) { f.config.jumps = []; }
+
+        function rerender() {
+            var fresh = jumpsSection(f);
+            wrap.parentNode.replaceChild(fresh, wrap);
+        }
+
+        var hint = document.createElement('p'); hint.className = 'light';
+        hint.textContent = 'When this field’s answer matches, skip ahead to the chosen field’s step. First matching rule wins.';
+        wrap.appendChild(hint);
+
+        f.config.jumps.forEach(function(jump, idx) {
+            wrap.appendChild(jumpRow(f, jump, laters,
+                function() { f.config.jumps.splice(idx, 1); serialize(); rerender(); },
+                rerender
+            ));
+        });
+
+        var add = document.createElement('button');
+        add.type = 'button'; add.className = 'btn sf-cond-add'; add.textContent = 'Add jump';
+        add.addEventListener('click', function() {
+            f.config.jumps.push({ operator: 'eq', value: '', target: '' });
+            serialize(); rerender();
+        });
+        wrap.appendChild(add);
 
         return wrap;
     }

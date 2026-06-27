@@ -9,7 +9,7 @@
   Variables: same context as form.twig.
 -#}
 {%- apply spaceless -%}
-<form class="{{ formClass }}" method="POST"{% if hasFileField %} enctype="multipart/form-data"{% endif %}{% if errorMessage %} data-sf-error="{{ errorMessage }}"{% endif %}{% if captureUrl %} data-sf-capture="{{ captureUrl }}"{% endif %}{% if formId %} id="{{ formId }}"{% endif %}{% for name, value in extraAttributes %} {{ name }}="{{ value }}"{% endfor %} action="{{ action }}">
+<form class="{{ formClass }}" method="POST"{% if hasFileField %} enctype="multipart/form-data"{% endif %}{% if errorMessage %} data-sf-error="{{ errorMessage }}"{% endif %}{% if captureUrl %} data-sf-capture="{{ captureUrl }}"{% endif %}{% if jumpsAttr is defined and jumpsAttr %} data-sf-jumps="{{ jumpsAttr }}"{% endif %}{% if formId %} id="{{ formId }}"{% endif %}{% for name, value in extraAttributes %} {{ name }}="{{ value }}"{% endfor %} action="{{ action }}">
 {{- csrfInput -}}
 <input type="hidden" name="formHandle" value="{{ handle }}">
 {{- honeypot -}}

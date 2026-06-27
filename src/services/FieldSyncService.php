@@ -556,6 +556,24 @@ class FieldSyncService extends Component
      */
     public static function sanitizeConditional(array $config, array $validHandles, string $ownHandle): array
     {
+        // Logic jumps (#245): drop jump rules whose target field no longer exists
+        // or points at this field, so a dangling/self route never lingers in
+        // storage (forward-only is enforced at render by JumpResolver).
+        if (isset($config['jumps']) && is_array($config['jumps'])) {
+            $jumps = [];
+            foreach ($config['jumps'] as $jump) {
+                $target = is_array($jump) ? (string) ($jump['target'] ?? '') : '';
+                if ($target !== '' && $target !== $ownHandle && isset($validHandles[$target])) {
+                    $jumps[] = $jump;
+                }
+            }
+            if ($jumps === []) {
+                unset($config['jumps']);
+            } else {
+                $config['jumps'] = $jumps;
+            }
+        }
+
         if (!isset($config['conditional']) || !is_array($config['conditional'])) {
             return $config;
         }
