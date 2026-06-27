@@ -358,11 +358,11 @@
     }) }}
 
     {% if form.id and form.submissionLimit %}
-        <p class="light" style="margin-top:-8px;">
+        <p class="light sf-tight-top">
             {{ '{count} / {limit} submissions'|t('simple-form', { count: form.getSubmissionCount(), limit: form.submissionLimit }) }}
         </p>
     {% elseif form.id %}
-        <p class="light" style="margin-top:-8px;">
+        <p class="light sf-tight-top">
             {{ '{count} submissions so far'|t('simple-form', { count: form.getSubmissionCount() }) }}
         </p>
     {% endif %}

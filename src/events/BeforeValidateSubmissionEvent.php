@@ -28,7 +28,7 @@ use yii\base\Event;
  * Fires for both new submissions and edits, on every channel (front-end,
  * GraphQL, MCP), since they share the validate core.
  *
- * @since 2.12.0
+ * @since 1.0.0
  */
 class BeforeValidateSubmissionEvent extends Event
 {

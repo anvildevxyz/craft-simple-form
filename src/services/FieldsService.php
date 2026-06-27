@@ -27,7 +27,7 @@ use yii\base\Component;
  * for the caller to map to its own error contract.
  *
  * @author Fabian Haefliger
- * @since 2.12.0
+ * @since 1.0.0
  */
 class FieldsService extends Component
 {

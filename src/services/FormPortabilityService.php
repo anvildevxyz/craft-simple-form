@@ -35,7 +35,7 @@ use yii\base\InvalidArgumentException;
  * `allowAdminChanges` and never written to `config/project/`.
  *
  * @author Fabian Haefliger
- * @since 2.11.0
+ * @since 1.0.0
  */
 class FormPortabilityService extends Component
 {

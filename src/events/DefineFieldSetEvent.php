@@ -25,7 +25,7 @@ use yii\base\Event;
  * unaffected for installs that don't extend the field set.
  *
  * @phpstan-import-type ResolvedFieldRow from FieldQueryHelper
- * @since 2.12.0
+ * @since 1.0.0
  */
 class DefineFieldSetEvent extends Event
 {

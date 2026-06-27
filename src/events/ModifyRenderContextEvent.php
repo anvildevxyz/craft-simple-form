@@ -24,7 +24,7 @@ use yii\base\Event;
  * Security-sensitive context values (`csrfInput`, `honeypot`, `captcha`) are
  * pre-rendered Markup; replacing them does not regenerate the underlying tokens.
  *
- * @since 2.12.0
+ * @since 1.0.0
  */
 class ModifyRenderContextEvent extends Event
 {

@@ -14,7 +14,7 @@ use yii\base\Component;
  * write path lives in
  * {@see \fabianhaef\simpleform\services\FormCloneService::createFromStencil()}.
  *
- * @since 2.11.0
+ * @since 1.0.0
  * @author Fabian Haefliger
  */
 class StencilLibrary extends Component

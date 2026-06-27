@@ -13,7 +13,7 @@ use fabianhaef\simpleform\Plugin;
  * independent form with a fresh handle, copied fields/notifications/integration
  * attachments, and zero submissions. Returned from {@see Form::defineActions()}.
  *
- * @since 2.11.0
+ * @since 1.0.0
  * @author Fabian Haefliger
  */
 class DuplicateForm extends ElementAction

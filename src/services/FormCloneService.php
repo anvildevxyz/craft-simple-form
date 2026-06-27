@@ -31,7 +31,7 @@ use yii\base\InvalidArgumentException;
  * so conditional rules re-resolve against the copy's own field handles, and
  * per-site option/label/error-message translations are written per site.
  *
- * @since 2.11.0
+ * @since 1.0.0
  * @author Fabian Haefliger
  */
 class FormCloneService extends Component
@@ -206,7 +206,9 @@ class FormCloneService extends Component
         array $integrationIds,
         array $overrides,
     ): Form {
-        $fieldSync = new FieldSyncService();
+        // Resolve via the container (like every other service access) rather than
+        // a fresh instance, for consistent shared-instance semantics (#232).
+        $fieldSync = Plugin::getInstance()->getFieldSync();
         $db = Craft::$app->getDb();
         $transaction = $db->beginTransaction();
 

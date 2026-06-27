@@ -31,6 +31,7 @@ use yii\base\Component;
 
 /**
  * @phpstan-type SubmissionResult array{submission: Submission|null, errors: array<string, mixed>|null, data?: array<string, mixed>, paymentRedirectUrl?: string}
+ * @phpstan-type SubmissionContext array{honeypot?: string, captchaToken?: ?string, skipCaptcha?: bool, userId?: ?int, siteId?: ?int, payment?: array<string, mixed>, actor?: string, _isEdit?: bool}
  */
 class SubmissionService extends Component
 {
@@ -249,7 +250,7 @@ class SubmissionService extends Component
      *
      * @param Form $form
      * @param array<int|string, mixed> $values posted values keyed by field id (or `field_<id>`)
-     * @param array{honeypot?: string, captchaToken?: ?string, skipCaptcha?: bool, userId?: ?int, siteId?: ?int, payment?: array<string, mixed>} $context
+     * @param SubmissionContext $context
      * @return SubmissionResult
      */
     public function submit(Form $form, array $values, array $context = []): array
@@ -354,7 +355,7 @@ class SubmissionService extends Component
      *
      * @param Submission $submission the existing submission to edit
      * @param array<int|string, mixed> $values posted values keyed by field id (or `field_<id>`)
-     * @param array{honeypot?: string, captchaToken?: ?string, skipCaptcha?: bool, actor?: string} $context
+     * @param SubmissionContext $context
      * @return array{submission: Submission|null, errors: array<string, mixed>|null}
      * @throws \yii\base\InvalidConfigException
      */
@@ -477,7 +478,7 @@ class SubmissionService extends Component
      * guarantees identical validation/spam/conditional behavior.
      *
      * @param array<int|string, mixed> $values
-     * @param array{honeypot?: string, captchaToken?: ?string, skipCaptcha?: bool, userId?: ?int, siteId?: ?int, _isEdit?: bool} $context
+     * @param SubmissionContext $context
      * @return array{result: array{submission: null, errors: array<string, mixed>|null}|null, data: array<string, mixed>, isSpam: bool, spamReason?: ?string}
      */
     private function processSubmission(Form $form, array $values, array $context): array

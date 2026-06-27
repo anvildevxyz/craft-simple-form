@@ -442,3 +442,16 @@
 }
 .sf-answer-key label { margin: 0; color: var(--medium-text-color, #606d7b); }
 .sf-answer-points { width: 56px; }
+
+/* Lifted from inline styles (#235): a tight top margin utility, and the static
+   distribution-bar rules (only width stays computed inline). The bar colour is a
+   theme token, not a hardcoded hex. */
+.sf-tight-top { margin-top: -8px; }
+.sf-dist-bar {
+    display: inline-block;
+    height: .9em;
+    min-width: 2px;
+    vertical-align: middle;
+    background: var(--enabled-color, #3a85ee);
+    border-radius: 2px;
+}

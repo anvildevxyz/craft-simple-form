@@ -23,7 +23,7 @@ use fabianhaef\simpleform\helpers\DialCodes;
  *  - `minDigits` / `maxDigits`: bounds on the digit count (defaults 7 / 15).
  *
  * @author Fabian Haefliger
- * @since 5.x
+ * @since 1.0.0
  */
 class PhoneFieldType extends FieldType
 {

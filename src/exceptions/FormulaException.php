@@ -10,7 +10,7 @@ namespace fabianhaef\simpleform\exceptions;
  * already-validated formula is total and never throws.
  *
  * @author Fabian Haefliger
- * @since 5.x
+ * @since 1.0.0
  */
 class FormulaException extends \RuntimeException
 {

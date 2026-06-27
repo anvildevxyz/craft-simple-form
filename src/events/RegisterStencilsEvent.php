@@ -20,7 +20,7 @@ use yii\base\Event;
  * );
  * ```
  *
- * @since 2.11.0
+ * @since 1.0.0
  * @author Fabian Haefliger
  */
 class RegisterStencilsEvent extends Event

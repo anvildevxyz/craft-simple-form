@@ -27,7 +27,7 @@ use yii\base\Event;
  * The submission's stored field data is exposed as {@see self::$submissionData}
  * (not `$data`, which Yii's base Event reserves for handler-attached data).
  *
- * @since 2.12.0
+ * @since 1.0.0
  */
 class BeforeSendNotificationEvent extends Event
 {

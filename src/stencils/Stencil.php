@@ -13,7 +13,7 @@ namespace fabianhaef\simpleform\stencils;
  * the stencil's own field handle (e.g. the email field); the field is copied
  * verbatim, so the handle resolves against the new form's fields.
  *
- * @since 2.11.0
+ * @since 1.0.0
  * @author Fabian Haefliger
  */
 class Stencil

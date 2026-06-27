@@ -11,7 +11,7 @@ use fabianhaef\simpleform\elements\Form;
  * needing credentials, schema upgrades applied) the caller should surface (#139).
  *
  * @author Fabian Haefliger
- * @since 2.11.0
+ * @since 1.0.0
  */
 class ImportResult extends Model
 {

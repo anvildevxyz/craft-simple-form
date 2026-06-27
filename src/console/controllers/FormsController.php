@@ -19,7 +19,7 @@ use yii\console\ExitCode;
  * any install to recreate the form. See {@see FormPortabilityService}.
  *
  * @author Fabian Haefliger
- * @since 2.11.0
+ * @since 1.0.0
  */
 class FormsController extends Controller
 {

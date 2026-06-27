@@ -21,7 +21,7 @@ use fabianhaef\simpleform\helpers\Formula;
  *  - missingAsZero (bool): missing/non-numeric reference → 0 (default true)
  *
  * @author Fabian Haefliger
- * @since 5.x
+ * @since 1.0.0
  */
 class CalculationFieldType extends FieldType
 {

@@ -31,7 +31,7 @@ use fabianhaef\simpleform\exceptions\FormulaException;
  * @phpstan-type Token array{type: string, value: string}
  *
  * @author Fabian Haefliger
- * @since 5.x
+ * @since 1.0.0
  */
 final class Formula
 {

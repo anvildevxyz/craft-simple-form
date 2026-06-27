@@ -21,7 +21,7 @@ use yii\base\Event;
  * still works and remains supported; this event is the recommended, uniform
  * entry point.
  *
- * @since 2.12.0
+ * @since 1.0.0
  */
 class RegisterFieldTypesEvent extends Event
 {

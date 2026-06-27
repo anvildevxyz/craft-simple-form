@@ -26,7 +26,7 @@ use yii\base\Event;
  *
  * A skipped dispatch is recorded as a successful no-op so it is not retried.
  *
- * @since 2.12.0
+ * @since 1.0.0
  */
 class BeforeIntegrationDispatchEvent extends Event
 {
