@@ -221,26 +221,10 @@ final class FieldOps
      */
     public static function reorder(array $orderedFieldIds): void
     {
-        $db = Craft::$app->getDb();
-        $now = date('Y-m-d H:i:s');
-
-        foreach (array_values($orderedFieldIds) as $index => $fieldId) {
-            $db->createCommand()->update('{{%simpleform_fields}}', [
-                'sortOrder' => $index + 1,
-                'dateUpdated' => $now,
-            ], ['id' => $fieldId])->execute();
-        }
-
-        $formIds = (new Query())
-            ->select(['formId'])
-            ->distinct()
-            ->from('{{%simpleform_fields}}')
-            ->where(['id' => array_values($orderedFieldIds)])
-            ->column();
-
-        foreach ($formIds as $formId) {
-            Plugin::getInstance()->getFormStructure()->invalidate((int)$formId);
-        }
+        // Delegate to the shared FieldsService write path. No form is pinned, so
+        // fields are matched by id and every distinct affected form's cache is
+        // invalidated — preserving this tool's cross-form-safe behavior.
+        Plugin::getInstance()->getFields()->reorder(array_values($orderedFieldIds));
     }
 
     /**

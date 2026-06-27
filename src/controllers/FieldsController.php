@@ -153,8 +153,6 @@ class FieldsController extends Controller
             return $this->asJsonError(Craft::t('simple-form', 'Fields parameter must be an array'));
         }
 
-        $db = Craft::$app->getDb();
-
         try {
             $ordered = [];
             foreach ($fields as $index => $field) {
@@ -178,24 +176,10 @@ class FieldsController extends Controller
             }
             $formId = (int) $formIds[0];
 
-            $transaction = $db->beginTransaction();
-            try {
-                foreach ($ordered as $id => $sortOrder) {
-                    $db->createCommand()->update('{{%simpleform_fields}}', [
-                        'sortOrder' => $sortOrder,
-                        'dateUpdated' => date('Y-m-d H:i:s'),
-                    ], ['id' => $id, 'formId' => $formId])->execute();
-                }
-
-                $transaction->commit();
-            } catch (\Throwable $e) {
-                $transaction->rollBack();
-                throw $e;
-            }
-
-            // Reorder changes the rendered field order, so invalidate the form's
-            // cached structure.
-            Plugin::getInstance()->getFormStructure()->invalidate($formId);
+            // Delegate the transactional sortOrder writes + cache invalidation to
+            // the shared FieldsService. Pinning $formId keeps the single-form
+            // guard above authoritative: a stray id can't be reordered elsewhere.
+            Plugin::getInstance()->getFields()->reorder($fieldIds, $formId);
 
             return $this->asJsonSuccess();
         } catch (\Exception $e) {

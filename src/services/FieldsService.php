@@ -135,4 +135,59 @@ class FieldsService extends Component
         Craft::$app->getDb()->createCommand()->delete('{{%simpleform_fields}}', ['id' => $fieldId])->execute();
         Plugin::getInstance()->getFormStructure()->invalidate($formId);
     }
+
+    /**
+     * Transactionally rewrite field sort order to match the given id order
+     * (1-based by position), then invalidate the affected form-structure
+     * cache(s) — the single source of truth for the reorder write both the CP
+     * field builder ({@see \fabianhaef\simpleform\controllers\FieldsController})
+     * and the MCP field tools ({@see \fabianhaef\simpleform\mcp\tools\support\FieldOps})
+     * perform.
+     *
+     * The caller chooses the scope. When `$formId` is given (the CP path, which
+     * pre-validates that every id belongs to one form), each update is
+     * constrained to that form — a stray id from another form can't be moved —
+     * and only that form's cache is invalidated. When null (the MCP path),
+     * fields are matched by id alone and every distinct affected form's cache is
+     * cleared. Re-throws on failure for the caller's error contract.
+     *
+     * @param list<int> $orderedFieldIds the field ids in their new order
+     */
+    public function reorder(array $orderedFieldIds, ?int $formId = null): void
+    {
+        $orderedFieldIds = array_values($orderedFieldIds);
+        if ($orderedFieldIds === []) {
+            return;
+        }
+
+        $db = Craft::$app->getDb();
+        $now = date('Y-m-d H:i:s');
+
+        $db->transaction(function() use ($db, $orderedFieldIds, $formId, $now): void {
+            foreach ($orderedFieldIds as $index => $fieldId) {
+                $condition = ['id' => $fieldId];
+                if ($formId !== null) {
+                    $condition['formId'] = $formId;
+                }
+                $db->createCommand()->update('{{%simpleform_fields}}', [
+                    'sortOrder' => $index + 1,
+                    'dateUpdated' => $now,
+                ], $condition)->execute();
+            }
+        });
+
+        // Reorder changes the rendered field order, so the cached structure of
+        // every affected form must be invalidated.
+        $formIds = $formId !== null ? [$formId] : (new Query())
+            ->select(['formId'])
+            ->distinct()
+            ->from('{{%simpleform_fields}}')
+            ->where(['id' => $orderedFieldIds])
+            ->column();
+
+        $formStructure = Plugin::getInstance()->getFormStructure();
+        foreach ($formIds as $affectedFormId) {
+            $formStructure->invalidate((int) $affectedFormId);
+        }
+    }
 }

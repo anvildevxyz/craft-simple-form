@@ -114,6 +114,46 @@ class FieldsServiceTest extends SimpleFormTestCase
         $this->assertSame('new help', $site['helpText']);
     }
 
+    public function testReorderRewritesSortOrderByPosition(): void
+    {
+        $this->requireCraft();
+
+        $form = $this->createForm('Reorder', 'svc_reorder');
+        $siteId = (int) Craft::$app->getSites()->getPrimarySite()->id;
+
+        $a = $this->fields()->add((int) $form->id, 'text', 'a', false, [], 'A', '', [$siteId]);
+        $b = $this->fields()->add((int) $form->id, 'text', 'b', false, [], 'B', '', [$siteId]);
+        $c = $this->fields()->add((int) $form->id, 'text', 'c', false, [], 'C', '', [$siteId]);
+
+        // New order c, a, b → 1-based sortOrder by position.
+        $this->fields()->reorder([$c, $a, $b], (int) $form->id);
+
+        $this->assertSame(1, (int) $this->structuralRow($c)['sortOrder']);
+        $this->assertSame(2, (int) $this->structuralRow($a)['sortOrder']);
+        $this->assertSame(3, (int) $this->structuralRow($b)['sortOrder']);
+    }
+
+    public function testReorderPinnedToFormIgnoresForeignFieldIds(): void
+    {
+        $this->requireCraft();
+
+        $siteId = (int) Craft::$app->getSites()->getPrimarySite()->id;
+        $formA = $this->createForm('Pinned A', 'svc_reorder_a');
+        $formB = $this->createForm('Pinned B', 'svc_reorder_b');
+
+        $a1 = $this->fields()->add((int) $formA->id, 'text', 'a1', false, [], 'A1', '', [$siteId]);
+        $a2 = $this->fields()->add((int) $formA->id, 'text', 'a2', false, [], 'A2', '', [$siteId]);
+        $bForeign = $this->fields()->add((int) $formB->id, 'text', 'b1', false, [], 'B1', '', [$siteId]);
+        $foreignSortBefore = (int) $this->structuralRow($bForeign)['sortOrder'];
+
+        // A foreign id slipped into the list must not be moved when pinned to formA.
+        $this->fields()->reorder([$a2, $bForeign, $a1], (int) $formA->id);
+
+        $this->assertSame(1, (int) $this->structuralRow($a2)['sortOrder']);
+        $this->assertSame(3, (int) $this->structuralRow($a1)['sortOrder']);
+        $this->assertSame($foreignSortBefore, (int) $this->structuralRow($bForeign)['sortOrder'], 'foreign field untouched');
+    }
+
     public function testDeleteRemovesStructuralAndCascadesPerSiteRows(): void
     {
         $this->requireCraft();
