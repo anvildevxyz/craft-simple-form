@@ -2,17 +2,26 @@
 
 namespace fabianhaef\simpleform\tests\unit;
 
+use fabianhaef\simpleform\Editions;
 use fabianhaef\simpleform\Plugin;
 use PHPUnit\Framework\TestCase;
 
 /**
- * The plugin ships a single commercial Pro edition (#117).
+ * The plugin ships two commercial editions: Solo and Pro. Order matters —
+ * `Plugin::is()` compares by index, so the lower tier (Solo) must come first.
  */
 class PluginEditionsTest extends TestCase
 {
-    public function testDeclaresSingleProEdition(): void
+    public function testDeclaresSoloAndProEditions(): void
     {
+        $this->assertSame('solo', Plugin::EDITION_SOLO);
         $this->assertSame('pro', Plugin::EDITION_PRO);
-        $this->assertSame([Plugin::EDITION_PRO], Plugin::editions());
+        $this->assertSame([Plugin::EDITION_SOLO, Plugin::EDITION_PRO], Plugin::editions());
+    }
+
+    public function testEditionConstantsTrackTheEditionsHelper(): void
+    {
+        $this->assertSame(Editions::SOLO, Plugin::EDITION_SOLO);
+        $this->assertSame(Editions::PRO, Plugin::EDITION_PRO);
     }
 }

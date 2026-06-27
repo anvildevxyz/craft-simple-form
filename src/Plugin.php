@@ -152,8 +152,11 @@ class Plugin extends BasePlugin
      */
     public const EVENT_REGISTER_FIELD_TYPES = 'registerFieldTypes';
 
-    /** The plugin's single commercial edition. */
-    public const EDITION_PRO = 'pro';
+    /** The lightweight "better contact form" edition. */
+    public const EDITION_SOLO = Editions::SOLO;
+
+    /** The full-featured edition. */
+    public const EDITION_PRO = Editions::PRO;
 
     public string $schemaVersion = '2.13.7';
     public bool $hasCpSection = true;
@@ -165,7 +168,9 @@ class Plugin extends BasePlugin
      */
     public static function editions(): array
     {
+        // Order matters: lowest tier first. `is()` compares by index.
         return [
+            self::EDITION_SOLO,
             self::EDITION_PRO,
         ];
     }
