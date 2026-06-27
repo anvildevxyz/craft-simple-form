@@ -8,6 +8,7 @@ use craft\helpers\Db;
 use craft\helpers\StringHelper;
 use fabianhaef\simpleform\models\CouponModel;
 use yii\base\Component;
+use yii\db\Expression;
 
 /**
  * CRUD + redemption logic for payment coupons (#246). The discount math lives on
@@ -144,13 +145,43 @@ class CouponsService extends Component
     }
 
     /**
-     * Atomically bump a coupon's redemption counter — called once a charge that
-     * used it settles, so the usage limit is honored.
+     * Atomically reserve one redemption of a coupon, honoring its usage cap even
+     * under concurrent submits: the increment and the cap check happen in a single
+     * conditional UPDATE, so two simultaneous redemptions of a once-only code can't
+     * both succeed. Returns true if a slot was claimed, false if the cap was
+     * already reached (the caller must then reject the redemption). An unlimited
+     * coupon (maxUsages null) always claims.
      */
-    public function incrementUsage(int $id): void
+    public function tryConsume(int $id): bool
+    {
+        $affected = Craft::$app->getDb()->createCommand()
+            ->update(
+                self::TABLE,
+                ['usageCount' => new Expression('[[usageCount]] + 1')],
+                [
+                    'and',
+                    ['id' => $id],
+                    ['or', ['maxUsages' => null], new Expression('[[usageCount]] < [[maxUsages]]')],
+                ],
+            )
+            ->execute();
+
+        return $affected > 0;
+    }
+
+    /**
+     * Return a previously reserved redemption to the pool — used when a charge
+     * that reserved the coupon is declined, or a pending payment that reserved it
+     * is canceled. Never drops below zero.
+     */
+    public function releaseUsage(int $id): void
     {
         Craft::$app->getDb()->createCommand()
-            ->update(self::TABLE, ['usageCount' => new \yii\db\Expression('[[usageCount]] + 1')], ['id' => $id])
+            ->update(
+                self::TABLE,
+                ['usageCount' => new Expression('[[usageCount]] - 1')],
+                ['and', ['id' => $id], new Expression('[[usageCount]] > 0')],
+            )
             ->execute();
     }
 

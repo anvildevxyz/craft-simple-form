@@ -90,9 +90,10 @@ class AddressFieldType extends CompositeFieldType
             . ' data-min-chars="3" data-error="%s">'
             . '<label for="%s">%s</label>'
             . '<input type="text" id="%s" class="text fullwidth" autocomplete="off" role="combobox"'
-            . ' aria-expanded="false" aria-autocomplete="list" aria-controls="%s-list"'
+            . ' aria-expanded="false" aria-autocomplete="list" aria-haspopup="listbox" aria-controls="%s-list"'
             . ' data-sf-address-search="1" placeholder="%s">'
             . '<ul class="sf-address-suggestions" id="%s-list" role="listbox" data-sf-address-suggestions="1" hidden></ul>'
+            . '<p class="sf-address-message" data-sf-address-message="1" role="status" aria-live="polite"></p>'
             . '</div>',
             $attr($provider),
             $attr($endpoint),

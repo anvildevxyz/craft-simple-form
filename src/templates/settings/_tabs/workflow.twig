@@ -109,7 +109,9 @@
                             <form method="post" accept-charset="UTF-8" class="sf-inline-form">
                                 {{ csrfInput() }}
                                 <input type="hidden" name="action" value="simple-form/settings/delete-workflow-transition">
-                                <input type="hidden" name="index" value="{{ loop.index0 }}">
+                                <input type="hidden" name="from" value="{{ transition.from }}">
+                                <input type="hidden" name="to" value="{{ transition.to }}">
+                                <input type="hidden" name="label" value="{{ transition.label }}">
                                 <button type="submit" class="delete icon" title="{{ 'Delete'|t('simple-form') }}"
                                         aria-label="{{ 'Delete transition'|t('simple-form') }}"></button>
                             </form>

@@ -237,6 +237,28 @@ class SubmissionService extends Component
     }
 
     /**
+     * Throttle the public coupon-preview endpoint (#246) on its own bucket — kept
+     * separate from the submit limiter so previewing codes never eats a visitor's
+     * submission quota, and always on (independent of submitRateLimitPerMinute) to
+     * discourage code enumeration. A null/empty IP is not throttled, mirroring the
+     * submit limiter's reasoning.
+     */
+    public function isCouponRateLimited(?string $ip): bool
+    {
+        if ($ip === null || $ip === '') {
+            return false;
+        }
+
+        $key = 'coupon:' . $ip;
+        if (RateLimiter::isLimited($key, 30)) {
+            return true;
+        }
+
+        RateLimiter::hit($key, 60);
+        return false;
+    }
+
+    /**
      * Single, transport-agnostic submission entry point.
      *
      * Both the front-end SubmitController and the GraphQL submit mutation route

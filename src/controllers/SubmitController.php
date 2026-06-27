@@ -140,7 +140,7 @@ class SubmitController extends Controller
         $request = Craft::$app->getRequest();
 
         $plugin = Plugin::getInstance();
-        if ($plugin->getSubmissionService()->isRateLimited($request->getUserIP())) {
+        if ($plugin->getSubmissionService()->isCouponRateLimited($request->getUserIP())) {
             $this->response->setStatusCode(429);
             return $this->asJson(['success' => false, 'error' => Craft::t('simple-form', 'Too many attempts. Please wait a moment and try again.')]);
         }

@@ -52,7 +52,7 @@ class SettingsController extends Controller
         'mcp' => ['enableMcp'],
     ];
 
-    private const BOOL_FIELDS = ['enableHoneypot', 'enableCaptcha', 'enableMcp', 'enableAkismet', 'enableDenylists', 'anonymizeInsteadOfDelete', 'allowGraphqlCaptchaBypass'];
+    private const BOOL_FIELDS = ['enableHoneypot', 'enableCaptcha', 'enableMcp', 'enableAkismet', 'enableDenylists', 'anonymizeInsteadOfDelete', 'allowGraphqlCaptchaBypass', 'enableWorkflow'];
     private const FLOAT_FIELDS = ['recaptchaV3MinScore'];
     private const INT_FIELDS = ['retainSubmissionsDays', 'retainIntegrationLogsDays', 'retainAuditLogDays', 'submitRateLimitPerMinute', 'maxAttachmentSizeMb'];
 
@@ -254,19 +254,32 @@ class SettingsController extends Controller
     }
 
     /**
-     * Remove a transition by its index in the configured list.
+     * Remove a transition, identified by its from/to/label rather than an ordinal
+     * index, so a concurrent edit between render and submit can't delete the wrong
+     * row. Removes the first exact match.
      */
     public function actionDeleteWorkflowTransition(): Response
     {
         $this->requirePostRequest();
         /** @var \craft\web\Request $request */
         $request = Craft::$app->getRequest();
-        $index = (int) $request->getRequiredBodyParam('index');
+        $from = (string) $request->getRequiredBodyParam('from');
+        $to = (string) $request->getRequiredBodyParam('to');
+        $label = (string) $request->getBodyParam('label', '');
 
-        $transitions = Plugin::getInstance()->getWorkflow()->getTransitions();
-        unset($transitions[$index]);
+        $removed = false;
+        $transitions = array_values(array_filter(
+            Plugin::getInstance()->getWorkflow()->getTransitions(),
+            static function(array $t) use ($from, $to, $label, &$removed): bool {
+                if (!$removed && $t['from'] === $from && $t['to'] === $to && $t['label'] === $label) {
+                    $removed = true;
+                    return false;
+                }
+                return true;
+            },
+        ));
 
-        return $this->saveWorkflow(['workflowTransitions' => array_values($transitions)]);
+        return $this->saveWorkflow(['workflowTransitions' => $transitions]);
     }
 
     /**

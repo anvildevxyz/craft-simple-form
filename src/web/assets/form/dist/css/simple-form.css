@@ -279,6 +279,14 @@
 .sf-address-suggestion[aria-selected="true"] {
     background: #eff6ff;
 }
+.sf-address-message {
+    margin: .4em 0 0;
+    font-size: .9em;
+    color: #b91c1c;
+}
+.sf-address-message:empty {
+    display: none;
+}
 
 /* Coupon / discount code box (#246) */
 .simple-form-coupon {
@@ -337,6 +345,7 @@
 }
 @media (prefers-reduced-motion: reduce) {
     .simple-form--conversational .simple-form-step:not([hidden]) { animation: none; }
+    .simple-form--conversational .simple-form-progressbar > span { transition: none; }
 }
 
 /* Built-in conversational theme (#243): an opinionated, accessible "centered

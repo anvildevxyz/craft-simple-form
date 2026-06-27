@@ -891,13 +891,20 @@
             var apiKey = box.getAttribute("data-api-key") || "";
             var minChars = parseInt(box.getAttribute("data-min-chars"), 10) || 3;
             var mapper = SF_GEO[provider] || SF_GEO.photon;
+            var message = box.querySelector("[data-sf-address-message]");
+            var errorText = box.getAttribute("data-error") || "";
             if (!input || !list) { return; }
 
-            var timer = null, active = -1, items = [];
+            var timer = null, active = -1, items = [], seq = 0;
+
+            function setMessage(text) {
+                if (message) { message.textContent = text || ""; }
+            }
 
             function close() {
                 list.hidden = true; list.innerHTML = ""; active = -1; items = [];
                 input.setAttribute("aria-expanded", "false");
+                input.removeAttribute("aria-activedescendant");
             }
 
             function fillSubField(key, value) {
@@ -922,6 +929,7 @@
 
             function render() {
                 list.innerHTML = "";
+                input.removeAttribute("aria-activedescendant");
                 items.forEach(function (it, i) {
                     var li = document.createElement("li");
                     li.className = "sf-address-suggestion";
@@ -947,17 +955,28 @@
             function search() {
                 var q = input.value.trim();
                 if (q.length < minChars) { close(); return; }
+                // Sequence guard: a slow earlier response must not overwrite the
+                // suggestions of a newer query (#250).
+                var mySeq = ++seq;
                 var req = geoRequest(provider, endpoint, apiKey, q);
                 fetch(req.url, { headers: { "Accept": "application/json" } })
                     .then(function (r) { return r.json(); })
                     .then(function (d) {
+                        if (mySeq !== seq) { return; }
+                        setMessage("");
                         items = req.pick(d).map(mapper).filter(function (it) {
                             return it && (it.values.line1 || it.values.city || it.values.postalCode);
                         });
                         active = -1;
                         render();
                     })
-                    .catch(function () { close(); });
+                    .catch(function () {
+                        if (mySeq !== seq) { return; }
+                        close();
+                        // Surface the (translated) graceful-degradation message so the
+                        // visitor knows to enter the address manually.
+                        setMessage(errorText);
+                    });
             }
 
             input.addEventListener("input", function () {

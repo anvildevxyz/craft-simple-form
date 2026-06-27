@@ -157,9 +157,11 @@ class PaymentsService extends Component
 
         // A coupon covering the full amount makes the submission free: record it
         // paid without touching the gateway (Commerce can't charge a zero total).
+        // Reserve the redemption atomically; a concurrent submit may have just
+        // exhausted a once-only code.
         if ($charge <= 0.0) {
-            if ($coupon !== null && $coupon->id !== null) {
-                Plugin::getInstance()->getCoupons()->incrementUsage($coupon->id);
+            if ($coupon !== null && $coupon->id !== null && !Plugin::getInstance()->getCoupons()->tryConsume($coupon->id)) {
+                return $this->result('', 0, $amount, null, Craft::t('simple-form', 'This coupon code has reached its usage limit.'), $couponCode);
             }
             return $this->result(self::STATUS_PAID, 0, 0.0, null, null, $couponCode, $discount);
         }
@@ -177,6 +179,18 @@ class PaymentsService extends Component
             return $this->result('', 0, $charge, null, Craft::t('simple-form', 'Payments are not available right now. Please try again later.'), $couponCode, $discount);
         }
 
+        // Reserve the coupon (#246) right before charging — the atomic claim closes
+        // the race where two simultaneous submits both pass evaluate()'s usage
+        // check. A decline below releases it; an onsite settle / offsite redirect
+        // keeps it (released later by markCanceled() if a pending charge expires).
+        $reserved = false;
+        if ($coupon !== null && $coupon->id !== null) {
+            if (!Plugin::getInstance()->getCoupons()->tryConsume($coupon->id)) {
+                return $this->result('', 0, $charge, null, Craft::t('simple-form', 'This coupon code has reached its usage limit.'), $couponCode, $discount);
+            }
+            $reserved = true;
+        }
+
         $paymentForm = $gateway->getPaymentFormModel();
         $paymentForm->setAttributes($paymentParams, false);
 
@@ -186,21 +200,23 @@ class PaymentsService extends Component
             \craft\commerce\Plugin::getInstance()->getPayments()->processPayment($order, $paymentForm, $redirect, $transaction);
         } catch (\craft\commerce\errors\PaymentException $e) {
             Craft::warning('Payment declined (#116): ' . $e->getMessage(), 'simple-form');
+            if ($reserved && $coupon !== null && $coupon->id !== null) {
+                Plugin::getInstance()->getCoupons()->releaseUsage($coupon->id);
+            }
 
             return $this->result('', 0, $charge, null, Craft::t('simple-form', 'Your payment could not be processed.'), $couponCode, $discount);
         }
 
         // Offsite / 3-D-Secure: persist pending and hand the visitor off. The
-        // coupon is consumed when that order completes (see markPaid()).
+        // coupon stays reserved; markCanceled() releases it if the visitor never
+        // completes and the pending payment is expired.
         if (is_string($redirect) && $redirect !== '') {
             return $this->result(self::STATUS_PENDING, (int) $order->id, $charge, $redirect, null, $couponCode, $discount);
         }
 
         // Onsite: paid if the order settled, otherwise authorized-but-pending.
+        // Either way the reservation made above stands.
         $status = $order->getIsPaid() ? self::STATUS_PAID : self::STATUS_PENDING;
-        if ($status === self::STATUS_PAID && $coupon !== null && $coupon->id !== null) {
-            Plugin::getInstance()->getCoupons()->incrementUsage($coupon->id);
-        }
 
         return $this->result($status, (int) $order->id, $charge, null, null, $couponCode, $discount);
     }
@@ -259,15 +275,8 @@ class PaymentsService extends Component
         $submission->paymentStatus = self::STATUS_PAID;
         Craft::$app->getElements()->saveElement($submission);
 
-        // Consume an applied coupon (#246) when an offsite/pending payment finally
-        // settles — the onsite path consumes it at authorize time, and this
-        // transition only ever runs once (early-return above), so no double count.
-        if (!empty($submission->couponCode)) {
-            $coupon = Plugin::getInstance()->getCoupons()->getByCode($submission->couponCode);
-            if ($coupon !== null && $coupon->id !== null) {
-                Plugin::getInstance()->getCoupons()->incrementUsage($coupon->id);
-            }
-        }
+        // An applied coupon (#246) was already reserved at authorize time, so a
+        // settle does not consume it again.
 
         $form = $submission->getForm();
         if (!$form instanceof Form) {
@@ -303,6 +312,15 @@ class PaymentsService extends Component
 
         $submission->paymentStatus = self::STATUS_CANCELED;
         Craft::$app->getElements()->saveElement($submission);
+
+        // Release the coupon (#246) reserved when this offsite payment was
+        // authorized, since it never completed.
+        if (!empty($submission->couponCode)) {
+            $coupon = Plugin::getInstance()->getCoupons()->getByCode($submission->couponCode);
+            if ($coupon !== null && $coupon->id !== null) {
+                Plugin::getInstance()->getCoupons()->releaseUsage($coupon->id);
+            }
+        }
     }
 
     /**
