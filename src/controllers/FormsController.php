@@ -106,6 +106,12 @@ class FormsController extends Controller
             $form->siteId = $site->id;
         }
 
+        // Snapshot the saved state before posted params overwrite it, so the
+        // edition gate can tell newly-enabled Pro capabilities from ones the form
+        // already had (no-new-escalation rule).
+        $existingFields = $form->id ? FieldQueryHelper::fieldsForForm((int)$form->id, $site->id) : [];
+        $priorSaveResume = (bool) $form->allowSaveResume;
+
         $form->name = $request->getBodyParam('name');
         $form->handle = $request->getBodyParam('handle');
         $form->title = $request->getBodyParam('title');
@@ -206,12 +212,10 @@ class FormsController extends Controller
             static fn(array $item): string => (string)($item['type'] ?? ''),
             array_filter($items, 'is_array'),
         );
-        $existingTypes = $form->id
-            ? array_map(
-                static fn(array $row): string => (string)$row['type'],
-                FieldQueryHelper::fieldsForForm((int)$form->id, $site->id),
-            )
-            : [];
+        $existingTypes = array_map(
+            static fn(array $row): string => (string)$row['type'],
+            $existingFields,
+        );
         $blockedProFields = Editions::blockedNewProFields(
             array_values($submittedTypes),
             array_values($existingTypes),
@@ -221,6 +225,24 @@ class FormsController extends Controller
                 'simple-form',
                 'These field types require the Pro edition: {types}',
                 ['types' => implode(', ', $blockedProFields)],
+            ));
+            return $this->renderEdit($form, $site, $this->encodeBuilderJson($items));
+        }
+
+        // Edition gate (authoritative): Solo may not newly enable Pro form-level
+        // capabilities (conditional logic, multi-page, save & continue). Ones
+        // already on the saved form survive a downgrade and stay editable.
+        $blockedCaps = Editions::blockedNewFormCapabilities(
+            $items,
+            $form->allowSaveResume,
+            $existingFields,
+            $priorSaveResume,
+        );
+        if ($blockedCaps) {
+            Craft::$app->getSession()->setError(Craft::t(
+                'simple-form',
+                'These features require the Pro edition: {features}',
+                ['features' => implode(', ', array_map($this->capabilityLabel(...), $blockedCaps))],
             ));
             return $this->renderEdit($form, $site, $this->encodeBuilderJson($items));
         }
@@ -488,6 +510,19 @@ class FormsController extends Controller
             'user' => $map($app->getUserGroups()->getAllGroups()),
             'asset' => array_values($volumes),
         ];
+    }
+
+    /**
+     * Human-facing label for a gated form capability, for the Pro-required error.
+     */
+    private function capabilityLabel(string $capability): string
+    {
+        return match ($capability) {
+            Editions::CAP_CONDITIONAL_LOGIC => Craft::t('simple-form', 'conditional logic'),
+            Editions::CAP_MULTI_PAGE => Craft::t('simple-form', 'multi-page forms'),
+            Editions::CAP_SAVE_CONTINUE => Craft::t('simple-form', 'save & continue later'),
+            default => $capability,
+        };
     }
 
     /**

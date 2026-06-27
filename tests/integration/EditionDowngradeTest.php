@@ -67,6 +67,29 @@ class EditionDowngradeTest extends SimpleFormTestCase
         $this->assertTrue(Editions::integrationAllowed('webhook'));
     }
 
+    public function testConditionalAndMultiPageFormStillRendersUnderSolo(): void
+    {
+        $this->requireCraft();
+
+        $form = $this->createForm('Survey', 'surveyForm', 'Survey');
+        $this->createField($form->id, 'select', 'plan', 'Plan', true, [
+            'options' => [['label' => 'Pro', 'value' => 'pro'], ['label' => 'Free', 'value' => 'free']],
+        ]);
+        // A page-2 field with a conditional visibility rule — both are Pro caps.
+        $detailsId = $this->createField($form->id, 'textarea', 'details', 'Details', false, [
+            'page' => 2,
+            'conditional' => ['rules' => [['field' => 'plan', 'operator' => 'eq', 'value' => 'pro']]],
+        ]);
+
+        $this->setEdition(Editions::SOLO);
+
+        $html = (new TwigExtension())->renderForm('surveyForm');
+
+        // The downgraded form still renders its conditional, page-2 field.
+        $this->assertStringContainsString('<form', $html);
+        $this->assertStringContainsString('field_' . $detailsId, $html);
+    }
+
     public function testEscalationGuardReflectsActiveEdition(): void
     {
         $this->requireCraft();

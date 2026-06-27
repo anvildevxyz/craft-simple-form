@@ -89,6 +89,42 @@ class EditionsTest extends TestCase
         $this->assertTrue(Editions::can(Editions::CAP_PAYMENTS, 'standard'));
     }
 
+    public function testDetectsConditionalLogicAndMultiPage(): void
+    {
+        $plain = [['type' => 'text', 'config' => []]];
+        $conditional = [['type' => 'text', 'config' => ['conditional' => ['rules' => [['field' => 'a', 'value' => 'x']]]]]];
+        $conditionalRequired = [['type' => 'text', 'config' => ['conditional' => ['required' => ['rules' => [['field' => 'a']]]]]]];
+        $emptyConditional = [['type' => 'text', 'config' => ['conditional' => ['rules' => []]]]];
+        $multiPage = [['type' => 'text', 'config' => ['page' => 1]], ['type' => 'email', 'config' => ['page' => 2]]];
+
+        $this->assertFalse(Editions::usesConditionalLogic($plain));
+        $this->assertFalse(Editions::usesConditionalLogic($emptyConditional));
+        $this->assertTrue(Editions::usesConditionalLogic($conditional));
+        $this->assertTrue(Editions::usesConditionalLogic($conditionalRequired));
+
+        $this->assertFalse(Editions::usesMultiPage($plain));
+        $this->assertTrue(Editions::usesMultiPage($multiPage));
+    }
+
+    public function testBlockedNewFormCapabilitiesAppliesNoEscalationRule(): void
+    {
+        $conditional = [['type' => 'text', 'config' => ['conditional' => ['rules' => [['field' => 'a']]]]]];
+        $plain = [['type' => 'text', 'config' => []]];
+
+        // Pro: never blocked.
+        $this->assertSame([], Editions::blockedNewFormCapabilities($conditional, true, $plain, false, Editions::PRO));
+
+        // Solo, fresh form newly enabling all three: every one is blocked.
+        $this->assertSame(
+            [Editions::CAP_CONDITIONAL_LOGIC, Editions::CAP_SAVE_CONTINUE],
+            Editions::blockedNewFormCapabilities($conditional, true, $plain, false, Editions::SOLO),
+        );
+
+        // Solo, downgraded form that already had conditional logic + save-resume:
+        // keeping them is allowed.
+        $this->assertSame([], Editions::blockedNewFormCapabilities($conditional, true, $conditional, true, Editions::SOLO));
+    }
+
     /**
      * @return list<string>
      */
@@ -98,7 +134,7 @@ class EditionsTest extends TestCase
             Editions::CAP_PRO_FIELDS,
             Editions::CAP_CONDITIONAL_LOGIC,
             Editions::CAP_MULTI_PAGE,
-            Editions::CAP_MULTI_SITE,
+            Editions::CAP_SAVE_CONTINUE,
             Editions::CAP_INTEGRATIONS,
             Editions::CAP_PAYMENTS,
             Editions::CAP_SPAM_ADVANCED,

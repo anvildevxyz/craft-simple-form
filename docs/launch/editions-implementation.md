@@ -26,8 +26,9 @@ Solo wins against the only free options (Craft Contact Form = no storage; Freefo
 | Twig/PHP render, GraphQL read | ✅ | ✅ | — |
 | **Pro fields (12)** | ❌ | ✅ | `CAP_PRO_FIELDS` |
 | **Conditional logic** | ❌ | ✅ | `CAP_CONDITIONAL_LOGIC` |
-| **Multi-page / save & continue** | ❌ | ✅ | `CAP_MULTI_PAGE` |
-| **Multi-site / per-site translation** | ❌ | ✅ | `CAP_MULTI_SITE` |
+| **Multi-page** | ❌ | ✅ | `CAP_MULTI_PAGE` |
+| **Save & continue later** | ❌ | ✅ | `CAP_SAVE_CONTINUE` |
+| **Multi-site / per-site translation** | ✅ | ✅ | _(ungated — decision 2026-06-27: keeps the "translatable" brand in Solo)_ |
 | **3rd-party integrations** (Slack/Discord/CRM/Sheets) | ❌ | ✅ | `CAP_INTEGRATIONS` |
 | **Payments** (Commerce) | ❌ | ✅ | `CAP_PAYMENTS` |
 | **Akismet, denylists, spam review queue** | ❌ | ✅ | `CAP_SPAM_ADVANCED` |

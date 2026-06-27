@@ -29,7 +29,7 @@ final class Editions
     public const CAP_PRO_FIELDS = 'proFields';
     public const CAP_CONDITIONAL_LOGIC = 'conditionalLogic';
     public const CAP_MULTI_PAGE = 'multiPage';
-    public const CAP_MULTI_SITE = 'multiSite';
+    public const CAP_SAVE_CONTINUE = 'saveAndContinue';
     public const CAP_INTEGRATIONS = 'integrations';
     public const CAP_PAYMENTS = 'payments';
     public const CAP_SPAM_ADVANCED = 'spamAdvanced';
@@ -132,5 +132,84 @@ final class Editions
         );
 
         return array_values(array_unique($blocked));
+    }
+
+    /**
+     * Whether any field in a builder/DB field set uses conditional logic — a
+     * non-empty visibility or required rule set under `config.conditional`.
+     *
+     * @param iterable<array<string, mixed>> $items
+     */
+    public static function usesConditionalLogic(iterable $items): bool
+    {
+        foreach ($items as $item) {
+            $conditional = (is_array($item['config'] ?? null) ? $item['config'] : [])['conditional'] ?? null;
+            if (!is_array($conditional)) {
+                continue;
+            }
+            if (
+                (isset($conditional['rules']) && is_array($conditional['rules']) && $conditional['rules'] !== [])
+                || (isset($conditional['required']['rules']) && is_array($conditional['required']['rules']) && $conditional['required']['rules'] !== [])
+            ) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * Whether a field set spans more than one page (any field on `config.page`
+     * >= 2). Mirrors {@see \fabianhaef\simpleform\helpers\FormSteps}.
+     *
+     * @param iterable<array<string, mixed>> $items
+     */
+    public static function usesMultiPage(iterable $items): bool
+    {
+        foreach ($items as $item) {
+            $config = is_array($item['config'] ?? null) ? $item['config'] : [];
+            $page = $config['page'] ?? 1;
+            if (is_numeric($page) && (int) $page >= 2) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * The Pro form-level capabilities newly introduced by the posted state
+     * relative to the already-saved state — the escalations Solo must reject.
+     * Returns capability handles ({@see self::CAP_*}); [] on Pro or when nothing
+     * new is enabled. A capability already present on the saved form is allowed
+     * through so a downgraded form stays editable.
+     *
+     * @param iterable<array<string, mixed>> $items posted field set
+     * @param iterable<array<string, mixed>> $existing saved field set
+     * @return list<string>
+     */
+    public static function blockedNewFormCapabilities(
+        iterable $items,
+        bool $saveResume,
+        iterable $existing,
+        bool $existingSaveResume,
+        ?string $edition = null,
+    ): array {
+        if (self::isPro($edition)) {
+            return [];
+        }
+
+        $blocked = [];
+        if (self::usesConditionalLogic($items) && !self::usesConditionalLogic($existing)) {
+            $blocked[] = self::CAP_CONDITIONAL_LOGIC;
+        }
+        if (self::usesMultiPage($items) && !self::usesMultiPage($existing)) {
+            $blocked[] = self::CAP_MULTI_PAGE;
+        }
+        if ($saveResume && !$existingSaveResume) {
+            $blocked[] = self::CAP_SAVE_CONTINUE;
+        }
+
+        return $blocked;
     }
 }
