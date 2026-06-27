@@ -155,7 +155,7 @@ class Plugin extends BasePlugin
     /** The plugin's single commercial edition. */
     public const EDITION_PRO = 'pro';
 
-    public string $schemaVersion = '2.13.6';
+    public string $schemaVersion = '2.13.7';
     public bool $hasCpSection = true;
     public bool $hasCpSettings = false;
     public bool $hasCpPermissions = true;

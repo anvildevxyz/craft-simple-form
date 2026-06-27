@@ -262,7 +262,18 @@ class Install extends Migration
             'dateUpdated' => $this->dateTime()->notNull(),
             'uid' => $this->uid(),
         ]);
-        $this->createIndex(null, '{{%simpleform_coupons}}', ['code'], true);
+        // Coupon codes are matched case-insensitively (#246/#251). On Postgres a
+        // plain unique index is case-sensitive, so use a functional LOWER(code)
+        // index there; MySQL's _ci collation makes the plain index sufficient.
+        if ($this->db->getIsPgsql()) {
+            $this->execute(sprintf(
+                'CREATE UNIQUE INDEX %s ON %s (LOWER(code))',
+                'simpleform_coupons_code_lower_unq',
+                $this->db->quoteTableName('{{%simpleform_coupons}}'),
+            ));
+        } else {
+            $this->createIndex(null, '{{%simpleform_coupons}}', ['code'], true);
+        }
 
         return true;
     }
