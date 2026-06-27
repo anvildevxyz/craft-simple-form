@@ -82,6 +82,16 @@
 {{ redirectInput('simple-form/forms') }}
 {{ csrfInput() }}
 
+{# Downgrade notice (#editions): this form already uses Pro features while the
+   site runs on Solo. They keep working but can't be extended; saving preserves
+   them. #}
+{% if proFeaturesInUse is defined and proFeaturesInUse|length %}
+    <blockquote class="note warning">
+        <strong>{{ 'Pro features in use.'|t('simple-form') }}</strong>
+        {{ 'This form uses features that need the Pro edition: {features}. They keep working and are preserved when you save, but you can’t add more on the Solo edition.'|t('simple-form', { features: proFeaturesInUse|join(', ') }) }}
+    </blockquote>
+{% endif %}
+
 {# ===========================================================================
    Build — the form's field builder (primary tab)
    =========================================================================== #}

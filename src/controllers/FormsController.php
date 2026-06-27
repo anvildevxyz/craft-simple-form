@@ -481,7 +481,46 @@ class FormsController extends Controller
             // translate them. Single-site forms are always their own source.
             'isSourceSite' => count($supportedSites) <= 1
                 || $site->id === Craft::$app->getSites()->getPrimarySite()->id,
+            // Pro features this form already uses while running on Solo (a
+            // downgrade): the editor shows a non-blocking banner so the author
+            // knows what won't take effect and can't add more.
+            'proFeaturesInUse' => $this->proFeaturesInUse($form, $site),
         ]);
+    }
+
+    /**
+     * The human-facing Pro features an existing form already uses while the
+     * active edition is Solo. Empty on Pro, or for a form with no Pro usage.
+     *
+     * @return list<string>
+     */
+    private function proFeaturesInUse(Form $form, Site $site): array
+    {
+        if (Editions::isPro() || !$form->id) {
+            return [];
+        }
+
+        $fields = FieldQueryHelper::fieldsForForm((int)$form->id, $site->id);
+        $features = [];
+
+        $proFields = Editions::blockedNewProFields(
+            array_map(static fn(array $row): string => (string)$row['type'], $fields),
+            [],
+        );
+        if ($proFields !== []) {
+            $features[] = Craft::t('simple-form', 'Pro field types ({types})', ['types' => implode(', ', $proFields)]);
+        }
+        if (Editions::usesConditionalLogic($fields)) {
+            $features[] = $this->capabilityLabel(Editions::CAP_CONDITIONAL_LOGIC);
+        }
+        if (Editions::usesMultiPage($fields)) {
+            $features[] = $this->capabilityLabel(Editions::CAP_MULTI_PAGE);
+        }
+        if ($form->allowSaveResume) {
+            $features[] = $this->capabilityLabel(Editions::CAP_SAVE_CONTINUE);
+        }
+
+        return $features;
     }
 
     /**
