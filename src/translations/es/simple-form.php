@@ -361,4 +361,13 @@ return [
     'Next' => 'Siguiente',
     'Back' => 'Atrás',
     'Conversational mode shows one question per screen with Back / Next navigation and a progress indicator; authored steps each become a screen. Standard shows the whole form on one page.' => 'El modo conversacional muestra una pregunta por pantalla con navegación Atrás / Siguiente y un indicador de progreso; cada paso definido se convierte en una pantalla. El modo estándar muestra todo el formulario en una página.',
+
+    // Coupons / discount codes (#246) — visitor-facing.
+    'Coupon code' => 'Código de cupón',
+    'Enter a coupon code.' => 'Introduce un código de cupón.',
+    'This coupon code isn’t valid.' => 'Este código de cupón no es válido.',
+    'This coupon code has expired.' => 'Este código de cupón ha caducado.',
+    'This coupon code has reached its usage limit.' => 'Este código de cupón ha alcanzado su límite de uso.',
+    'There is nothing to discount.' => 'No hay nada que descontar.',
+    'Coupon applied: {discount} off. You’ll pay {total}.' => 'Cupón aplicado: {discount} de descuento. Pagarás {total}.',
 ];

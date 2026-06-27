@@ -32,7 +32,7 @@ use yii\base\Component;
 
 /**
  * @phpstan-type SubmissionResult array{submission: Submission|null, errors: array<string, mixed>|null, data?: array<string, mixed>, paymentRedirectUrl?: string}
- * @phpstan-type SubmissionContext array{honeypot?: string, captchaToken?: ?string, skipCaptcha?: bool, userId?: ?int, siteId?: ?int, payment?: array<string, mixed>, actor?: string, _isEdit?: bool, attribution?: array<string, string>|null, partialToken?: string}
+ * @phpstan-type SubmissionContext array{honeypot?: string, captchaToken?: ?string, skipCaptcha?: bool, userId?: ?int, siteId?: ?int, payment?: array<string, mixed>, couponCode?: string, actor?: string, _isEdit?: bool, attribution?: array<string, string>|null, partialToken?: string}
  */
 class SubmissionService extends Component
 {
@@ -155,6 +155,8 @@ class SubmissionService extends Component
             'captchaToken' => null, // CaptchaService reads the request body itself.
             'userId' => $userId !== null ? (int) $userId : null,
             'payment' => is_array($paymentForm) ? $paymentForm : [],
+            // Optional discount code applied to the payment amount (#246).
+            'couponCode' => (string) $request->getBodyParam('couponCode', ''),
             // UTM/referrer auto-capture (#249): only persisted when the form opted in.
             'attribution' => $this->parseAttribution($request),
             // Passive partial capture (#242): the token of the partial this submit
@@ -282,7 +284,8 @@ class SubmissionService extends Component
         $payment = null;
         if (!$isSpam) {
             $paymentParams = is_array($context['payment'] ?? null) ? $context['payment'] : [];
-            $payment = Plugin::getInstance()->getPayments()->authorizeForSubmit($form, $data, $paymentParams);
+            $couponCode = isset($context['couponCode']) ? (string) $context['couponCode'] : '';
+            $payment = Plugin::getInstance()->getPayments()->authorizeForSubmit($form, $data, $paymentParams, $couponCode !== '' ? $couponCode : null);
             if ($payment !== null && $payment['error'] !== null) {
                 return ['submission' => null, 'errors' => ['payment' => [$payment['error']]]];
             }
@@ -309,6 +312,9 @@ class SubmissionService extends Component
             $submission->paymentStatus = $payment['status'];
             $submission->paymentAmount = (string) $payment['amount'];
             $submission->orderId = $payment['orderId'] ?: null;
+            // Applied discount code (#246), recorded for the submission record.
+            $submission->couponCode = $payment['couponCode'];
+            $submission->discountAmount = $payment['discount'] > 0 ? (string) $payment['discount'] : null;
         }
 
         // Quiz scoring (#241): compute once, here, so the stored score is stable

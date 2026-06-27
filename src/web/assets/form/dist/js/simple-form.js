@@ -754,6 +754,82 @@
         form.addEventListener("simpleform:stepChange", capture);
     }
 
+    // Coupon preview (#246): the Apply button previews the discount against the
+    // payment amount before submit. The code input posts as `couponCode` with the
+    // form regardless; this only shows the visitor what they'll pay. The server
+    // re-validates and applies the discount authoritatively at submit.
+    function initCoupon(form) {
+        var box = form.querySelector("[data-sf-coupon]");
+        if (!box) { return; }
+        var input = box.querySelector("[data-sf-coupon-input]");
+        var applyBtn = box.querySelector("[data-sf-coupon-apply]");
+        var message = box.querySelector("[data-sf-coupon-message]");
+        var url = box.getAttribute("data-sf-coupon-url");
+        if (!input || !applyBtn || !url) { return; }
+
+        function amountHint() {
+            var fixed = box.getAttribute("data-sf-amount");
+            if (fixed) { return fixed; }
+            var handle = box.getAttribute("data-sf-amount-field");
+            if (handle) {
+                var el = form.querySelector("[name=\"field_" + handle + "\"], [data-sf-handle=\"" + handle + "\"] input, [data-sf-handle=\"" + handle + "\"] select");
+                if (el && el.value) { return el.value; }
+            }
+            return "";
+        }
+
+        function setMessage(text, isError) {
+            message.textContent = text || "";
+            message.classList.remove("simple-form-coupon-ok", "simple-form-coupon-error");
+            if (text) { message.classList.add(isError ? "simple-form-coupon-error" : "simple-form-coupon-ok"); }
+        }
+
+        function apply() {
+            var code = (input.value || "").trim();
+            if (!code) { setMessage("", false); return; }
+
+            // Post the whole form so CSRF + formHandle + field values come along;
+            // override couponCode and add the amount hint for a field-based price.
+            var formData = new FormData(form);
+            formData.set("couponCode", code);
+            var amt = amountHint();
+            if (amt) { formData.set("amount", amt); }
+
+            applyBtn.disabled = true;
+            fetch(url, {
+                method: "POST",
+                body: formData,
+                headers: { "X-Requested-With": "XMLHttpRequest", "Accept": "application/json" }
+            })
+                .then(function (r) { return r.json(); })
+                .then(function (data) {
+                    applyBtn.disabled = false;
+                    if (data && data.success) {
+                        box.setAttribute("data-sf-coupon-applied", "1");
+                        setMessage(data.message || "", false);
+                    } else {
+                        box.removeAttribute("data-sf-coupon-applied");
+                        setMessage((data && data.error) || "", true);
+                    }
+                })
+                .catch(function () {
+                    applyBtn.disabled = false;
+                    box.removeAttribute("data-sf-coupon-applied");
+                    setMessage(box.getAttribute("data-sf-coupon-network-error") || "", true);
+                });
+        }
+
+        applyBtn.addEventListener("click", apply);
+        input.addEventListener("keydown", function (e) {
+            if (e.key === "Enter") { e.preventDefault(); apply(); }
+        });
+        // A re-typed code invalidates the previous preview.
+        input.addEventListener("input", function () {
+            box.removeAttribute("data-sf-coupon-applied");
+            setMessage("", false);
+        });
+    }
+
     // ---- signature pad (#129) --------------------------------------------
     // Dependency-free canvas signature pad. Pointer events cover mouse, touch,
     // and stylus uniformly; the backing store is scaled to devicePixelRatio for
@@ -888,6 +964,7 @@
         initSaveResume(form);
         initPartialCapture(form);
         initSignaturePads(form);
+        initCoupon(form);
 
         // Remove any prior error state so re-submits don't stack duplicate
         // messages and resolved fields lose their invalid wiring (a11y, #105).

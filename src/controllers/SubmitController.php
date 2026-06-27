@@ -22,6 +22,22 @@ class SubmitController extends Controller
 
     public $enableCsrfValidation = true;
 
+    /**
+     * The coupon preview (#246) is a stateless, read-only lookup — it persists
+     * nothing and charges nothing — so it is exempt from CSRF (a cached form page
+     * can carry a rotated token, which would otherwise 400 the preview). The
+     * authoritative discount is still applied at submit, which keeps CSRF, and
+     * the preview is rate-limited to discourage code enumeration.
+     */
+    public function beforeAction($action): bool
+    {
+        if ($action->id === 'coupon-validate') {
+            $this->enableCsrfValidation = false;
+        }
+
+        return parent::beforeAction($action);
+    }
+
     public function actionIndex(): Response
     {
         $this->requirePostRequest();
@@ -107,6 +123,83 @@ class SubmitController extends Controller
             'message' => $post['message'],
             'redirectUrl' => $post['redirectUrl'],
         ]);
+    }
+
+    /**
+     * Public coupon preview (#246): validate a discount code against a form's
+     * payment amount and return the resulting discount/total so the front-end can
+     * show what the visitor will pay BEFORE submitting. Purely advisory — the
+     * authoritative discount is re-resolved server-side at submit. Rate-limited
+     * (shared throttle) to discourage code enumeration.
+     */
+    public function actionCouponValidate(): Response
+    {
+        $this->requirePostRequest();
+        $this->requireAcceptsJson();
+        /** @var \craft\web\Request $request */
+        $request = Craft::$app->getRequest();
+
+        $plugin = Plugin::getInstance();
+        if ($plugin->getSubmissionService()->isRateLimited($request->getUserIP())) {
+            $this->response->setStatusCode(429);
+            return $this->asJson(['success' => false, 'error' => Craft::t('simple-form', 'Too many attempts. Please wait a moment and try again.')]);
+        }
+
+        $form = Form::find()
+            ->handle((string) $request->getBodyParam('formHandle', ''))
+            ->siteId(Craft::$app->getSites()->getCurrentSite()->id)
+            ->one();
+        if (!$form instanceof Form) {
+            return $this->asJson(['success' => false, 'error' => Craft::t('simple-form', 'Form not found')]);
+        }
+
+        // Fixed amounts resolve server-side; a field-based price isn't known here,
+        // so the field posts its current amount as a preview hint (re-validated at
+        // submit, so a tampered hint can't cheat the real charge).
+        $amount = $plugin->getPayments()->resolveAmount($form, []);
+        if ($amount === null) {
+            $posted = $request->getBodyParam('amount');
+            $amount = is_numeric($posted) ? round((float) $posted, 2) : null;
+        }
+        if ($amount === null || $amount <= 0) {
+            return $this->asJson(['success' => false, 'error' => Craft::t('simple-form', 'There is nothing to discount.')]);
+        }
+
+        $eval = $plugin->getCoupons()->evaluate((string) $request->getBodyParam('couponCode', ''), $amount);
+        if ($eval['error'] !== null) {
+            return $this->asJson(['success' => false, 'error' => $eval['error']]);
+        }
+
+        $formatter = Craft::$app->getFormatter();
+        $currency = $this->storeCurrency();
+        $money = fn(float $v): string => $currency !== null ? $formatter->asCurrency($v, $currency) : $formatter->asDecimal($v, 2);
+
+        return $this->asJson([
+            'success' => true,
+            'amount' => $amount,
+            'discount' => $eval['discount'],
+            'total' => $eval['total'],
+            'message' => Craft::t('simple-form', 'Coupon applied: {discount} off. You’ll pay {total}.', [
+                'discount' => $money($eval['discount']),
+                'total' => $money($eval['total']),
+            ]),
+        ]);
+    }
+
+    /**
+     * The Commerce store's primary payment-currency ISO code, or null when
+     * Commerce is unavailable (the preview then formats a plain decimal).
+     */
+    private function storeCurrency(): ?string
+    {
+        if (!class_exists(\craft\commerce\Plugin::class)) {
+            return null;
+        }
+        try {
+            return \craft\commerce\Plugin::getInstance()->getPaymentCurrencies()->getPrimaryPaymentCurrencyIso();
+        } catch (\Throwable) {
+            return null;
+        }
     }
 
     /**

@@ -122,6 +122,8 @@ class Install extends Migration
             'paymentStatus' => $this->string(20),
             'paymentAmount' => $this->decimal(14, 4),
             'orderId' => $this->integer(),
+            'couponCode' => $this->string(64),
+            'discountAmount' => $this->decimal(14, 4),
             'quizScore' => $this->integer(),
             'quizMaxScore' => $this->integer(),
             'quizPercentage' => $this->integer(),
@@ -242,6 +244,23 @@ class Install extends Migration
         ]);
         $this->createIndex(null, '{{%simpleform_audit_log}}', ['dateCreated']);
         $this->addForeignKey(null, '{{%simpleform_audit_log}}', ['userId'], '{{%users}}', ['id'], 'SET NULL', 'CASCADE');
+
+        // Payment coupons (#246) — site-owner discount codes for the Commerce
+        // payment path.
+        $this->createTable('{{%simpleform_coupons}}', [
+            'id' => $this->primaryKey(),
+            'code' => $this->string(64)->notNull(),
+            'type' => $this->string(16)->notNull()->defaultValue('fixed'),
+            'amount' => $this->decimal(14, 4)->notNull()->defaultValue(0),
+            'expiryDate' => $this->dateTime(),
+            'maxUsages' => $this->integer()->unsigned(),
+            'usageCount' => $this->integer()->notNull()->defaultValue(0),
+            'enabled' => $this->boolean()->notNull()->defaultValue(true),
+            'dateCreated' => $this->dateTime()->notNull(),
+            'dateUpdated' => $this->dateTime()->notNull(),
+            'uid' => $this->uid(),
+        ]);
+        $this->createIndex(null, '{{%simpleform_coupons}}', ['code'], true);
 
         return true;
     }

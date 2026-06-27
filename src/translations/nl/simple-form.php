@@ -355,4 +355,13 @@ return [
     'Next' => 'Volgende',
     'Back' => 'Vorige',
     'Conversational mode shows one question per screen with Back / Next navigation and a progress indicator; authored steps each become a screen. Standard shows the whole form on one page.' => 'De conversationele modus toont één vraag per scherm met Vorige/Volgende-navigatie en een voortgangsindicator; elke ingestelde stap wordt een scherm. Standaard toont het hele formulier op één pagina.',
+
+    // Coupons / discount codes (#246) — visitor-facing.
+    'Coupon code' => 'Kortingscode',
+    'Enter a coupon code.' => 'Voer een kortingscode in.',
+    'This coupon code isn’t valid.' => 'Deze kortingscode is ongeldig.',
+    'This coupon code has expired.' => 'Deze kortingscode is verlopen.',
+    'This coupon code has reached its usage limit.' => 'Deze kortingscode heeft de gebruikslimiet bereikt.',
+    'There is nothing to discount.' => 'Er is niets om korting op te geven.',
+    'Coupon applied: {discount} off. You’ll pay {total}.' => 'Kortingscode toegepast: {discount} korting. Je betaalt {total}.',
 ];

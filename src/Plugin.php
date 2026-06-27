@@ -43,6 +43,7 @@ use fabianhaef\simpleform\services\AssetUploadService;
 use fabianhaef\simpleform\services\AuditService;
 use fabianhaef\simpleform\services\CaptchaProviderRegistry;
 use fabianhaef\simpleform\services\CaptchaService;
+use fabianhaef\simpleform\services\CouponsService;
 use fabianhaef\simpleform\services\DenylistService;
 use fabianhaef\simpleform\services\DraftService;
 use fabianhaef\simpleform\services\EmailService;
@@ -146,7 +147,7 @@ class Plugin extends BasePlugin
     /** The plugin's single commercial edition. */
     public const EDITION_PRO = 'pro';
 
-    public string $schemaVersion = '2.13.4';
+    public string $schemaVersion = '2.13.5';
     public bool $hasCpSection = true;
     public bool $hasCpSettings = false;
     public bool $hasCpPermissions = true;
@@ -193,6 +194,7 @@ class Plugin extends BasePlugin
             'retention' => RetentionService::class,
             'reports' => ReportsService::class,
             'quizScoring' => QuizScoringService::class,
+            'coupons' => CouponsService::class,
             'notifications' => NotificationsService::class,
             'audit' => AuditService::class,
             'payments' => PaymentsService::class,
@@ -289,6 +291,9 @@ class Plugin extends BasePlugin
 
         Craft::$app->getUrlManager()->addRules([
             'simple-form/submit' => 'simple-form/submit/index',
+            // Coupon validation (#246): a public AJAX endpoint the front-end
+            // payment field calls to preview a discount before submit.
+            'simple-form/coupons/validate' => 'simple-form/submit/coupon-validate',
             // Embed & share (#247): the standalone shareable form page (also the
             // iframe target for the embed modes) and the embed loader script.
             'simple-form/embed.js' => 'simple-form/form/embed-script',
@@ -580,6 +585,13 @@ class Plugin extends BasePlugin
         return $service;
     }
 
+    public function getCoupons(): CouponsService
+    {
+        /** @var CouponsService $service */
+        $service = $this->get('coupons');
+        return $service;
+    }
+
     public function getQuizScoring(): QuizScoringService
     {
         /** @var QuizScoringService $service */
@@ -724,6 +736,14 @@ class Plugin extends BasePlugin
         $event->rules['simple-form/settings/integrations'] = 'simple-form/integrations/settings-index';
         $event->rules['simple-form/settings/integrations/new'] = 'simple-form/integrations/edit';
         $event->rules['simple-form/settings/integrations/<integrationId:\d+>'] = 'simple-form/integrations/edit';
+        // Coupons management (#246), also under Settings. Specific routes precede
+        // the generic settings/<tab> catch-all below.
+        $event->rules['simple-form/settings/coupons'] = 'simple-form/coupons/settings-index';
+        $event->rules['simple-form/settings/coupons/new'] = 'simple-form/coupons/edit';
+        $event->rules['simple-form/settings/coupons/<couponId:\d+>'] = 'simple-form/coupons/edit';
+        $event->rules['simple-form/coupons/save'] = 'simple-form/coupons/save';
+        $event->rules['simple-form/coupons/delete'] = 'simple-form/coupons/delete';
+        $event->rules['simple-form/coupons/toggle'] = 'simple-form/coupons/toggle';
         $event->rules['simple-form/settings/<tab:\w+>'] = 'simple-form/settings/section';
 
         // Fields AJAX endpoints

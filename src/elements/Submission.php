@@ -38,6 +38,10 @@ class Submission extends Element
     public ?string $paymentStatus = null;
     public ?string $paymentAmount = null;
     public ?int $orderId = null;
+    /** Applied discount code (#246), null when none was used. */
+    public ?string $couponCode = null;
+    /** Discount the coupon took off the amount due (#246). */
+    public ?string $discountAmount = null;
     /**
      * Quiz score computed once at submit time (#241), null on non-quiz forms.
      * Stored raw + max + percentage + grade band so the value stays stable even
@@ -179,6 +183,8 @@ class Submission extends Element
             'paymentStatus' => $this->paymentStatus,
             'paymentAmount' => $this->paymentAmount,
             'orderId' => $this->orderId,
+            'couponCode' => $this->couponCode,
+            'discountAmount' => $this->discountAmount,
             'quizScore' => $this->quizScore,
             'quizMaxScore' => $this->quizMaxScore,
             'quizPercentage' => $this->quizPercentage,

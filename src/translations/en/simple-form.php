@@ -357,4 +357,13 @@ return [
     'Next' => 'Next',
     'Back' => 'Back',
     'Conversational mode shows one question per screen with Back / Next navigation and a progress indicator; authored steps each become a screen. Standard shows the whole form on one page.' => 'Conversational mode shows one question per screen with Back / Next navigation and a progress indicator; authored steps each become a screen. Standard shows the whole form on one page.',
+
+    // Coupons / discount codes (#246) — visitor-facing.
+    'Coupon code' => 'Coupon code',
+    'Enter a coupon code.' => 'Enter a coupon code.',
+    'This coupon code isn’t valid.' => 'This coupon code isn’t valid.',
+    'This coupon code has expired.' => 'This coupon code has expired.',
+    'This coupon code has reached its usage limit.' => 'This coupon code has reached its usage limit.',
+    'There is nothing to discount.' => 'There is nothing to discount.',
+    'Coupon applied: {discount} off. You’ll pay {total}.' => 'Coupon applied: {discount} off. You’ll pay {total}.',
 ];

@@ -685,6 +685,13 @@
                 c.currency = v.trim().toUpperCase(); serialize();
             }));
             inspector.appendChild(curRow);
+
+            // Coupons (#246): show a discount-code box on the form when enabled.
+            var coupRow = row('Allow Coupons');
+            var coupCb = document.createElement('input'); coupCb.type = 'checkbox'; coupCb.checked = !!c.enableCoupons;
+            coupCb.addEventListener('change', function() { c.enableCoupons = coupCb.checked; serialize(); });
+            coupRow._input.appendChild(coupCb);
+            inspector.appendChild(coupRow);
         } else if (f.type === 'hidden') {
             renderHiddenConfig(f, c);
         } else if (f.type === 'consent') {

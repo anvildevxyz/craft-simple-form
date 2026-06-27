@@ -203,6 +203,30 @@
         });
     }
 
+    // --- Coupons index: enable toggle + delete (mirrors integrations) (#246) ---
+    var coupons = document.getElementById('sf-coupons');
+    if (coupons) {
+        var cMsgs = {
+            generic: coupons.dataset.error,
+            network: coupons.dataset.networkError,
+        };
+        coupons.querySelectorAll('.status-toggle').forEach(function (btn) {
+            btn.addEventListener('click', function () {
+                postJson(coupons.dataset.toggleUrl, 'couponId=' + btn.dataset.id,
+                    function () { location.reload(); }, cMsgs);
+            });
+        });
+        coupons.querySelectorAll('.delete[data-id]').forEach(function (el) {
+            el.addEventListener('click', function () {
+                sfConfirm(coupons.dataset.confirmDelete).then(function (ok) {
+                    if (!ok) { return; }
+                    postJson(coupons.dataset.deleteUrl, 'couponId=' + el.dataset.id,
+                        function () { location.reload(); }, cMsgs);
+                });
+            });
+        });
+    }
+
     // --- Per-form integrations: attach/detach a global integration to a form ---
     var formIntegrations = document.getElementById('sf-form-integrations');
     if (formIntegrations) {

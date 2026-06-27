@@ -103,6 +103,15 @@
                         {{ submission.paymentAmount|number_format(2) }}
                     </p>
                 {% endif %}
+                {% if submission.couponCode %}
+                    <p>
+                        <strong>{{ 'Coupon:'|t('simple-form') }}</strong>
+                        <code>{{ submission.couponCode }}</code>
+                        {% if submission.discountAmount %}
+                            <span class="light">(−{{ submission.discountAmount|number_format(2) }})</span>
+                        {% endif %}
+                    </p>
+                {% endif %}
                 {% if submission.orderId %}
                     <p>
                         <strong>{{ 'Order:'|t('simple-form') }}</strong>

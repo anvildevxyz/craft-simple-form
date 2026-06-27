@@ -361,4 +361,13 @@ return [
     'Next' => 'Weiter',
     'Back' => 'Zurück',
     'Conversational mode shows one question per screen with Back / Next navigation and a progress indicator; authored steps each become a screen. Standard shows the whole form on one page.' => 'Der Dialogmodus zeigt eine Frage pro Bildschirm mit Zurück-/Weiter-Navigation und Fortschrittsanzeige; jeder angelegte Schritt wird zu einem Bildschirm. Standard zeigt das gesamte Formular auf einer Seite.',
+
+    // Coupons / discount codes (#246) — visitor-facing.
+    'Coupon code' => 'Gutscheincode',
+    'Enter a coupon code.' => 'Gib einen Gutscheincode ein.',
+    'This coupon code isn’t valid.' => 'Dieser Gutscheincode ist ungültig.',
+    'This coupon code has expired.' => 'Dieser Gutscheincode ist abgelaufen.',
+    'This coupon code has reached its usage limit.' => 'Dieser Gutscheincode hat sein Nutzungslimit erreicht.',
+    'There is nothing to discount.' => 'Es gibt nichts zu rabattieren.',
+    'Coupon applied: {discount} off. You’ll pay {total}.' => 'Gutschein angewendet: {discount} Rabatt. Du zahlst {total}.',
 ];

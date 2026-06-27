@@ -27,7 +27,7 @@ use yii\base\Component;
  * behind {@see commerceAvailable()} and exercised by the live smoke suite.
  *
  * @phpstan-import-type SubmissionData from Submission
- * @phpstan-type PaymentResult array{status: string, orderId: int, amount: float, redirectUrl: string|null, error: string|null}
+ * @phpstan-type PaymentResult array{status: string, orderId: int, amount: float, redirectUrl: string|null, error: string|null, couponCode: string|null, discount: float}
  */
 class PaymentsService extends Component
 {
@@ -119,9 +119,11 @@ class PaymentsService extends Component
      * @param SubmissionData $data
      * @param array<string, mixed> $paymentParams gateway payment-form params from
      *   the request (the `paymentForm` body param); empty for headless/GraphQL.
+     * @param string|null $couponCode an optional discount code (#246) applied
+     *   server-side to the resolved amount; an invalid one rejects the submit.
      * @return PaymentResult|null
      */
-    public function authorizeForSubmit(Form $form, array $data, array $paymentParams = []): ?array
+    public function authorizeForSubmit(Form $form, array $data, array $paymentParams = [], ?string $couponCode = null): ?array
     {
         if (!$this->requiresPayment($form)) {
             return null;
@@ -137,17 +139,42 @@ class PaymentsService extends Component
             return $this->result('', 0, $amount, null, $boundsError);
         }
 
+        // Coupon discount (#246): resolved server-side against the bounded amount.
+        // A bad/expired/used-up code rejects the submit so the visitor can fix it;
+        // a valid one reduces what the gateway actually charges.
+        $coupon = null;
+        $discount = 0.0;
+        $charge = $amount;
+        if ($couponCode !== null && trim($couponCode) !== '') {
+            $eval = Plugin::getInstance()->getCoupons()->evaluate($couponCode, $amount);
+            if ($eval['error'] !== null) {
+                return $this->result('', 0, $amount, null, $eval['error'], $couponCode);
+            }
+            $coupon = $eval['coupon'];
+            $discount = $eval['discount'];
+            $charge = $eval['total'];
+        }
+
+        // A coupon covering the full amount makes the submission free: record it
+        // paid without touching the gateway (Commerce can't charge a zero total).
+        if ($charge <= 0.0) {
+            if ($coupon !== null && $coupon->id !== null) {
+                Plugin::getInstance()->getCoupons()->incrementUsage($coupon->id);
+            }
+            return $this->result(self::STATUS_PAID, 0, 0.0, null, null, $couponCode, $discount);
+        }
+
         if ($paymentParams === []) {
-            return $this->result('', 0, $amount, null, Craft::t('simple-form', 'Payment information is required.'));
+            return $this->result('', 0, $charge, null, Craft::t('simple-form', 'Payment information is required.'), $couponCode, $discount);
         }
 
         try {
             $gateway = $this->gateway();
             $donation = $this->donation();
-            $order = $this->buildOrder($gateway, $donation, $amount, $this->submitterEmail($form, $data));
+            $order = $this->buildOrder($gateway, $donation, $charge, $this->submitterEmail($form, $data));
         } catch (\Throwable $e) {
             Craft::error('Payment setup failed (#116): ' . $e->getMessage(), 'simple-form');
-            return $this->result('', 0, $amount, null, Craft::t('simple-form', 'Payments are not available right now. Please try again later.'));
+            return $this->result('', 0, $charge, null, Craft::t('simple-form', 'Payments are not available right now. Please try again later.'), $couponCode, $discount);
         }
 
         $paymentForm = $gateway->getPaymentFormModel();
@@ -160,17 +187,22 @@ class PaymentsService extends Component
         } catch (\craft\commerce\errors\PaymentException $e) {
             Craft::warning('Payment declined (#116): ' . $e->getMessage(), 'simple-form');
 
-            return $this->result('', 0, $amount, null, Craft::t('simple-form', 'Your payment could not be processed.'));
+            return $this->result('', 0, $charge, null, Craft::t('simple-form', 'Your payment could not be processed.'), $couponCode, $discount);
         }
 
-        // Offsite / 3-D-Secure: persist pending and hand the visitor off.
+        // Offsite / 3-D-Secure: persist pending and hand the visitor off. The
+        // coupon is consumed when that order completes (see markPaid()).
         if (is_string($redirect) && $redirect !== '') {
-            return $this->result(self::STATUS_PENDING, (int) $order->id, $amount, $redirect, null);
+            return $this->result(self::STATUS_PENDING, (int) $order->id, $charge, $redirect, null, $couponCode, $discount);
         }
 
         // Onsite: paid if the order settled, otherwise authorized-but-pending.
         $status = $order->getIsPaid() ? self::STATUS_PAID : self::STATUS_PENDING;
-        return $this->result($status, (int) $order->id, $amount, null, null);
+        if ($status === self::STATUS_PAID && $coupon !== null && $coupon->id !== null) {
+            Plugin::getInstance()->getCoupons()->incrementUsage($coupon->id);
+        }
+
+        return $this->result($status, (int) $order->id, $charge, null, null, $couponCode, $discount);
     }
 
     /**
@@ -202,9 +234,17 @@ class PaymentsService extends Component
     /**
      * @return PaymentResult
      */
-    private function result(string $status, int $orderId, float $amount, ?string $redirectUrl, ?string $error): array
+    private function result(string $status, int $orderId, float $amount, ?string $redirectUrl, ?string $error, ?string $couponCode = null, float $discount = 0.0): array
     {
-        return ['status' => $status, 'orderId' => $orderId, 'amount' => $amount, 'redirectUrl' => $redirectUrl, 'error' => $error];
+        return [
+            'status' => $status,
+            'orderId' => $orderId,
+            'amount' => $amount,
+            'redirectUrl' => $redirectUrl,
+            'error' => $error,
+            'couponCode' => ($couponCode !== null && trim($couponCode) !== '') ? trim($couponCode) : null,
+            'discount' => round($discount, 2),
+        ];
     }
 
     /**
@@ -218,6 +258,16 @@ class PaymentsService extends Component
 
         $submission->paymentStatus = self::STATUS_PAID;
         Craft::$app->getElements()->saveElement($submission);
+
+        // Consume an applied coupon (#246) when an offsite/pending payment finally
+        // settles — the onsite path consumes it at authorize time, and this
+        // transition only ever runs once (early-return above), so no double count.
+        if (!empty($submission->couponCode)) {
+            $coupon = Plugin::getInstance()->getCoupons()->getByCode($submission->couponCode);
+            if ($coupon !== null && $coupon->id !== null) {
+                Plugin::getInstance()->getCoupons()->incrementUsage($coupon->id);
+            }
+        }
 
         $form = $submission->getForm();
         if (!$form instanceof Form) {

@@ -99,6 +99,8 @@ class SubmissionQuery extends ElementQuery
             'simpleform_submissions.paymentStatus',
             'simpleform_submissions.paymentAmount',
             'simpleform_submissions.orderId',
+            'simpleform_submissions.couponCode',
+            'simpleform_submissions.discountAmount',
             'simpleform_submissions.quizScore',
             'simpleform_submissions.quizMaxScore',
             'simpleform_submissions.quizPercentage',

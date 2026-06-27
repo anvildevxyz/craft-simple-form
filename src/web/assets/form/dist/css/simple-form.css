@@ -250,6 +250,39 @@
     color: #166534;
 }
 
+/* Coupon / discount code box (#246) */
+.simple-form-coupon {
+    margin: .75em 0;
+}
+.simple-form-coupon-label {
+    display: block;
+    margin-bottom: .35em;
+    font-weight: 600;
+}
+.simple-form-coupon-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+.simple-form-coupon-input {
+    flex: 1 1 auto;
+    min-width: 0;
+}
+.simple-form-coupon-apply {
+    flex: 0 0 auto;
+    cursor: pointer;
+}
+.simple-form-coupon-apply[disabled] {
+    opacity: .6;
+    cursor: default;
+}
+.simple-form-coupon-message {
+    margin: .4em 0 0;
+    font-size: .9em;
+}
+.simple-form-coupon-message.simple-form-coupon-ok { color: #166534; }
+.simple-form-coupon-message.simple-form-coupon-error { color: #b91c1c; }
+
 /* Conversational render mode (#239): one screen at a time + a nav row. The
    screens toggle via the [hidden] attribute; a gentle fade-in eases the change,
    suppressed under prefers-reduced-motion. */

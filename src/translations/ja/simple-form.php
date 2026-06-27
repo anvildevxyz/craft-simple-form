@@ -355,4 +355,13 @@ return [
     'Next' => '次へ',
     'Back' => '戻る',
     'Conversational mode shows one question per screen with Back / Next navigation and a progress indicator; authored steps each become a screen. Standard shows the whole form on one page.' => '会話形式モードは、戻る／次へのナビゲーションと進捗インジケーターとともに1画面に1つの質問を表示します。設定した各ステップが1画面になります。標準モードはフォーム全体を1ページに表示します。',
+
+    // Coupons / discount codes (#246) — visitor-facing.
+    'Coupon code' => 'クーポンコード',
+    'Enter a coupon code.' => 'クーポンコードを入力してください。',
+    'This coupon code isn’t valid.' => 'このクーポンコードは無効です。',
+    'This coupon code has expired.' => 'このクーポンコードは有効期限が切れています。',
+    'This coupon code has reached its usage limit.' => 'このクーポンコードは利用上限に達しました。',
+    'There is nothing to discount.' => '割引対象がありません。',
+    'Coupon applied: {discount} off. You’ll pay {total}.' => 'クーポンを適用しました：{discount} 割引。お支払い額は {total} です。',
 ];
