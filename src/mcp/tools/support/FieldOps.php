@@ -7,7 +7,6 @@ use craft\db\Query;
 use fabianhaef\simpleform\elements\Form;
 use fabianhaef\simpleform\Plugin;
 use fabianhaef\simpleform\services\FieldSyncService;
-use fabianhaef\simpleform\services\FieldTypeRegistry;
 
 /**
  * MCP-facing field add/edit/reorder/delete for the form-management tools.
@@ -64,35 +63,13 @@ final class FieldOps
      */
     public static function validate(string $type, ?string $label, ?string $handle, array $config, int $formId, ?int $excludeFieldId): array
     {
+        // Shared structural rules live on FieldsService; render the {key, params}
+        // pairs as raw English for the MCP contract (the CP renders via Craft::t).
+        $structured = Plugin::getInstance()->getFields()->validateInput($type, $label, $handle, $config, $formId, $excludeFieldId);
         $errors = [];
-
-        if (empty($label)) {
-            $errors['label'][] = 'Label is required';
-        }
-
-        if (empty($handle)) {
-            $errors['handle'][] = 'Handle is required';
-        } elseif (!preg_match('/^[a-zA-Z_][a-zA-Z0-9_]*$/', $handle)) {
-            $errors['handle'][] = 'Handle must start with a letter or underscore, and contain only alphanumeric characters and underscores';
-        } else {
-            $dupQuery = (new Query())
-                ->from('{{%simpleform_fields}}')
-                ->where(['formId' => $formId, 'name' => $handle]);
-            if ($excludeFieldId !== null) {
-                $dupQuery->andWhere(['not', ['id' => $excludeFieldId]]);
-            }
-            if ($dupQuery->exists()) {
-                $errors['handle'][] = 'A field with this handle already exists in this form';
-            }
-        }
-
-        if (!in_array($type, self::validTypes(), true)) {
-            $errors['type'][] = 'Invalid field type';
-        }
-
-        if (in_array($type, FieldTypeRegistry::OPTION_TYPES, true)) {
-            if (empty($config['options']) || !is_array($config['options'])) {
-                $errors['config'][] = $type . ' fields must have at least one option';
+        foreach ($structured as $input => $list) {
+            foreach ($list as $error) {
+                $errors[$input][] = self::interpolate($error['key'], $error['params']);
             }
         }
 
@@ -240,19 +217,33 @@ final class FieldOps
 
     /**
      * Site IDs the field should exist on, derived from the form's propagation
-     * method. Mirrors FieldsController::supportedSiteIds.
+     * method, falling back to the primary site. Delegates to the shared
+     * {@see \fabianhaef\simpleform\services\FieldsService::supportedSiteIds()}.
      *
      * @return list<int>
      */
     private static function supportedSiteIds(int $formId): array
     {
-        $form = Form::find()->id($formId)->siteId('*')->status(null)->one();
-        if (!$form) {
-            return [(int)Craft::$app->getSites()->getPrimarySite()->id];
+        return Plugin::getInstance()->getFields()->supportedSiteIds(
+            $formId,
+            (int) Craft::$app->getSites()->getPrimarySite()->id,
+        );
+    }
+
+    /**
+     * Interpolate a `{name}` placeholder message with its params — the MCP's
+     * raw-English render of the structured rule errors from FieldsService (the
+     * CP renders the same `{key, params}` pairs through `Craft::t()`).
+     *
+     * @param array<string, int|string> $params
+     */
+    private static function interpolate(string $message, array $params): string
+    {
+        $replace = [];
+        foreach ($params as $name => $value) {
+            $replace['{' . $name . '}'] = (string) $value;
         }
 
-        $ids = $form->supportedSiteIds();
-
-        return $ids !== [] ? $ids : [(int)Craft::$app->getSites()->getPrimarySite()->id];
+        return strtr($message, $replace);
     }
 }

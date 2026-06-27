@@ -5,6 +5,7 @@ namespace fabianhaef\simpleform\services;
 use Craft;
 use craft\db\Query;
 use craft\helpers\StringHelper;
+use fabianhaef\simpleform\elements\Form;
 use fabianhaef\simpleform\Plugin;
 use yii\base\Component;
 
@@ -134,6 +135,80 @@ class FieldsService extends Component
     {
         Craft::$app->getDb()->createCommand()->delete('{{%simpleform_fields}}', ['id' => $fieldId])->execute();
         Plugin::getInstance()->getFormStructure()->invalidate($formId);
+    }
+
+    /**
+     * Validate the structural input for a field add/edit — the rules the CP
+     * field builder and the MCP field tools share: label + handle presence, the
+     * handle format and its per-form uniqueness, a registered type, and a
+     * non-empty options set for the choice types.
+     *
+     * Returns errors keyed by input name, each a `{key, params}` pair the caller
+     * renders in its own contract — the CP through `Craft::t()`, the MCP as raw
+     * English — so the rule logic lives once. The `key` doubles as the
+     * `simple-form` translation key. Caller-specific checks (e.g. the MCP's
+     * conditional-logic validation) stay with the caller.
+     *
+     * @param array<string, mixed> $config
+     * @return array<string, list<array{key: string, params: array<string, int|string>}>>
+     */
+    public function validateInput(string $type, ?string $label, ?string $handle, array $config, int $formId, ?int $excludeFieldId): array
+    {
+        $errors = [];
+
+        if (empty($label)) {
+            $errors['label'][] = ['key' => 'Label is required', 'params' => []];
+        }
+
+        if (empty($handle)) {
+            $errors['handle'][] = ['key' => 'Handle is required', 'params' => []];
+        } elseif (!preg_match('/^[a-zA-Z_][a-zA-Z0-9_]*$/', $handle)) {
+            $errors['handle'][] = ['key' => 'Handle must start with a letter or underscore, and contain only alphanumeric characters and underscores', 'params' => []];
+        } else {
+            $dupQuery = (new Query())
+                ->from('{{%simpleform_fields}}')
+                ->where(['formId' => $formId, 'name' => $handle]);
+            if ($excludeFieldId !== null) {
+                $dupQuery->andWhere(['not', ['id' => $excludeFieldId]]);
+            }
+            if ($dupQuery->exists()) {
+                $errors['handle'][] = ['key' => 'A field with this handle already exists in this form', 'params' => []];
+            }
+        }
+
+        if (!in_array($type, Plugin::getInstance()->getFieldTypeRegistry()->typeHandles(), true)) {
+            $errors['type'][] = ['key' => 'Invalid field type', 'params' => []];
+        }
+
+        if (in_array($type, FieldTypeRegistry::OPTION_TYPES, true)
+            && (empty($config['options']) || !is_array($config['options']))) {
+            $errors['config'][] = ['key' => '{type} fields must have at least one option', 'params' => ['type' => $type]];
+        }
+
+        return $errors;
+    }
+
+    /**
+     * The site ids a form's fields should exist on, derived from the form's
+     * propagation method, with a caller-supplied fallback when the form can't be
+     * loaded or supports no sites. Shared by the CP field builder (fallback: the
+     * current site) and the MCP field tools (fallback: the primary site).
+     *
+     * The all-sites/all-status load is deliberate: Form is multi-site, so a
+     * field's site set must reflect every site the form propagates to, not just
+     * the request's current site.
+     *
+     * @return list<int>
+     */
+    public function supportedSiteIds(int $formId, int $fallbackSiteId): array
+    {
+        $form = Form::find()->id($formId)->siteId('*')->status(null)->one();
+        if (!$form instanceof Form) {
+            return [$fallbackSiteId];
+        }
+
+        $ids = $form->supportedSiteIds();
+        return $ids !== [] ? $ids : [$fallbackSiteId];
     }
 
     /**

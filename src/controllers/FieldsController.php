@@ -9,7 +9,6 @@ use fabianhaef\simpleform\elements\Form;
 use fabianhaef\simpleform\helpers\SimpleFormPermissions;
 use fabianhaef\simpleform\helpers\SiteHelper;
 use fabianhaef\simpleform\Plugin;
-use fabianhaef\simpleform\services\FieldTypeRegistry;
 use yii\web\NotFoundHttpException;
 use yii\web\Response;
 
@@ -196,50 +195,28 @@ class FieldsController extends Controller
      */
     private function validateFieldInput(string $type, ?string $label, ?string $handle, array $config, int $formId, ?int $excludeFieldId): array
     {
+        $structured = Plugin::getInstance()->getFields()->validateInput($type, $label, $handle, $config, $formId, $excludeFieldId);
+
+        // Render each shared rule's {key, params} through Craft::t for the CP.
         $errors = [];
-
-        if (empty($label)) {
-            $errors['label'][] = Craft::t('simple-form', 'Label is required');
-        }
-
-        if (empty($handle)) {
-            $errors['handle'][] = Craft::t('simple-form', 'Handle is required');
-        } elseif (!preg_match('/^[a-zA-Z_][a-zA-Z0-9_]*$/', $handle)) {
-            $errors['handle'][] = Craft::t('simple-form', 'Handle must start with a letter or underscore, and contain only alphanumeric characters and underscores');
-        } else {
-            $dupQuery = (new Query())
-                ->from('{{%simpleform_fields}}')
-                ->where(['formId' => $formId, 'name' => $handle]);
-            if ($excludeFieldId !== null) {
-                $dupQuery->andWhere(['not', ['id' => $excludeFieldId]]);
+        foreach ($structured as $input => $list) {
+            foreach ($list as $error) {
+                $errors[$input][] = Craft::t('simple-form', $error['key'], $error['params']);
             }
-            if ($dupQuery->exists()) {
-                $errors['handle'][] = Craft::t('simple-form', 'A field with this handle already exists in this form');
-            }
-        }
-
-        if (!in_array($type, Plugin::getInstance()->getFieldTypeRegistry()->typeHandles(), true)) {
-            $errors['type'][] = Craft::t('simple-form', 'Invalid field type');
-        }
-
-        if (in_array($type, FieldTypeRegistry::OPTION_TYPES, true)
-            && (empty($config['options']) || !is_array($config['options']))) {
-            $errors['config'][] = Craft::t('simple-form', '{type} fields must have at least one option', ['type' => $type]);
         }
 
         return $errors;
     }
 
     /**
-     * Site IDs the field should exist on, derived from the parent form's propagation method.
-     * Falls back to the current site if the form can't be loaded.
+     * Site IDs the field should exist on, derived from the parent form's
+     * propagation method, falling back to the current site. Delegates to the
+     * shared {@see \fabianhaef\simpleform\services\FieldsService::supportedSiteIds()}.
      *
      * @return int[]
      */
     private function supportedSiteIds(int $formId, int $currentSiteId): array
     {
-        $form = Form::find()->id($formId)->siteId('*')->status(null)->one();
-
-        return $form ? ($form->supportedSiteIds() ?: [$currentSiteId]) : [$currentSiteId];
+        return Plugin::getInstance()->getFields()->supportedSiteIds($formId, $currentSiteId);
     }
 }

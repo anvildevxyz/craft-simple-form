@@ -114,6 +114,46 @@ class FieldsServiceTest extends SimpleFormTestCase
         $this->assertSame('new help', $site['helpText']);
     }
 
+    public function testValidateInputReturnsStructuredKeyAndParams(): void
+    {
+        $this->requireCraft();
+
+        $form = $this->createForm('Validate', 'svc_validate');
+        $formId = (int) $form->id;
+
+        // Missing label + a choice type with no options → two structured errors,
+        // the options one carrying a {type} param the caller interpolates.
+        $errors = $this->fields()->validateInput('select', '', 'handle', [], $formId, null);
+
+        $this->assertSame(['key' => 'Label is required', 'params' => []], $errors['label'][0]);
+        $this->assertSame(
+            ['key' => '{type} fields must have at least one option', 'params' => ['type' => 'select']],
+            $errors['config'][0],
+        );
+
+        // A valid text field with options-less config produces no errors.
+        $ok = $this->fields()->validateInput('text', 'Name', 'name', [], $formId, null);
+        $this->assertSame([], $ok);
+    }
+
+    public function testValidateInputFlagsDuplicateHandleWithinForm(): void
+    {
+        $this->requireCraft();
+
+        $form = $this->createForm('Dupe', 'svc_dupe');
+        $formId = (int) $form->id;
+        $siteId = (int) Craft::$app->getSites()->getPrimarySite()->id;
+        $existing = $this->fields()->add($formId, 'text', 'email', false, [], 'Email', '', [$siteId]);
+
+        // Same handle, different (new) field → duplicate error.
+        $errors = $this->fields()->validateInput('text', 'Email', 'email', [], $formId, null);
+        $this->assertSame('A field with this handle already exists in this form', $errors['handle'][0]['key']);
+
+        // Excluding the field that owns the handle (an edit of itself) → no error.
+        $ok = $this->fields()->validateInput('text', 'Email', 'email', [], $formId, $existing);
+        $this->assertArrayNotHasKey('handle', $ok);
+    }
+
     public function testReorderRewritesSortOrderByPosition(): void
     {
         $this->requireCraft();
