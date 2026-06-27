@@ -53,6 +53,20 @@ class EditionDowngradeTest extends SimpleFormTestCase
         $this->assertStringContainsString('Score', $html);
     }
 
+    public function testProIntegrationTypeStillResolvesUnderSolo(): void
+    {
+        $this->requireCraft();
+
+        $this->setEdition(Editions::SOLO);
+        $registry = Plugin::getInstance()->getIntegrationTypeRegistry();
+
+        // Runtime resolution is edition-blind, so an existing Slack integration on
+        // a downgraded install keeps dispatching even though it can't be re-added.
+        $this->assertNotNull($registry->getType('slack'));
+        $this->assertFalse(Editions::integrationAllowed('slack'));
+        $this->assertTrue(Editions::integrationAllowed('webhook'));
+    }
+
     public function testEscalationGuardReflectsActiveEdition(): void
     {
         $this->requireCraft();
