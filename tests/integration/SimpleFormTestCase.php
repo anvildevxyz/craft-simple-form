@@ -3,7 +3,6 @@
 namespace anvildev\simpleform\tests\integration;
 
 use anvildev\simpleform\elements\Form;
-use anvildev\simpleform\Plugin;
 use Craft;
 use craft\helpers\StringHelper;
 use craft\test\TestCase;
@@ -19,20 +18,6 @@ use craft\test\TestCase;
  */
 abstract class SimpleFormTestCase extends TestCase
 {
-    /**
-     * Run the suite as the full Pro edition by default — these tests exercise
-     * Pro features, and a freshly-installed plugin would otherwise default to
-     * the lowest edition (Solo). Tests that need Solo flip it per-test.
-     */
-    protected function setUp(): void
-    {
-        parent::setUp();
-
-        if (class_exists(\Craft::class) && Craft::$app !== null) {
-            Plugin::getInstance()->edition = Plugin::EDITION_PRO;
-        }
-    }
-
     protected function requireCraft(): void
     {
         if (!class_exists(\Craft::class) || Craft::$app === null) {

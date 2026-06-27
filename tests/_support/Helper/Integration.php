@@ -27,5 +27,14 @@ class Integration extends Module
         if (empty($request->cookieValidationKey)) {
             $request->cookieValidationKey = 'simple-form-test-cookie-validation-key';
         }
+
+        // Pin the full Pro edition by default. With editions() = [solo, pro], a
+        // freshly-resolved plugin defaults to the lowest edition (Solo); both
+        // suites exercise Pro features, and the dedicated edition tests flip to
+        // Solo per-test. Covers integration + smoke uniformly.
+        $plugin = \anvildev\simpleform\Plugin::getInstance();
+        if ($plugin !== null) {
+            $plugin->edition = \anvildev\simpleform\Plugin::EDITION_PRO;
+        }
     }
 }

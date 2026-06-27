@@ -84,8 +84,29 @@ Full documentation lives in **[`docs/`](docs/README.md)**. Feature guides:
 - [API stability](docs/extending/api-stability.md) · [Upgrade guide](docs/upgrading.md) · copy-paste [`examples/`](examples/) (custom field type, integration, captcha, theme)
 - [Forms as code](docs/forms-as-code.md) — version-controlled form definitions deployed with `forms/apply`
 
+## Editions
+
+Simple Form comes in two editions. **A freshly-installed plugin runs as Solo
+by default** — run the Pro edition to unlock the full feature set.
+
+| | **Solo** | **Pro** |
+|---|---|---|
+| Unlimited forms, stored submissions, CSV export | ✅ | ✅ |
+| Core field types (text, email, select, file, name, address, consent…) | ✅ (16) | ✅ (all 28) |
+| Email notifications + autoresponder | ✅ | ✅ |
+| Spam protection (honeypot, rate-limit, CAPTCHA) | ✅ | ✅ + Akismet & denylists |
+| Multi-site / per-site translation | ✅ | ✅ |
+| Webhook + Craft entry/user integrations | ✅ | ✅ |
+| Advanced fields (signature, payment, rating, calculation, repeater, relations…) | — | ✅ |
+| Conditional logic, multi-page, save & continue later | — | ✅ |
+| Third-party integrations (Slack, Discord, Mailchimp, HubSpot, Google Sheets…) | — | ✅ |
+| Commerce payments, PDF attachments, audit log, retention automation | — | ✅ |
+| MCP server + forms-as-code | — | ✅ |
+
+The edition gate governs *authoring*, never *runtime*: a form built on Pro keeps
+working after a downgrade to Solo — you just can't add more Pro features.
+
 ## License & Pricing
 
-Simple Form is commercial software, licensed as a single **Pro** edition. See
-[LICENSE.md](LICENSE.md) for the full terms. Licensing and updates are handled
-through the Craft Plugin Store.
+Simple Form is commercial software. See [LICENSE.md](LICENSE.md) for the full
+terms. Licensing and updates are handled through the Craft Plugin Store.
