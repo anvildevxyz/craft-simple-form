@@ -113,6 +113,28 @@ class EditionDowngradeTest extends SimpleFormTestCase
         $this->assertCount($before, $audit->recent(1000));
     }
 
+    public function testImportRejectsProFieldFormOnSoloButAllowsOnPro(): void
+    {
+        $this->requireCraft();
+
+        $portability = new \anvildev\simpleform\services\FormPortabilityService();
+
+        // Built as Pro (the harness default): a form carrying a Pro rating field.
+        $form = $this->createForm('Imported', 'importedSrc', 'Imported');
+        $this->createField($form->id, 'rating', 'score', 'Score', false, ['max' => 5]);
+        $doc = $portability->export($form);
+
+        // Pro: the same document imports fine.
+        $proResult = $portability->import($doc, ['mode' => 'rename']);
+        $this->assertNotNull($proResult->form);
+
+        // Solo: importing a document that introduces a Pro field is rejected
+        // (covers the CP-import, console-import, and forms-as-code paths).
+        $this->setEdition(Editions::SOLO);
+        $this->expectException(\yii\base\InvalidArgumentException::class);
+        $portability->import($doc, ['mode' => 'rename']);
+    }
+
     public function testEscalationGuardReflectsActiveEdition(): void
     {
         $this->requireCraft();

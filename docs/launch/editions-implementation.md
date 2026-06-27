@@ -160,7 +160,7 @@ Each is "filter the palette / reject *new* escalation," never "remove from regis
 - **P2 — integrations:** palette filter + save guard.
 - **P3 — form caps:** conditional logic, multi-page, multi-site, save-continue, payments.
 - **P4 — settings + service inertness:** grey-out UI + runtime `can()` guards in the 6 Pro services.
-- **P5 — GraphQL + MCP parity:** same guards on programmatic create/update paths.
+- **P5 — programmatic-path parity:** DONE. Findings: GraphQL mutations only handle *submissions* (no form authoring), and their submit path inherits the P4 service gating (payments/spam). MCP is entirely Pro-gated (P4 → 404 on Solo), so its authoring tools are unreachable on Solo. The real remaining authoring bypass was **form import / forms-as-code apply** → a shared `FormPortabilityService::assertEditionAllows()` now enforces the field + form-capability escalation rules on `import()` and `applyToExistingForm()`, covering CP import, console import, and `forms/apply`.
 - **P6 — downgrade UX:** "Pro feature in use" banner + the no-new-escalation save rule.
 - **P7 — tests, docs, store config:** edition matrix tests green; docs/upgrading note; configure $19/$79 editions + prices in the Plugin Store console.
 
