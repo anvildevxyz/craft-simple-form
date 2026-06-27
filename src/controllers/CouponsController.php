@@ -34,28 +34,14 @@ class CouponsController extends Controller
      */
     public function actionSettingsIndex(): Response
     {
+        $payments = Plugin::getInstance()->getPayments();
+
         return $this->renderTemplate('simple-form/settings/index', [
             'selectedSettingsSubnavItem' => 'coupons',
             'coupons' => $this->service()->getAll(),
-            'commerceAvailable' => Plugin::getInstance()->getPayments()->commerceAvailable(),
-            'currency' => $this->storeCurrency(),
+            'commerceAvailable' => $payments->commerceAvailable(),
+            'currency' => $payments->primaryCurrencyIso(),
         ]);
-    }
-
-    /**
-     * The Commerce store's primary payment-currency ISO code (for formatting
-     * amounts in the list), or null when Commerce is unavailable.
-     */
-    private function storeCurrency(): ?string
-    {
-        if (!class_exists(\craft\commerce\Plugin::class)) {
-            return null;
-        }
-        try {
-            return \craft\commerce\Plugin::getInstance()->getPaymentCurrencies()->getPrimaryPaymentCurrencyIso();
-        } catch (\Throwable) {
-            return null;
-        }
     }
 
     /**

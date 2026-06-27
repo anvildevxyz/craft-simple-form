@@ -808,16 +808,13 @@
                 .then(function (data) {
                     applyBtn.disabled = false;
                     if (data && data.success) {
-                        box.setAttribute("data-sf-coupon-applied", "1");
                         setMessage(data.message || "", false);
                     } else {
-                        box.removeAttribute("data-sf-coupon-applied");
                         setMessage((data && data.error) || "", true);
                     }
                 })
                 .catch(function () {
                     applyBtn.disabled = false;
-                    box.removeAttribute("data-sf-coupon-applied");
                     setMessage(box.getAttribute("data-sf-coupon-network-error") || "", true);
                 });
         }
@@ -828,7 +825,6 @@
         });
         // A re-typed code invalidates the previous preview.
         input.addEventListener("input", function () {
-            box.removeAttribute("data-sf-coupon-applied");
             setMessage("", false);
         });
     }

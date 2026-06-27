@@ -171,7 +171,7 @@ class SubmitController extends Controller
         }
 
         $formatter = Craft::$app->getFormatter();
-        $currency = $this->storeCurrency();
+        $currency = $plugin->getPayments()->primaryCurrencyIso();
         $money = fn(float $v): string => $currency !== null ? $formatter->asCurrency($v, $currency) : $formatter->asDecimal($v, 2);
 
         return $this->asJson([
@@ -184,22 +184,6 @@ class SubmitController extends Controller
                 'total' => $money($eval['total']),
             ]),
         ]);
-    }
-
-    /**
-     * The Commerce store's primary payment-currency ISO code, or null when
-     * Commerce is unavailable (the preview then formats a plain decimal).
-     */
-    private function storeCurrency(): ?string
-    {
-        if (!class_exists(\craft\commerce\Plugin::class)) {
-            return null;
-        }
-        try {
-            return \craft\commerce\Plugin::getInstance()->getPaymentCurrencies()->getPrimaryPaymentCurrencyIso();
-        } catch (\Throwable) {
-            return null;
-        }
     }
 
     /**

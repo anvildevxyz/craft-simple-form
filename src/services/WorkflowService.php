@@ -20,6 +20,9 @@ use yii\base\Component;
  * lifecycle stays identical to today. The transition-gating logic is pure and
  * unit-tested via {@see self::filterAllowed()}.
  *
+ * @phpstan-type WorkflowStatus array{handle: string, label: string, color: string}
+ * @phpstan-type WorkflowTransition array{from: string, to: string, label: string, groups: list<string>}
+ *
  * @author Fabian Haefliger
  * @since 1.0.0
  */
@@ -32,7 +35,7 @@ class WorkflowService extends Component
     }
 
     /**
-     * @return list<array{handle: string, label: string, color: string}>
+     * @return list<WorkflowStatus>
      */
     public function getStatuses(): array
     {
@@ -53,7 +56,7 @@ class WorkflowService extends Component
     }
 
     /**
-     * @return array{handle: string, label: string, color: string}|null
+     * @return WorkflowStatus|null
      */
     public function getStatus(string $handle): ?array
     {
@@ -76,7 +79,7 @@ class WorkflowService extends Component
     }
 
     /**
-     * @return list<array{from: string, to: string, label: string, groups: list<string>}>
+     * @return list<WorkflowTransition>
      */
     public function getTransitions(): array
     {
@@ -134,9 +137,9 @@ class WorkflowService extends Component
      * `from` matches and whose `groups` gate is satisfied (empty gate = anyone;
      * an admin always passes).
      *
-     * @param list<array{from: string, to: string, label: string, groups: list<string>}> $transitions
+     * @param list<WorkflowTransition> $transitions
      * @param list<string> $userGroupHandles
-     * @return list<array{from: string, to: string, label: string, groups: list<string>}>
+     * @return list<WorkflowTransition>
      */
     public static function filterAllowed(array $transitions, ?string $fromHandle, array $userGroupHandles, bool $isAdmin): array
     {

@@ -8,7 +8,8 @@ namespace fabianhaef\simpleform\helpers;
  * `{operator, value, target}` rules — "when this field's answer matches, jump to
  * the step/screen that holds field `target`". Jumps only ever go forward (a
  * target must be a later step), which makes circular routes impossible by
- * construction; backward/dangling targets are dropped here and rejected at save.
+ * construction; backward/dangling targets are dropped here at render so they
+ * never route.
  *
  * Pure and framework-agnostic, sharing {@see ConditionalEvaluator::compare()}'s
  * operator semantics. The front-end navigator (SF.jumps) mirrors `next()` and
@@ -18,6 +19,8 @@ namespace fabianhaef\simpleform\helpers;
  * A "step rules" array is the resolved, render-ready form: one entry per
  * step/screen index, each a list of `{field, operator, value, to}` where `to`
  * is the destination step index.
+ *
+ * @phpstan-type StepRule array{field: string, operator: string, value: mixed, to: int}
  */
 final class JumpResolver
 {
@@ -61,7 +64,7 @@ final class JumpResolver
      *
      * @param list<list<string>> $sequence step index => the input field handles on it
      * @param array<string, array<string, mixed>> $configByHandle field handle => its config
-     * @return list<list<array{field: string, operator: string, value: mixed, to: int}>>
+     * @return list<list<StepRule>>
      */
     public static function buildStepRules(array $sequence, array $configByHandle): array
     {
@@ -79,8 +82,8 @@ final class JumpResolver
                 foreach (self::jumpsOf($configByHandle[$handle] ?? []) as $jump) {
                     $target = (string) ($jump['target'] ?? '');
                     if (!isset($stepOf[$target]) || $stepOf[$target] <= $i) {
-                        // Forward-only + existing target; anything else is dropped
-                        // (and refused at save by validateJumps()).
+                        // Forward-only + existing target; a backward or dangling
+                        // target is dropped here so it can never route.
                         continue;
                     }
                     $rules[] = [
@@ -101,7 +104,7 @@ final class JumpResolver
      * The next step index from `$current` given the answers: the first matching
      * jump rule's target, or the next sequential step when none match.
      *
-     * @param list<list<array{field: string, operator: string, value: mixed, to: int}>> $stepRules
+     * @param list<list<StepRule>> $stepRules
      * @param array<string, mixed> $values posted values keyed by field handle
      */
     public static function next(array $stepRules, int $current, array $values): int
@@ -119,7 +122,7 @@ final class JumpResolver
      * The set of step indices reached by replaying the jump path from step 0 for
      * the given answers. Forward-only jumps guarantee termination.
      *
-     * @param list<list<array{field: string, operator: string, value: mixed, to: int}>> $stepRules
+     * @param list<list<StepRule>> $stepRules
      * @param array<string, mixed> $values
      * @return list<int> the visited step indices, ascending
      */
@@ -135,26 +138,6 @@ final class JumpResolver
         }
 
         return array_map('intval', array_keys($visited));
-    }
-
-    /**
-     * The field handles a field's jumps target — for save-time dangling/forward
-     * validation (mirrors {@see ConditionalEvaluator::referencedFields()}).
-     *
-     * @param array<string, mixed> $config
-     * @return list<string>
-     */
-    public static function referencedTargets(array $config): array
-    {
-        $targets = [];
-        foreach (self::jumpsOf($config) as $jump) {
-            $target = (string) ($jump['target'] ?? '');
-            if ($target !== '') {
-                $targets[] = $target;
-            }
-        }
-
-        return array_values(array_unique($targets));
     }
 
     /**

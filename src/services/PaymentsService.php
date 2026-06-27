@@ -41,6 +41,22 @@ class PaymentsService extends Component
     }
 
     /**
+     * The Commerce store's primary payment-currency ISO code (for formatting
+     * amounts), or null when Commerce is unavailable.
+     */
+    public function primaryCurrencyIso(): ?string
+    {
+        if (!$this->commerceAvailable()) {
+            return null;
+        }
+        try {
+            return \craft\commerce\Plugin::getInstance()->getPaymentCurrencies()->getPrimaryPaymentCurrencyIso();
+        } catch (\Throwable) {
+            return null;
+        }
+    }
+
+    /**
      * The Payment field's config on a form, or null if it has none.
      *
      * @return array<string, mixed>|null

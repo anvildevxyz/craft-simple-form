@@ -72,14 +72,4 @@ class JumpResolverTest extends TestCase
         $this->assertSame([], $stepRules[1], 'dangling target dropped');
         $this->assertSame([], $stepRules[2], 'backward target dropped');
     }
-
-    public function testReferencedTargets(): void
-    {
-        $config = ['jumps' => [
-            ['operator' => 'eq', 'value' => 'a', 'target' => 'one'],
-            ['operator' => 'eq', 'value' => 'b', 'target' => 'two'],
-            ['operator' => 'eq', 'value' => 'c', 'target' => 'one'],
-        ]];
-        $this->assertSame(['one', 'two'], JumpResolver::referencedTargets($config));
-    }
 }
