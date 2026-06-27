@@ -250,6 +250,36 @@
     color: #166534;
 }
 
+/* Address autocomplete (#250) */
+.sf-address-autocomplete {
+    position: relative;
+    margin-bottom: .75em;
+}
+.sf-address-suggestions {
+    position: absolute;
+    z-index: 20;
+    left: 0;
+    right: 0;
+    margin: 2px 0 0;
+    padding: 0;
+    list-style: none;
+    background: #fff;
+    border: 1px solid #cbd5e1;
+    border-radius: 4px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, .08);
+    max-height: 240px;
+    overflow-y: auto;
+}
+.sf-address-suggestion {
+    padding: .5em .7em;
+    cursor: pointer;
+    font-size: .95em;
+}
+.sf-address-suggestion:hover,
+.sf-address-suggestion[aria-selected="true"] {
+    background: #eff6ff;
+}
+
 /* Coupon / discount code box (#246) */
 .simple-form-coupon {
     margin: .75em 0;

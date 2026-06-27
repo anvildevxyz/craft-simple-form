@@ -830,6 +830,148 @@
         });
     }
 
+    // Address autocomplete (#250): a keyless, provider-agnostic type-ahead over a
+    // geocoder (Photon/Nominatim by default). Selecting a suggestion fills the
+    // address sub-fields; the value is still validated + persisted server-side.
+    // Entirely progressive — with no JS the plain sub-inputs work unchanged.
+    var SF_GEO = {
+        // Map a provider result to the address sub-field values.
+        photon: function (f) {
+            var p = f.properties || {};
+            var line1 = [p.housenumber, p.street].filter(Boolean).join(" ") || p.name || "";
+            return {
+                values: {
+                    line1: line1,
+                    city: p.city || p.district || p.county || "",
+                    state: p.state || "",
+                    postalCode: p.postcode || "",
+                    country: (p.countrycode || "").toUpperCase()
+                },
+                label: [p.name && p.name !== line1 ? p.name : null, line1, p.postcode, p.city, p.country]
+                    .filter(Boolean).join(", ")
+            };
+        },
+        nominatim: function (r) {
+            var a = r.address || {};
+            return {
+                values: {
+                    line1: [a.house_number, a.road].filter(Boolean).join(" "),
+                    city: a.city || a.town || a.village || a.hamlet || a.municipality || "",
+                    state: a.state || a.region || "",
+                    postalCode: a.postcode || "",
+                    country: (a.country_code || "").toUpperCase()
+                },
+                label: r.display_name || ""
+            };
+        }
+    };
+
+    function geoRequest(provider, endpoint, apiKey, query) {
+        var q = encodeURIComponent(query);
+        if (provider === "nominatim") {
+            var nBase = endpoint || "https://nominatim.openstreetmap.org/search";
+            return { url: nBase + "?q=" + q + "&format=jsonv2&addressdetails=1&limit=5", pick: function (d) { return Array.isArray(d) ? d : []; } };
+        }
+        // Default: Photon (keyless, autocomplete-oriented).
+        var pBase = endpoint || "https://photon.komoot.io/api/";
+        var key = apiKey ? "&api_key=" + encodeURIComponent(apiKey) : "";
+        return { url: pBase + "?q=" + q + "&limit=5" + key, pick: function (d) { return (d && d.features) || []; } };
+    }
+
+    function initAddressAutocomplete(form) {
+        Array.prototype.slice.call(form.querySelectorAll("[data-sf-address-autocomplete]")).forEach(function (box) {
+            var input = box.querySelector("[data-sf-address-search]");
+            var list = box.querySelector("[data-sf-address-suggestions]");
+            var fieldset = box.closest("fieldset") || box.parentNode;
+            var provider = box.getAttribute("data-provider") || "photon";
+            var endpoint = box.getAttribute("data-endpoint") || "";
+            var apiKey = box.getAttribute("data-api-key") || "";
+            var minChars = parseInt(box.getAttribute("data-min-chars"), 10) || 3;
+            var mapper = SF_GEO[provider] || SF_GEO.photon;
+            if (!input || !list) { return; }
+
+            var timer = null, active = -1, items = [];
+
+            function close() {
+                list.hidden = true; list.innerHTML = ""; active = -1; items = [];
+                input.setAttribute("aria-expanded", "false");
+            }
+
+            function fillSubField(key, value) {
+                var el = fieldset.querySelector("[name$=\"[" + key + "]\"]");
+                if (!el || value === "" || value == null) { return; }
+                // Only set a <select> value the control actually offers (country).
+                if (el.tagName === "SELECT") {
+                    var ok = Array.prototype.some.call(el.options, function (o) { return o.value === value; });
+                    if (!ok) { return; }
+                }
+                el.value = value;
+                el.dispatchEvent(new Event("change", { bubbles: true }));
+            }
+
+            function choose(i) {
+                var it = items[i];
+                if (!it) { return; }
+                Object.keys(it.values).forEach(function (k) { fillSubField(k, it.values[k]); });
+                input.value = it.label;
+                close();
+            }
+
+            function render() {
+                list.innerHTML = "";
+                items.forEach(function (it, i) {
+                    var li = document.createElement("li");
+                    li.className = "sf-address-suggestion";
+                    li.setAttribute("role", "option");
+                    li.id = input.id + "-opt-" + i;
+                    li.textContent = it.label;
+                    li.addEventListener("mousedown", function (e) { e.preventDefault(); choose(i); });
+                    list.appendChild(li);
+                });
+                list.hidden = items.length === 0;
+                input.setAttribute("aria-expanded", items.length ? "true" : "false");
+            }
+
+            function highlight(next) {
+                var opts = list.querySelectorAll(".sf-address-suggestion");
+                if (!opts.length) { return; }
+                if (active >= 0 && opts[active]) { opts[active].removeAttribute("aria-selected"); }
+                active = (next + opts.length) % opts.length;
+                opts[active].setAttribute("aria-selected", "true");
+                input.setAttribute("aria-activedescendant", opts[active].id);
+            }
+
+            function search() {
+                var q = input.value.trim();
+                if (q.length < minChars) { close(); return; }
+                var req = geoRequest(provider, endpoint, apiKey, q);
+                fetch(req.url, { headers: { "Accept": "application/json" } })
+                    .then(function (r) { return r.json(); })
+                    .then(function (d) {
+                        items = req.pick(d).map(mapper).filter(function (it) {
+                            return it && (it.values.line1 || it.values.city || it.values.postalCode);
+                        });
+                        active = -1;
+                        render();
+                    })
+                    .catch(function () { close(); });
+            }
+
+            input.addEventListener("input", function () {
+                if (timer) { clearTimeout(timer); }
+                timer = setTimeout(search, 300);
+            });
+            input.addEventListener("keydown", function (e) {
+                if (list.hidden) { return; }
+                if (e.key === "ArrowDown") { e.preventDefault(); highlight(active + 1); }
+                else if (e.key === "ArrowUp") { e.preventDefault(); highlight(active - 1); }
+                else if (e.key === "Enter" && active >= 0) { e.preventDefault(); choose(active); }
+                else if (e.key === "Escape") { close(); }
+            });
+            input.addEventListener("blur", function () { setTimeout(close, 150); });
+        });
+    }
+
     // ---- signature pad (#129) --------------------------------------------
     // Dependency-free canvas signature pad. Pointer events cover mouse, touch,
     // and stylus uniformly; the backing store is scaled to devicePixelRatio for
@@ -965,6 +1107,7 @@
         initPartialCapture(form);
         initSignaturePads(form);
         initCoupon(form);
+        initAddressAutocomplete(form);
 
         // Remove any prior error state so re-submits don't stack duplicate
         // messages and resolved fields lose their invalid wiring (a11y, #105).

@@ -236,6 +236,28 @@ class Settings extends Model
     public int $paymentPendingTtlMinutes = 60;
 
     /**
+     * Geocoding provider for the optional Address-field autocomplete (#250).
+     * 'photon' and 'nominatim' are keyless OpenStreetMap services; 'google'
+     * (Places) is reserved for a future provider and needs an API key. The
+     * Address field opts in per-field; this only chooses the provider.
+     */
+    public string $addressAutocompleteProvider = 'photon';
+
+    /**
+     * Optional override for the autocomplete provider's query endpoint — point
+     * it at a self-hosted Photon/Nominatim instance, or leave blank to use the
+     * provider's public default (#250).
+     */
+    public ?string $addressAutocompleteEndpoint = null;
+
+    /**
+     * API key for autocomplete providers that require one (e.g. a future Google
+     * Places integration). Never hardcoded; the keyless OSM providers ignore it.
+     * Passed to the browser as a data attribute, so use a referrer-restricted key.
+     */
+    public ?string $addressAutocompleteApiKey = null;
+
+    /**
      * @return array<string, array{class: class-string, attributes: list<string>}>
      */
     public function behaviors(): array
@@ -254,6 +276,8 @@ class Settings extends Model
                     'hcaptchaSiteKey',
                     'hcaptchaSecretKey',
                     'akismetApiKey',
+                    'addressAutocompleteEndpoint',
+                    'addressAutocompleteApiKey',
                 ],
             ],
         ];
@@ -295,6 +319,8 @@ class Settings extends Model
             [['recaptchaV2SiteKey', 'recaptchaV2SecretKey'], 'required', 'when' => fn(): bool => $recaptcha(self::CAPTCHA_V2)],
             [['turnstileSiteKey', 'turnstileSecretKey'], 'required', 'when' => fn(): bool => $provider('turnstile')],
             [['hcaptchaSiteKey', 'hcaptchaSecretKey'], 'required', 'when' => fn(): bool => $provider('hcaptcha')],
+            [['addressAutocompleteProvider'], 'in', 'range' => ['photon', 'nominatim', 'google']],
+            [['addressAutocompleteEndpoint', 'addressAutocompleteApiKey'], 'string'],
         ];
     }
 

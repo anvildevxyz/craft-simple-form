@@ -17,7 +17,7 @@ class SettingsController extends Controller
 
     /** Settings fields grouped by tab. Drives both rendering and the per-tab save. */
     private const TAB_FIELDS = [
-        'general' => ['submitMessage', 'errorMessage', 'storageLocation', 'templatePath'],
+        'general' => ['submitMessage', 'errorMessage', 'storageLocation', 'templatePath', 'addressAutocompleteProvider', 'addressAutocompleteEndpoint', 'addressAutocompleteApiKey'],
         'email' => ['defaultEmailSender', 'defaultEmailSenderName', 'pdfStorageVolume', 'maxAttachmentSizeMb'],
         'spam' => [
             'enableHoneypot',

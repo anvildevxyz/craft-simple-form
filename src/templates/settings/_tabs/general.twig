@@ -38,3 +38,38 @@
     instructions: 'A folder of Twig partials in your site’s templates/ (e.g. `_simple-form`) used as the default custom template. It applies to a form only when that form has “Use a custom render template” enabled, and a per-form path there overrides this. Leave blank to use the built-in markup.'|t('simple-form'),
     placeholder: '_simple-form',
 }) }}
+
+<hr>
+<h2>{{ 'Address Autocomplete'|t('simple-form') }}</h2>
+<p class="light">{{ 'An Address field can offer type-ahead address lookup (enable it per field in the form builder). Choose the geocoding provider here. Photon and Nominatim are keyless OpenStreetMap services; addresses typed by visitors are sent to the provider to fetch suggestions.'|t('simple-form') }}</p>
+
+{{ forms.selectField({
+    label: 'Provider'|t('simple-form'),
+    name: 'addressAutocompleteProvider',
+    options: {
+        'photon': 'Photon (OpenStreetMap, no key)'|t('simple-form'),
+        'nominatim': 'Nominatim (OpenStreetMap, no key)'|t('simple-form'),
+    },
+    value: settings.addressAutocompleteProvider ?? 'photon',
+    instructions: 'Which geocoding service powers address suggestions.'|t('simple-form'),
+    errors: settings.getErrors('addressAutocompleteProvider') ?? [],
+}) }}
+
+{{ forms.autosuggestField({
+    label: 'Endpoint override'|t('simple-form'),
+    name: 'addressAutocompleteEndpoint',
+    suggestEnvVars: true,
+    value: settings.addressAutocompleteEndpoint,
+    errors: settings.getErrors('addressAutocompleteEndpoint') ?? [],
+    instructions: 'Optional. Point at a self-hosted Photon/Nominatim instance. Leave blank to use the provider’s public endpoint.'|t('simple-form'),
+    placeholder: 'https://photon.example.com/api/',
+}) }}
+
+{{ forms.autosuggestField({
+    label: 'API key'|t('simple-form'),
+    name: 'addressAutocompleteApiKey',
+    suggestEnvVars: true,
+    value: settings.addressAutocompleteApiKey,
+    errors: settings.getErrors('addressAutocompleteApiKey') ?? [],
+    instructions: 'Optional. Only needed for providers that require a key. The keyless OpenStreetMap providers ignore it. Use an environment variable for secrets.'|t('simple-form'),
+}) }}

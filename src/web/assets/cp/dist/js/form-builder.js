@@ -835,6 +835,16 @@
             inspector.appendChild(innerFieldsEditor(f));
         } else if (COMPOSITE_TYPES.indexOf(f.type) !== -1) {
             inspector.appendChild(subFieldsEditor(f));
+
+            // Address autocomplete (#250): opt in to a type-ahead lookup that fills
+            // the sub-fields. The provider is configured in plugin settings.
+            if (f.type === 'address') {
+                var acRow = row('Enable Autocomplete');
+                var acCb = document.createElement('input'); acCb.type = 'checkbox'; acCb.checked = !!c.enableAutocomplete;
+                acCb.addEventListener('change', function() { c.enableAutocomplete = acCb.checked; serialize(); });
+                acRow._input.appendChild(acCb);
+                inspector.appendChild(acRow);
+            }
         }
     }
 

@@ -364,4 +364,9 @@ return [
     'This coupon code has reached its usage limit.' => 'Este código de cupão atingiu o limite de utilização.',
     'There is nothing to discount.' => 'Não há nada para descontar.',
     'Coupon applied: {discount} off. You’ll pay {total}.' => 'Cupão aplicado: {discount} de desconto. Vai pagar {total}.',
+
+    // Address autocomplete (#250) — visitor-facing.
+    'Search for an address' => 'Procurar uma morada',
+    'Start typing an address…' => 'Comece a escrever uma morada…',
+    'Address lookup is unavailable. Please enter your address manually.' => 'A pesquisa de moradas está indisponível. Introduza a sua morada manualmente.',
 ];

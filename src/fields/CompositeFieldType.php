@@ -141,6 +141,16 @@ abstract class CompositeFieldType extends FieldType
      * array under the field name (`field_<id>[<key>]`), so no stray bare `name`
      * collides inside a `fullPageForm`.
      */
+    /**
+     * Markup rendered inside the composite `<fieldset>`, before the sub-inputs.
+     * The base composite emits nothing; {@see AddressFieldType} overrides this to
+     * inject the opt-in autocomplete search box.
+     */
+    protected function beforeSubFields(string $name): string
+    {
+        return '';
+    }
+
     public function renderInput(string $name, mixed $value = null): string
     {
         $values = is_array($value) ? $value : [];
@@ -149,6 +159,10 @@ abstract class CompositeFieldType extends FieldType
         $labelId = htmlspecialchars($name) . '-label';
 
         $html = sprintf('<fieldset class="sf-composite" aria-labelledby="%s">', $labelId);
+
+        // Optional pre-sub-field markup (e.g. the Address autocomplete search box,
+        // #250). The base composite has none.
+        $html .= $this->beforeSubFields($name);
 
         foreach ($this->enabledSubFields() as $key => $sub) {
             $id = htmlspecialchars($name) . '-' . htmlspecialchars($key);

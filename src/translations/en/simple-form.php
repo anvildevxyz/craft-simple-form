@@ -366,4 +366,9 @@ return [
     'This coupon code has reached its usage limit.' => 'This coupon code has reached its usage limit.',
     'There is nothing to discount.' => 'There is nothing to discount.',
     'Coupon applied: {discount} off. You’ll pay {total}.' => 'Coupon applied: {discount} off. You’ll pay {total}.',
+
+    // Address autocomplete (#250) — visitor-facing.
+    'Search for an address' => 'Search for an address',
+    'Start typing an address…' => 'Start typing an address…',
+    'Address lookup is unavailable. Please enter your address manually.' => 'Address lookup is unavailable. Please enter your address manually.',
 ];

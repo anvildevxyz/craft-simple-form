@@ -364,4 +364,9 @@ return [
     'This coupon code has reached its usage limit.' => 'Deze kortingscode heeft de gebruikslimiet bereikt.',
     'There is nothing to discount.' => 'Er is niets om korting op te geven.',
     'Coupon applied: {discount} off. You’ll pay {total}.' => 'Kortingscode toegepast: {discount} korting. Je betaalt {total}.',
+
+    // Address autocomplete (#250) — visitor-facing.
+    'Search for an address' => 'Een adres zoeken',
+    'Start typing an address…' => 'Begin met het typen van een adres…',
+    'Address lookup is unavailable. Please enter your address manually.' => 'Adres zoeken is niet beschikbaar. Voer je adres handmatig in.',
 ];

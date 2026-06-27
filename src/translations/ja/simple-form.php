@@ -364,4 +364,9 @@ return [
     'This coupon code has reached its usage limit.' => 'このクーポンコードは利用上限に達しました。',
     'There is nothing to discount.' => '割引対象がありません。',
     'Coupon applied: {discount} off. You’ll pay {total}.' => 'クーポンを適用しました：{discount} 割引。お支払い額は {total} です。',
+
+    // Address autocomplete (#250) — visitor-facing.
+    'Search for an address' => '住所を検索',
+    'Start typing an address…' => '住所を入力し始めてください…',
+    'Address lookup is unavailable. Please enter your address manually.' => '住所検索を利用できません。住所を手動で入力してください。',
 ];
