@@ -7,6 +7,7 @@ use craft\elements\Asset;
 use craft\helpers\Assets;
 use craft\helpers\FileHelper;
 use craft\web\View;
+use fabianhaef\simpleform\Editions;
 use fabianhaef\simpleform\elements\Form;
 use fabianhaef\simpleform\elements\Submission;
 use fabianhaef\simpleform\models\FieldModel;
@@ -47,7 +48,9 @@ class PdfService extends Component
      */
     public function isAvailable(): bool
     {
-        return $this->getEngine()?->isAvailable() ?? false;
+        // PDF generation is Pro; gating the single availability check keeps every
+        // caller (notification attach, CP download) inert on Solo.
+        return Editions::can(Editions::CAP_PDF) && ($this->getEngine()?->isAvailable() ?? false);
     }
 
     /**

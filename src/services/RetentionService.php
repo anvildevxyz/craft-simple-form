@@ -5,6 +5,7 @@ namespace fabianhaef\simpleform\services;
 use Craft;
 use craft\db\Query;
 use craft\helpers\Db;
+use fabianhaef\simpleform\Editions;
 use fabianhaef\simpleform\elements\Submission;
 use fabianhaef\simpleform\Plugin;
 use yii\base\Component;
@@ -49,6 +50,13 @@ class RetentionService extends Component
      */
     public function purgeSubmissions(?int $days = null, ?bool $anonymize = null, ?int $formId = null): int
     {
+        // Automated submission retention/anonymization is a Pro governance
+        // feature. On Solo this destructive sweep never runs, so a downgraded
+        // site keeps its submissions rather than silently losing them.
+        if (!Editions::can(Editions::CAP_GOVERNANCE)) {
+            return 0;
+        }
+
         $settings = Plugin::getInstance()->getSettings();
         $days ??= $settings->retainSubmissionsDays;
         $anonymize ??= $settings->anonymizeInsteadOfDelete;

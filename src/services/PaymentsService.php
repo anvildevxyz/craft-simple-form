@@ -4,6 +4,7 @@ namespace fabianhaef\simpleform\services;
 
 use Craft;
 use craft\helpers\Db;
+use fabianhaef\simpleform\Editions;
 use fabianhaef\simpleform\elements\Form;
 use fabianhaef\simpleform\elements\Submission;
 use fabianhaef\simpleform\fields\EmailFieldType;
@@ -86,7 +87,12 @@ class PaymentsService extends Component
      */
     public function requiresPayment(Form $form): bool
     {
-        return $this->commerceAvailable() && $this->paymentFieldConfig($form) !== null;
+        // Payments are Pro. On Solo the payment step is skipped — a downgraded
+        // form with an existing Payment field still submits, just without
+        // collecting payment (no runtime error).
+        return Editions::can(Editions::CAP_PAYMENTS)
+            && $this->commerceAvailable()
+            && $this->paymentFieldConfig($form) !== null;
     }
 
     /**

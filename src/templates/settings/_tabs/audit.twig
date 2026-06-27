@@ -1,6 +1,8 @@
 <h2>{{ 'Audit Log'|t('simple-form') }}</h2>
 <p class="light">{{ 'Recent changes to forms, integrations, notifications and submission statuses.'|t('simple-form') }}</p>
 
+{% include 'simple-form/settings/_pro-notice' with { feature: 'The audit log'|t('simple-form') } only %}
+
 {% if auditEntries is not empty %}
     <table class="data fullwidth">
         <thead>

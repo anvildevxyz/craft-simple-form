@@ -90,6 +90,29 @@ class EditionDowngradeTest extends SimpleFormTestCase
         $this->assertStringContainsString('field_' . $detailsId, $html);
     }
 
+    public function testProServicesAreInertUnderSolo(): void
+    {
+        $this->requireCraft();
+
+        $audit = new \fabianhaef\simpleform\services\AuditService();
+        $pdf = new \fabianhaef\simpleform\services\PdfService();
+
+        $this->setEdition(Editions::SOLO);
+
+        // PDF generation is off on Solo regardless of whether an engine is present.
+        $this->assertFalse($pdf->isAvailable());
+
+        // The audit log is a no-op on Solo: logging adds no rows.
+        $before = count($audit->recent(1000));
+        $audit->log(
+            \fabianhaef\simpleform\services\AuditService::ACTION_FORM_SAVE,
+            \fabianhaef\simpleform\services\AuditService::TARGET_FORM,
+            1,
+            'solo-noop',
+        );
+        $this->assertCount($before, $audit->recent(1000));
+    }
+
     public function testEscalationGuardReflectsActiveEdition(): void
     {
         $this->requireCraft();

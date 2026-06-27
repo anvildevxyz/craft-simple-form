@@ -3,6 +3,7 @@
 namespace fabianhaef\simpleform\services;
 
 use Craft;
+use fabianhaef\simpleform\Editions;
 use fabianhaef\simpleform\elements\Form;
 use fabianhaef\simpleform\fields\EmailFieldType;
 use fabianhaef\simpleform\Plugin;
@@ -38,6 +39,11 @@ class DenylistService extends Component
      */
     public function match(Form $form, array $data): ?string
     {
+        // Pro-only spam denylists; inert on Solo even if a stale setting is on.
+        if (!Editions::can(Editions::CAP_SPAM_ADVANCED)) {
+            return null;
+        }
+
         $settings = Plugin::getInstance()->getSettings();
         if (!$settings->enableDenylists) {
             return null;

@@ -6,6 +6,7 @@ use Craft;
 use craft\db\Query;
 use craft\helpers\Db;
 use craft\helpers\StringHelper;
+use fabianhaef\simpleform\Editions;
 use yii\base\Component;
 
 /**
@@ -41,6 +42,11 @@ class AuditService extends Component
      */
     public function log(string $action, string $targetType, ?int $targetId = null, string $summary = ''): void
     {
+        // The audit trail is a Pro governance feature — a no-op on Solo.
+        if (!Editions::can(Editions::CAP_GOVERNANCE)) {
+            return;
+        }
+
         try {
             $now = Db::prepareDateForDb(new \DateTime());
             Craft::$app->getDb()->createCommand()->insert(self::TABLE, [

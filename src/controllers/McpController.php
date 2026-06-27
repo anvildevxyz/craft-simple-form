@@ -4,6 +4,7 @@ namespace fabianhaef\simpleform\controllers;
 
 use Craft;
 use craft\web\Controller;
+use fabianhaef\simpleform\Editions;
 use fabianhaef\simpleform\helpers\RateLimiter;
 use fabianhaef\simpleform\mcp\McpServer;
 use fabianhaef\simpleform\mcp\McpToken;
@@ -70,9 +71,10 @@ class McpController extends Controller
         $request = Craft::$app->getRequest();
         $response->format = Response::FORMAT_JSON;
 
-        // 1. OFF BY DEFAULT. Refuse with 404 before processing anything so a
-        //    disabled server is indistinguishable from an unmapped route.
-        if (!Plugin::getInstance()->getSettings()->enableMcp) {
+        // 1. OFF BY DEFAULT (and Pro-only). Refuse with 404 before processing
+        //    anything so a disabled/Solo server is indistinguishable from an
+        //    unmapped route.
+        if (!Editions::can(Editions::CAP_DEV_TOOLS) || !Plugin::getInstance()->getSettings()->enableMcp) {
             $response->setStatusCode(404);
             $response->data = ['error' => 'Not found.'];
             return $response;

@@ -4,6 +4,7 @@ namespace fabianhaef\simpleform\services;
 
 use Craft;
 use craft\helpers\App;
+use fabianhaef\simpleform\Editions;
 use fabianhaef\simpleform\elements\Form;
 use fabianhaef\simpleform\elements\Submission;
 use fabianhaef\simpleform\fields\EmailFieldType;
@@ -32,6 +33,11 @@ class AkismetService extends Component
      */
     public function isSpam(Form $form, array $data): bool
     {
+        // Pro-only spam check; inert on Solo even if a stale setting is enabled.
+        if (!Editions::can(Editions::CAP_SPAM_ADVANCED)) {
+            return false;
+        }
+
         $settings = Plugin::getInstance()->getSettings();
         if (!$settings->enableAkismet) {
             return false;
