@@ -54,7 +54,7 @@ class FieldBuilderTest extends TestCase
         $this->assertStringContainsString('FieldSyncService', $code);
         $this->assertStringContainsString('parseFieldsData', $code);
         // Fields are validated before the element is saved.
-        $validatePos = strpos($code, '->validate($items)');
+        $validatePos = strpos($code, '->validate($items');
         $savePos = strpos($code, 'saveElement($form)');
         $this->assertNotFalse($validatePos);
         $this->assertNotFalse($savePos);

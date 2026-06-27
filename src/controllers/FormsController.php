@@ -192,7 +192,7 @@ class FormsController extends Controller
         $fieldSync = new FieldSyncService();
 
         // Validate the field set before any DB writes so a bad field never half-saves.
-        $fieldErrors = $fieldSync->validate($items);
+        $fieldErrors = $fieldSync->validate($items, $form->renderMode === 'conversational');
         if ($fieldErrors) {
             Craft::$app->getSession()->setError(reset($fieldErrors));
             return $this->renderEdit($form, $site, $this->encodeBuilderJson($items));

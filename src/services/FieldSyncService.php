@@ -14,6 +14,7 @@ use fabianhaef\simpleform\fields\RepeaterFieldType;
 use fabianhaef\simpleform\fields\SelectFieldType;
 use fabianhaef\simpleform\helpers\ConditionalEvaluator;
 use fabianhaef\simpleform\helpers\Formula;
+use fabianhaef\simpleform\helpers\JumpResolver;
 use fabianhaef\simpleform\Plugin;
 use yii\base\Component;
 
@@ -30,9 +31,11 @@ class FieldSyncService extends Component
      * checked within the set itself, since the set fully replaces the form's fields.
      *
      * @param array<int,array<string,mixed>> $items
+     * @param bool $conversational the form's render mode, so logic-jump targets are
+     *   validated against the same screen grouping the runtime uses
      * @return string[] human-readable error messages (empty when valid)
      */
-    public function validate(array $items): array
+    public function validate(array $items, bool $conversational = false): array
     {
         $errors = [];
         $seenHandles = [];
@@ -100,7 +103,12 @@ class FieldSyncService extends Component
             }
         }
 
-        return array_merge($errors, self::conditionalSetErrors($items), self::calculationSetErrors($items));
+        return array_merge(
+            $errors,
+            self::conditionalSetErrors($items),
+            self::calculationSetErrors($items),
+            self::jumpSetErrors($items, $conversational, $layoutTypes),
+        );
     }
 
     /**
@@ -284,6 +292,71 @@ class FieldSyncService extends Component
 
         if (self::hasCycle($graph)) {
             $errors[] = Craft::t('simple-form', 'Conditional rules form a circular dependency between fields. Remove one of the conditions.');
+        }
+
+        return $errors;
+    }
+
+    /**
+     * Validate logic-jump targets across a full field set (#245): every jump must
+     * point to a field on a strictly later step/screen. Mirrors the conditional
+     * handling — a target that no longer exists in the set is left to the on-save
+     * prune ({@see self::sanitizeConditional()}), not errored, since the author may
+     * have removed it in the same edit; but a *present* target that isn't strictly
+     * forward (backward, or on the same step as the jump's own field) is a hard
+     * error, because such a jump can never route and would otherwise silently do
+     * nothing at runtime.
+     *
+     * Step membership is resolved with {@see JumpResolver::stepSequence()} so the
+     * grouping matches exactly what the runtime navigator uses for the form's mode.
+     *
+     * Public + static so the MCP single-field write path can reuse it.
+     *
+     * @param array<int,array<string,mixed>> $items
+     * @param list<string> $layoutTypes
+     * @return string[]
+     */
+    public static function jumpSetErrors(array $items, bool $conversational, array $layoutTypes): array
+    {
+        // stepSequence() reads each row's `name` (the runtime handle key); builder
+        // items key the handle as `handle`, so mirror it across for an identical grouping.
+        $rows = array_map(static function(array $item): array {
+            $item['name'] = trim((string) ($item['handle'] ?? ''));
+            return $item;
+        }, $items);
+
+        $stepOf = [];
+        foreach (JumpResolver::stepSequence($rows, $conversational, $layoutTypes) as $stepIndex => $handles) {
+            foreach ($handles as $handle) {
+                $stepOf[$handle] = $stepIndex;
+            }
+        }
+
+        $errors = [];
+        foreach ($items as $i => $item) {
+            $handle = trim((string) ($item['handle'] ?? ''));
+            $config = is_array($item['config'] ?? null) ? $item['config'] : [];
+            $jumps = $config['jumps'] ?? null;
+            if (!is_array($jumps) || $handle === '' || !isset($stepOf[$handle])) {
+                continue;
+            }
+
+            $label = trim((string) ($item['label'] ?? ''));
+            $name = $label ?: ($handle ?: '#' . ($i + 1));
+
+            foreach ($jumps as $jump) {
+                if (!is_array($jump)) {
+                    continue;
+                }
+                $target = trim((string) ($jump['target'] ?? ''));
+                // Dangling target (removed in this edit) → pruned on save, not errored.
+                if ($target === '' || !isset($stepOf[$target])) {
+                    continue;
+                }
+                if ($stepOf[$target] <= $stepOf[$handle]) {
+                    $errors[] = Craft::t('simple-form', 'Field {name}: a logic jump must point to a later step (“{target}” is not after it).', ['name' => $name, 'target' => $target]);
+                }
+            }
         }
 
         return $errors;
