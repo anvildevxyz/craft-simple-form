@@ -74,6 +74,7 @@ class FormQuery extends ElementQuery
             'simpleform_forms.quizGradeBands',
             'simpleform_forms.autoCaptureAttribution',
             'simpleform_forms.capturePartials',
+            'simpleform_forms.renderMode',
             'simpleform_forms_sites.description',
             'simpleform_forms_sites.emailTo',
             'simpleform_forms_sites.emailSubject',

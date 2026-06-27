@@ -3,12 +3,13 @@
   controls + progress region (#137). Rendered only for multi-step forms.
 
   Variables:
-    steps       list of field groups (count drives data-sf-multistep)
-    submitText  translated submit-button text
-    resume      { enabled, … } or null
+    steps         list of field groups (count drives data-sf-multistep)
+    submitText    translated submit-button text
+    resume        { enabled, … } or null
+    progressLabel translated "Step/Question {current} of {total}" template
 -#}
 {%- apply spaceless -%}
-<div class="simple-form-step-nav" data-sf-multistep="{{ steps|length }}">
+<div class="simple-form-step-nav" data-sf-multistep="{{ steps|length }}"{% if progressLabel is defined and progressLabel %} data-sf-progress="{{ progressLabel }}"{% endif %}>
 <button type="button" class="simple-form-step-back" hidden>{{ 'Back'|t('simple-form') }}</button>
 <button type="button" class="simple-form-step-next">{{ 'Next'|t('simple-form') }}</button>
 <button type="submit" class="simple-form-submit-btn" hidden>{{ submitText }}</button>

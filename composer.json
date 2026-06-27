@@ -64,7 +64,8 @@
       "node tests/js/formula.test.js",
       "node tests/js/success-action.test.js",
       "node tests/js/row-grouping.test.js",
-      "node tests/js/hook-events.test.js"
+      "node tests/js/hook-events.test.js",
+      "node tests/js/step-nav.test.js"
     ],
     "test:all": ["@test", "@test:js", "@test:integration", "@test:smoke"],
     "ecs": "ecs check",

@@ -179,6 +179,10 @@ class FormsController extends Controller
         // Passive partial capture (#242).
         $form->capturePartials = (bool) $request->getBodyParam('capturePartials');
 
+        // Conversational render mode (#239).
+        $renderMode = (string) $request->getBodyParam('renderMode', 'standard');
+        $form->renderMode = in_array($renderMode, ['standard', 'conversational'], true) ? $renderMode : 'standard';
+
         $form->propagationMethod = PropagationMethod::tryFrom(
             (string)$request->getBodyParam('propagationMethod', 'none')
         ) ?? PropagationMethod::None;

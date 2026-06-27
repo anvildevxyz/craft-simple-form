@@ -543,6 +543,22 @@
         on: form.capturePartials ?? false,
         instructions: 'When on, the form quietly auto-saves answers as they’re entered (on blur / step change). Attempts that are never submitted appear under the Partials tab for follow-up. Capturing is best-effort and fires no notifications, integrations, payments or spam checks; completing the form removes its partial.'|t('simple-form'),
     }) }}
+
+    <hr>
+
+    <h2>{{ 'Display'|t('simple-form') }}</h2>
+
+    {{ forms.selectField({
+        label: 'Render mode'|t('simple-form'),
+        id: 'renderMode',
+        name: 'renderMode',
+        value: form.renderMode ?? 'standard',
+        options: [
+            { label: 'Standard form'|t('simple-form'), value: 'standard' },
+            { label: 'Conversational (one question per screen)'|t('simple-form'), value: 'conversational' },
+        ],
+        instructions: 'Conversational mode shows one question per screen with Back / Next navigation and a progress indicator; authored steps each become a screen. Standard shows the whole form on one page.'|t('simple-form'),
+    }) }}
 </div>
 
 {% if form.id %}

@@ -344,4 +344,15 @@ return [
     // Partial capture privacy (#244)
     'Delete captured partials after (days)' => '取得した途中データを削除するまでの日数',
     'Abandoned partials (passive capture) older than this are removed during garbage collection. Kept deliberately short so abandoned data doesn’t linger.' => 'これより古い離脱した途中データ（パッシブ取得）はガベージコレクション時に削除されます。離脱データが残らないよう、意図的に短く設定しています。',
+
+    // Conversational render mode (#239)
+    'Display' => '表示',
+    'Render mode' => '表示モード',
+    'Standard form' => '標準フォーム',
+    'Conversational (one question per screen)' => '会話形式（1画面に1問）',
+    'Question {current} of {total}' => '質問 {current}/{total}',
+    'Step {current} of {total}' => 'ステップ {current}/{total}',
+    'Next' => '次へ',
+    'Back' => '戻る',
+    'Conversational mode shows one question per screen with Back / Next navigation and a progress indicator; authored steps each become a screen. Standard shows the whole form on one page.' => '会話形式モードは、戻る／次へのナビゲーションと進捗インジケーターとともに1画面に1つの質問を表示します。設定した各ステップが1画面になります。標準モードはフォーム全体を1ページに表示します。',
 ];

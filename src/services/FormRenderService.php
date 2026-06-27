@@ -11,6 +11,7 @@ use fabianhaef\simpleform\events\ModifyRenderContextEvent;
 use fabianhaef\simpleform\fields\FileFieldType;
 use fabianhaef\simpleform\helpers\FieldQueryHelper;
 use fabianhaef\simpleform\helpers\FormRows;
+use fabianhaef\simpleform\helpers\FormScreens;
 use fabianhaef\simpleform\helpers\FormSteps;
 use fabianhaef\simpleform\integrations\support\SubmissionValues;
 use fabianhaef\simpleform\models\Settings;
@@ -282,6 +283,19 @@ class FormRenderService extends Component
         $rows = FormRows::group($resolvedFields);
         $stepRows = array_map(static fn(array $stepFields): array => FormRows::group($stepFields), $steps);
 
+        // Conversational render mode (#239): derive the one-question-per-screen
+        // sequence and the translated progress label. Standard mode keeps every
+        // conversational key empty so its output is byte-for-byte unchanged.
+        $renderMode = $form->renderMode === 'conversational' ? 'conversational' : 'standard';
+        $conversational = $renderMode === 'conversational';
+        $screens = $conversational
+            ? FormScreens::conversational(
+                $resolvedFields,
+                $steps,
+                Plugin::getInstance()->getFieldTypeRegistry()->layoutTypeHandles(),
+            )
+            : [];
+
         $context = [
             'form' => $form,
             'handle' => $form->handle,
@@ -289,9 +303,14 @@ class FormRenderService extends Component
             'rows' => $rows,
             'steps' => $steps,
             'stepRows' => $stepRows,
+            'renderMode' => $renderMode,
+            'screens' => $screens,
+            'progressLabel' => $conversational
+                ? Craft::t('simple-form', 'Question {current} of {total}')
+                : Craft::t('simple-form', 'Step {current} of {total}'),
             'options' => $options,
             'submitText' => (string) ($options['submitText'] ?? Craft::t('simple-form', 'Submit')),
-            'formClass' => trim('simple-form ' . (string) ($options['class'] ?? '')),
+            'formClass' => trim('simple-form' . ($conversational ? ' simple-form--conversational' : '') . ' ' . (string) ($options['class'] ?? '')),
             'formId' => isset($options['id']) ? (string) $options['id'] : null,
             'extraAttributes' => is_array($options['attributes'] ?? null) ? $options['attributes'] : [],
             'action' => Craft::$app->getUrlManager()->createUrl('simple-form/submit'),

@@ -350,4 +350,15 @@ return [
     // Partial capture privacy (#244)
     'Delete captured partials after (days)' => 'Elimina i parziali acquisiti dopo (giorni)',
     'Abandoned partials (passive capture) older than this are removed during garbage collection. Kept deliberately short so abandoned data doesn’t linger.' => 'I parziali abbandonati (acquisizione passiva) più vecchi vengono rimossi durante la garbage collection. Volutamente breve, così i dati abbandonati non permangono.',
+
+    // Conversational render mode (#239)
+    'Display' => 'Visualizzazione',
+    'Render mode' => 'Modalità di visualizzazione',
+    'Standard form' => 'Modulo standard',
+    'Conversational (one question per screen)' => 'Conversazionale (una domanda per schermata)',
+    'Question {current} of {total}' => 'Domanda {current} di {total}',
+    'Step {current} of {total}' => 'Passo {current} di {total}',
+    'Next' => 'Avanti',
+    'Back' => 'Indietro',
+    'Conversational mode shows one question per screen with Back / Next navigation and a progress indicator; authored steps each become a screen. Standard shows the whole form on one page.' => 'La modalità conversazionale mostra una domanda per schermata con navigazione Indietro / Avanti e un indicatore di avanzamento; ogni passo definito diventa una schermata. La modalità standard mostra l’intero modulo in una pagina.',
 ];

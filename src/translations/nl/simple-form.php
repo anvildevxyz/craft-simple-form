@@ -344,4 +344,15 @@ return [
     // Partial capture privacy (#244)
     'Delete captured partials after (days)' => 'Vastgelegde gedeeltelijke records verwijderen na (dagen)',
     'Abandoned partials (passive capture) older than this are removed during garbage collection. Kept deliberately short so abandoned data doesn’t linger.' => 'Verlaten gedeeltelijke records (passieve vastlegging) ouder dan dit worden tijdens garbage collection verwijderd. Bewust kort gehouden zodat verlaten gegevens niet blijven hangen.',
+
+    // Conversational render mode (#239)
+    'Display' => 'Weergave',
+    'Render mode' => 'Weergavemodus',
+    'Standard form' => 'Standaardformulier',
+    'Conversational (one question per screen)' => 'Conversationeel (één vraag per scherm)',
+    'Question {current} of {total}' => 'Vraag {current} van {total}',
+    'Step {current} of {total}' => 'Stap {current} van {total}',
+    'Next' => 'Volgende',
+    'Back' => 'Vorige',
+    'Conversational mode shows one question per screen with Back / Next navigation and a progress indicator; authored steps each become a screen. Standard shows the whole form on one page.' => 'De conversationele modus toont één vraag per scherm met Vorige/Volgende-navigatie en een voortgangsindicator; elke ingestelde stap wordt een scherm. Standaard toont het hele formulier op één pagina.',
 ];

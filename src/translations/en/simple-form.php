@@ -346,4 +346,15 @@ return [
     // Partial capture privacy (#244)
     'Delete captured partials after (days)' => 'Delete captured partials after (days)',
     'Abandoned partials (passive capture) older than this are removed during garbage collection. Kept deliberately short so abandoned data doesn’t linger.' => 'Abandoned partials (passive capture) older than this are removed during garbage collection. Kept deliberately short so abandoned data doesn’t linger.',
+
+    // Conversational render mode (#239)
+    'Display' => 'Display',
+    'Render mode' => 'Render mode',
+    'Standard form' => 'Standard form',
+    'Conversational (one question per screen)' => 'Conversational (one question per screen)',
+    'Question {current} of {total}' => 'Question {current} of {total}',
+    'Step {current} of {total}' => 'Step {current} of {total}',
+    'Next' => 'Next',
+    'Back' => 'Back',
+    'Conversational mode shows one question per screen with Back / Next navigation and a progress indicator; authored steps each become a screen. Standard shows the whole form on one page.' => 'Conversational mode shows one question per screen with Back / Next navigation and a progress indicator; authored steps each become a screen. Standard shows the whole form on one page.',
 ];

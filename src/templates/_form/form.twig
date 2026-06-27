@@ -32,7 +32,27 @@
 {{- honeypot -}}
 {{- attributionInput -}}
 {{- captureInput -}}
-{%- if steps|length <= 1 -%}
+{%- if renderMode == 'conversational' and screens|length > 1 -%}
+  {%- for i, screenRows in screens -%}
+    <div class="simple-form-step" data-sf-step="{{ i }}"{% if i > 0 %} hidden{% endif %}>
+    {%- for row in screenRows -%}
+      {%- if row|length > 1 -%}
+        <div class="simple-form-row" data-cols="{{ row|length }}" style="--sf-cols: {{ row|map(field => (field.config.width ?? 1) ~ 'fr')|join(' ') }};">
+        {%- for field in row -%}
+          <div class="simple-form-col">{% include partials.field with { field: field, partials: partials, values: resume ? resume.values : {} } only %}</div>
+        {%- endfor -%}
+        </div>
+      {%- else -%}
+        {% include partials.field with { field: row[0], partials: partials, values: resume ? resume.values : {} } only %}
+      {%- endif -%}
+    {%- endfor -%}
+    {%- if i == (screens|length - 1) -%}
+      {% include partials.captcha with { captcha: captcha } only %}
+    {%- endif -%}
+    </div>
+  {%- endfor -%}
+  {% include partials['step-nav'] with { steps: screens, submitText: submitText, resume: resume, progressLabel: progressLabel } only %}
+{%- elseif steps|length <= 1 -%}
   {%- for row in rows -%}
     {%- if row|length > 1 -%}
       <div class="simple-form-row" data-cols="{{ row|length }}" style="--sf-cols: {{ row|map(field => (field.config.width ?? 1) ~ 'fr')|join(' ') }};">
@@ -65,7 +85,7 @@
     {%- endif -%}
     </div>
   {%- endfor -%}
-  {% include partials['step-nav'] with { steps: steps, submitText: submitText, resume: resume } only %}
+  {% include partials['step-nav'] with { steps: steps, submitText: submitText, resume: resume, progressLabel: progressLabel } only %}
 {%- endif -%}
 </form>
 {%- endapply -%}

@@ -30,6 +30,7 @@ class Install extends Migration
             'quizGradeBands' => $this->text(),
             'autoCaptureAttribution' => $this->boolean()->notNull()->defaultValue(false),
             'capturePartials' => $this->boolean()->notNull()->defaultValue(false),
+            'renderMode' => $this->string(20)->notNull()->defaultValue('standard'),
             'preventDuplicates' => $this->boolean()->notNull()->defaultValue(false),
             'duplicateWindowMinutes' => $this->integer()->notNull()->defaultValue(0),
             'duplicateKey' => $this->string(16)->notNull()->defaultValue('email'),

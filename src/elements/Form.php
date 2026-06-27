@@ -145,6 +145,8 @@ class Form extends Element
     public bool $autoCaptureAttribution = false;
     /** Per-form opt-in for passive partial capture (#242; shared, not translatable). */
     public bool $capturePartials = false;
+    /** Front-end render mode (#239): 'standard' (default) or 'conversational' (one question per screen). */
+    public string $renderMode = 'standard';
 
     // Per-site (translatable). title is stored in elements_sites via hasTitles().
     public ?string $title = null;
@@ -501,6 +503,9 @@ class Form extends Element
         // Passive partial capture (#242).
         $rules[] = [['capturePartials'], 'boolean'];
 
+        // Conversational render mode (#239).
+        $rules[] = [['renderMode'], 'in', 'range' => ['standard', 'conversational']];
+
         // handle is shared across sites, so it must be globally unique
         $rules[] = [['handle'], 'validateHandleUnique'];
 
@@ -589,6 +594,7 @@ class Form extends Element
             'quizGradeBands' => $this->quizGradeBands,
             'autoCaptureAttribution' => $this->autoCaptureAttribution,
             'capturePartials' => $this->capturePartials,
+            'renderMode' => $this->renderMode,
             'dateUpdated' => $now,
         ];
 

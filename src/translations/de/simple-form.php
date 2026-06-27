@@ -350,4 +350,15 @@ return [
     // Partial capture privacy (#244)
     'Delete captured partials after (days)' => 'Erfasste Teildatensätze löschen nach (Tagen)',
     'Abandoned partials (passive capture) older than this are removed during garbage collection. Kept deliberately short so abandoned data doesn’t linger.' => 'Abgebrochene Teildatensätze (passive Erfassung), die älter sind, werden bei der Garbage Collection entfernt. Bewusst kurz gehalten, damit abgebrochene Daten nicht verbleiben.',
+
+    // Conversational render mode (#239)
+    'Display' => 'Anzeige',
+    'Render mode' => 'Anzeigemodus',
+    'Standard form' => 'Standardformular',
+    'Conversational (one question per screen)' => 'Dialogmodus (eine Frage pro Bildschirm)',
+    'Question {current} of {total}' => 'Frage {current} von {total}',
+    'Step {current} of {total}' => 'Schritt {current} von {total}',
+    'Next' => 'Weiter',
+    'Back' => 'Zurück',
+    'Conversational mode shows one question per screen with Back / Next navigation and a progress indicator; authored steps each become a screen. Standard shows the whole form on one page.' => 'Der Dialogmodus zeigt eine Frage pro Bildschirm mit Zurück-/Weiter-Navigation und Fortschrittsanzeige; jeder angelegte Schritt wird zu einem Bildschirm. Standard zeigt das gesamte Formular auf einer Seite.',
 ];

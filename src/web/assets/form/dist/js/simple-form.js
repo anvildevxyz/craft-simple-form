@@ -417,6 +417,45 @@
     // inputs are disabled by initConditions, so they're skipped here. The server
     // still validates the whole submission, so this is UX only.
 
+    // Pure step/screen navigation logic (#137/#239), separated from the DOM so it
+    // is unit-testable (tests/js/step-nav.test.js). Operates on an array of
+    // per-step "active" flags (a step is inactive when conditional logic hid its
+    // only question) and the current index.
+    SF.stepNav = {
+        // The next/previous active step index from `current`, or -1 when none.
+        seek: function (active, current, dir) {
+            for (var i = current + dir; i >= 0 && i < active.length; i += dir) {
+                if (active[i]) { return i; }
+            }
+            return -1;
+        },
+        // { pos, total, back, next, submit } for `current` among the active steps.
+        state: function (active, current) {
+            var idx = [];
+            for (var i = 0; i < active.length; i++) {
+                if (active[i]) { idx.push(i); }
+            }
+            var total = idx.length || active.length;
+            var pos = idx.indexOf(current);
+            var first = idx.length ? idx[0] : 0;
+            var last = idx.length ? idx[idx.length - 1] : active.length - 1;
+            var isLast = current >= last;
+            return {
+                pos: pos >= 0 ? pos + 1 : 1,
+                total: total,
+                back: current > first,
+                next: !isLast,
+                submit: isLast
+            };
+        },
+        // Interpolate the translated "{current} of {total}" progress template.
+        progress: function (tpl, pos, total) {
+            return (tpl || "{current} of {total}")
+                .replace("{current}", String(pos))
+                .replace("{total}", String(total));
+        }
+    };
+
     function initSteps(form) {
         var nav = form.querySelector(".simple-form-step-nav");
         if (!nav) { return; }
@@ -427,22 +466,41 @@
         var nextBtn = nav.querySelector(".simple-form-step-next");
         var submitBtn = nav.querySelector(".simple-form-submit-btn");
         var progress = nav.querySelector(".simple-form-step-progress");
+        var progressTpl = nav.getAttribute("data-sf-progress") || "{current} of {total}";
         var current = 0;
+
+        // A step is "active" unless every input control it holds is conditionally
+        // hidden (initConditions disables hidden fields). Inactive steps — e.g. a
+        // conversational screen whose only question conditional logic hid — are
+        // skipped by the navigator and excluded from the progress count.
+        function stepActive(i) {
+            var controls = steps[i].querySelectorAll("input, select, textarea");
+            if (controls.length === 0) { return true; }
+            for (var j = 0; j < controls.length; j++) {
+                if (!controls[j].disabled) { return true; }
+            }
+            return false;
+        }
+
+        function activeFlags() {
+            return steps.map(function (s, i) { return stepActive(i); });
+        }
 
         function render() {
             steps.forEach(function (s, i) { s.hidden = i !== current; });
-            var last = current === steps.length - 1;
-            if (backBtn) { backBtn.hidden = current === 0; }
-            if (nextBtn) { nextBtn.hidden = last; }
-            if (submitBtn) { submitBtn.hidden = !last; }
-            if (progress) { progress.textContent = "Step " + (current + 1) + " of " + steps.length; }
+
+            var st = SF.stepNav.state(activeFlags(), current);
+            if (backBtn) { backBtn.hidden = !st.back; }
+            if (nextBtn) { nextBtn.hidden = !st.next; }
+            if (submitBtn) { submitBtn.hidden = !st.submit; }
+            if (progress) { progress.textContent = SF.stepNav.progress(progressTpl, st.pos, st.total); }
         }
 
         // Move focus into the step on user navigation so keyboard/AT users land
         // in the new step (not on a now-hidden button). Not called on first paint.
         function focusStep() {
             var step = steps[current];
-            var firstControl = step.querySelector("input, select, textarea, button");
+            var firstControl = step.querySelector("input:not([disabled]), select:not([disabled]), textarea:not([disabled]), button");
             if (firstControl) {
                 firstControl.focus();
             } else {
@@ -464,28 +522,28 @@
             return true;
         }
 
+        function go(to) {
+            if (to < 0 || to === current) { return; }
+            var from = current;
+            current = to;
+            render();
+            focusStep();
+            SF.emit(form, "stepChange", { form: form, from: from, to: current, total: steps.length }, false);
+        }
+
         if (nextBtn) {
             nextBtn.addEventListener("click", function () {
-                if (currentStepValid() && current < steps.length - 1) {
-                    var from = current;
-                    current++;
-                    render();
-                    focusStep();
-                    SF.emit(form, "stepChange", { form: form, from: from, to: current, total: steps.length }, false);
-                }
+                if (currentStepValid()) { go(SF.stepNav.seek(activeFlags(), current, 1)); }
             });
         }
         if (backBtn) {
-            backBtn.addEventListener("click", function () {
-                if (current > 0) {
-                    var from = current;
-                    current--;
-                    render();
-                    focusStep();
-                    SF.emit(form, "stepChange", { form: form, from: from, to: current, total: steps.length }, false);
-                }
-            });
+            backBtn.addEventListener("click", function () { go(SF.stepNav.seek(activeFlags(), current, -1)); });
         }
+
+        // Conditional logic can hide/reveal later screens as answers change, so
+        // recompute the progress + button state (cheap; visibility is unchanged).
+        form.addEventListener("input", render);
+        form.addEventListener("change", render);
 
         render();
     }
