@@ -1,8 +1,8 @@
 <?php
 
-namespace fabianhaef\simpleform\tests\unit;
+namespace anvildev\simpleform\tests\unit;
 
-use fabianhaef\simpleform\integrations\WebhookIntegration;
+use anvildev\simpleform\integrations\WebhookIntegration;
 use GuzzleHttp\Client;
 use GuzzleHttp\Exception\ConnectException;
 use GuzzleHttp\Handler\MockHandler;
@@ -75,7 +75,7 @@ class WebhookIntegrationTest extends TestCase
 
     /**
      * SSRF guard (F3): a loopback/private URL must be blocked by the consolidated
-     * {@see \fabianhaef\simpleform\integrations\support\ApiConnector::request()}
+     * {@see \anvildev\simpleform\integrations\support\ApiConnector::request()}
      * path before any HTTP call is made. The mock has no queued response, so a
      * request reaching the client would throw — proving the guard short-circuits.
      *
@@ -108,7 +108,7 @@ class WebhookIntegrationTest extends TestCase
         $stack = HandlerStack::create($mock);
         $stack->push(\GuzzleHttp\Middleware::history($history));
 
-        $webhook = new class ($stack) extends WebhookIntegration {
+        $webhook = new class($stack) extends WebhookIntegration {
             public function __construct(private HandlerStack $stack)
             {
             }

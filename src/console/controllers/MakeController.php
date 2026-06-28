@@ -1,6 +1,6 @@
 <?php
 
-namespace fabianhaef\simpleform\console\controllers;
+namespace anvildev\simpleform\console\controllers;
 
 use Craft;
 use craft\console\Controller;
@@ -168,8 +168,8 @@ class MakeController extends Controller
         $this->stdout("\nRegister it from your plugin/module init():\n\n");
         $this->stdout(
             "    \\yii\\base\\Event::on(\n"
-            . "        \\fabianhaef\\simpleform\\Plugin::class,\n"
-            . "        \\fabianhaef\\simpleform\\Plugin::$event,\n"
+            . "        \\anvildev\\simpleform\\Plugin::class,\n"
+            . "        \\anvildev\\simpleform\\Plugin::$event,\n"
             . "        fn(\$e) => \$e->types[] = \\$namespace\\$className::class,\n"
             . "    );\n\n"
         );
@@ -182,7 +182,7 @@ class MakeController extends Controller
 
             namespace $namespace;
 
-            use fabianhaef\\simpleform\\fields\\FieldType;
+            use anvildev\\simpleform\\fields\\FieldType;
 
             /**
              * Custom Simple Form field type. Register via
@@ -232,9 +232,9 @@ class MakeController extends Controller
 
             namespace $namespace;
 
-            use fabianhaef\\simpleform\\elements\\Submission;
-            use fabianhaef\\simpleform\\integrations\\IntegrationResult;
-            use fabianhaef\\simpleform\\integrations\\IntegrationTypeInterface;
+            use anvildev\\simpleform\\elements\\Submission;
+            use anvildev\\simpleform\\integrations\\IntegrationResult;
+            use anvildev\\simpleform\\integrations\\IntegrationTypeInterface;
 
             /**
              * Custom Simple Form outbound integration. Register via

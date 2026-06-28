@@ -1,9 +1,9 @@
 <?php
 
-namespace fabianhaef\simpleform\tests\unit;
+namespace anvildev\simpleform\tests\unit;
 
-use fabianhaef\simpleform\exceptions\FormulaException;
-use fabianhaef\simpleform\helpers\Formula;
+use anvildev\simpleform\exceptions\FormulaException;
+use anvildev\simpleform\helpers\Formula;
 use PHPUnit\Framework\TestCase;
 
 /**

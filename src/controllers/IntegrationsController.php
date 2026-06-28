@@ -1,14 +1,15 @@
 <?php
 
-namespace fabianhaef\simpleform\controllers;
+namespace anvildev\simpleform\controllers;
 
+use anvildev\simpleform\Editions;
+use anvildev\simpleform\elements\Submission;
+use anvildev\simpleform\helpers\SimpleFormPermissions;
+use anvildev\simpleform\jobs\SendIntegrationJob;
+use anvildev\simpleform\models\IntegrationModel;
+use anvildev\simpleform\Plugin;
 use Craft;
 use craft\web\Controller;
-use fabianhaef\simpleform\elements\Submission;
-use fabianhaef\simpleform\helpers\SimpleFormPermissions;
-use fabianhaef\simpleform\jobs\SendIntegrationJob;
-use fabianhaef\simpleform\models\IntegrationModel;
-use fabianhaef\simpleform\Plugin;
 use yii\web\NotFoundHttpException;
 use yii\web\Response;
 
@@ -37,9 +38,32 @@ class IntegrationsController extends Controller
         ]);
     }
 
-    private function service(): \fabianhaef\simpleform\services\IntegrationsService
+    private function service(): \anvildev\simpleform\services\IntegrationsService
     {
         return Plugin::getInstance()->getIntegrations();
+    }
+
+    /**
+     * The integration types offerable as a *new* integration. Solo is limited to
+     * the always-available handles; Pro gets everything.
+     *
+     * @return array<string, string>
+     */
+    private function availableTypesFor(\anvildev\simpleform\services\IntegrationTypeRegistry $registry): array
+    {
+        $all = $registry->getAllTypes();
+        if (Editions::isPro()) {
+            return $all;
+        }
+
+        return array_intersect_key($all, array_flip(Editions::SOLO_INTEGRATIONS));
+    }
+
+    private function proIntegrationMessage(?\anvildev\simpleform\integrations\IntegrationTypeInterface $type): string
+    {
+        return Craft::t('simple-form', 'The {type} integration requires the Pro edition.', [
+            'type' => $type !== null ? $type::displayName() : Craft::t('simple-form', 'selected'),
+        ]);
     }
 
     /**
@@ -88,10 +112,22 @@ class IntegrationsController extends Controller
             $integration->name = $type::displayName();
         }
 
+        // Solo may only add the always-available integrations. Editing an
+        // existing Pro integration on a downgraded Solo install is still allowed
+        // (no-new-escalation); creating a new one is bounced before the form.
+        if (
+            $integration?->id === null
+            && $typeHandle !== null
+            && !Editions::integrationAllowed($typeHandle)
+        ) {
+            Craft::$app->getSession()->setError($this->proIntegrationMessage($type));
+            return $this->redirect('simple-form/settings/integrations');
+        }
+
         return $this->renderTemplate('simple-form/settings/integrations/edit', [
             'integration' => $integration,
             'type' => $type,
-            'availableTypes' => $registry->getAllTypes(),
+            'availableTypes' => $this->availableTypesFor($registry),
             'errors' => [],
         ]);
     }
@@ -123,13 +159,25 @@ class IntegrationsController extends Controller
             throw new NotFoundHttpException('Unknown integration type');
         }
 
+        // Edition gate (authoritative): Solo may not create a new integration of
+        // a Pro type. Existing ones (loaded by id) stay editable after downgrade.
+        if (!$integrationId && !Editions::integrationAllowed($integration->type)) {
+            Craft::$app->getSession()->setError($this->proIntegrationMessage($type));
+            return $this->renderTemplate('simple-form/settings/integrations/edit', [
+                'integration' => $integration,
+                'type' => $type,
+                'availableTypes' => $this->availableTypesFor($registry),
+                'errors' => [],
+            ]);
+        }
+
         $errors = $service->validateSettings($type, $integration->settings);
         if ($errors !== [] || !$service->saveIntegration($integration)) {
             Craft::$app->getSession()->setError(Craft::t('simple-form', 'Couldn’t save integration.'));
             return $this->renderTemplate('simple-form/settings/integrations/edit', [
                 'integration' => $integration,
                 'type' => $type,
-                'availableTypes' => $registry->getAllTypes(),
+                'availableTypes' => $this->availableTypesFor($registry),
                 'errors' => $errors,
             ]);
         }

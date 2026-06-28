@@ -1,11 +1,11 @@
 <?php
 
-namespace fabianhaef\simpleform\integrations;
+namespace anvildev\simpleform\integrations;
 
+use anvildev\simpleform\elements\Submission;
+use anvildev\simpleform\integrations\support\ApiConnector;
 use Craft;
 use craft\helpers\Json;
-use fabianhaef\simpleform\elements\Submission;
-use fabianhaef\simpleform\integrations\support\ApiConnector;
 use GuzzleHttp\Exception\GuzzleException;
 
 /**

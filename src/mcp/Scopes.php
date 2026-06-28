@@ -1,6 +1,6 @@
 <?php
 
-namespace fabianhaef\simpleform\mcp;
+namespace anvildev\simpleform\mcp;
 
 /**
  * The capability scopes an MCP token can carry.

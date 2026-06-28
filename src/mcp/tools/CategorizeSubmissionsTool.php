@@ -1,13 +1,13 @@
 <?php
 
-namespace fabianhaef\simpleform\mcp\tools;
+namespace anvildev\simpleform\mcp\tools;
 
-use fabianhaef\simpleform\elements\Form;
-use fabianhaef\simpleform\elements\Submission;
-use fabianhaef\simpleform\mcp\Scopes;
-use fabianhaef\simpleform\mcp\tools\support\InsightCorpus;
-use fabianhaef\simpleform\mcp\tools\support\SubmissionQueryBuilder;
-use fabianhaef\simpleform\services\FieldTypeRegistry;
+use anvildev\simpleform\elements\Form;
+use anvildev\simpleform\elements\Submission;
+use anvildev\simpleform\mcp\Scopes;
+use anvildev\simpleform\mcp\tools\support\InsightCorpus;
+use anvildev\simpleform\mcp\tools\support\SubmissionQueryBuilder;
+use anvildev\simpleform\services\FieldTypeRegistry;
 
 /**
  * AI-insight tool: support grouping/clustering of open-ended responses.

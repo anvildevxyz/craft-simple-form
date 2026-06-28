@@ -1,10 +1,10 @@
 <?php
 
-namespace fabianhaef\simpleform\tests\unit;
+namespace anvildev\simpleform\tests\unit;
 
-use fabianhaef\simpleform\fields\AddressFieldType;
-use fabianhaef\simpleform\fields\CompositeFieldType;
-use fabianhaef\simpleform\fields\NameFieldType;
+use anvildev\simpleform\fields\AddressFieldType;
+use anvildev\simpleform\fields\CompositeFieldType;
+use anvildev\simpleform\fields\NameFieldType;
 use PHPUnit\Framework\TestCase;
 
 /**

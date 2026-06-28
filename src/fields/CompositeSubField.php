@@ -1,6 +1,6 @@
 <?php
 
-namespace fabianhaef\simpleform\fields;
+namespace anvildev\simpleform\fields;
 
 /**
  * An immutable declaration of one sub-field within a composite field type: its

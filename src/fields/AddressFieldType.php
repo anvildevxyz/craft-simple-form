@@ -1,9 +1,9 @@
 <?php
 
-namespace fabianhaef\simpleform\fields;
+namespace anvildev\simpleform\fields;
 
+use anvildev\simpleform\Plugin;
 use Craft;
-use fabianhaef\simpleform\Plugin;
 
 /**
  * The composite Address field: line1 / line2 / city / state / postalCode /

@@ -3,9 +3,9 @@
 namespace modules\simpleform\examples;
 
 use Craft;
-use fabianhaef\simpleform\elements\Submission;
-use fabianhaef\simpleform\integrations\IntegrationResult;
-use fabianhaef\simpleform\integrations\IntegrationTypeInterface;
+use anvildev\simpleform\elements\Submission;
+use anvildev\simpleform\integrations\IntegrationResult;
+use anvildev\simpleform\integrations\IntegrationTypeInterface;
 
 /**
  * Example custom outbound integration: POST a submission's data to a configured
@@ -16,8 +16,8 @@ use fabianhaef\simpleform\integrations\IntegrationTypeInterface;
  * Register it from your plugin/module init():
  *
  *   \yii\base\Event::on(
- *       \fabianhaef\simpleform\Plugin::class,
- *       \fabianhaef\simpleform\Plugin::EVENT_REGISTER_INTEGRATION_TYPES,
+ *       \anvildev\simpleform\Plugin::class,
+ *       \anvildev\simpleform\Plugin::EVENT_REGISTER_INTEGRATION_TYPES,
  *       fn($e) => $e->types[] = \modules\simpleform\examples\JsonWebhookIntegration::class,
  *   );
  *

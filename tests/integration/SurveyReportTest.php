@@ -1,13 +1,13 @@
 <?php
 
-namespace fabianhaef\simpleform\tests\integration;
+namespace anvildev\simpleform\tests\integration;
 
+use anvildev\simpleform\elements\Submission;
+use anvildev\simpleform\elements\SubmissionStatus;
+use anvildev\simpleform\Plugin;
 use Craft;
 use craft\models\Site;
 use craft\models\SiteGroup;
-use fabianhaef\simpleform\elements\Submission;
-use fabianhaef\simpleform\elements\SubmissionStatus;
-use fabianhaef\simpleform\Plugin;
 
 /**
  * End-to-end coverage for the per-form survey report (#240): the field-type

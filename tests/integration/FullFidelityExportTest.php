@@ -1,12 +1,12 @@
 <?php
 
-namespace fabianhaef\simpleform\tests\integration;
+namespace anvildev\simpleform\tests\integration;
 
+use anvildev\simpleform\elements\Form;
+use anvildev\simpleform\models\ImportResult;
+use anvildev\simpleform\Plugin;
+use anvildev\simpleform\services\FormPortabilityService;
 use Craft;
-use fabianhaef\simpleform\elements\Form;
-use fabianhaef\simpleform\models\ImportResult;
-use fabianhaef\simpleform\Plugin;
-use fabianhaef\simpleform\services\FormPortabilityService;
 
 /**
  * #226 — full-fidelity form settings in the portable document. Every form-level

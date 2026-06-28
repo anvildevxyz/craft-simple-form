@@ -1,12 +1,12 @@
 <?php
 
-namespace fabianhaef\simpleform\tests\integration;
+namespace anvildev\simpleform\tests\integration;
 
+use anvildev\simpleform\elements\db\FormQuery;
+use anvildev\simpleform\elements\db\SubmissionQuery;
+use anvildev\simpleform\elements\Form;
+use anvildev\simpleform\web\twig\variables\SimpleFormVariable;
 use Craft;
-use fabianhaef\simpleform\elements\db\FormQuery;
-use fabianhaef\simpleform\elements\db\SubmissionQuery;
-use fabianhaef\simpleform\elements\Form;
-use fabianhaef\simpleform\web\twig\variables\SimpleFormVariable;
 use Twig\Markup;
 
 /**

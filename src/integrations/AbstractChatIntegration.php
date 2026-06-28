@@ -1,12 +1,12 @@
 <?php
 
-namespace fabianhaef\simpleform\integrations;
+namespace anvildev\simpleform\integrations;
 
+use anvildev\simpleform\elements\Submission;
+use anvildev\simpleform\helpers\SafeUrl;
+use anvildev\simpleform\integrations\support\ApiConnector;
+use anvildev\simpleform\integrations\support\SubmissionValues;
 use Craft;
-use fabianhaef\simpleform\elements\Submission;
-use fabianhaef\simpleform\helpers\SafeUrl;
-use fabianhaef\simpleform\integrations\support\ApiConnector;
-use fabianhaef\simpleform\integrations\support\SubmissionValues;
 
 /**
  * Shared base for chat/notification connectors (Slack, Discord) that POST a JSON

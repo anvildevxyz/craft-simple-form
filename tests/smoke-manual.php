@@ -26,8 +26,10 @@ $checks = [
 
 $passed = 0;
 foreach ($checks as $check => $result) {
-    echo ($result ? $check : str_replace('✓', '✗', $check)) . "\n";
-    if ($result) $passed++;
+    echo($result ? $check : str_replace('✓', '✗', $check)) . "\n";
+    if ($result) {
+        $passed++;
+    }
 }
 
 echo "\n═══════════════════════════════════════════\n";

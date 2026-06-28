@@ -1,13 +1,13 @@
 <?php
 
-namespace fabianhaef\simpleform\events;
+namespace anvildev\simpleform\events;
 
-use fabianhaef\simpleform\elements\Submission;
-use fabianhaef\simpleform\models\IntegrationModel;
+use anvildev\simpleform\elements\Submission;
+use anvildev\simpleform\models\IntegrationModel;
 use yii\base\Event;
 
 /**
- * Fired from {@see \fabianhaef\simpleform\services\IntegrationsService::runOnce()}
+ * Fired from {@see \anvildev\simpleform\services\IntegrationsService::runOnce()}
  * before a single outbound integration dispatch is attempted. A handler can
  * adjust the resolved {@see self::$settings} (env vars already parsed) or skip
  * the dispatch entirely by setting {@see self::$send} to false:

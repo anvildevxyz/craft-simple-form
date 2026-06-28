@@ -1,11 +1,11 @@
 <?php
 
-namespace fabianhaef\simpleform\tests\integration;
+namespace anvildev\simpleform\tests\integration;
 
+use anvildev\simpleform\elements\Form;
+use anvildev\simpleform\fields\FormField;
 use Craft;
 use craft\web\View;
-use fabianhaef\simpleform\elements\Form;
-use fabianhaef\simpleform\fields\FormField;
 
 /**
  * The custom "Form" field (#108): normalizes to the Form element, serializes back

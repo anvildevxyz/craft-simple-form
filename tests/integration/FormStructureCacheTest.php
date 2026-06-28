@@ -1,10 +1,10 @@
 <?php
 
-namespace fabianhaef\simpleform\tests\integration;
+namespace anvildev\simpleform\tests\integration;
 
+use anvildev\simpleform\Plugin;
+use anvildev\simpleform\TwigExtension;
 use Craft;
-use fabianhaef\simpleform\Plugin;
-use fabianhaef\simpleform\TwigExtension;
 
 /**
  * @group requires-craft

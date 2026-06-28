@@ -1,12 +1,12 @@
 <?php
 
-namespace fabianhaef\simpleform\services;
+namespace anvildev\simpleform\services;
 
+use anvildev\simpleform\elements\Submission;
+use anvildev\simpleform\Plugin;
 use Craft;
 use craft\db\Query;
 use craft\helpers\Db;
-use fabianhaef\simpleform\elements\Submission;
-use fabianhaef\simpleform\Plugin;
 use yii\base\Component;
 
 /**
@@ -49,6 +49,11 @@ class RetentionService extends Component
      */
     public function purgeSubmissions(?int $days = null, ?bool $anonymize = null, ?int $formId = null): int
     {
+        // Edition-blind at runtime: a configured retention/anonymization policy
+        // keeps running regardless of edition, so a Pro->Solo downgrade never
+        // silently stops purging PII. Solo is prevented from *enabling* the policy
+        // in the first place (the settings authoring gate); a `0` threshold is
+        // still a no-op below.
         $settings = Plugin::getInstance()->getSettings();
         $days ??= $settings->retainSubmissionsDays;
         $anonymize ??= $settings->anonymizeInsteadOfDelete;

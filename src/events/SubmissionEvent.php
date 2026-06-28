@@ -1,9 +1,9 @@
 <?php
 
-namespace fabianhaef\simpleform\events;
+namespace anvildev\simpleform\events;
 
-use fabianhaef\simpleform\elements\Form;
-use fabianhaef\simpleform\elements\Submission;
+use anvildev\simpleform\elements\Form;
+use anvildev\simpleform\elements\Submission;
 use yii\base\Event;
 
 class SubmissionEvent extends Event

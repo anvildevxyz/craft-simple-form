@@ -1,10 +1,10 @@
 <?php
 
-namespace fabianhaef\simpleform\tests\integration;
+namespace anvildev\simpleform\tests\integration;
 
+use anvildev\simpleform\services\EmailService;
 use Craft;
 use craft\test\TestMailer;
-use fabianhaef\simpleform\services\EmailService;
 use yii\mail\MessageInterface;
 
 /**
@@ -31,11 +31,11 @@ class EmailNotificationTest extends SimpleFormTestCase
         $fieldId = $this->createField($form->id, 'text', 'fullName', 'Full Name', true);
 
         // Reload through the element query so emailTo/emailSubject come from the DB.
-        $reloaded = \fabianhaef\simpleform\elements\Form::find()->id($form->id)->one();
+        $reloaded = \anvildev\simpleform\elements\Form::find()->id($form->id)->one();
         $this->assertSame('owner@example.com', $reloaded->emailTo);
 
-        $sent = $this->captureSentMessages(function () use ($reloaded, $fieldId): void {
-            $submission = new \fabianhaef\simpleform\elements\Submission();
+        $sent = $this->captureSentMessages(function() use ($reloaded, $fieldId): void {
+            $submission = new \anvildev\simpleform\elements\Submission();
             $submission->formId = $reloaded->id;
             $submission->siteId = Craft::$app->getSites()->getCurrentSite()->id;
             $submission->readStatus = 'new';
@@ -75,15 +75,15 @@ class EmailNotificationTest extends SimpleFormTestCase
         $fieldId = $this->createField($form->id, 'text', 'fullName', 'Full Name', true);
 
         // emailBody must come back from the per-site row, like emailSubject does.
-        $reloaded = \fabianhaef\simpleform\elements\Form::find()->id($form->id)->one();
+        $reloaded = \anvildev\simpleform\elements\Form::find()->id($form->id)->one();
         $this->assertSame(
             'CUSTOM-BODY token={{ submission.id }} for {{ form.handle }}',
             $reloaded->emailBody,
             'emailBody should load per-site from the DB',
         );
 
-        $sent = $this->captureSentMessages(function () use ($reloaded, $fieldId): void {
-            $submission = new \fabianhaef\simpleform\elements\Submission();
+        $sent = $this->captureSentMessages(function() use ($reloaded, $fieldId): void {
+            $submission = new \anvildev\simpleform\elements\Submission();
             $submission->formId = $reloaded->id;
             $submission->siteId = Craft::$app->getSites()->getCurrentSite()->id;
             $submission->readStatus = 'new';
@@ -118,10 +118,10 @@ class EmailNotificationTest extends SimpleFormTestCase
         $form->emailBody = 'LEAK={{ craft.app.config.general.securityKey }}';
         Craft::$app->getElements()->saveElement($form);
         $fieldId = $this->createField($form->id, 'text', 'fullName', 'Full Name', true);
-        $reloaded = \fabianhaef\simpleform\elements\Form::find()->id($form->id)->one();
+        $reloaded = \anvildev\simpleform\elements\Form::find()->id($form->id)->one();
 
-        $sent = $this->captureSentMessages(function () use ($reloaded, $fieldId): void {
-            $submission = new \fabianhaef\simpleform\elements\Submission();
+        $sent = $this->captureSentMessages(function() use ($reloaded, $fieldId): void {
+            $submission = new \anvildev\simpleform\elements\Submission();
             $submission->formId = $reloaded->id;
             $submission->siteId = Craft::$app->getSites()->getCurrentSite()->id;
             $submission->readStatus = 'new';
@@ -147,10 +147,10 @@ class EmailNotificationTest extends SimpleFormTestCase
 
         $form = $this->createForm('Default', 'defaultBodyForm', 'Default', emailTo: 'owner@example.com');
         $fieldId = $this->createField($form->id, 'text', 'fullName', 'Full Name', true);
-        $reloaded = \fabianhaef\simpleform\elements\Form::find()->id($form->id)->one();
+        $reloaded = \anvildev\simpleform\elements\Form::find()->id($form->id)->one();
 
-        $sent = $this->captureSentMessages(function () use ($reloaded, $fieldId): void {
-            $submission = new \fabianhaef\simpleform\elements\Submission();
+        $sent = $this->captureSentMessages(function() use ($reloaded, $fieldId): void {
+            $submission = new \anvildev\simpleform\elements\Submission();
             $submission->formId = $reloaded->id;
             $submission->siteId = Craft::$app->getSites()->getCurrentSite()->id;
             $submission->readStatus = 'new';
@@ -173,8 +173,8 @@ class EmailNotificationTest extends SimpleFormTestCase
         $form = $this->createForm('Silent', 'silentForm', 'Silent');
         $fieldId = $this->createField($form->id, 'text', 'fullName', 'Full Name', false);
 
-        $sent = $this->captureSentMessages(function () use ($form, $fieldId): void {
-            $submission = new \fabianhaef\simpleform\elements\Submission();
+        $sent = $this->captureSentMessages(function() use ($form, $fieldId): void {
+            $submission = new \anvildev\simpleform\elements\Submission();
             $submission->formId = $form->id;
             $submission->siteId = Craft::$app->getSites()->getCurrentSite()->id;
             $submission->readStatus = 'new';
@@ -201,7 +201,7 @@ class EmailNotificationTest extends SimpleFormTestCase
 
         if ($mailer instanceof TestMailer) {
             $original = $mailer->callback;
-            $mailer->callback = function (MessageInterface $message) use (&$collected, $original): void {
+            $mailer->callback = function(MessageInterface $message) use (&$collected, $original): void {
                 $collected[] = $message;
                 if (is_callable($original)) {
                     $original($message);

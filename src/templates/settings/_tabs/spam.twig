@@ -145,6 +145,8 @@
 
 <hr>
 
+{% include 'simple-form/settings/_pro-notice' with { feature: 'Akismet and the keyword/email/IP denylists'|t('simple-form') } only %}
+
 <h3>{{ 'Akismet'|t('simple-form') }}</h3>
 <p class="light">{{ 'Content-based spam scoring that complements CAPTCHA.'|t('simple-form') }}</p>
 
@@ -163,6 +165,7 @@
         name: 'akismetApiKey',
         value: settings.akismetApiKey ?? '',
         suggestEnvVars: true,
+        disabled: 'akismetApiKey' in proLockedFields,
         instructions: 'Your Akismet API key. Use an environment variable (e.g. $AKISMET_KEY) to keep it out of project config.'|t('simple-form'),
         errors: settings.getErrors('akismetApiKey') ?? [],
     }) }}
@@ -210,6 +213,7 @@
         name: 'blockedKeywords',
         value: settings.blockedKeywords ?? '',
         rows: 4,
+        disabled: 'blockedKeywords' in proLockedFields,
         instructions: 'One keyword per line. Matched case-insensitively against any text value. Use * as a wildcard (e.g. buy*now).'|t('simple-form'),
         errors: settings.getErrors('blockedKeywords') ?? [],
     }) }}
@@ -219,6 +223,7 @@
         name: 'blockedEmails',
         value: settings.blockedEmails ?? '',
         rows: 4,
+        disabled: 'blockedEmails' in proLockedFields,
         instructions: 'One per line. Exact address (bob@x.tld), whole domain (@x.tld), or domain + subdomains (*.x.tld).'|t('simple-form'),
         errors: settings.getErrors('blockedEmails') ?? [],
     }) }}
@@ -228,6 +233,7 @@
         name: 'blockedIps',
         value: settings.blockedIps ?? '',
         rows: 4,
+        disabled: 'blockedIps' in proLockedFields,
         instructions: 'One per line. A single IPv4/IPv6 address or a CIDR range (e.g. 203.0.113.0/24, 2001:db8::/32).'|t('simple-form'),
         errors: settings.getErrors('blockedIps') ?? [],
     }) }}

@@ -1,11 +1,11 @@
 <?php
 
-namespace fabianhaef\simpleform\tests\unit;
+namespace anvildev\simpleform\tests\unit;
 
+use anvildev\simpleform\fields\ElementRelationFieldType;
+use anvildev\simpleform\fields\EntryRelationFieldType;
 use craft\elements\db\ElementQueryInterface;
 use craft\elements\Entry;
-use fabianhaef\simpleform\fields\ElementRelationFieldType;
-use fabianhaef\simpleform\fields\EntryRelationFieldType;
 use PHPUnit\Framework\TestCase;
 
 /**
@@ -144,11 +144,7 @@ class ElementRelationFieldTypeTest extends TestCase
         ?int $limit = null,
         array $options = [],
     ): ElementRelationFieldType {
-        return new class($allowedIds, $options, [
-            'required' => $required,
-            'multiple' => $multiple,
-            'limit' => $limit,
-        ]) extends ElementRelationFieldType {
+        return new class($allowedIds, $options, [ 'required' => $required, 'multiple' => $multiple, 'limit' => $limit, ]) extends ElementRelationFieldType {
             /** @var list<int> */
             private array $stubIds;
             /** @var array<int, string> */

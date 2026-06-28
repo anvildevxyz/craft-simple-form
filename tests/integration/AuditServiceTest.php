@@ -1,11 +1,11 @@
 <?php
 
-namespace fabianhaef\simpleform\tests\integration;
+namespace anvildev\simpleform\tests\integration;
 
+use anvildev\simpleform\models\IntegrationModel;
+use anvildev\simpleform\Plugin;
 use craft\db\Query;
 use craft\helpers\Db;
-use fabianhaef\simpleform\models\IntegrationModel;
-use fabianhaef\simpleform\Plugin;
 
 /**
  * Audit log (#114): direct logging, recent() filtering, prune(), and that a

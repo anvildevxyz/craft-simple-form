@@ -1,10 +1,10 @@
 <?php
 
-namespace fabianhaef\simpleform\tests\integration;
+namespace anvildev\simpleform\tests\integration;
 
+use anvildev\simpleform\elements\Form;
+use anvildev\simpleform\Plugin;
 use Craft;
-use fabianhaef\simpleform\elements\Form;
-use fabianhaef\simpleform\Plugin;
 use Twig\Markup;
 
 /**

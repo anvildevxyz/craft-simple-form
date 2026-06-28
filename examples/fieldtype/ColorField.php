@@ -2,7 +2,7 @@
 
 namespace modules\simpleform\examples;
 
-use fabianhaef\simpleform\fields\FieldType;
+use anvildev\simpleform\fields\FieldType;
 
 /**
  * Example custom field type: a native colour picker that stores a #RRGGBB hex
@@ -12,8 +12,8 @@ use fabianhaef\simpleform\fields\FieldType;
  * Register it from your plugin/module init():
  *
  *   \yii\base\Event::on(
- *       \fabianhaef\simpleform\Plugin::class,
- *       \fabianhaef\simpleform\Plugin::EVENT_REGISTER_FIELD_TYPES,
+ *       \anvildev\simpleform\Plugin::class,
+ *       \anvildev\simpleform\Plugin::EVENT_REGISTER_FIELD_TYPES,
  *       fn($e) => $e->types[] = \modules\simpleform\examples\ColorField::class,
  *   );
  *

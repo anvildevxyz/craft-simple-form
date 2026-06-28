@@ -1,12 +1,12 @@
 <?php
 
-namespace fabianhaef\simpleform\tests\smoke;
+namespace anvildev\simpleform\tests\smoke;
 
+use anvildev\simpleform\controllers\SubmitController;
+use anvildev\simpleform\models\CouponModel;
+use anvildev\simpleform\Plugin;
 use Craft;
 use craft\web\Response;
-use fabianhaef\simpleform\controllers\SubmitController;
-use fabianhaef\simpleform\models\CouponModel;
-use fabianhaef\simpleform\Plugin;
 use SmokeTester;
 
 /**
@@ -108,7 +108,7 @@ class CouponsSmokeCest extends BaseSmokeCest
     // PRIVATE METHODS
     // =========================================================================
 
-    private function coupons(): \fabianhaef\simpleform\services\CouponsService
+    private function coupons(): \anvildev\simpleform\services\CouponsService
     {
         return Plugin::getInstance()->getCoupons();
     }

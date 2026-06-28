@@ -1,9 +1,9 @@
 <?php
 
-namespace fabianhaef\simpleform\tests\smoke;
+namespace anvildev\simpleform\tests\smoke;
 
+use anvildev\simpleform\services\FieldSyncService;
 use Craft;
-use fabianhaef\simpleform\services\FieldSyncService;
 use SmokeTester;
 
 /**

@@ -1,14 +1,14 @@
 <?php
 
-namespace fabianhaef\simpleform\tests\integration;
+namespace anvildev\simpleform\tests\integration;
 
+use anvildev\simpleform\controllers\McpController;
+use anvildev\simpleform\mcp\Scopes;
+use anvildev\simpleform\models\IntegrationModel;
+use anvildev\simpleform\Plugin;
 use Craft;
 use craft\models\GqlSchema;
 use craft\web\Response;
-use fabianhaef\simpleform\controllers\McpController;
-use fabianhaef\simpleform\mcp\Scopes;
-use fabianhaef\simpleform\models\IntegrationModel;
-use fabianhaef\simpleform\Plugin;
 
 /**
  * #80 — read-only exposure of a form's integrations via GraphQL and MCP, with

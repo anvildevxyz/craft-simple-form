@@ -1,6 +1,6 @@
 <?php
 
-namespace fabianhaef\simpleform\fields;
+namespace anvildev\simpleform\fields;
 
 /**
  * A presentational section divider. Collects no submission value: it renders an

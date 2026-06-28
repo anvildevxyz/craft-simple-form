@@ -1,9 +1,9 @@
 <?php
 
-namespace fabianhaef\simpleform\events;
+namespace anvildev\simpleform\events;
 
+use anvildev\simpleform\elements\Submission;
 use craft\elements\User;
-use fabianhaef\simpleform\elements\Submission;
 use yii\base\Event;
 
 /**

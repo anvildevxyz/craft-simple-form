@@ -1,13 +1,13 @@
 <?php
 
-namespace fabianhaef\simpleform\tests\integration;
+namespace anvildev\simpleform\tests\integration;
 
+use anvildev\simpleform\elements\Submission;
+use anvildev\simpleform\Plugin;
+use anvildev\simpleform\services\FieldSyncService;
+use anvildev\simpleform\services\SubmissionService;
 use Craft;
 use craft\db\Query;
-use fabianhaef\simpleform\elements\Submission;
-use fabianhaef\simpleform\Plugin;
-use fabianhaef\simpleform\services\FieldSyncService;
-use fabianhaef\simpleform\services\SubmissionService;
 
 /**
  * End-to-end coverage for the Repeater field (issue #132): nested submission
@@ -237,7 +237,7 @@ class RepeaterFieldTest extends SimpleFormTestCase
     {
         $this->requireCraft();
 
-        $repeater = new \fabianhaef\simpleform\fields\RepeaterFieldType([
+        $repeater = new \anvildev\simpleform\fields\RepeaterFieldType([
             'minRows' => 2,
             'maxRows' => 4,
             'fields' => [

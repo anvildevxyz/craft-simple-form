@@ -1,13 +1,13 @@
 <?php
 
-namespace fabianhaef\simpleform\services;
+namespace anvildev\simpleform\services;
 
-use fabianhaef\simpleform\captcha\CaptchaProviderInterface;
-use fabianhaef\simpleform\captcha\HcaptchaProvider;
-use fabianhaef\simpleform\captcha\RecaptchaProvider;
-use fabianhaef\simpleform\captcha\TurnstileProvider;
-use fabianhaef\simpleform\events\RegisterCaptchaProvidersEvent;
-use fabianhaef\simpleform\Plugin;
+use anvildev\simpleform\captcha\CaptchaProviderInterface;
+use anvildev\simpleform\captcha\HcaptchaProvider;
+use anvildev\simpleform\captcha\RecaptchaProvider;
+use anvildev\simpleform\captcha\TurnstileProvider;
+use anvildev\simpleform\events\RegisterCaptchaProvidersEvent;
+use anvildev\simpleform\Plugin;
 use yii\base\Component;
 
 /**

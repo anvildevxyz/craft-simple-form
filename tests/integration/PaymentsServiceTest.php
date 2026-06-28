@@ -1,14 +1,14 @@
 <?php
 
-namespace fabianhaef\simpleform\tests\integration;
+namespace anvildev\simpleform\tests\integration;
 
+use anvildev\simpleform\elements\Submission;
+use anvildev\simpleform\elements\SubmissionStatus;
+use anvildev\simpleform\models\IntegrationModel;
+use anvildev\simpleform\Plugin;
+use anvildev\simpleform\services\PaymentsService;
 use Craft;
 use craft\db\Query;
-use fabianhaef\simpleform\elements\Submission;
-use fabianhaef\simpleform\elements\SubmissionStatus;
-use fabianhaef\simpleform\models\IntegrationModel;
-use fabianhaef\simpleform\Plugin;
-use fabianhaef\simpleform\services\PaymentsService;
 
 /**
  * Payments orchestration (#116) — the Commerce-agnostic surface: amount

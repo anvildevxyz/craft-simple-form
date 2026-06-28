@@ -1,9 +1,9 @@
 <?php
 
-namespace fabianhaef\simpleform\mcp\tools;
+namespace anvildev\simpleform\mcp\tools;
 
-use fabianhaef\simpleform\mcp\Scopes;
-use fabianhaef\simpleform\mcp\tools\support\FieldOps;
+use anvildev\simpleform\mcp\Scopes;
+use anvildev\simpleform\mcp\tools\support\FieldOps;
 
 /**
  * MCP tool: delete a single field from a form.

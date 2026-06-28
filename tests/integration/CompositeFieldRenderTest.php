@@ -1,8 +1,8 @@
 <?php
 
-namespace fabianhaef\simpleform\tests\integration;
+namespace anvildev\simpleform\tests\integration;
 
-use fabianhaef\simpleform\TwigExtension;
+use anvildev\simpleform\TwigExtension;
 
 /**
  * #126 — front-end render smoke for the composite Name/Address field types:

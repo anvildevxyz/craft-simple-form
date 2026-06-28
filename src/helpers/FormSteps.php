@@ -1,6 +1,6 @@
 <?php
 
-namespace fabianhaef\simpleform\helpers;
+namespace anvildev\simpleform\helpers;
 
 /**
  * Groups a form's resolved field set into ordered steps (pages) by each field's

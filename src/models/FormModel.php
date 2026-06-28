@@ -1,9 +1,9 @@
 <?php
 
-namespace fabianhaef\simpleform\models;
+namespace anvildev\simpleform\models;
 
-use fabianhaef\simpleform\elements\Form;
-use fabianhaef\simpleform\helpers\FieldQueryHelper;
+use anvildev\simpleform\elements\Form;
+use anvildev\simpleform\helpers\FieldQueryHelper;
 use yii\base\Model;
 
 class FormModel extends Model

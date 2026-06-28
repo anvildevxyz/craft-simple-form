@@ -1,8 +1,8 @@
 <?php
 
-namespace fabianhaef\simpleform\tests\unit;
+namespace anvildev\simpleform\tests\unit;
 
-use fabianhaef\simpleform\services\WorkflowService;
+use anvildev\simpleform\services\WorkflowService;
 use PHPUnit\Framework\TestCase;
 
 /**

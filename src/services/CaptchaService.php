@@ -1,10 +1,10 @@
 <?php
 
-namespace fabianhaef\simpleform\services;
+namespace anvildev\simpleform\services;
 
-use fabianhaef\simpleform\captcha\CaptchaProviderInterface;
-use fabianhaef\simpleform\models\Settings;
-use fabianhaef\simpleform\Plugin;
+use anvildev\simpleform\captcha\CaptchaProviderInterface;
+use anvildev\simpleform\models\Settings;
+use anvildev\simpleform\Plugin;
 use yii\base\Component;
 
 /**

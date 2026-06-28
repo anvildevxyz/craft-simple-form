@@ -1,12 +1,12 @@
 <?php
 
-namespace fabianhaef\simpleform\events;
+namespace anvildev\simpleform\events;
 
-use fabianhaef\simpleform\helpers\FieldQueryHelper;
+use anvildev\simpleform\helpers\FieldQueryHelper;
 use yii\base\Event;
 
 /**
- * Fired from {@see \fabianhaef\simpleform\services\FormStructureService::getFieldSet()}
+ * Fired from {@see \anvildev\simpleform\services\FormStructureService::getFieldSet()}
  * so a handler can add, remove, reorder or rewrite the resolved field rows for a
  * form on a given site before they are rendered or validated. Mutate
  * {@see self::$fields} in place:

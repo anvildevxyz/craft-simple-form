@@ -1,9 +1,9 @@
 <?php
 
-namespace fabianhaef\simpleform\tests\unit;
+namespace anvildev\simpleform\tests\unit;
 
-use fabianhaef\simpleform\fields\OpinionScaleFieldType;
-use fabianhaef\simpleform\fields\RatingFieldType;
+use anvildev\simpleform\fields\OpinionScaleFieldType;
+use anvildev\simpleform\fields\RatingFieldType;
 use PHPUnit\Framework\TestCase;
 
 /**

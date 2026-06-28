@@ -1,10 +1,10 @@
 <?php
 
-namespace fabianhaef\simpleform\mcp\tools;
+namespace anvildev\simpleform\mcp\tools;
 
+use anvildev\simpleform\mcp\Scopes;
+use anvildev\simpleform\mcp\tools\support\FormPresenter;
 use Craft;
-use fabianhaef\simpleform\mcp\Scopes;
-use fabianhaef\simpleform\mcp\tools\support\FormPresenter;
 
 /**
  * MCP tool: delete a form (element-wide, all sites).

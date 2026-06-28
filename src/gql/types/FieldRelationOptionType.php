@@ -1,6 +1,6 @@
 <?php
 
-namespace fabianhaef\simpleform\gql\types;
+namespace anvildev\simpleform\gql\types;
 
 use GraphQL\Type\Definition\Type;
 
@@ -8,7 +8,7 @@ use GraphQL\Type\Definition\Type;
  * A single selectable element in a relation field: the element id (submit this)
  * and its title (display this).
  *
- * @phpstan-import-type GqlFieldDefinitionMap from \fabianhaef\simpleform\gql\types\SimpleFormObjectType
+ * @phpstan-import-type GqlFieldDefinitionMap from \anvildev\simpleform\gql\types\SimpleFormObjectType
  *
  * @author Fabian Haefliger
  * @since 1.0.0

@@ -1,10 +1,10 @@
 <?php
 
-namespace fabianhaef\simpleform\mcp\resources;
+namespace anvildev\simpleform\mcp\resources;
 
-use fabianhaef\simpleform\elements\Form;
-use fabianhaef\simpleform\mcp\Scopes;
-use fabianhaef\simpleform\mcp\tools\support\FormPresenter;
+use anvildev\simpleform\elements\Form;
+use anvildev\simpleform\mcp\Scopes;
+use anvildev\simpleform\mcp\tools\support\FormPresenter;
 
 /**
  * MCP resource provider for {@code form://{handle}} — a form's live schema

@@ -1,11 +1,11 @@
 <?php
 
-namespace fabianhaef\simpleform\tests\integration;
+namespace anvildev\simpleform\tests\integration;
 
+use anvildev\simpleform\elements\Submission;
+use anvildev\simpleform\helpers\SubmissionCsv;
+use anvildev\simpleform\Plugin;
 use Craft;
-use fabianhaef\simpleform\elements\Submission;
-use fabianhaef\simpleform\helpers\SubmissionCsv;
-use fabianhaef\simpleform\Plugin;
 
 /**
  * #126 — end-to-end coverage of the composite Name/Address field types through
@@ -22,7 +22,7 @@ class CompositeFieldSubmissionTest extends SimpleFormTestCase
      * A Name (first + last, both required) + Address (line1/city/postalCode/
      * country required, line2 + state off) form.
      *
-     * @return array{0: \fabianhaef\simpleform\elements\Form, 1: int, 2: int}
+     * @return array{0: \anvildev\simpleform\elements\Form, 1: int, 2: int}
      */
     private function seedForm(string $handle): array
     {

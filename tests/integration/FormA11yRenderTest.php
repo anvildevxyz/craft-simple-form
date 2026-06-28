@@ -1,8 +1,8 @@
 <?php
 
-namespace fabianhaef\simpleform\tests\integration;
+namespace anvildev\simpleform\tests\integration;
 
-use fabianhaef\simpleform\TwigExtension;
+use anvildev\simpleform\TwigExtension;
 
 /**
  * #105 — the rendered form wires labels/ids accessibly: single controls get a

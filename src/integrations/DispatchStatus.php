@@ -1,12 +1,12 @@
 <?php
 
-namespace fabianhaef\simpleform\integrations;
+namespace anvildev\simpleform\integrations;
 
 /**
  * The lifecycle statuses of an integration dispatch attempt
  * (`simpleform_integration_logs.status`). Mirrors the holder style of
- * {@see \fabianhaef\simpleform\elements\SubmissionStatus} and
- * {@see \fabianhaef\simpleform\mcp\Scopes}. The migration keeps its own literals
+ * {@see \anvildev\simpleform\elements\SubmissionStatus} and
+ * {@see \anvildev\simpleform\mcp\Scopes}. The migration keeps its own literals
  * (migrations must stay self-contained).
  */
 final class DispatchStatus

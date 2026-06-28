@@ -1,13 +1,13 @@
 <?php
 
-namespace fabianhaef\simpleform\controllers;
+namespace anvildev\simpleform\controllers;
 
+use anvildev\simpleform\helpers\SimpleFormPermissions;
+use anvildev\simpleform\models\CouponModel;
+use anvildev\simpleform\Plugin;
 use Craft;
 use craft\helpers\DateTimeHelper;
 use craft\web\Controller;
-use fabianhaef\simpleform\helpers\SimpleFormPermissions;
-use fabianhaef\simpleform\models\CouponModel;
-use fabianhaef\simpleform\Plugin;
 use yii\web\NotFoundHttpException;
 use yii\web\Response;
 
@@ -24,7 +24,7 @@ class CouponsController extends Controller
 
     protected const PERMISSION = SimpleFormPermissions::MANAGE_SETTINGS;
 
-    private function service(): \fabianhaef\simpleform\services\CouponsService
+    private function service(): \anvildev\simpleform\services\CouponsService
     {
         return Plugin::getInstance()->getCoupons();
     }

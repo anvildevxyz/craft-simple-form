@@ -1,8 +1,8 @@
 <?php
 
-namespace fabianhaef\simpleform\tests\integration;
+namespace anvildev\simpleform\tests\integration;
 
-use fabianhaef\simpleform\TwigExtension;
+use anvildev\simpleform\TwigExtension;
 
 /**
  * Front-end rendering of multi-column row layouts (issue #136). Asserts that

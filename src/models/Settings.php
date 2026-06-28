@@ -1,12 +1,12 @@
 <?php
 
-namespace fabianhaef\simpleform\models;
+namespace anvildev\simpleform\models;
 
+use anvildev\simpleform\services\DenylistService;
 use Craft;
 use craft\base\Model;
 use craft\behaviors\EnvAttributeParserBehavior;
 use craft\helpers\App;
-use fabianhaef\simpleform\services\DenylistService;
 
 /**
  * Simple Form plugin settings.
@@ -16,7 +16,7 @@ use fabianhaef\simpleform\services\DenylistService;
  * live in `.env` rather than as plaintext in project config; use the parsed
  * getters when consuming them.
  *
- * @phpstan-import-type TokenArray from \fabianhaef\simpleform\mcp\McpToken
+ * @phpstan-import-type TokenArray from \anvildev\simpleform\mcp\McpToken
  */
 class Settings extends Model
 {
@@ -91,7 +91,7 @@ class Settings extends Model
     /**
      * Global default render-template path (#137): a site-templates directory of
      * Twig partials (e.g. `_simple-form`) overriding the plugin's built-in form
-     * markup for every form. A per-form {@see \fabianhaef\simpleform\elements\Form::$templatePath}
+     * markup for every form. A per-form {@see \anvildev\simpleform\elements\Form::$templatePath}
      * takes precedence; an empty value (the default) uses the plugin's built-in
      * partials. Resolution is per partial — a theme may ship only `field.twig`
      * and fall through to the built-in `form.twig`.
@@ -196,7 +196,7 @@ class Settings extends Model
 
     /**
      * Handle of the volume in which generated submission PDFs are stored (#143).
-     * When set, {@see \fabianhaef\simpleform\services\PdfService::store()} persists
+     * When set, {@see \anvildev\simpleform\services\PdfService::store()} persists
      * the rendered PDF as an Asset; the CP detail view links to it instead of
      * re-rendering on demand. Empty = render on demand, never store.
      */
@@ -212,7 +212,7 @@ class Settings extends Model
 
     /**
      * Configured MCP access tokens, stored as hash-only arrays (see
-     * {@see \fabianhaef\simpleform\mcp\McpToken}). The plaintext secret is NEVER
+     * {@see \anvildev\simpleform\mcp\McpToken}). The plaintext secret is NEVER
      * stored here — only its keyed hash. Shape per entry:
      * {id, label, hash, scopes[], dateCreated, lastUsed}.
      *

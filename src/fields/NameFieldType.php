@@ -1,6 +1,6 @@
 <?php
 
-namespace fabianhaef\simpleform\fields;
+namespace anvildev\simpleform\fields;
 
 /**
  * The composite Name field: prefix / first / middle / last / suffix sub-inputs,

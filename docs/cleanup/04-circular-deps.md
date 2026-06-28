@@ -1,6 +1,6 @@
 # 04 — Circular Dependencies & Tangled Coupling
 
-Scope: `src/` (223 PHP files), PSR-4 namespace `fabianhaef\simpleform\`. Research-only;
+Scope: `src/` (223 PHP files), PSR-4 namespace `anvildev\simpleform\`. Research-only;
 no source modified. JS (built `dist/` artifacts) ignored per brief.
 
 ## 1. Critical assessment of the dependency structure

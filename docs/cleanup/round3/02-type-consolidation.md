@@ -99,7 +99,7 @@ Each is implementable without further investigation. Findings 1–4 are HIGH;
 
 ### Rec 2 — `SubmissionResult` alias (Finding 2)
 - **New alias** on `src/services/SubmissionService.php` class docblock:
-  `@phpstan-type SubmissionResult array{submission: \fabianhaef\simpleform\elements\Submission|null, errors: array<string, mixed>|null, data?: array<string, mixed>, paymentRedirectUrl?: string}`
+  `@phpstan-type SubmissionResult array{submission: \anvildev\simpleform\elements\Submission|null, errors: array<string, mixed>|null, data?: array<string, mixed>, paymentRedirectUrl?: string}`
 - **Replace the inline `@return array{…}` with `@return SubmissionResult` at:**
   `SubmissionService.php:46` and `:250`.
 - **Line 351:** its shape is the strict subset `array{submission, errors}`.

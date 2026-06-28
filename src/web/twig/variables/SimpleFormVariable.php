@@ -1,15 +1,16 @@
 <?php
 
-namespace fabianhaef\simpleform\web\twig\variables;
+namespace anvildev\simpleform\web\twig\variables;
 
+use anvildev\simpleform\Editions;
+use anvildev\simpleform\elements\db\FormQuery;
+use anvildev\simpleform\elements\db\SubmissionQuery;
+use anvildev\simpleform\elements\Form;
+use anvildev\simpleform\elements\Submission;
+use anvildev\simpleform\Plugin;
 use Craft;
 use craft\helpers\Template;
 use craft\helpers\UrlHelper;
-use fabianhaef\simpleform\elements\db\FormQuery;
-use fabianhaef\simpleform\elements\db\SubmissionQuery;
-use fabianhaef\simpleform\elements\Form;
-use fabianhaef\simpleform\elements\Submission;
-use fabianhaef\simpleform\Plugin;
 use Twig\Markup;
 
 /**
@@ -18,6 +19,31 @@ use Twig\Markup;
  */
 class SimpleFormVariable
 {
+    /**
+     * The active edition handle (`solo` or `pro`).
+     */
+    public function edition(): string
+    {
+        return Editions::current();
+    }
+
+    /**
+     * Whether the active edition is Pro.
+     */
+    public function isPro(): bool
+    {
+        return Editions::isPro();
+    }
+
+    /**
+     * Whether the active edition may use a capability, e.g.
+     * `craft.simpleForm.can('payments')`.
+     */
+    public function can(string $capability): bool
+    {
+        return Editions::can($capability);
+    }
+
     /**
      * Look up a single form by handle or id.
      */

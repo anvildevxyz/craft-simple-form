@@ -1,11 +1,11 @@
 <?php
 
-namespace fabianhaef\simpleform\events;
+namespace anvildev\simpleform\events;
 
 use yii\base\Event;
 
 /**
- * Fired from {@see \fabianhaef\simpleform\services\IntegrationTypeRegistry} so
+ * Fired from {@see \anvildev\simpleform\services\IntegrationTypeRegistry} so
  * third parties can register their own integration-type classes:
  *
  * ```php
@@ -18,6 +18,6 @@ use yii\base\Event;
  */
 class RegisterIntegrationTypesEvent extends Event
 {
-    /** @var array<int, class-string<\fabianhaef\simpleform\integrations\IntegrationTypeInterface>> */
+    /** @var array<int, class-string<\anvildev\simpleform\integrations\IntegrationTypeInterface>> */
     public array $types = [];
 }

@@ -1,11 +1,11 @@
 <?php
 
-namespace fabianhaef\simpleform\events;
+namespace anvildev\simpleform\events;
 
 use yii\base\Event;
 
 /**
- * Fired from {@see \fabianhaef\simpleform\stencils\StencilLibrary} so third
+ * Fired from {@see \anvildev\simpleform\stencils\StencilLibrary} so third
  * parties can contribute their own form stencils:
  *
  * ```php
@@ -25,6 +25,6 @@ use yii\base\Event;
  */
 class RegisterStencilsEvent extends Event
 {
-    /** @var array<int,\fabianhaef\simpleform\stencils\Stencil> */
+    /** @var array<int,\anvildev\simpleform\stencils\Stencil> */
     public array $stencils = [];
 }

@@ -1,11 +1,11 @@
 <?php
 
-namespace fabianhaef\simpleform\tests\smoke;
+namespace anvildev\simpleform\tests\smoke;
 
+use anvildev\simpleform\elements\Form;
+use anvildev\simpleform\elements\Submission;
+use anvildev\simpleform\Plugin;
 use Craft;
-use fabianhaef\simpleform\elements\Form;
-use fabianhaef\simpleform\elements\Submission;
-use fabianhaef\simpleform\Plugin;
 use SmokeTester;
 
 /**
@@ -14,7 +14,7 @@ use SmokeTester;
  * Exercises the per-form success message override (with placeholder
  * interpolation), the global fallback, and the URL/entry redirect actions
  * through the shared submit path + the real
- * {@see \fabianhaef\simpleform\services\SubmissionService::resolvePostSubmit()}
+ * {@see \anvildev\simpleform\services\SubmissionService::resolvePostSubmit()}
  * — the exact resolution the SubmitController and GraphQL mutation both use.
  * Forms and fields are seeded through the data layer (see {@see BaseSmokeCest}).
  *

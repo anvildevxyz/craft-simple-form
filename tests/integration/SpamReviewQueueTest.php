@@ -1,15 +1,15 @@
 <?php
 
-namespace fabianhaef\simpleform\tests\integration;
+namespace anvildev\simpleform\tests\integration;
 
+use anvildev\simpleform\controllers\SubmissionsController;
+use anvildev\simpleform\elements\Submission;
+use anvildev\simpleform\elements\SubmissionStatus;
+use anvildev\simpleform\Plugin;
 use Craft;
 use craft\db\Query;
 use craft\test\TestMailer;
 use craft\web\Response;
-use fabianhaef\simpleform\controllers\SubmissionsController;
-use fabianhaef\simpleform\elements\Submission;
-use fabianhaef\simpleform\elements\SubmissionStatus;
-use fabianhaef\simpleform\Plugin;
 use yii\mail\MessageInterface;
 
 /**
@@ -132,7 +132,7 @@ class SpamReviewQueueTest extends SimpleFormTestCase
             emailSubject: 'You got a submission',
         );
         $fieldId = $this->createField((int) $form->id, 'text', 'fullName', 'Full Name');
-        $reloaded = \fabianhaef\simpleform\elements\Form::find()->id($form->id)->one();
+        $reloaded = \anvildev\simpleform\elements\Form::find()->id($form->id)->one();
 
         $sub = new Submission();
         $sub->formId = (int) $reloaded->id;
@@ -144,7 +144,7 @@ class SpamReviewQueueTest extends SimpleFormTestCase
 
         $service = Plugin::getInstance()->getSubmissionService();
 
-        $sent = $this->captureSentMessages(function () use ($service, $sub): void {
+        $sent = $this->captureSentMessages(function() use ($service, $sub): void {
             // First approve: SPAM → NEW releases the withheld email.
             $this->assertTrue($service->updateStatus((int) $sub->id, SubmissionStatus::NEW));
             // Second approve (already NEW): no-op, must not re-send.
@@ -168,7 +168,7 @@ class SpamReviewQueueTest extends SimpleFormTestCase
 
         if ($mailer instanceof TestMailer) {
             $original = $mailer->callback;
-            $mailer->callback = function (MessageInterface $message) use (&$collected, $original): void {
+            $mailer->callback = function(MessageInterface $message) use (&$collected, $original): void {
                 $collected[] = $message;
                 if (is_callable($original)) {
                     $original($message);

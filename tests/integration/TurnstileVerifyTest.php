@@ -1,9 +1,9 @@
 <?php
 
-namespace fabianhaef\simpleform\tests\integration;
+namespace anvildev\simpleform\tests\integration;
 
-use fabianhaef\simpleform\captcha\TurnstileProvider;
-use fabianhaef\simpleform\Plugin;
+use anvildev\simpleform\captcha\TurnstileProvider;
+use anvildev\simpleform\Plugin;
 use GuzzleHttp\Client;
 use GuzzleHttp\Handler\MockHandler;
 use GuzzleHttp\HandlerStack;

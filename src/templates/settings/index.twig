@@ -3,7 +3,7 @@
 
 {% set title = 'Settings'|t('simple-form') %}
 {% set selectedSubnavItem = 'settings' %}
-{% do craft.app.view.registerAssetBundle('fabianhaef\\simpleform\\web\\assets\\cp\\SimpleFormCpAsset') %}
+{% do craft.app.view.registerAssetBundle('anvildev\\simpleform\\web\\assets\\cp\\SimpleFormCpAsset') %}
 {% set selectedSettingsSubnavItem = selectedSettingsSubnavItem ?? 'general' %}
 
 {# Native Craft header tabs for the settings sub-sections. Each tab is a real

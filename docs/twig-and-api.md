@@ -120,7 +120,7 @@ other service accessors then autocomplete with full return types.
 `Form` is a standard Craft element, so the element query is the entry point:
 
 ```php
-use fabianhaef\simpleform\elements\Form;
+use anvildev\simpleform\elements\Form;
 
 $form = Form::find()->handle('contact')->one();
 ```
@@ -131,7 +131,7 @@ on the site you want resolved (the Twig and GraphQL layers default to the curren
 by the form-structure service:
 
 ```php
-use fabianhaef\simpleform\Plugin;
+use anvildev\simpleform\Plugin;
 
 $siteId = Craft::$app->getSites()->getCurrentSite()->id;
 $fields = Plugin::getInstance()->getFormStructure()->getFieldSet($form->id, $siteId);
@@ -145,7 +145,7 @@ protection, conditional logic, the lifecycle events and the notification email
 behave identically no matter the caller:
 
 ```php
-use fabianhaef\simpleform\Plugin;
+use anvildev\simpleform\Plugin;
 
 $service = Plugin::getInstance()->getSubmissionService();
 
@@ -268,8 +268,8 @@ operator sets `allowGraphqlCaptchaBypass`.
 `SubmissionEvent` is fired around every save (front-end, GraphQL or MCP):
 
 ```php
-use fabianhaef\simpleform\Plugin;
-use fabianhaef\simpleform\events\SubmissionEvent;
+use anvildev\simpleform\Plugin;
+use anvildev\simpleform\events\SubmissionEvent;
 use yii\base\Event;
 
 Event::on(
@@ -297,12 +297,12 @@ performance — only fires when a handler is attached, so the default fast paths
 (including the field-set cache) are untouched.
 
 ```php
-use fabianhaef\simpleform\Plugin;
-use fabianhaef\simpleform\events\DefineFieldSetEvent;
-use fabianhaef\simpleform\events\ModifyRenderContextEvent;
-use fabianhaef\simpleform\events\BeforeValidateSubmissionEvent;
-use fabianhaef\simpleform\events\BeforeSendNotificationEvent;
-use fabianhaef\simpleform\events\BeforeIntegrationDispatchEvent;
+use anvildev\simpleform\Plugin;
+use anvildev\simpleform\events\DefineFieldSetEvent;
+use anvildev\simpleform\events\ModifyRenderContextEvent;
+use anvildev\simpleform\events\BeforeValidateSubmissionEvent;
+use anvildev\simpleform\events\BeforeSendNotificationEvent;
+use anvildev\simpleform\events\BeforeIntegrationDispatchEvent;
 use yii\base\Event;
 
 // Add / remove / reorder a form's resolved fields for a site.
@@ -352,12 +352,12 @@ Four register events let third parties extend the plugin. All are fired on
 `Plugin::class`:
 
 ```php
-use fabianhaef\simpleform\Plugin;
-use fabianhaef\simpleform\events\RegisterFieldTypesEvent;
-use fabianhaef\simpleform\events\RegisterIntegrationTypesEvent;
-use fabianhaef\simpleform\events\RegisterCaptchaProvidersEvent;
-use fabianhaef\simpleform\events\RegisterStencilsEvent;
-use fabianhaef\simpleform\stencils\Stencil;
+use anvildev\simpleform\Plugin;
+use anvildev\simpleform\events\RegisterFieldTypesEvent;
+use anvildev\simpleform\events\RegisterIntegrationTypesEvent;
+use anvildev\simpleform\events\RegisterCaptchaProvidersEvent;
+use anvildev\simpleform\events\RegisterStencilsEvent;
+use anvildev\simpleform\stencils\Stencil;
 use yii\base\Event;
 
 // Add a custom field type.

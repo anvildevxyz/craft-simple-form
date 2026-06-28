@@ -1,8 +1,8 @@
 <?php
 
-namespace fabianhaef\simpleform\tests\unit;
+namespace anvildev\simpleform\tests\unit;
 
-use fabianhaef\simpleform\helpers\HiddenValueResolver;
+use anvildev\simpleform\helpers\HiddenValueResolver;
 use PHPUnit\Framework\TestCase;
 
 /**

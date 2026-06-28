@@ -1,14 +1,14 @@
 <?php
 
-namespace fabianhaef\simpleform\mcp\tools;
+namespace anvildev\simpleform\mcp\tools;
 
-use fabianhaef\simpleform\mcp\Scopes;
-use fabianhaef\simpleform\mcp\tools\support\SubmissionQueryBuilder;
+use anvildev\simpleform\mcp\Scopes;
+use anvildev\simpleform\mcp\tools\support\SubmissionQueryBuilder;
 
 /**
  * MCP tool: query submissions with filters and paging.
  *
- * Reads through the existing {@see \fabianhaef\simpleform\elements\Submission}
+ * Reads through the existing {@see \anvildev\simpleform\elements\Submission}
  * element query (with eager-loaded forms, per #56). Gated behind the distinct
  * submissions:read scope, NOT forms:manage — submission data access is
  * independently controllable (privacy default).

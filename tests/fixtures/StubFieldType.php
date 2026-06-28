@@ -1,8 +1,8 @@
 <?php
 
-namespace fabianhaef\simpleform\tests\fixtures;
+namespace anvildev\simpleform\tests\fixtures;
 
-use fabianhaef\simpleform\fields\FieldType;
+use anvildev\simpleform\fields\FieldType;
 
 /**
  * A minimal custom field type used by DeveloperEventsTest to verify the

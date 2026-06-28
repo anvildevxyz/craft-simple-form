@@ -1,9 +1,9 @@
 <?php
 
-namespace fabianhaef\simpleform\fields;
+namespace anvildev\simpleform\fields;
 
+use anvildev\simpleform\helpers\SignaturePng;
 use Craft;
-use fabianhaef\simpleform\helpers\SignaturePng;
 
 /**
  * A drawn-signature field (#129). The visitor signs on an HTML `<canvas>` pad;

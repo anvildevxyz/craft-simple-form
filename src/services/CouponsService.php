@@ -1,12 +1,12 @@
 <?php
 
-namespace fabianhaef\simpleform\services;
+namespace anvildev\simpleform\services;
 
+use anvildev\simpleform\models\CouponModel;
 use Craft;
 use craft\db\Query;
 use craft\helpers\Db;
 use craft\helpers\StringHelper;
-use fabianhaef\simpleform\models\CouponModel;
 use yii\base\Component;
 use yii\db\Expression;
 

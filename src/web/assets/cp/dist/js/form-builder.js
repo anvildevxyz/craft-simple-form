@@ -1,7 +1,7 @@
 (function() {
     'use strict';
 
-    // Mirrors fabianhaef\simpleform\helpers\FormRows::MAX_COLUMNS — keep in sync.
+    // Mirrors anvildev\simpleform\helpers\FormRows::MAX_COLUMNS — keep in sync.
     var MAX_COLUMNS = 4;
 
     // Pure, order-driven row grouping — parity with the PHP FormRows::group().

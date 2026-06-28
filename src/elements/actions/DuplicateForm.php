@@ -1,12 +1,12 @@
 <?php
 
-namespace fabianhaef\simpleform\elements\actions;
+namespace anvildev\simpleform\elements\actions;
 
+use anvildev\simpleform\elements\Form;
+use anvildev\simpleform\Plugin;
 use Craft;
 use craft\base\ElementAction;
 use craft\elements\db\ElementQueryInterface;
-use fabianhaef\simpleform\elements\Form;
-use fabianhaef\simpleform\Plugin;
 
 /**
  * Bulk-duplicate the selected forms (#138): each is deep-copied into a new,

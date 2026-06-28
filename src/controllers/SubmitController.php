@@ -1,11 +1,11 @@
 <?php
 
-namespace fabianhaef\simpleform\controllers;
+namespace anvildev\simpleform\controllers;
 
+use anvildev\simpleform\elements\Form;
+use anvildev\simpleform\Plugin;
 use Craft;
 use craft\web\Controller;
-use fabianhaef\simpleform\elements\Form;
-use fabianhaef\simpleform\Plugin;
 use yii\web\Response;
 
 class SubmitController extends Controller
@@ -235,7 +235,7 @@ class SubmitController extends Controller
     /**
      * Passive partial capture (#242): the front end posts the values entered so
      * far (debounced, on blur / step change) and they are stored as a passive
-     * partial via {@see \fabianhaef\simpleform\services\DraftService}. Distinct
+     * partial via {@see \anvildev\simpleform\services\DraftService}. Distinct
      * from save-and-continue: never surfaced to the visitor, fires no
      * notifications/integrations/payments/spam, and is best-effort — any failure
      * returns a quiet `success:false` rather than an error, so a capture problem

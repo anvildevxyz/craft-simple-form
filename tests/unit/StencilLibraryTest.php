@@ -1,8 +1,8 @@
 <?php
 
-namespace fabianhaef\simpleform\tests\unit;
+namespace anvildev\simpleform\tests\unit;
 
-use fabianhaef\simpleform\stencils\Stencil;
+use anvildev\simpleform\stencils\Stencil;
 use PHPUnit\Framework\TestCase;
 
 /**

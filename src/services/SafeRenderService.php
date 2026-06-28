@@ -1,6 +1,6 @@
 <?php
 
-namespace fabianhaef\simpleform\services;
+namespace anvildev\simpleform\services;
 
 use Craft;
 use craft\web\twig\SecurityPolicy;
@@ -12,7 +12,7 @@ use yii\base\Component;
  * Renders admin/editor-authored Twig strings with the Twig sandbox FORCED on,
  * the single safe-render seam shared by the notification email body
  * ({@see EmailService}) and the HTML layout block
- * ({@see \fabianhaef\simpleform\fields\HtmlFieldType}).
+ * ({@see \anvildev\simpleform\fields\HtmlFieldType}).
  *
  * Craft's own `renderSandboxedString()` is a no-op unless the operator sets the
  * global `enableTwigSandbox` config (default false), so we cannot rely on it.

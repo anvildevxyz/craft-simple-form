@@ -1,9 +1,9 @@
 <?php
 
-namespace fabianhaef\simpleform\fields;
+namespace anvildev\simpleform\fields;
 
+use anvildev\simpleform\Plugin;
 use Craft;
-use fabianhaef\simpleform\Plugin;
 
 /**
  * A container field holding a small set of inner sub-fields the visitor can
@@ -297,7 +297,7 @@ class RepeaterFieldType extends FieldType
         string $index,
         array $rowValue,
         array $innerDefs,
-        \fabianhaef\simpleform\services\FieldTypeRegistry $registry,
+        \anvildev\simpleform\services\FieldTypeRegistry $registry,
         string $removeLabel,
     ): string {
         $html = '<fieldset class="simple-form-repeater-row" data-sf-repeater-row>';

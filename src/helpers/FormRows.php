@@ -1,6 +1,6 @@
 <?php
 
-namespace fabianhaef\simpleform\helpers;
+namespace anvildev\simpleform\helpers;
 
 /**
  * Groups a step's ordered fields into rows (each a list of 1..N columns) by each

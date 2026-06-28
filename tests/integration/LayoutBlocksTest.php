@@ -1,13 +1,13 @@
 <?php
 
-namespace fabianhaef\simpleform\tests\integration;
+namespace anvildev\simpleform\tests\integration;
 
+use anvildev\simpleform\elements\Submission;
+use anvildev\simpleform\fields\HtmlFieldType;
+use anvildev\simpleform\helpers\SubmissionCsv;
+use anvildev\simpleform\Plugin;
+use anvildev\simpleform\TwigExtension;
 use Craft;
-use fabianhaef\simpleform\elements\Submission;
-use fabianhaef\simpleform\fields\HtmlFieldType;
-use fabianhaef\simpleform\helpers\SubmissionCsv;
-use fabianhaef\simpleform\Plugin;
-use fabianhaef\simpleform\TwigExtension;
 
 /**
  * #127 — value-less layout blocks (heading, divider, html) thread through the
@@ -105,7 +105,7 @@ class LayoutBlocksTest extends SimpleFormTestCase
         $this->createField($form->id, 'heading', 'h', 'Heading', false, ['level' => 'h3']);
         $this->createField($form->id, 'text', 'name', 'Name');
 
-        $fields = (new \fabianhaef\simpleform\models\FormModel($form))->getFields();
+        $fields = (new \anvildev\simpleform\models\FormModel($form))->getFields();
         $byType = [];
         foreach ($fields as $field) {
             $byType[$field->getType()] = $field->isInputType();
@@ -127,7 +127,7 @@ class LayoutBlocksTest extends SimpleFormTestCase
         $siteId = Craft::$app->getSites()->getPrimarySite()->id;
         $htmlId = $this->createField($form->id, 'html', 'note', '', false, [], [$siteId], '<p>original</p>');
 
-        $sync = new \fabianhaef\simpleform\services\FieldSyncService();
+        $sync = new \anvildev\simpleform\services\FieldSyncService();
 
         // A new HTML block with a body is gated.
         $this->assertTrue($sync->htmlBlockBodyChanged(

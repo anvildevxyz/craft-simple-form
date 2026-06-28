@@ -1,15 +1,15 @@
 <?php
 
-namespace fabianhaef\simpleform\integrations;
+namespace anvildev\simpleform\integrations;
 
-use fabianhaef\simpleform\elements\Submission;
+use anvildev\simpleform\elements\Submission;
 
 /**
  * An outbound integration type (connector). Implementations are stateless
  * transformers: per-form config comes in, an HTTP/SDK call goes out, an
  * {@see IntegrationResult} comes back. New connectors are added by implementing
  * this interface and registering the class via
- * {@see \fabianhaef\simpleform\Plugin::EVENT_REGISTER_INTEGRATION_TYPES} — no
+ * {@see \anvildev\simpleform\Plugin::EVENT_REGISTER_INTEGRATION_TYPES} — no
  * change to the submission path is required.
  */
 interface IntegrationTypeInterface

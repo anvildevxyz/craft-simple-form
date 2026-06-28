@@ -1,8 +1,8 @@
 <?php
 
-namespace fabianhaef\simpleform\helpers;
+namespace anvildev\simpleform\helpers;
 
-use fabianhaef\simpleform\exceptions\FormulaException;
+use anvildev\simpleform\exceptions\FormulaException;
 
 /**
  * Safe, side-effect-free arithmetic expression engine for the Calculation field

@@ -1,14 +1,14 @@
 <?php
 
-namespace fabianhaef\simpleform\tests\integration;
+namespace anvildev\simpleform\tests\integration;
 
+use anvildev\simpleform\elements\Form;
+use anvildev\simpleform\elements\Submission;
+use anvildev\simpleform\models\NotificationModel;
+use anvildev\simpleform\Plugin;
+use anvildev\simpleform\services\EmailService;
 use Craft;
 use craft\test\TestMailer;
-use fabianhaef\simpleform\elements\Form;
-use fabianhaef\simpleform\elements\Submission;
-use fabianhaef\simpleform\models\NotificationModel;
-use fabianhaef\simpleform\Plugin;
-use fabianhaef\simpleform\services\EmailService;
 use yii\mail\MessageInterface;
 
 /**
@@ -189,7 +189,7 @@ class NotificationAttachmentsTest extends SimpleFormTestCase
         $collected = [];
         if ($mailer instanceof TestMailer) {
             $original = $mailer->callback;
-            $mailer->callback = function (MessageInterface $message) use (&$collected, $original): void {
+            $mailer->callback = function(MessageInterface $message) use (&$collected, $original): void {
                 $collected[] = $message;
                 if (is_callable($original)) {
                     $original($message);

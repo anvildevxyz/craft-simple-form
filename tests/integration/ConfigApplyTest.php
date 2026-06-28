@@ -1,11 +1,11 @@
 <?php
 
-namespace fabianhaef\simpleform\tests\integration;
+namespace anvildev\simpleform\tests\integration;
 
+use anvildev\simpleform\console\controllers\FormsController;
+use anvildev\simpleform\elements\Form;
+use anvildev\simpleform\Plugin;
 use Craft;
-use fabianhaef\simpleform\console\controllers\FormsController;
-use fabianhaef\simpleform\elements\Form;
-use fabianhaef\simpleform\Plugin;
 use yii\console\ExitCode;
 
 /**

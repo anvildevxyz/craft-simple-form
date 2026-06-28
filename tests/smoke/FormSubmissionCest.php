@@ -1,15 +1,15 @@
 <?php
 
-namespace fabianhaef\simpleform\tests\smoke;
+namespace anvildev\simpleform\tests\smoke;
 
-use fabianhaef\simpleform\elements\Submission;
+use anvildev\simpleform\elements\Submission;
 use SmokeTester;
 
 /**
  * Form Submission Smoke Tests (functional).
  *
  * Exercises the end-to-end submit flow — seed a multi-field form, post through
- * the shared {@see \fabianhaef\simpleform\services\SubmissionService::createFromRequest()}
+ * the shared {@see \anvildev\simpleform\services\SubmissionService::createFromRequest()}
  * entry point, then assert the persisted {@see Submission} carries the submitted
  * values for each field type. Forms and fields are seeded through the data layer
  * (see {@see BaseSmokeCest}).

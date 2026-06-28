@@ -1,6 +1,6 @@
 <?php
 
-namespace fabianhaef\simpleform\tests\unit;
+namespace anvildev\simpleform\tests\unit;
 
 use PHPUnit\Framework\TestCase;
 
@@ -37,7 +37,7 @@ class SchemaArtifactTest extends TestCase
 
         $checked = 0;
         foreach (glob($this->pluginRoot() . '/src/gql/types/*.php') ?: [] as $file) {
-            $class = 'fabianhaef\\simpleform\\gql\\types\\' . basename($file, '.php');
+            $class = 'anvildev\\simpleform\\gql\\types\\' . basename($file, '.php');
             if (!class_exists($class) || !method_exists($class, 'getName')) {
                 continue;
             }

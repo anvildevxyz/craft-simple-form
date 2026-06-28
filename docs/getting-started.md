@@ -6,7 +6,7 @@ first. Each step links to the in-depth guide for that area.
 ## 1. Install
 
 ```bash
-composer require fabianhaef/craft-simple-form
+composer require anvildev/craft-simple-form
 php craft plugin/install simple-form
 ```
 

@@ -1,4 +1,5 @@
 <?php
+
 echo "\n🔍 SIMPLE FORM PLUGIN - CODE VALIDATION\n";
 echo "════════════════════════════════════════════════════\n\n";
 
@@ -28,7 +29,9 @@ $passed = 0;
 foreach ($checks as $name => $result) {
     $status = $result ? '✓' : '✗';
     echo "$status $name\n";
-    if ($result) $passed++;
+    if ($result) {
+        $passed++;
+    }
 }
 
 echo "\n════════════════════════════════════════════════════\n";

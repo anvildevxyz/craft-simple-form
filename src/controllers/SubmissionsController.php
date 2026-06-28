@@ -1,14 +1,14 @@
 <?php
 
-namespace fabianhaef\simpleform\controllers;
+namespace anvildev\simpleform\controllers;
 
+use anvildev\simpleform\elements\Form;
+use anvildev\simpleform\elements\Submission;
+use anvildev\simpleform\elements\SubmissionStatus;
+use anvildev\simpleform\helpers\SimpleFormPermissions;
+use anvildev\simpleform\Plugin;
 use Craft;
 use craft\web\Controller;
-use fabianhaef\simpleform\elements\Form;
-use fabianhaef\simpleform\elements\Submission;
-use fabianhaef\simpleform\elements\SubmissionStatus;
-use fabianhaef\simpleform\helpers\SimpleFormPermissions;
-use fabianhaef\simpleform\Plugin;
 use yii\web\Response;
 
 class SubmissionsController extends Controller
@@ -38,7 +38,7 @@ class SubmissionsController extends Controller
      * status, search, date range) for the current site — shared by the index
      * listing and the CSV export so both honor the same filters.
      */
-    private function buildFilteredQuery(\craft\web\Request $request, int $siteId): \fabianhaef\simpleform\elements\db\SubmissionQuery
+    private function buildFilteredQuery(\craft\web\Request $request, int $siteId): \anvildev\simpleform\elements\db\SubmissionQuery
     {
         $query = Submission::find()
             ->siteId($siteId)
@@ -79,7 +79,7 @@ class SubmissionsController extends Controller
         $request = Craft::$app->getRequest();
         $siteId = Craft::$app->getSites()->getCurrentSite()->id;
 
-        $csv = \fabianhaef\simpleform\helpers\SubmissionCsv::fromSubmissions(
+        $csv = \anvildev\simpleform\helpers\SubmissionCsv::fromSubmissions(
             $this->buildFilteredQuery($request, $siteId)->all()
         );
 
@@ -286,7 +286,12 @@ class SubmissionsController extends Controller
     {
         $pdf = Plugin::getInstance()->getPdf();
         if (!$pdf->isAvailable()) {
-            throw new \yii\web\ServerErrorHttpException(Craft::t('simple-form', 'Install the dompdf library to generate submission PDFs.'));
+            // Distinguish the two causes so the operator gets the right fix: a
+            // missing engine vs. an edition that gates PDF generation.
+            $message = $pdf->engineAvailable()
+                ? Craft::t('simple-form', 'Submission PDFs require the Pro edition.')
+                : Craft::t('simple-form', 'Install the dompdf library to generate submission PDFs.');
+            throw new \yii\web\ServerErrorHttpException($message);
         }
 
         $siteId = Craft::$app->getSites()->getCurrentSite()->id;

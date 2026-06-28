@@ -1,10 +1,10 @@
 <?php
 
-namespace fabianhaef\simpleform\tests\smoke;
+namespace anvildev\simpleform\tests\smoke;
 
+use anvildev\simpleform\Plugin;
+use anvildev\simpleform\services\AuditService;
 use craft\db\Query;
-use fabianhaef\simpleform\Plugin;
-use fabianhaef\simpleform\services\AuditService;
 use SmokeTester;
 
 /**

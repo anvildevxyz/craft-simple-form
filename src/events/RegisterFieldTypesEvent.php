@@ -1,11 +1,11 @@
 <?php
 
-namespace fabianhaef\simpleform\events;
+namespace anvildev\simpleform\events;
 
 use yii\base\Event;
 
 /**
- * Fired from {@see \fabianhaef\simpleform\services\FieldTypeRegistry} so third
+ * Fired from {@see \anvildev\simpleform\services\FieldTypeRegistry} so third
  * parties can register their own field-type classes the same way they register
  * integration types, captcha providers and stencils:
  *
@@ -25,6 +25,6 @@ use yii\base\Event;
  */
 class RegisterFieldTypesEvent extends Event
 {
-    /** @var array<int, class-string<\fabianhaef\simpleform\fields\FieldType>> */
+    /** @var array<int, class-string<\anvildev\simpleform\fields\FieldType>> */
     public array $types = [];
 }

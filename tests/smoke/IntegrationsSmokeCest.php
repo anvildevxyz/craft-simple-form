@@ -1,13 +1,13 @@
 <?php
 
-namespace fabianhaef\simpleform\tests\smoke;
+namespace anvildev\simpleform\tests\smoke;
 
+use anvildev\simpleform\elements\Submission;
+use anvildev\simpleform\integrations\DispatchStatus;
+use anvildev\simpleform\integrations\IntegrationResult;
+use anvildev\simpleform\integrations\IntegrationTypeInterface;
+use anvildev\simpleform\Plugin;
 use craft\db\Query;
-use fabianhaef\simpleform\elements\Submission;
-use fabianhaef\simpleform\integrations\DispatchStatus;
-use fabianhaef\simpleform\integrations\IntegrationResult;
-use fabianhaef\simpleform\integrations\IntegrationTypeInterface;
-use fabianhaef\simpleform\Plugin;
 use SmokeTester;
 
 /**
@@ -39,7 +39,7 @@ class IntegrationsSmokeCest extends BaseSmokeCest
         $integration = $this->createIntegration('stub_ok', 'Smoke OK');
         $this->attachIntegration((int) $form->id, (int) $integration->id);
 
-        $result = $this->withSyncSideEffects(function () use ($form, $fieldId) {
+        $result = $this->withSyncSideEffects(function() use ($form, $fieldId) {
             return $this->submitDirect($form, ['field_' . $fieldId => 'Ada']);
         });
 
@@ -59,7 +59,7 @@ class IntegrationsSmokeCest extends BaseSmokeCest
         $integration = $this->createIntegration('stub_fail', 'Smoke Fail');
         $this->attachIntegration((int) $form->id, (int) $integration->id);
 
-        $result = $this->withSyncSideEffects(function () use ($form, $fieldId) {
+        $result = $this->withSyncSideEffects(function() use ($form, $fieldId) {
             return $this->submitDirect($form, ['field_' . $fieldId => 'Ada']);
         });
 
@@ -130,7 +130,7 @@ class SmokeStubOkIntegration implements IntegrationTypeInterface
         return [];
     }
 
-    public function send(\fabianhaef\simpleform\elements\Submission $submission, array $settings): IntegrationResult
+    public function send(\anvildev\simpleform\elements\Submission $submission, array $settings): IntegrationResult
     {
         return IntegrationResult::success(200, 'ok');
     }
@@ -159,7 +159,7 @@ class SmokeStubFailIntegration implements IntegrationTypeInterface
         return [];
     }
 
-    public function send(\fabianhaef\simpleform\elements\Submission $submission, array $settings): IntegrationResult
+    public function send(\anvildev\simpleform\elements\Submission $submission, array $settings): IntegrationResult
     {
         return IntegrationResult::failure(503, 'service down');
     }

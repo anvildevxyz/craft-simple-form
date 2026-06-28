@@ -1,9 +1,9 @@
 <?php
 
-namespace fabianhaef\simpleform\tests\integration;
+namespace anvildev\simpleform\tests\integration;
 
-use fabianhaef\simpleform\models\CouponModel;
-use fabianhaef\simpleform\Plugin;
+use anvildev\simpleform\models\CouponModel;
+use anvildev\simpleform\Plugin;
 
 /**
  * Coupon usage accounting (#246): the atomic reserve/release that enforces a

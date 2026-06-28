@@ -1,9 +1,9 @@
 <?php
 
-namespace fabianhaef\simpleform\tests\unit;
+namespace anvildev\simpleform\tests\unit;
 
-use fabianhaef\simpleform\integrations\AbstractChatIntegration;
-use fabianhaef\simpleform\integrations\SlackIntegration;
+use anvildev\simpleform\integrations\AbstractChatIntegration;
+use anvildev\simpleform\integrations\SlackIntegration;
 use GuzzleHttp\Client;
 use GuzzleHttp\Exception\ConnectException;
 use GuzzleHttp\Handler\MockHandler;
@@ -25,7 +25,7 @@ class MockSlackIntegration extends SlackIntegration
     }
 
     /** @param array<string, mixed> $payload */
-    public function postPublic(string $url, array $payload): \fabianhaef\simpleform\integrations\IntegrationResult
+    public function postPublic(string $url, array $payload): \anvildev\simpleform\integrations\IntegrationResult
     {
         return $this->post($url, $payload);
     }
@@ -80,7 +80,7 @@ class ChatIntegrationTest extends TestCase
 
     /**
      * SSRF guard (F3): a loopback/private URL must be blocked by the consolidated
-     * {@see \fabianhaef\simpleform\integrations\support\ApiConnector::request()}
+     * {@see \anvildev\simpleform\integrations\support\ApiConnector::request()}
      * path before any HTTP call is made. The mock has no queued response, so a
      * request reaching the client would throw — proving the guard short-circuits.
      *

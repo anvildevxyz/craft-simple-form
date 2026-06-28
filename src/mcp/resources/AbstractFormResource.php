@@ -1,8 +1,8 @@
 <?php
 
-namespace fabianhaef\simpleform\mcp\resources;
+namespace anvildev\simpleform\mcp\resources;
 
-use fabianhaef\simpleform\elements\Form;
+use anvildev\simpleform\elements\Form;
 
 /**
  * Shared plumbing for the form-scoped MCP resource providers ({@code form://…},
@@ -12,7 +12,7 @@ use fabianhaef\simpleform\elements\Form;
  * tail, so a concrete provider only declares its scheme, scope, MIME and the
  * per-resource shaping ({@see self::describe()} / {@see self::payload()}).
  *
- * @phpstan-import-type McpError from \fabianhaef\simpleform\mcp\tools\ToolInterface
+ * @phpstan-import-type McpError from \anvildev\simpleform\mcp\tools\ToolInterface
  * @phpstan-import-type McpResourceContents from ResourceProviderInterface
  */
 abstract class AbstractFormResource implements ResourceProviderInterface

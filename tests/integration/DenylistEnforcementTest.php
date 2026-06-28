@@ -1,13 +1,12 @@
 <?php
 
-namespace fabianhaef\simpleform\tests\integration;
+namespace anvildev\simpleform\tests\integration;
 
+use anvildev\simpleform\elements\SubmissionStatus;
+use anvildev\simpleform\models\Settings;
+use anvildev\simpleform\Plugin;
 use Craft;
 use craft\db\Query;
-use fabianhaef\simpleform\elements\Form;
-use fabianhaef\simpleform\elements\SubmissionStatus;
-use fabianhaef\simpleform\models\Settings;
-use fabianhaef\simpleform\Plugin;
 
 /**
  * #140 — Settings-driven denylists enforced in SubmissionService::submit():

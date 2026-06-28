@@ -1,15 +1,15 @@
 <?php
 
-namespace fabianhaef\simpleform\tests\unit;
+namespace anvildev\simpleform\tests\unit;
 
-use fabianhaef\simpleform\mcp\tools\support\FormPresenter;
+use anvildev\simpleform\mcp\tools\support\FormPresenter;
 use PHPUnit\Framework\TestCase;
 
 /**
  * Unit coverage for the parts of {@see FormPresenter} that don't touch the
  * element layer — the shared `id`/`handle` inputSchema selector (#167).
  * Resolver behaviour (found-by-id, found-by-handle, not-found) is covered by
- * {@see \fabianhaef\simpleform\tests\integration\McpFormToolsTest} where a Craft
+ * {@see \anvildev\simpleform\tests\integration\McpFormToolsTest} where a Craft
  * app and DB are available.
  */
 class FormPresenterTest extends TestCase

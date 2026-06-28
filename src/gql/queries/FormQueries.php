@@ -1,14 +1,14 @@
 <?php
 
-namespace fabianhaef\simpleform\gql\queries;
+namespace anvildev\simpleform\gql\queries;
 
+use anvildev\simpleform\elements\Form;
+use anvildev\simpleform\gql\resolvers\FormGqlResolver;
+use anvildev\simpleform\gql\types\FormType;
 use Craft;
 use craft\gql\base\Query as BaseQuery;
 use craft\gql\GqlEntityRegistry;
 use craft\helpers\Gql as GqlHelper;
-use fabianhaef\simpleform\elements\Form;
-use fabianhaef\simpleform\gql\resolvers\FormGqlResolver;
-use fabianhaef\simpleform\gql\types\FormType;
 use GraphQL\Type\Definition\Type;
 
 /**

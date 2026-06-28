@@ -1,12 +1,12 @@
 <?php
 
-namespace fabianhaef\simpleform\tests\integration;
+namespace anvildev\simpleform\tests\integration;
 
+use anvildev\simpleform\elements\Submission;
+use anvildev\simpleform\integrations\DiscordIntegration;
+use anvildev\simpleform\integrations\SlackIntegration;
+use anvildev\simpleform\Plugin;
 use Craft;
-use fabianhaef\simpleform\elements\Submission;
-use fabianhaef\simpleform\integrations\DiscordIntegration;
-use fabianhaef\simpleform\integrations\SlackIntegration;
-use fabianhaef\simpleform\Plugin;
 
 /**
  * Payload construction for the Slack/Discord connectors against a real

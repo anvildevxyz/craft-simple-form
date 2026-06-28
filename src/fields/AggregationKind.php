@@ -1,12 +1,12 @@
 <?php
 
-namespace fabianhaef\simpleform\fields;
+namespace anvildev\simpleform\fields;
 
 /**
  * How a field's submitted values roll up in the survey report (#240).
  *
  * Each field type names its own kind through {@see FieldType::aggregation()},
- * so {@see \fabianhaef\simpleform\services\ReportsService::fieldReport()} builds
+ * so {@see \anvildev\simpleform\services\ReportsService::fieldReport()} builds
  * the report straight from the form's field set with no hardcoded type list.
  *
  * @author Fabian Haefliger

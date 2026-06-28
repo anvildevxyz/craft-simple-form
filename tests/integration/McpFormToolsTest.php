@@ -1,15 +1,15 @@
 <?php
 
-namespace fabianhaef\simpleform\tests\integration;
+namespace anvildev\simpleform\tests\integration;
 
+use anvildev\simpleform\controllers\McpController;
+use anvildev\simpleform\elements\Form;
+use anvildev\simpleform\mcp\Scopes;
+use anvildev\simpleform\mcp\tools\support\FormPresenter;
+use anvildev\simpleform\Plugin;
 use Craft;
 use craft\db\Query;
 use craft\web\Response;
-use fabianhaef\simpleform\controllers\McpController;
-use fabianhaef\simpleform\elements\Form;
-use fabianhaef\simpleform\mcp\Scopes;
-use fabianhaef\simpleform\mcp\tools\support\FormPresenter;
-use fabianhaef\simpleform\Plugin;
 
 /**
  * Integration coverage for the #65 form-management MCP tools. Each test drives
@@ -217,6 +217,48 @@ class McpFormToolsTest extends SimpleFormTestCase
 
         $this->assertTrue($res['result']['isError']);
         $this->assertArrayHasKey('config', $res['result']['structuredContent']['errors']);
+    }
+
+    public function testAddFieldToolRejectsProFieldTypeOnSolo(): void
+    {
+        $this->requireCraft();
+        $form = $this->createForm('Solo Field', 'soloFieldForm');
+        $formId = (int)$form->id;
+
+        // The MCP endpoint as a whole is Pro-gated (McpController::beforeAction on
+        // CAP_DEV_TOOLS), so the tool is invoked directly here to exercise its own
+        // edition gate — the defense-in-depth that keeps add_field at parity with
+        // the CP save gate should the endpoint ever be reached on Solo.
+        $tool = new \anvildev\simpleform\mcp\tools\AddFieldTool();
+
+        $plugin = Plugin::getInstance();
+        $originalEdition = $plugin->edition;
+        $plugin->edition = \anvildev\simpleform\Editions::SOLO;
+
+        try {
+            $blocked = $tool->call([
+                'formId' => $formId,
+                'type' => 'rating',
+                'handle' => 'score',
+                'label' => 'Score',
+                'config' => ['max' => 5],
+            ]);
+            $this->assertTrue($blocked['isError']);
+            $this->assertArrayHasKey('type', $blocked['errors']);
+            $this->assertSame(0, $this->fieldCount($formId));
+
+            // A core field type is still allowed.
+            $allowed = $tool->call([
+                'formId' => $formId,
+                'type' => 'text',
+                'handle' => 'name',
+                'label' => 'Name',
+            ]);
+            $this->assertArrayNotHasKey('isError', $allowed);
+            $this->assertSame(1, $this->fieldCount($formId));
+        } finally {
+            $plugin->edition = $originalEdition;
+        }
     }
 
     public function testDeleteFormRequiresConfirm(): void

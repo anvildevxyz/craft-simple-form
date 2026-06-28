@@ -1,11 +1,11 @@
 <?php
 
-namespace fabianhaef\simpleform\mcp\tools;
+namespace anvildev\simpleform\mcp\tools;
 
-use fabianhaef\simpleform\elements\Form;
-use fabianhaef\simpleform\mcp\Scopes;
-use fabianhaef\simpleform\mcp\tools\support\InsightCorpus;
-use fabianhaef\simpleform\mcp\tools\support\SubmissionQueryBuilder;
+use anvildev\simpleform\elements\Form;
+use anvildev\simpleform\mcp\Scopes;
+use anvildev\simpleform\mcp\tools\support\InsightCorpus;
+use anvildev\simpleform\mcp\tools\support\SubmissionQueryBuilder;
 
 /**
  * AI-insight tool: flag likely-spam submissions using cheap, explainable
@@ -14,7 +14,7 @@ use fabianhaef\simpleform\mcp\tools\support\SubmissionQueryBuilder;
  * SIGNAL PROVENANCE
  * -----------------
  * The plugin's honeypot and captcha checks run BEFORE a submission is stored
- * (see {@see \fabianhaef\simpleform\services\SubmissionService}): a filled
+ * (see {@see \anvildev\simpleform\services\SubmissionService}): a filled
  * honeypot or a failed captcha is rejected outright, so those spam attempts
  * never become rows. This tool therefore operates on the submissions that DID
  * get through and reuses the same notion of spam those defences encode (junk

@@ -1,6 +1,6 @@
 <?php
 
-namespace fabianhaef\simpleform\integrations;
+namespace anvildev\simpleform\integrations;
 
 /**
  * Raised by {@see AbstractGoogleIntegration} when a Google credential is missing,

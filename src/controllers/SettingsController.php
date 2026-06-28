@@ -1,13 +1,14 @@
 <?php
 
-namespace fabianhaef\simpleform\controllers;
+namespace anvildev\simpleform\controllers;
 
+use anvildev\simpleform\Editions;
+use anvildev\simpleform\helpers\SimpleFormPermissions;
+use anvildev\simpleform\mcp\Scopes;
+use anvildev\simpleform\Plugin;
 use Craft;
 use craft\helpers\StringHelper;
 use craft\web\Controller;
-use fabianhaef\simpleform\helpers\SimpleFormPermissions;
-use fabianhaef\simpleform\mcp\Scopes;
-use fabianhaef\simpleform\Plugin;
 use yii\web\Response;
 
 class SettingsController extends Controller
@@ -46,7 +47,7 @@ class SettingsController extends Controller
             'submitRateLimitPerMinute',
             'allowGraphqlCaptchaBypass',
         ],
-        'privacy' => ['retainSubmissionsDays', 'retainIntegrationLogsDays', 'retainAuditLogDays', 'anonymizeInsteadOfDelete'],
+        'privacy' => ['retainSubmissionsDays', 'retainIntegrationLogsDays', 'retainAuditLogDays', 'anonymizeInsteadOfDelete', 'partialRetentionDays'],
         // The MCP tab persists only the enable toggle through the generic save;
         // tokens are created/revoked via dedicated actions (one-time secret).
         'mcp' => ['enableMcp'],
@@ -54,7 +55,7 @@ class SettingsController extends Controller
 
     private const BOOL_FIELDS = ['enableHoneypot', 'enableCaptcha', 'enableMcp', 'enableAkismet', 'enableDenylists', 'anonymizeInsteadOfDelete', 'allowGraphqlCaptchaBypass', 'enableWorkflow'];
     private const FLOAT_FIELDS = ['recaptchaV3MinScore'];
-    private const INT_FIELDS = ['retainSubmissionsDays', 'retainIntegrationLogsDays', 'retainAuditLogDays', 'submitRateLimitPerMinute', 'maxAttachmentSizeMb'];
+    private const INT_FIELDS = ['retainSubmissionsDays', 'retainIntegrationLogsDays', 'retainAuditLogDays', 'partialRetentionDays', 'submitRateLimitPerMinute', 'maxAttachmentSizeMb'];
 
     public function actionIndex(): Response
     {
@@ -83,19 +84,42 @@ class SettingsController extends Controller
         $bool = array_flip(self::BOOL_FIELDS);
         $float = array_flip(self::FLOAT_FIELDS);
         $int = array_flip(self::INT_FIELDS);
+        // On Solo the Pro features' companion config is frozen (can't reconfigure a
+        // still-running Pro feature); their "off switches" stay operable but only
+        // accept off/unchanged (see below).
+        $frozen = Editions::isPro() ? [] : array_flip(Editions::PRO_CONFIG_SETTINGS);
+        $blockedEnables = [];
         foreach (self::TAB_FIELDS[$tab] as $field) {
+            $stored = $values[$field] ?? null;
+
+            // Frozen Pro config on Solo: keep the stored value untouched.
+            if (isset($frozen[$field])) {
+                continue;
+            }
+
             if (isset($bool[$field])) {
-                $values[$field] = (bool) $request->getBodyParam($field);
+                $new = (bool) $request->getBodyParam($field);
             } elseif (isset($float[$field])) {
-                $values[$field] = (float) $request->getBodyParam($field, $values[$field] ?? 0.5);
+                $new = (float) $request->getBodyParam($field, $stored ?? 0.5);
             } elseif (isset($int[$field])) {
-                $values[$field] = (int) $request->getBodyParam($field, $values[$field] ?? 0);
+                $new = (int) $request->getBodyParam($field, $stored ?? 0);
             } else {
-                $value = $request->getBodyParam($field, $values[$field] ?? null);
+                $value = $request->getBodyParam($field, $stored);
                 // F19: trim string settings (API keys, secrets, sender) so a
                 // stray copy-paste space doesn't silently break verification.
-                $values[$field] = is_string($value) ? trim($value) : $value;
+                $new = is_string($value) ? trim($value) : $value;
             }
+
+            // Authoring gate: Solo may turn a Pro feature off or leave it, but not
+            // newly enable it or change a still-on value. Keeping the off-switch
+            // operable means a downgraded site can still stop a running Pro feature
+            // (the runtime itself stays edition-blind).
+            if (Editions::blocksProSettingChange($field, $stored, $new)) {
+                $blockedEnables[] = $field;
+                continue;
+            }
+
+            $values[$field] = $new;
         }
 
         if (!Craft::$app->getPlugins()->savePluginSettings($plugin, $values)) {
@@ -113,7 +137,19 @@ class SettingsController extends Controller
             return $this->renderTab($tab);
         }
 
-        Craft::$app->getSession()->setNotice(Craft::t('simple-form', 'Settings saved.'));
+        if ($blockedEnables !== []) {
+            $labels = array_values(array_unique(array_map(
+                fn(string $field): string => $this->settingLabel($field),
+                $blockedEnables,
+            )));
+            Craft::$app->getSession()->setError(Craft::t(
+                'simple-form',
+                'Settings saved. These are Pro-only, so the changes that would enable or expand them were left unchanged: {features}',
+                ['features' => implode(', ', $labels)],
+            ));
+        } else {
+            Craft::$app->getSession()->setNotice(Craft::t('simple-form', 'Settings saved.'));
+        }
         return $this->redirect('simple-form/settings/' . $tab);
     }
 
@@ -307,6 +343,9 @@ class SettingsController extends Controller
         $vars = [
             'settings' => Plugin::getInstance()->getSettings(),
             'selectedSettingsSubnavItem' => $tab,
+            // Pro companion-config fields the templates must render read-only on
+            // Solo (empty on Pro). Single source: Editions::PRO_CONFIG_SETTINGS.
+            'proLockedFields' => Editions::isPro() ? [] : Editions::PRO_CONFIG_SETTINGS,
         ];
 
         if ($tab === 'spam') {
@@ -339,5 +378,21 @@ class SettingsController extends Controller
     {
         $tab = strtolower(trim((string) $raw));
         return isset(self::TAB_FIELDS[$tab]) ? $tab : 'general';
+    }
+
+    /**
+     * Human-readable label for a gated Pro setting, for the blocked-on-Solo flash
+     * message (so it never leaks raw camelCase handles). Modes map to their
+     * feature's name since that's what the operator recognises.
+     */
+    private function settingLabel(string $field): string
+    {
+        return match ($field) {
+            'enableAkismet', 'akismetMode' => Craft::t('simple-form', 'Akismet'),
+            'enableDenylists', 'denylistMode' => Craft::t('simple-form', 'Denylists'),
+            'retainSubmissionsDays' => Craft::t('simple-form', 'Automatic submission deletion'),
+            'retainAuditLogDays' => Craft::t('simple-form', 'Audit log retention'),
+            default => $field,
+        };
     }
 }

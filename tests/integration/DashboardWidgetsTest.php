@@ -1,12 +1,12 @@
 <?php
 
-namespace fabianhaef\simpleform\tests\integration;
+namespace anvildev\simpleform\tests\integration;
 
+use anvildev\simpleform\elements\Submission;
+use anvildev\simpleform\Plugin;
+use anvildev\simpleform\widgets\RecentSubmissionsWidget;
+use anvildev\simpleform\widgets\SubmissionCountWidget;
 use Craft;
-use fabianhaef\simpleform\elements\Submission;
-use fabianhaef\simpleform\Plugin;
-use fabianhaef\simpleform\widgets\RecentSubmissionsWidget;
-use fabianhaef\simpleform\widgets\SubmissionCountWidget;
 
 /**
  * #92 — dashboard widgets: the submission count (range + form filter) and the
@@ -16,7 +16,7 @@ use fabianhaef\simpleform\widgets\SubmissionCountWidget;
  */
 class DashboardWidgetsTest extends SimpleFormTestCase
 {
-    private function seed(string $handle, int $count): \fabianhaef\simpleform\elements\Form
+    private function seed(string $handle, int $count): \anvildev\simpleform\elements\Form
     {
         $form = $this->createForm('Widgets', $handle);
         $fieldId = $this->createField($form->id, 'text', 'name', 'Name');

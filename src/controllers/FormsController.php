@@ -1,21 +1,22 @@
 <?php
 
-namespace fabianhaef\simpleform\controllers;
+namespace anvildev\simpleform\controllers;
 
+use anvildev\simpleform\Editions;
+use anvildev\simpleform\elements\Form;
+use anvildev\simpleform\helpers\DialCodes;
+use anvildev\simpleform\helpers\FieldQueryHelper;
+use anvildev\simpleform\helpers\SimpleFormPermissions;
+use anvildev\simpleform\helpers\SiteHelper;
+use anvildev\simpleform\Plugin;
+use anvildev\simpleform\services\AuditService;
+use anvildev\simpleform\services\FieldSyncService;
+use anvildev\simpleform\services\FormPortabilityService;
 use Craft;
 use craft\enums\PropagationMethod;
 use craft\helpers\DateTimeHelper;
 use craft\models\Site;
 use craft\web\Controller;
-use fabianhaef\simpleform\elements\Form;
-use fabianhaef\simpleform\helpers\DialCodes;
-use fabianhaef\simpleform\helpers\FieldQueryHelper;
-use fabianhaef\simpleform\helpers\SimpleFormPermissions;
-use fabianhaef\simpleform\helpers\SiteHelper;
-use fabianhaef\simpleform\Plugin;
-use fabianhaef\simpleform\services\AuditService;
-use fabianhaef\simpleform\services\FieldSyncService;
-use fabianhaef\simpleform\services\FormPortabilityService;
 use yii\web\NotFoundHttpException;
 use yii\web\Response;
 
@@ -104,6 +105,12 @@ class FormsController extends Controller
             $form = new Form();
             $form->siteId = $site->id;
         }
+
+        // Snapshot the saved state before posted params overwrite it, so the
+        // edition gate can tell newly-enabled Pro capabilities from ones the form
+        // already had (no-new-escalation rule).
+        $existingFields = $form->id ? FieldQueryHelper::fieldsForForm((int)$form->id, $site->id) : [];
+        $priorSaveResume = (bool) $form->allowSaveResume;
 
         $form->name = $request->getBodyParam('name');
         $form->handle = $request->getBodyParam('handle');
@@ -195,6 +202,48 @@ class FormsController extends Controller
         $fieldErrors = $fieldSync->validate($items, $form->renderMode === 'conversational');
         if ($fieldErrors) {
             Craft::$app->getSession()->setError(reset($fieldErrors));
+            return $this->renderEdit($form, $site, $this->encodeBuilderJson($items));
+        }
+
+        // Edition gate (authoritative): Solo may not introduce *new* Pro field
+        // types. Pro fields already on the form survive a downgrade and stay
+        // editable; the builder palette only hides these client-side.
+        $submittedTypes = array_map(
+            static fn(array $item): string => (string)($item['type'] ?? ''),
+            array_filter($items, 'is_array'),
+        );
+        $existingTypes = array_map(
+            static fn(array $row): string => (string)$row['type'],
+            $existingFields,
+        );
+        $blockedProFields = Editions::blockedNewProFields(
+            array_values($submittedTypes),
+            array_values($existingTypes),
+        );
+        if ($blockedProFields) {
+            Craft::$app->getSession()->setError(Craft::t(
+                'simple-form',
+                'These field types require the Pro edition: {types}',
+                ['types' => implode(', ', $blockedProFields)],
+            ));
+            return $this->renderEdit($form, $site, $this->encodeBuilderJson($items));
+        }
+
+        // Edition gate (authoritative): Solo may not newly enable Pro form-level
+        // capabilities (conditional logic, multi-page, save & continue). Ones
+        // already on the saved form survive a downgrade and stay editable.
+        $blockedCaps = Editions::blockedNewFormCapabilities(
+            $items,
+            $form->allowSaveResume,
+            $existingFields,
+            $priorSaveResume,
+        );
+        if ($blockedCaps) {
+            Craft::$app->getSession()->setError(Craft::t(
+                'simple-form',
+                'These features require the Pro edition: {features}',
+                ['features' => implode(', ', array_map($this->capabilityLabel(...), $blockedCaps))],
+            ));
             return $this->renderEdit($form, $site, $this->encodeBuilderJson($items));
         }
 
@@ -432,7 +481,45 @@ class FormsController extends Controller
             // translate them. Single-site forms are always their own source.
             'isSourceSite' => count($supportedSites) <= 1
                 || $site->id === Craft::$app->getSites()->getPrimarySite()->id,
+            // Pro features this form already uses while running on Solo (a
+            // downgrade): the editor shows a non-blocking banner so the author
+            // knows what won't take effect and can't add more.
+            'proFeaturesInUse' => $this->proFeaturesInUse($form, $site),
         ]);
+    }
+
+    /**
+     * The human-facing Pro features an existing form already uses while the
+     * active edition is Solo. Empty on Pro, or for a form with no Pro usage.
+     *
+     * @return list<string>
+     */
+    private function proFeaturesInUse(Form $form, Site $site): array
+    {
+        if (Editions::isPro() || !$form->id) {
+            return [];
+        }
+
+        $fields = FieldQueryHelper::fieldsForForm((int)$form->id, $site->id);
+        $features = [];
+
+        $proFields = Editions::blockedNewProFields(
+            array_map(static fn(array $row): string => (string)$row['type'], $fields),
+            [],
+        );
+        if ($proFields !== []) {
+            $features[] = Craft::t('simple-form', 'Pro field types ({types})', ['types' => implode(', ', $proFields)]);
+        }
+
+        // Derive the form-level capabilities from the same enumeration the save
+        // gate uses (empty "existing" => every Pro capability currently in use is
+        // reported), so the banner and the gate can never drift apart.
+        $capabilities = Editions::blockedNewFormCapabilities($fields, (bool)$form->allowSaveResume, [], false);
+        foreach ($capabilities as $capability) {
+            $features[] = $this->capabilityLabel($capability);
+        }
+
+        return $features;
     }
 
     /**
@@ -461,6 +548,19 @@ class FormsController extends Controller
             'user' => $map($app->getUserGroups()->getAllGroups()),
             'asset' => array_values($volumes),
         ];
+    }
+
+    /**
+     * Human-facing label for a gated form capability, for the Pro-required error.
+     */
+    private function capabilityLabel(string $capability): string
+    {
+        return match ($capability) {
+            Editions::CAP_CONDITIONAL_LOGIC => Craft::t('simple-form', 'conditional logic'),
+            Editions::CAP_MULTI_PAGE => Craft::t('simple-form', 'multi-page forms'),
+            Editions::CAP_SAVE_CONTINUE => Craft::t('simple-form', 'save & continue later'),
+            default => $capability,
+        };
     }
 
     /**

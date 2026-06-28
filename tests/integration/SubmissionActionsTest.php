@@ -1,12 +1,12 @@
 <?php
 
-namespace fabianhaef\simpleform\tests\integration;
+namespace anvildev\simpleform\tests\integration;
 
+use anvildev\simpleform\elements\actions\SetSubmissionStatus;
+use anvildev\simpleform\elements\exporters\SubmissionExporter;
+use anvildev\simpleform\elements\Submission;
+use anvildev\simpleform\elements\SubmissionStatus;
 use Craft;
-use fabianhaef\simpleform\elements\actions\SetSubmissionStatus;
-use fabianhaef\simpleform\elements\exporters\SubmissionExporter;
-use fabianhaef\simpleform\elements\Submission;
-use fabianhaef\simpleform\elements\SubmissionStatus;
 
 /**
  * Submissions index bulk action + native exporter (#109).

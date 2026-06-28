@@ -1,12 +1,12 @@
 <?php
 
-namespace fabianhaef\simpleform\mcp\tools;
+namespace anvildev\simpleform\mcp\tools;
 
 /**
  * Contract for a single MCP tool.
  *
  * A tool is the unit of capability exposed over the MCP transport. Each tool
- * declares the one scope it requires; the dispatcher ({@see \fabianhaef\simpleform\mcp\McpServer})
+ * declares the one scope it requires; the dispatcher ({@see \anvildev\simpleform\mcp\McpServer})
  * enforces that scope (deny-by-default) before ever invoking {@see self::call()}.
  *
  * The in-band error envelope tools and resources return on failure (the

@@ -1,18 +1,18 @@
 <?php
 
-namespace fabianhaef\simpleform\stencils;
+namespace anvildev\simpleform\stencils;
 
+use anvildev\simpleform\events\RegisterStencilsEvent;
+use anvildev\simpleform\models\NotificationModel;
+use anvildev\simpleform\Plugin;
 use Craft;
-use fabianhaef\simpleform\events\RegisterStencilsEvent;
-use fabianhaef\simpleform\models\NotificationModel;
-use fabianhaef\simpleform\Plugin;
 use yii\base\Component;
 
 /**
  * The registry of built-in form stencils plus any contributed via
  * {@see Plugin::EVENT_REGISTER_STENCILS}. Stencils are pure data templates; the
  * write path lives in
- * {@see \fabianhaef\simpleform\services\FormCloneService::createFromStencil()}.
+ * {@see \anvildev\simpleform\services\FormCloneService::createFromStencil()}.
  *
  * @since 1.0.0
  * @author Fabian Haefliger

@@ -7,6 +7,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- Two commercial editions, **Solo** and **Pro**. Solo is the "better contact
+  form": unlimited forms, stored submissions, 16 core field types, email
+  notifications, honeypot/rate-limit/CAPTCHA spam protection, the webhook +
+  Craft entry/user integrations, and full multi-site / translatable forms. Pro
+  adds the 12 advanced field types (signature, payment, rating, opinion scale,
+  calculation, repeater, the element relations), conditional logic, multi-page,
+  save & continue later, the third-party integrations (Slack/Discord/CRM/Sheets),
+  Commerce payments, Akismet + denylists, PDF attachments, the audit log,
+  automated submission retention, and the MCP server / forms-as-code dev tools.
+- The edition gate governs **authoring, never runtime**: a form built on Pro
+  keeps rendering and accepting submissions after a downgrade to Solo. Saving
+  preserves its Pro features but can't extend them (no-new-escalation), and the
+  form editor shows a non-blocking "Pro features in use" banner.
+
+### Changed
+- A freshly-installed plugin resolves to the Solo edition by default; run the
+  Pro edition to unlock the full feature set.
+
 ## [1.0.0] - 2026-06-24
 
 ### Fixed

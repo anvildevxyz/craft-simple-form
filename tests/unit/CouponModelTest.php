@@ -1,8 +1,8 @@
 <?php
 
-namespace fabianhaef\simpleform\tests\unit;
+namespace anvildev\simpleform\tests\unit;
 
-use fabianhaef\simpleform\models\CouponModel;
+use anvildev\simpleform\models\CouponModel;
 use PHPUnit\Framework\TestCase;
 
 /**

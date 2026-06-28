@@ -1,18 +1,18 @@
 <?php
 
-namespace fabianhaef\simpleform\jobs;
+namespace anvildev\simpleform\jobs;
 
+use anvildev\simpleform\elements\Submission;
+use anvildev\simpleform\Plugin;
 use Craft;
 use craft\queue\BaseJob;
-use fabianhaef\simpleform\elements\Submission;
-use fabianhaef\simpleform\Plugin;
 
 /**
  * Sends a submission's notification emails off the queue (#143). Composing the
  * email can now render a submission PDF and read uploaded files for attachment —
  * potentially slow work that must never block the visitor's submit request. The
  * email body/recipients are resolved on the worker via the same
- * {@see \fabianhaef\simpleform\services\EmailService::sendSubmissionEmail()} path
+ * {@see \anvildev\simpleform\services\EmailService::sendSubmissionEmail()} path
  * the synchronous (Commerce/test) callers use.
  *
  * @author Fabian Haefliger

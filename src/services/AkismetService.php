@@ -1,14 +1,14 @@
 <?php
 
-namespace fabianhaef\simpleform\services;
+namespace anvildev\simpleform\services;
 
+use anvildev\simpleform\elements\Form;
+use anvildev\simpleform\elements\Submission;
+use anvildev\simpleform\fields\EmailFieldType;
+use anvildev\simpleform\fields\TextFieldType;
+use anvildev\simpleform\Plugin;
 use Craft;
 use craft\helpers\App;
-use fabianhaef\simpleform\elements\Form;
-use fabianhaef\simpleform\elements\Submission;
-use fabianhaef\simpleform\fields\EmailFieldType;
-use fabianhaef\simpleform\fields\TextFieldType;
-use fabianhaef\simpleform\Plugin;
 use GuzzleHttp\Client;
 use yii\base\Component;
 
@@ -32,6 +32,10 @@ class AkismetService extends Component
      */
     public function isSpam(Form $form, array $data): bool
     {
+        // Edition-blind at runtime: if Akismet is enabled it keeps scoring
+        // regardless of edition, so a Pro->Solo downgrade never silently lets spam
+        // through. Solo is prevented from *enabling* it (the settings authoring
+        // gate); the toggle below is the real on/off switch.
         $settings = Plugin::getInstance()->getSettings();
         if (!$settings->enableAkismet) {
             return false;

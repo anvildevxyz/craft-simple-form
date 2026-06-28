@@ -1,6 +1,6 @@
 <?php
 
-namespace fabianhaef\simpleform\helpers;
+namespace anvildev\simpleform\helpers;
 
 /**
  * Decodes and validates the PNG `data:` URL a Signature field posts (#129).

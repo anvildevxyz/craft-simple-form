@@ -18,9 +18,9 @@ declare(strict_types=1);
  *
  * @SuppressWarnings(PHPMD)
 */
-class \fabianhaef\simpleform\tests\smoke\FunctionalTester extends \Codeception\Actor
+class \anvildev\simpleform\tests\smoke\FunctionalTester extends \Codeception\Actor
 {
-    use _generated\\fabianhaef\simpleform\tests\smoke\FunctionalTesterActions;
+    use _generated\\anvildev\simpleform\tests\smoke\FunctionalTesterActions;
 
     /**
      * Define custom actions here

@@ -1,11 +1,11 @@
 <?php
 
-namespace fabianhaef\simpleform\tests\integration;
+namespace anvildev\simpleform\tests\integration;
 
+use anvildev\simpleform\elements\Form;
 use Craft;
 use craft\helpers\StringHelper;
 use craft\test\TestCase;
-use fabianhaef\simpleform\elements\Form;
 
 /**
  * Shared seeding helpers for the simple-form integration suite.

@@ -1,8 +1,8 @@
 <?php
 
-namespace fabianhaef\simpleform\tests\unit;
+namespace anvildev\simpleform\tests\unit;
 
-use fabianhaef\simpleform\services\FieldSyncService;
+use anvildev\simpleform\services\FieldSyncService;
 use PHPUnit\Framework\TestCase;
 use ReflectionClass;
 

@@ -1,13 +1,13 @@
 <?php
 
-namespace fabianhaef\simpleform\console\controllers;
+namespace anvildev\simpleform\console\controllers;
 
+use anvildev\simpleform\elements\Submission;
+use anvildev\simpleform\jobs\SendIntegrationJob;
+use anvildev\simpleform\Plugin;
 use Craft;
 use craft\console\Controller;
 use craft\helpers\Console;
-use fabianhaef\simpleform\elements\Submission;
-use fabianhaef\simpleform\jobs\SendIntegrationJob;
-use fabianhaef\simpleform\Plugin;
 use yii\console\ExitCode;
 
 /**

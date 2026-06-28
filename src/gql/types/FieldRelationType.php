@@ -1,6 +1,6 @@
 <?php
 
-namespace fabianhaef\simpleform\gql\types;
+namespace anvildev\simpleform\gql\types;
 
 use GraphQL\Type\Definition\Type;
 
@@ -10,7 +10,7 @@ use GraphQL\Type\Definition\Type;
  * the element type, the allowed sources, single/multi, the limit, and the
  * resolved allowed options (element id + title) for the requested site.
  *
- * @phpstan-import-type GqlFieldDefinitionMap from \fabianhaef\simpleform\gql\types\SimpleFormObjectType
+ * @phpstan-import-type GqlFieldDefinitionMap from \anvildev\simpleform\gql\types\SimpleFormObjectType
  *
  * @author Fabian Haefliger
  * @since 1.0.0

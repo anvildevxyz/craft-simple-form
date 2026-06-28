@@ -1,19 +1,20 @@
 <?php
 
-namespace fabianhaef\simpleform\services;
+namespace anvildev\simpleform\services;
 
+use anvildev\simpleform\Editions;
+use anvildev\simpleform\elements\Form;
+use anvildev\simpleform\helpers\FieldQueryHelper;
+use anvildev\simpleform\helpers\FormContentHelper;
+use anvildev\simpleform\models\ImportResult;
+use anvildev\simpleform\models\IntegrationModel;
+use anvildev\simpleform\models\NotificationModel;
+use anvildev\simpleform\Plugin;
 use Craft;
 use craft\db\Query;
 use craft\elements\Entry;
 use craft\enums\PropagationMethod;
 use craft\helpers\DateTimeHelper;
-use fabianhaef\simpleform\elements\Form;
-use fabianhaef\simpleform\helpers\FieldQueryHelper;
-use fabianhaef\simpleform\helpers\FormContentHelper;
-use fabianhaef\simpleform\models\ImportResult;
-use fabianhaef\simpleform\models\IntegrationModel;
-use fabianhaef\simpleform\models\NotificationModel;
-use fabianhaef\simpleform\Plugin;
 use yii\base\Component;
 use yii\base\InvalidArgumentException;
 
@@ -82,7 +83,7 @@ class FormPortabilityService extends Component
         return [
             '_meta' => [
                 'schemaVersion' => self::SCHEMA_VERSION,
-                'plugin' => 'fabianhaef/craft-simple-form',
+                'plugin' => 'anvildev/craft-simple-form',
                 'pluginVersion' => Plugin::getInstance()->getVersion(),
                 'exportedAt' => (new \DateTime('now', new \DateTimeZone('UTC')))->format(\DateTime::ATOM),
                 'exportedFromSite' => $sites->getSiteById((int)$form->siteId)?->handle
@@ -155,6 +156,11 @@ class FormPortabilityService extends Component
 
         $handle = $this->resolveHandle((string)$form['handle'], $mode, $result);
 
+        // Edition gate: importing a brand-new form must not slip Pro fields or
+        // Pro form-capabilities onto Solo (the CP/console/forms-as-code paths all
+        // funnel through here). Existing forms are handled in applyToExistingForm.
+        $this->assertEditionAllows($data, [], false);
+
         $transaction = Craft::$app->getDb()->beginTransaction();
         try {
             $newForm = $this->createForm($form, $handle, $result);
@@ -211,6 +217,14 @@ class FormPortabilityService extends Component
         $sites = Craft::$app->getSites();
         $canonicalSiteId = (int)$form->siteId;
         $canonicalSite = $sites->getSiteById($canonicalSiteId) ?? $sites->getPrimarySite();
+
+        // Edition gate (no-escalation): the file may keep Pro features the form
+        // already has after a downgrade, but may not introduce new ones on Solo.
+        $this->assertEditionAllows(
+            $data,
+            FieldQueryHelper::fieldsForForm($formId, $canonicalSiteId),
+            (bool)$form->allowSaveResume,
+        );
 
         // Apply form-level changes from the file (name, save-resume, per-site
         // content). Propagation is intentionally NOT changed on an existing form —
@@ -920,6 +934,42 @@ class FormPortabilityService extends Component
                 'errorMessage' => $errorMessage,
                 'dateUpdated' => $now,
             ], ['fieldId' => $fieldId, 'siteId' => $siteId])->execute();
+        }
+    }
+
+    /**
+     * Reject an import/apply that would introduce Pro field types or Pro
+     * form-capabilities onto Solo. The export field defs already carry `type`
+     * and `config` (with conditional/page), so the Editions detectors read them
+     * directly. A Pro feature already present on the target form is allowed
+     * through (no-new-escalation) via $existingItems.
+     *
+     * @param array<string, mixed> $data the decoded export document
+     * @param list<array<string, mixed>> $existingItems the target form's saved fields ([] for a new import)
+     * @throws InvalidArgumentException when Solo would be escalated
+     */
+    private function assertEditionAllows(array $data, array $existingItems, bool $existingSaveResume): void
+    {
+        $fields = is_array($data['fields'] ?? null)
+            ? array_values(array_filter($data['fields'], 'is_array'))
+            : [];
+        $formNode = is_array($data['form'] ?? null) ? $data['form'] : [];
+        $saveResume = (bool)($formNode['allowSaveResume'] ?? false);
+
+        $types = array_map(static fn(array $f): string => (string)($f['type'] ?? ''), $fields);
+        $existingTypes = array_map(static fn(array $f): string => (string)($f['type'] ?? ''), $existingItems);
+
+        $blocked = array_merge(
+            Editions::blockedNewProFields($types, $existingTypes),
+            Editions::blockedNewFormCapabilities($fields, $saveResume, $existingItems, $existingSaveResume),
+        );
+
+        if ($blocked !== []) {
+            throw new InvalidArgumentException(Craft::t(
+                'simple-form',
+                'This form requires the Pro edition (uses: {items}).',
+                ['items' => implode(', ', $blocked)],
+            ));
         }
     }
 

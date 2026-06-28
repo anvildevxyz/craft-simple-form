@@ -1,8 +1,8 @@
 <?php
 
-namespace fabianhaef\simpleform\tests\unit;
+namespace anvildev\simpleform\tests\unit;
 
-use fabianhaef\simpleform\fields\ConsentFieldType;
+use anvildev\simpleform\fields\ConsentFieldType;
 use PHPUnit\Framework\TestCase;
 
 /**

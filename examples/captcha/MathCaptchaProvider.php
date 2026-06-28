@@ -3,8 +3,8 @@
 namespace modules\simpleform\examples;
 
 use Craft;
-use fabianhaef\simpleform\captcha\CaptchaProviderInterface;
-use fabianhaef\simpleform\models\Settings;
+use anvildev\simpleform\captcha\CaptchaProviderInterface;
+use anvildev\simpleform\models\Settings;
 
 /**
  * Example custom captcha provider: a tiny "what is X + Y?" arithmetic challenge.
@@ -15,8 +15,8 @@ use fabianhaef\simpleform\models\Settings;
  * Register it from your plugin/module init():
  *
  *   \yii\base\Event::on(
- *       \fabianhaef\simpleform\Plugin::class,
- *       \fabianhaef\simpleform\Plugin::EVENT_REGISTER_CAPTCHA_PROVIDERS,
+ *       \anvildev\simpleform\Plugin::class,
+ *       \anvildev\simpleform\Plugin::EVENT_REGISTER_CAPTCHA_PROVIDERS,
  *       fn($e) => $e->providers[] = \modules\simpleform\examples\MathCaptchaProvider::class,
  *   );
  */

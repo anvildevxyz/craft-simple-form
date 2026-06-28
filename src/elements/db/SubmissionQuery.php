@@ -1,11 +1,11 @@
 <?php
 
-namespace fabianhaef\simpleform\elements\db;
+namespace anvildev\simpleform\elements\db;
 
+use anvildev\simpleform\elements\Form;
+use anvildev\simpleform\elements\Submission;
 use craft\elements\db\ElementQuery;
 use craft\helpers\Db;
-use fabianhaef\simpleform\elements\Form;
-use fabianhaef\simpleform\elements\Submission;
 
 /**
  * @extends ElementQuery<int, Submission>

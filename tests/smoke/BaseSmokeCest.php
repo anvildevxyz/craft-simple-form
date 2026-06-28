@@ -1,17 +1,17 @@
 <?php
 
-namespace fabianhaef\simpleform\tests\smoke;
+namespace anvildev\simpleform\tests\smoke;
 
+use anvildev\simpleform\controllers\SubmitController;
+use anvildev\simpleform\elements\Form;
+use anvildev\simpleform\models\IntegrationModel;
+use anvildev\simpleform\Plugin;
+use anvildev\simpleform\services\SubmissionService;
 use Craft;
 use craft\db\Query;
 use craft\helpers\StringHelper;
 use craft\test\TestMailer;
 use craft\web\Response;
-use fabianhaef\simpleform\controllers\SubmitController;
-use fabianhaef\simpleform\elements\Form;
-use fabianhaef\simpleform\models\IntegrationModel;
-use fabianhaef\simpleform\Plugin;
-use fabianhaef\simpleform\services\SubmissionService;
 use yii\mail\MessageInterface;
 
 /**
@@ -110,7 +110,7 @@ abstract class BaseSmokeCest
      * the public SubmitController does. Field values post under `field_<id>`.
      *
      * @param array<string, mixed> $bodyParams
-     * @return array{submission: \fabianhaef\simpleform\elements\Submission|null, errors: array<string, mixed>|null, data?: array<string, mixed>}
+     * @return array{submission: \anvildev\simpleform\elements\Submission|null, errors: array<string, mixed>|null, data?: array<string, mixed>}
      */
     protected function submitRequest(string $formHandle, array $bodyParams): array
     {
@@ -152,7 +152,7 @@ abstract class BaseSmokeCest
      *
      * @param array<int|string, mixed> $values keyed by field id or `field_<id>`
      * @param array<string, mixed>     $context
-     * @return array{submission: \fabianhaef\simpleform\elements\Submission|null, errors: array<string, mixed>|null, data?: array<string, mixed>}
+     * @return array{submission: \anvildev\simpleform\elements\Submission|null, errors: array<string, mixed>|null, data?: array<string, mixed>}
      */
     protected function submitDirect(Form $form, array $values, array $context = []): array
     {
@@ -253,7 +253,7 @@ abstract class BaseSmokeCest
 
         if ($mailer instanceof TestMailer) {
             $original = $mailer->callback;
-            $mailer->callback = function (MessageInterface $message) use (&$collected, $original): void {
+            $mailer->callback = function(MessageInterface $message) use (&$collected, $original): void {
                 $collected[] = $message;
                 if (is_callable($original)) {
                     $original($message);

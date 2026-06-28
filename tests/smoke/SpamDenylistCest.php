@@ -1,19 +1,19 @@
 <?php
 
-namespace fabianhaef\simpleform\tests\smoke;
+namespace anvildev\simpleform\tests\smoke;
 
+use anvildev\simpleform\elements\Submission;
+use anvildev\simpleform\elements\SubmissionStatus;
+use anvildev\simpleform\models\Settings;
+use anvildev\simpleform\Plugin;
 use craft\db\Query;
-use fabianhaef\simpleform\elements\Submission;
-use fabianhaef\simpleform\elements\SubmissionStatus;
-use fabianhaef\simpleform\models\Settings;
-use fabianhaef\simpleform\Plugin;
 use SmokeTester;
 
 /**
  * Spam Denylist Smoke Tests (#140, functional).
  *
  * Exercises the settings-driven denylists through the public submit path
- * ({@see \fabianhaef\simpleform\services\SubmissionService::createFromRequest()},
+ * ({@see \anvildev\simpleform\services\SubmissionService::createFromRequest()},
  * field values posted as `field_<id>`): a flagged submission is quarantined with
  * its reason, a clean one passes as New, and block mode drops the row silently.
  * Forms and fields are seeded through the data layer (see {@see BaseSmokeCest}).

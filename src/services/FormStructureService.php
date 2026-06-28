@@ -1,12 +1,12 @@
 <?php
 
-namespace fabianhaef\simpleform\services;
+namespace anvildev\simpleform\services;
 
+use anvildev\simpleform\events\DefineFieldSetEvent;
+use anvildev\simpleform\helpers\FieldQueryHelper;
+use anvildev\simpleform\Plugin;
 use Craft;
 use craft\helpers\App;
-use fabianhaef\simpleform\events\DefineFieldSetEvent;
-use fabianhaef\simpleform\helpers\FieldQueryHelper;
-use fabianhaef\simpleform\Plugin;
 use yii\base\Component;
 use yii\caching\TagDependency;
 

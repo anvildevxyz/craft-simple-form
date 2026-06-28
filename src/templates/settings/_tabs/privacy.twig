@@ -5,6 +5,8 @@
     {{ 'Automatically prune old data on Craft’s garbage-collection run. Use 0 to keep data forever.'|t('simple-form') }}
 </p>
 
+{% include 'simple-form/settings/_pro-notice' with { feature: 'Automatic submission deletion and anonymization'|t('simple-form') } only %}
+
 {{ forms.textField({
     label: 'Delete submissions after (days)'|t('simple-form'),
     instructions: 'Submissions older than this are removed during garbage collection. 0 = keep forever.'|t('simple-form'),
@@ -23,6 +25,7 @@
     id: 'anonymizeInsteadOfDelete',
     name: 'anonymizeInsteadOfDelete',
     on: settings.anonymizeInsteadOfDelete,
+    disabled: 'anonymizeInsteadOfDelete' in proLockedFields,
 }) }}
 
 {{ forms.textField({

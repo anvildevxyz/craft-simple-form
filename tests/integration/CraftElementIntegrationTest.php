@@ -1,18 +1,18 @@
 <?php
 
-namespace fabianhaef\simpleform\tests\integration;
+namespace anvildev\simpleform\tests\integration;
 
+use anvildev\simpleform\elements\Submission;
+use anvildev\simpleform\integrations\CraftElementIntegration;
+use anvildev\simpleform\integrations\DispatchStatus;
+use anvildev\simpleform\models\IntegrationModel;
+use anvildev\simpleform\Plugin;
 use Craft;
 use craft\elements\Entry;
 use craft\elements\User;
 use craft\models\EntryType;
 use craft\models\Section;
 use craft\models\Section_SiteSettings;
-use fabianhaef\simpleform\elements\Submission;
-use fabianhaef\simpleform\integrations\CraftElementIntegration;
-use fabianhaef\simpleform\integrations\DispatchStatus;
-use fabianhaef\simpleform\models\IntegrationModel;
-use fabianhaef\simpleform\Plugin;
 
 /**
  * End-to-end coverage for the element connector: a mapped submission becomes an

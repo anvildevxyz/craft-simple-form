@@ -1,6 +1,6 @@
 <?php
 
-namespace fabianhaef\simpleform\helpers;
+namespace anvildev\simpleform\helpers;
 
 /**
  * Derives the screen sequence for conversational render mode (#239): one screen

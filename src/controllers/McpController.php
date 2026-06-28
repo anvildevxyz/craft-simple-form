@@ -1,14 +1,15 @@
 <?php
 
-namespace fabianhaef\simpleform\controllers;
+namespace anvildev\simpleform\controllers;
 
+use anvildev\simpleform\Editions;
+use anvildev\simpleform\helpers\RateLimiter;
+use anvildev\simpleform\mcp\McpServer;
+use anvildev\simpleform\mcp\McpToken;
+use anvildev\simpleform\mcp\TokenManager;
+use anvildev\simpleform\Plugin;
 use Craft;
 use craft\web\Controller;
-use fabianhaef\simpleform\helpers\RateLimiter;
-use fabianhaef\simpleform\mcp\McpServer;
-use fabianhaef\simpleform\mcp\McpToken;
-use fabianhaef\simpleform\mcp\TokenManager;
-use fabianhaef\simpleform\Plugin;
 use yii\web\Response;
 
 /**
@@ -70,9 +71,10 @@ class McpController extends Controller
         $request = Craft::$app->getRequest();
         $response->format = Response::FORMAT_JSON;
 
-        // 1. OFF BY DEFAULT. Refuse with 404 before processing anything so a
-        //    disabled server is indistinguishable from an unmapped route.
-        if (!Plugin::getInstance()->getSettings()->enableMcp) {
+        // 1. OFF BY DEFAULT (and Pro-only). Refuse with 404 before processing
+        //    anything so a disabled/Solo server is indistinguishable from an
+        //    unmapped route.
+        if (!Editions::can(Editions::CAP_DEV_TOOLS) || !Plugin::getInstance()->getSettings()->enableMcp) {
             $response->setStatusCode(404);
             $response->data = ['error' => 'Not found.'];
             return $response;

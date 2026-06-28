@@ -1,8 +1,8 @@
 <?php
 
-namespace fabianhaef\simpleform\captcha;
+namespace anvildev\simpleform\captcha;
 
-use fabianhaef\simpleform\models\Settings;
+use anvildev\simpleform\models\Settings;
 
 /**
  * Cloudflare Turnstile captcha provider. The widget injects its own

@@ -1,11 +1,11 @@
 <?php
 
-namespace fabianhaef\simpleform\tests\integration;
+namespace anvildev\simpleform\tests\integration;
 
+use anvildev\simpleform\elements\Form;
 use Craft;
 use craft\elements\User;
 use craft\web\View;
-use fabianhaef\simpleform\elements\Form;
 
 /**
  * Render-smoke the forms/edit "After Submit" section (#133). The unit/parity

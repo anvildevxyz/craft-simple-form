@@ -1,6 +1,6 @@
 <?php
 
-namespace fabianhaef\simpleform\gql\types;
+namespace anvildev\simpleform\gql\types;
 
 use craft\gql\GqlEntityRegistry;
 use GraphQL\Type\Definition\InputObjectType;

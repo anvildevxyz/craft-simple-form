@@ -1,8 +1,8 @@
 <?php
 
-namespace fabianhaef\simpleform\tests\unit;
+namespace anvildev\simpleform\tests\unit;
 
-use fabianhaef\simpleform\helpers\JumpResolver;
+use anvildev\simpleform\helpers\JumpResolver;
 use PHPUnit\Framework\TestCase;
 
 /**

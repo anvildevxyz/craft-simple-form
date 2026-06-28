@@ -1,11 +1,11 @@
 <?php
 
-namespace fabianhaef\simpleform\tests\integration;
+namespace anvildev\simpleform\tests\integration;
 
+use anvildev\simpleform\elements\Form;
 use Craft;
 use craft\elements\User;
 use craft\web\View;
-use fabianhaef\simpleform\elements\Form;
 
 /**
  * Render-smoke the forms/edit tab strip (tabbed-editor UX work): the screen is
@@ -55,6 +55,40 @@ class FormEditTabsRenderTest extends SimpleFormTestCase
         } finally {
             $view->setTemplateMode($mode);
         }
+    }
+
+    public function testProFeaturesInUseBannerRendersWhenPresent(): void
+    {
+        $this->requireCraft();
+
+        $form = $this->createForm('Downgraded', 'render_downgrade');
+
+        $site = Craft::$app->getSites()->getCurrentSite();
+        $view = Craft::$app->getView();
+        $mode = $view->getTemplateMode();
+        $view->setTemplateMode(View::TEMPLATE_MODE_CP);
+        try {
+            $html = $this->withIdentity(static fn(): string => $view->renderTemplate('simple-form/forms/edit', [
+                'form' => $form,
+                'currentSite' => $site,
+                'supportedSites' => [$site],
+                'builderData' => '[]',
+                'redirectEntry' => null,
+                'volumes' => [],
+                'isSourceSite' => true,
+                'proFeaturesInUse' => ['conditional logic', 'multi-page forms'],
+            ]));
+        } finally {
+            $view->setTemplateMode($mode);
+        }
+
+        $this->assertStringContainsString('Pro features in use', $html);
+        $this->assertStringContainsString('conditional logic', $html);
+        $this->assertStringContainsString('multi-page forms', $html);
+
+        // The banner stays absent for an ordinary (Pro / no-Pro-usage) editor.
+        $plain = $this->render($form);
+        $this->assertStringNotContainsString('Pro features in use', $plain);
     }
 
     public function testTabStripAndPanesRender(): void

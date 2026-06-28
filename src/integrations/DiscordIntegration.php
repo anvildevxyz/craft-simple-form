@@ -1,10 +1,10 @@
 <?php
 
-namespace fabianhaef\simpleform\integrations;
+namespace anvildev\simpleform\integrations;
 
+use anvildev\simpleform\elements\Submission;
 use Craft;
 use craft\helpers\Cp;
-use fabianhaef\simpleform\elements\Submission;
 
 /**
  * Post a submission to a Discord channel webhook as a message. Sends `content`

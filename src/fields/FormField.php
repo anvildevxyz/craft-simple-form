@@ -1,11 +1,11 @@
 <?php
 
-namespace fabianhaef\simpleform\fields;
+namespace anvildev\simpleform\fields;
 
+use anvildev\simpleform\elements\Form;
 use Craft;
 use craft\base\ElementInterface;
 use craft\base\Field;
-use fabianhaef\simpleform\elements\Form;
 use yii\db\Schema;
 
 /**

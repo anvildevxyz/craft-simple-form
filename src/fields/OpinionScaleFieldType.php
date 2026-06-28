@@ -1,6 +1,6 @@
 <?php
 
-namespace fabianhaef\simpleform\fields;
+namespace anvildev\simpleform\fields;
 
 /**
  * An opinion / NPS scale over a configurable integer range (default 0–10), with

@@ -1,10 +1,10 @@
 <?php
 
-namespace fabianhaef\simpleform\models;
+namespace anvildev\simpleform\models;
 
+use anvildev\simpleform\Plugin;
 use Craft;
 use craft\base\Model;
-use fabianhaef\simpleform\Plugin;
 
 /**
  * One email notification attached to a form (#112): an admin alert (fixed

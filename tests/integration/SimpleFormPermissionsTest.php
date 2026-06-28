@@ -1,8 +1,8 @@
 <?php
 
-namespace fabianhaef\simpleform\tests\integration;
+namespace anvildev\simpleform\tests\integration;
 
-use fabianhaef\simpleform\helpers\SimpleFormPermissions;
+use anvildev\simpleform\helpers\SimpleFormPermissions;
 
 /**
  * Permission definitions. Lives in the integration suite because the labels are

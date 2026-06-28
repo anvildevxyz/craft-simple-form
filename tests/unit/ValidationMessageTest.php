@@ -1,8 +1,8 @@
 <?php
 
-namespace fabianhaef\simpleform\tests\unit;
+namespace anvildev\simpleform\tests\unit;
 
-use fabianhaef\simpleform\models\FieldModel;
+use anvildev\simpleform\models\FieldModel;
 use PHPUnit\Framework\TestCase;
 
 /**

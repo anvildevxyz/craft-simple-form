@@ -1,13 +1,13 @@
 <?php
 
-namespace fabianhaef\simpleform\tests\integration;
+namespace anvildev\simpleform\tests\integration;
 
+use anvildev\simpleform\elements\Submission;
+use anvildev\simpleform\Plugin;
+use anvildev\simpleform\services\CaptchaService;
 use Craft;
 use craft\models\GqlSchema;
 use craft\test\TestMailer;
-use fabianhaef\simpleform\elements\Submission;
-use fabianhaef\simpleform\Plugin;
-use fabianhaef\simpleform\services\CaptchaService;
 use yii\mail\MessageInterface;
 
 /** Deterministic captcha for F8 tests: only "good-token" verifies. */
@@ -71,7 +71,7 @@ class GraphQlTest extends SimpleFormTestCase
 
         if ($mailer instanceof TestMailer) {
             $original = $mailer->callback;
-            $mailer->callback = function (MessageInterface $message) use (&$collected, $original): void {
+            $mailer->callback = function(MessageInterface $message) use (&$collected, $original): void {
                 $collected[] = $message;
                 if (is_callable($original)) {
                     $original($message);
@@ -389,13 +389,13 @@ class GraphQlTest extends SimpleFormTestCase
         // Notification sending is now queued (#143) so PDF rendering stays off the
         // submit request. Use the documented sync escape hatch so the email is
         // composed inline and the test mailer can capture it.
-        $settings = \fabianhaef\simpleform\Plugin::getInstance()->getSettings();
+        $settings = \anvildev\simpleform\Plugin::getInstance()->getSettings();
         $previousSync = $settings->dispatchIntegrationsSynchronously;
         $settings->dispatchIntegrationsSynchronously = true;
 
         $result = [];
         try {
-            $sent = $this->captureSentMessages(function () use ($document, $variables, &$result): void {
+            $sent = $this->captureSentMessages(function() use ($document, $variables, &$result): void {
                 $result = $this->execute($document, ['simpleFormSubmissions:create'], $variables);
             });
         } finally {

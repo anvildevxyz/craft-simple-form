@@ -1,8 +1,8 @@
 <?php
 
-namespace fabianhaef\simpleform\tests\unit;
+namespace anvildev\simpleform\tests\unit;
 
-use fabianhaef\simpleform\integrations\MailchimpIntegration;
+use anvildev\simpleform\integrations\MailchimpIntegration;
 use PHPUnit\Framework\TestCase;
 
 class MailchimpHelpersTest extends TestCase

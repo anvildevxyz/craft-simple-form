@@ -1,19 +1,19 @@
 <?php
 
-namespace fabianhaef\simpleform\elements;
+namespace anvildev\simpleform\elements;
 
+use anvildev\simpleform\elements\actions\DuplicateForm;
+use anvildev\simpleform\elements\db\FormQuery;
+use anvildev\simpleform\helpers\FieldQueryHelper;
+use anvildev\simpleform\helpers\SafeUrl;
+use anvildev\simpleform\Plugin;
+use anvildev\simpleform\traits\HasPropagation;
 use Craft;
 use craft\base\Element;
 use craft\helpers\DateTimeHelper;
 use craft\helpers\Db;
 use craft\helpers\StringHelper;
 use DateTime;
-use fabianhaef\simpleform\elements\actions\DuplicateForm;
-use fabianhaef\simpleform\elements\db\FormQuery;
-use fabianhaef\simpleform\helpers\FieldQueryHelper;
-use fabianhaef\simpleform\helpers\SafeUrl;
-use fabianhaef\simpleform\Plugin;
-use fabianhaef\simpleform\traits\HasPropagation;
 
 /**
  * @phpstan-import-type ResolvedFieldRow from FieldQueryHelper

@@ -1,29 +1,29 @@
 <?php
 
-namespace fabianhaef\simpleform\mcp;
+namespace anvildev\simpleform\mcp;
 
+use anvildev\simpleform\mcp\resources\FormSchemaResource;
+use anvildev\simpleform\mcp\resources\ResourceProviderInterface;
+use anvildev\simpleform\mcp\resources\SubmissionsDatasetResource;
+use anvildev\simpleform\mcp\tools\AddFieldTool;
+use anvildev\simpleform\mcp\tools\CategorizeSubmissionsTool;
+use anvildev\simpleform\mcp\tools\CreateFormTool;
+use anvildev\simpleform\mcp\tools\DeleteFieldTool;
+use anvildev\simpleform\mcp\tools\DeleteFormTool;
+use anvildev\simpleform\mcp\tools\DetectSpamPatternsTool;
+use anvildev\simpleform\mcp\tools\ExportSubmissionsTool;
+use anvildev\simpleform\mcp\tools\GetFormTool;
+use anvildev\simpleform\mcp\tools\GetSubmissionTool;
+use anvildev\simpleform\mcp\tools\ListFormsTool;
+use anvildev\simpleform\mcp\tools\ListIntegrationsTool;
+use anvildev\simpleform\mcp\tools\QuerySubmissionsTool;
+use anvildev\simpleform\mcp\tools\ReorderFieldsTool;
+use anvildev\simpleform\mcp\tools\SubmissionStatsTool;
+use anvildev\simpleform\mcp\tools\SummarizeSubmissionsTool;
+use anvildev\simpleform\mcp\tools\ToolInterface;
+use anvildev\simpleform\mcp\tools\UpdateFieldTool;
+use anvildev\simpleform\mcp\tools\UpdateFormTool;
 use Craft;
-use fabianhaef\simpleform\mcp\resources\FormSchemaResource;
-use fabianhaef\simpleform\mcp\resources\ResourceProviderInterface;
-use fabianhaef\simpleform\mcp\resources\SubmissionsDatasetResource;
-use fabianhaef\simpleform\mcp\tools\AddFieldTool;
-use fabianhaef\simpleform\mcp\tools\CategorizeSubmissionsTool;
-use fabianhaef\simpleform\mcp\tools\CreateFormTool;
-use fabianhaef\simpleform\mcp\tools\DeleteFieldTool;
-use fabianhaef\simpleform\mcp\tools\DeleteFormTool;
-use fabianhaef\simpleform\mcp\tools\DetectSpamPatternsTool;
-use fabianhaef\simpleform\mcp\tools\ExportSubmissionsTool;
-use fabianhaef\simpleform\mcp\tools\GetFormTool;
-use fabianhaef\simpleform\mcp\tools\GetSubmissionTool;
-use fabianhaef\simpleform\mcp\tools\ListFormsTool;
-use fabianhaef\simpleform\mcp\tools\ListIntegrationsTool;
-use fabianhaef\simpleform\mcp\tools\QuerySubmissionsTool;
-use fabianhaef\simpleform\mcp\tools\ReorderFieldsTool;
-use fabianhaef\simpleform\mcp\tools\SubmissionStatsTool;
-use fabianhaef\simpleform\mcp\tools\SummarizeSubmissionsTool;
-use fabianhaef\simpleform\mcp\tools\ToolInterface;
-use fabianhaef\simpleform\mcp\tools\UpdateFieldTool;
-use fabianhaef\simpleform\mcp\tools\UpdateFormTool;
 
 /**
  * The transport-agnostic MCP server: capability handshake, tool listing, and
@@ -32,7 +32,7 @@ use fabianhaef\simpleform\mcp\tools\UpdateFormTool;
  * This class knows nothing about HTTP — it takes a decoded JSON-RPC request
  * (plus the already-resolved, already-authenticated {@see McpToken}) and
  * returns a decoded JSON-RPC response array. The controller
- * ({@see \fabianhaef\simpleform\controllers\McpController}) owns the transport
+ * ({@see \anvildev\simpleform\controllers\McpController}) owns the transport
  * (parsing the POST body, the Authorization header, and writing the response),
  * which keeps this dispatcher reusable if/when SSE streaming is added.
  *
@@ -173,7 +173,7 @@ class McpServer
             'serverInfo' => [
                 'name' => 'simple-form-mcp',
                 'title' => 'Simple Form MCP Server',
-                'version' => (string)(\fabianhaef\simpleform\Plugin::getInstance()->version ?? '1.0.0'),
+                'version' => (string)(\anvildev\simpleform\Plugin::getInstance()->version ?? '1.0.0'),
             ],
             'instructions' => 'Simple Form MCP server. Tools and resources are gated by token '
                 . 'scope (deny-by-default). Resources: form://{handle} (schema, forms:manage) and '

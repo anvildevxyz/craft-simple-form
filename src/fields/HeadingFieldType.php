@@ -1,6 +1,6 @@
 <?php
 
-namespace fabianhaef\simpleform\fields;
+namespace anvildev\simpleform\fields;
 
 /**
  * A presentational section heading. Collects no submission value: it renders an

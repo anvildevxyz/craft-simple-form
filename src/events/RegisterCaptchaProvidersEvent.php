@@ -1,15 +1,15 @@
 <?php
 
-namespace fabianhaef\simpleform\events;
+namespace anvildev\simpleform\events;
 
 use yii\base\Event;
 
 /**
- * Fired from {@see \fabianhaef\simpleform\services\CaptchaProviderRegistry} so
+ * Fired from {@see \anvildev\simpleform\services\CaptchaProviderRegistry} so
  * third parties can register their own captcha providers.
  */
 class RegisterCaptchaProvidersEvent extends Event
 {
-    /** @var array<int, class-string<\fabianhaef\simpleform\captcha\CaptchaProviderInterface>> */
+    /** @var array<int, class-string<\anvildev\simpleform\captcha\CaptchaProviderInterface>> */
     public array $providers = [];
 }

@@ -1,10 +1,10 @@
 <?php
 
-namespace fabianhaef\simpleform\pdf;
+namespace anvildev\simpleform\pdf;
 
 /**
  * Engine seam for PDF generation (#143). An implementation wraps a concrete PDF
- * library (dompdf in v1); {@see \fabianhaef\simpleform\services\PdfService}
+ * library (dompdf in v1); {@see \anvildev\simpleform\services\PdfService}
  * selects one only when its backing library is installed, so the feature degrades
  * gracefully when no engine is available.
  *

@@ -3,7 +3,7 @@
 
 {% set title = (notification.id ? 'Edit notification' : 'New notification')|t('simple-form') %}
 {% set selectedSubnavItem = 'forms' %}
-{% do craft.app.view.registerAssetBundle('fabianhaef\\simpleform\\web\\assets\\cp\\SimpleFormCpAsset') %}
+{% do craft.app.view.registerAssetBundle('anvildev\\simpleform\\web\\assets\\cp\\SimpleFormCpAsset') %}
 
 {% set crumbs = [
     { label: 'Simple Form'|t('simple-form'), url: cpUrl('simple-form/forms') },

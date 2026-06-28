@@ -57,7 +57,7 @@ warning**, continuing the run — never silently resurrect or hard-delete.
 
 ```php
 $existing = Form::find()->handle($handle)->siteId('*')->status(null)->one();
-if ($existing === null && \fabianhaef\simpleform\helpers\FormContentHelper::handleExists($handle)) {
+if ($existing === null && \anvildev\simpleform\helpers\FormContentHelper::handleExists($handle)) {
     $this->stdout("  = {$handle}: a trashed form with this handle exists; restore or permanently delete it, then re-apply. Skipped.\n", Console::FG_YELLOW);
     $skipped++;
     continue;

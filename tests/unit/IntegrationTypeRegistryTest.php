@@ -1,11 +1,11 @@
 <?php
 
-namespace fabianhaef\simpleform\tests\unit;
+namespace anvildev\simpleform\tests\unit;
 
-use fabianhaef\simpleform\elements\Submission;
-use fabianhaef\simpleform\integrations\IntegrationResult;
-use fabianhaef\simpleform\integrations\IntegrationTypeInterface;
-use fabianhaef\simpleform\services\IntegrationTypeRegistry;
+use anvildev\simpleform\elements\Submission;
+use anvildev\simpleform\integrations\IntegrationResult;
+use anvildev\simpleform\integrations\IntegrationTypeInterface;
+use anvildev\simpleform\services\IntegrationTypeRegistry;
 use PHPUnit\Framework\TestCase;
 
 /** A minimal in-test connector used to exercise the registry. */
@@ -59,7 +59,7 @@ class IntegrationTypeRegistryTest extends TestCase
     {
         $registry = new IntegrationTypeRegistry();
         $this->assertInstanceOf(
-            \fabianhaef\simpleform\integrations\WebhookIntegration::class,
+            \anvildev\simpleform\integrations\WebhookIntegration::class,
             $registry->getType('webhook'),
         );
     }
@@ -68,7 +68,7 @@ class IntegrationTypeRegistryTest extends TestCase
     {
         $registry = new IntegrationTypeRegistry();
         $this->assertInstanceOf(
-            \fabianhaef\simpleform\integrations\CraftElementIntegration::class,
+            \anvildev\simpleform\integrations\CraftElementIntegration::class,
             $registry->getType('craft-element'),
         );
     }
@@ -84,7 +84,7 @@ class IntegrationTypeRegistryTest extends TestCase
         $registry = new IntegrationTypeRegistry();
         $this->expectException(\InvalidArgumentException::class);
         /** @phpstan-ignore-next-line intentionally invalid class for the guard test */
-        $registry->registerType('fabianhaef\simpleform\Nope');
+        $registry->registerType('anvildev\simpleform\Nope');
     }
 
     public function testRegisterClassNotImplementingInterfaceThrows(): void

@@ -1,9 +1,9 @@
 <?php
 
-namespace fabianhaef\simpleform\mcp\tools;
+namespace anvildev\simpleform\mcp\tools;
 
-use fabianhaef\simpleform\mcp\Scopes;
-use fabianhaef\simpleform\mcp\tools\support\SubmissionQueryBuilder;
+use anvildev\simpleform\mcp\Scopes;
+use anvildev\simpleform\mcp\tools\support\SubmissionQueryBuilder;
 
 /**
  * MCP tool: export submissions as CSV or JSON.

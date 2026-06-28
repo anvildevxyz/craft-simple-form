@@ -1,8 +1,8 @@
 <?php
 
-namespace fabianhaef\simpleform\tests\unit;
+namespace anvildev\simpleform\tests\unit;
 
-use fabianhaef\simpleform\fields\PhoneFieldType;
+use anvildev\simpleform\fields\PhoneFieldType;
 use PHPUnit\Framework\TestCase;
 
 /**

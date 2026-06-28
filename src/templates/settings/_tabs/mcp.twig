@@ -7,6 +7,8 @@
     {{ 'Expose Simple Form to MCP (Model Context Protocol) clients over a token-authenticated HTTP endpoint. Disabled by default.'|t('simple-form') }}
 </p>
 
+{% include 'simple-form/settings/_pro-notice' with { feature: 'The MCP server'|t('simple-form') } only %}
+
 {# 1. Enable toggle — its own minimal form posting to settings/save. #}
 <form method="post" accept-charset="UTF-8">
     {{ csrfInput() }}

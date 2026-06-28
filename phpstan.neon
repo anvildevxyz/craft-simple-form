@@ -61,6 +61,6 @@ parameters:
         # service-account-key / column-mapping rules call `$this->addError()` on
         # the rebound DynamicModel). PHPStan can't see the rebind here either.
         -
-            message: '#Call to an undefined method fabianhaef\\simpleform\\integrations\\.+::addError\(\)#'
+            message: '#Call to an undefined method anvildev\\simpleform\\integrations\\.+::addError\(\)#'
             path: src/integrations/
     reportUnmatchedIgnoredErrors: false
