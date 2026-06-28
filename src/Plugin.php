@@ -21,7 +21,6 @@ use anvildev\simpleform\models\Settings;
 use anvildev\simpleform\services\AkismetService;
 use anvildev\simpleform\services\AssetUploadService;
 use anvildev\simpleform\services\AuditService;
-use anvildev\simpleform\services\NotificationLogService;
 use anvildev\simpleform\services\CaptchaProviderRegistry;
 use anvildev\simpleform\services\CaptchaService;
 use anvildev\simpleform\services\CouponsService;
@@ -37,6 +36,7 @@ use anvildev\simpleform\services\FormRenderService;
 use anvildev\simpleform\services\FormStructureService;
 use anvildev\simpleform\services\IntegrationsService;
 use anvildev\simpleform\services\IntegrationTypeRegistry;
+use anvildev\simpleform\services\NotificationLogService;
 use anvildev\simpleform\services\NotificationsService;
 use anvildev\simpleform\services\PaymentsService;
 use anvildev\simpleform\services\PdfService;
@@ -729,6 +729,9 @@ class Plugin extends BasePlugin
         $isAdmin = $user?->admin;
         $subnav = [];
 
+        if ($isAdmin || $user?->can(SimpleFormPermissions::VIEW_SUBMISSIONS)) {
+            $subnav['overview'] = ['label' => Craft::t('simple-form', 'Overview'), 'url' => 'simple-form/overview'];
+        }
         if ($isAdmin || $user?->can(SimpleFormPermissions::MANAGE_FORMS)) {
             $subnav['forms'] = ['label' => Craft::t('simple-form', 'Forms'), 'url' => 'simple-form/forms'];
         }
@@ -750,7 +753,8 @@ class Plugin extends BasePlugin
 
     public function registerCpUrlRules(RegisterUrlRulesEvent $event): void
     {
-        $event->rules['simple-form'] = 'simple-form/forms/index';
+        $event->rules['simple-form'] = 'simple-form/overview/index';
+        $event->rules['simple-form/overview'] = 'simple-form/overview/index';
         $event->rules['simple-form/forms'] = 'simple-form/forms/index';
         $event->rules['simple-form/forms/new'] = 'simple-form/forms/edit';
         $event->rules['simple-form/forms/edit/<formId:\d+>'] = 'simple-form/forms/edit';

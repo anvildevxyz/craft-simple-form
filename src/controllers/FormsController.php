@@ -4,6 +4,8 @@ namespace anvildev\simpleform\controllers;
 
 use anvildev\simpleform\Editions;
 use anvildev\simpleform\elements\Form;
+use anvildev\simpleform\elements\Submission;
+use anvildev\simpleform\elements\SubmissionStatus;
 use anvildev\simpleform\helpers\DialCodes;
 use anvildev\simpleform\helpers\FieldQueryHelper;
 use anvildev\simpleform\helpers\SimpleFormPermissions;
@@ -13,6 +15,7 @@ use anvildev\simpleform\services\AuditService;
 use anvildev\simpleform\services\FieldSyncService;
 use anvildev\simpleform\services\FormPortabilityService;
 use Craft;
+use craft\db\Query;
 use craft\enums\PropagationMethod;
 use craft\helpers\DateTimeHelper;
 use craft\models\Site;
@@ -50,7 +53,55 @@ class FormsController extends Controller
             'forms' => $forms,
             'currentSite' => $site,
             'stencils' => $stencils,
+            'formStats' => $this->formStats($forms, (int) $site->id),
         ]);
+    }
+
+    /**
+     * Per-form submission signal for the index listing: total count, spam count,
+     * and the most recent submission timestamp. Two grouped aggregate queries
+     * (not one per form) keep the listing N+1-free.
+     *
+     * @param Form[] $forms
+     * @return array<int, array{count: int, spam: int, last: ?\DateTime}>
+     */
+    private function formStats(array $forms, int $siteId): array
+    {
+        $stats = [];
+        $formIds = [];
+        foreach ($forms as $form) {
+            $id = (int) $form->id;
+            $formIds[] = $id;
+            $stats[$id] = ['count' => 0, 'spam' => 0, 'last' => null];
+        }
+
+        if ($formIds === []) {
+            return $stats;
+        }
+
+        $totals = (new Query())
+            ->select(['formId', 'c' => 'COUNT(*)', 'last' => 'MAX([[dateCreated]])'])
+            ->from('{{%simpleform_submissions}}')
+            ->where(['siteId' => $siteId, 'formId' => $formIds])
+            ->groupBy(['formId'])
+            ->all();
+        foreach ($totals as $row) {
+            $id = (int) $row['formId'];
+            $stats[$id]['count'] = (int) $row['c'];
+            $stats[$id]['last'] = $row['last'] !== null ? DateTimeHelper::toDateTime($row['last']) ?: null : null;
+        }
+
+        $spam = (new Query())
+            ->select(['formId', 'c' => 'COUNT(*)'])
+            ->from('{{%simpleform_submissions}}')
+            ->where(['siteId' => $siteId, 'formId' => $formIds, 'readStatus' => SubmissionStatus::SPAM])
+            ->groupBy(['formId'])
+            ->all();
+        foreach ($spam as $row) {
+            $stats[(int) $row['formId']]['spam'] = (int) $row['c'];
+        }
+
+        return $stats;
     }
 
     public function actionEdit(?int $formId = null): Response
@@ -469,6 +520,8 @@ class FormsController extends Controller
             'currentSite' => $site,
             'supportedSites' => $supportedSites,
             'builderData' => $builderDataJson,
+            // At-a-glance submission stats for the saved form's Stats tab (#cp).
+            'stats' => $this->formEditStats($form, $site),
             'redirectEntry' => $redirectEntry,
             'volumes' => $volumes,
             'phoneCountries' => $phoneCountries,
@@ -486,6 +539,33 @@ class FormsController extends Controller
             // knows what won't take effect and can't add more.
             'proFeaturesInUse' => $this->proFeaturesInUse($form, $site),
         ]);
+    }
+
+    /**
+     * At-a-glance submission stats for the form edit screen's Stats tab: the
+     * status breakdown (total/new/read/archived/spam) plus the most recent
+     * submission's timestamp. Null for an unsaved form. Counts go through the
+     * element query (same source as the Submissions index and Overview).
+     *
+     * @return array{breakdown: array{total: int, new: int, read: int, archived: int, spam: int}, last: ?\DateTime}|null
+     */
+    private function formEditStats(Form $form, Site $site): ?array
+    {
+        if (!$form->id) {
+            return null;
+        }
+
+        $last = Submission::find()
+            ->siteId($site->id)
+            ->formId((int) $form->id)
+            ->status(null)
+            ->orderBy(['dateCreated' => SORT_DESC])
+            ->one();
+
+        return [
+            'breakdown' => Plugin::getInstance()->getReports()->statusBreakdown($site->id, (int) $form->id),
+            'last' => $last?->dateCreated,
+        ];
     }
 
     /**

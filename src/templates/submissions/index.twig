@@ -1,197 +1,27 @@
-{% extends '_layouts/cp.twig' %}
+{% extends '_layouts/elementindex' %}
+
+{# Native Craft element index for submissions: per-form + per-status sources,
+   customizable/sortable columns, native bulk status actions, CSV exporter, and
+   saved views. Column rendering + sources live on the Submission element; the
+   `cp.layouts.elementindex` hook derives display names, sources, and column
+   config from the element type, so this template only names it and keeps the
+   Analytics shortcut. #}
 
 {% set title = 'Submissions'|t('simple-form') %}
+{% set elementType = 'anvildev\\simpleform\\elements\\Submission' %}
 {% set selectedSubnavItem = 'submissions' %}
-{% do craft.app.view.registerAssetBundle('anvildev\\simpleform\\web\\assets\\cp\\SimpleFormCpAsset') %}
+
+{# Preserve the CP's existing deep links: a `?formId=`/`?status=` query (from the
+   Overview, the Forms index, or a form chip) opens the index on the matching
+   native source instead of being silently ignored. #}
+{% set qFormId = craft.app.request.getQueryParam('formId') %}
+{% set qStatus = craft.app.request.getQueryParam('status') %}
+{% if qFormId %}
+    {% set defaultSource = 'form:' ~ qFormId %}
+{% elseif qStatus and qStatus != 'all' %}
+    {% set defaultSource = 'status:' ~ qStatus %}
+{% endif %}
 
 {% block actionButton %}
     <a class="btn" href="{{ cpUrl('simple-form/submissions/analytics') }}">{{ 'Analytics'|t('simple-form') }}</a>
-{% endblock %}
-
-{% block content %}
-{# On a true first run (no submissions at all) the stats + filter bar are
-   noise, so they only appear once at least one submission exists (#102). #}
-{% set hasAnySubmissions = (stats.total ?? 0) > 0 %}
-{% if hasAnySubmissions %}
-    {# Stats summary. Each card is a status filter link; the card matching the
-       active status is highlighted. #}
-    <div class="submission-stats">
-        {% set cards = [
-            { key: '', label: 'Total'|t('simple-form'), value: stats.total ?? 0 },
-            { key: 'new', label: 'New'|t('simple-form'), value: stats.new ?? 0 },
-            { key: 'read', label: 'Read'|t('simple-form'), value: stats.read ?? 0 },
-            { key: 'archived', label: 'Archived'|t('simple-form'), value: stats.archived ?? 0 },
-            { key: 'spam', label: 'Spam'|t('simple-form'), value: stats.spam ?? 0 },
-        ] %}
-        {% for card in cards %}
-            <a class="stat-card{{ status == card.key ? ' is-active' : '' }}{{ card.key ? ' stat-' ~ card.key : '' }}"
-               href="{{ cpUrl('simple-form/submissions', { formId: formId, status: card.key, search: search }) }}">
-                <span class="stat-value">{{ card.value }}</span>
-                <span class="stat-label">{{ card.label }}</span>
-            </a>
-        {% endfor %}
-    </div>
-{% endif %}
-{% if hasAnySubmissions and workflowEnabled and workflowStatuses is not empty %}
-    {# Approval-workflow stage filter (#248). Links so it works without JS. #}
-    <div class="submission-stats sf-workflow-filter">
-        <a class="stat-card{{ not workflowFilter ? ' is-active' : '' }}"
-           href="{{ cpUrl('simple-form/submissions', { formId: formId, status: 'all', search: search }) }}">
-            <span class="stat-label">{{ 'All Stages'|t('simple-form') }}</span>
-        </a>
-        {% for wfStatus in workflowStatuses %}
-            <a class="stat-card{{ workflowFilter == wfStatus.handle ? ' is-active' : '' }}"
-               href="{{ cpUrl('simple-form/submissions', { formId: formId, status: 'all', search: search, workflow: wfStatus.handle }) }}">
-                <span class="stat-label"><span class="status {{ wfStatus.color }}"></span> {{ wfStatus.label }}</span>
-            </a>
-        {% endfor %}
-    </div>
-{% endif %}
-{% if hasAnySubmissions %}
-<div class="buttons">
-    <input type="text" class="text" id="search-input" placeholder="{{ 'Search submissions…'|t('simple-form') }}" value="{{ search ?? '' }}">
-    <select id="form-filter">
-        <option value="">{{ 'All Forms'|t('simple-form') }}</option>
-        {% for form in forms %}
-            <option value="{{ form.id }}"{% if formId == form.id %} selected{% endif %}>
-                {{ form.title ?? form.name }}
-            </option>
-        {% endfor %}
-    </select>
-    <select id="status-filter">
-        <option value="">{{ 'All Statuses'|t('simple-form') }}</option>
-        <option value="new"{% if status == 'new' %} selected{% endif %}>{{ 'New'|t('simple-form') }}</option>
-        <option value="read"{% if status == 'read' %} selected{% endif %}>{{ 'Read'|t('simple-form') }}</option>
-        <option value="archived"{% if status == 'archived' %} selected{% endif %}>{{ 'Archived'|t('simple-form') }}</option>
-        <option value="spam"{% if status == 'spam' %} selected{% endif %}>{{ 'Spam'|t('simple-form') }}</option>
-    </select>
-    <a class="btn"
-       href="{{ cpUrl('simple-form/submissions/export', {
-           formId: formId,
-           status: status,
-           search: search,
-           dateFrom: dateFrom,
-           dateTo: dateTo,
-       }) }}">{{ 'Export CSV'|t('simple-form') }}</a>
-</div>
-{% endif %}
-
-{% if submissions %}
-    <table class="data fullwidth">
-        <thead>
-            <tr>
-                <th>{{ 'Date'|t('simple-form') }}</th>
-                <th>{{ 'Form'|t('simple-form') }}</th>
-                <th>{{ 'Status'|t('simple-form') }}</th>
-                {% if workflowEnabled %}<th>{{ 'Stage'|t('simple-form') }}</th>{% endif %}
-                {% if status == 'spam' %}<th>{{ 'Reason'|t('simple-form') }}</th>{% endif %}
-                <th>{{ 'User'|t('simple-form') }}</th>
-                <th></th>
-            </tr>
-        </thead>
-        <tbody>
-            {% for submission in submissions %}
-                <tr>
-                    <td>
-                        <a href="{{ cpUrl('simple-form/submissions/' ~ submission.id) }}">
-                            {{ submission.dateCreated|date('short') }}
-                        </a>
-                    </td>
-                    <td>{{ submission.getForm().title ?? submission.getForm().name }}</td>
-                    <td>
-                        <span class="status {{ submission.readStatus }}">
-                            {{ submission.readStatus|upper }}
-                        </span>
-                    </td>
-                    {% if workflowEnabled %}
-                        <td>
-                            {% set stage = null %}
-                            {% for wfStatus in workflowStatuses|filter(s => s.handle == submission.workflowStatus) %}{% set stage = wfStatus %}{% endfor %}
-                            {% if stage %}
-                                <span class="status {{ stage.color }}"></span> {{ stage.label }}
-                            {% else %}
-                                <span class="light">—</span>
-                            {% endif %}
-                        </td>
-                    {% endif %}
-                    {% if status == 'spam' %}
-                        <td class="light">
-                            {%- set reason = submission.spamReason -%}
-                            {%- if reason == 'akismet' -%}{{ 'Akismet'|t('simple-form') }}
-                            {%- elseif reason == 'manual' -%}{{ 'Marked manually'|t('simple-form') }}
-                            {%- elseif reason == 'duplicate' -%}{{ 'Duplicate submission'|t('simple-form') }}
-                            {%- elseif reason starts with 'keyword:' -%}{{ 'Blocked keyword: {keyword}'|t('simple-form', { keyword: reason[8:] }) }}
-                            {%- elseif reason starts with 'email:' -%}{{ 'Blocked email: {email}'|t('simple-form', { email: reason[6:] }) }}
-                            {%- elseif reason starts with 'ip:' -%}{{ 'Blocked IP: {ip}'|t('simple-form', { ip: reason[3:] }) }}
-                            {%- elseif reason -%}{{ reason }}
-                            {%- else -%}—{%- endif -%}
-                        </td>
-                    {% endif %}
-                    <td>
-                        {% if submission.userId %}
-                            {% set user = craft.users.id(submission.userId).one() %}
-                            {{ user.fullName ?? user.username }}
-                        {% else %}
-                            —
-                        {% endif %}
-                    </td>
-                    <td class="thin">
-                        {% if status == 'spam' %}
-                            {% set backTo = cpUrl('simple-form/submissions', { status: 'spam', formId: formId, search: search }) %}
-                            <form method="post" class="sf-inline-action">
-                                {{ csrfInput() }}
-                                {{ actionInput('simple-form/submissions/mark-not-spam') }}
-                                {{ redirectInput(backTo) }}
-                                <input type="hidden" name="submissionId" value="{{ submission.id }}">
-                                <button type="submit" class="btn small">{{ 'Not spam'|t('simple-form') }}</button>
-                            </form>
-                            <form method="post" class="sf-inline-action" onsubmit="return confirm('{{ 'Delete this submission?'|t('simple-form')|e('js') }}');">
-                                {{ csrfInput() }}
-                                {{ actionInput('simple-form/submissions/delete') }}
-                                {{ redirectInput(backTo) }}
-                                <input type="hidden" name="submissionId" value="{{ submission.id }}">
-                                <button type="submit" class="btn small">{{ 'Delete'|t('simple-form') }}</button>
-                            </form>
-                        {% else %}
-                            <a href="{{ cpUrl('simple-form/submissions/' ~ submission.id) }}">{{ 'View'|t('simple-form') }}</a>
-                        {% endif %}
-                    </td>
-                </tr>
-            {% endfor %}
-        </tbody>
-    </table>
-
-    {# Pagination #}
-    {% set totalPages = (total / perPage)|round(0, 'ceil') %}
-    {% if totalPages > 1 %}
-        <nav class="pagination">
-            {% if page > 1 %}
-                <a href="{{ cpUrl('simple-form/submissions', {page: page - 1}) }}">{{ '« Previous'|t('simple-form') }}</a>
-            {% endif %}
-
-            {% for p in 1..totalPages %}
-                {% if p == page %}
-                    <span class="current">{{ p }}</span>
-                {% else %}
-                    <a href="{{ cpUrl('simple-form/submissions', {page: p}) }}">{{ p }}</a>
-                {% endif %}
-            {% endfor %}
-
-            {% if page < totalPages %}
-                <a href="{{ cpUrl('simple-form/submissions', {page: page + 1}) }}">{{ 'Next »'|t('simple-form') }}</a>
-            {% endif %}
-        </nav>
-    {% endif %}
-{% else %}
-    <div class="zilch sf-empty-state">
-        {% if hasAnySubmissions %}
-            {# Has submissions, but the active filter matched none. #}
-            <p>{{ 'No submissions match your filters.'|t('simple-form') }}</p>
-        {% else %}
-            <p class="sf-empty-heading">{{ 'No submissions yet.'|t('simple-form') }}</p>
-            <p class="light">{{ 'Submissions appear here once your forms are filled out.'|t('simple-form') }}</p>
-        {% endif %}
-    </div>
-{% endif %}
-
 {% endblock %}

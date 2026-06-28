@@ -86,44 +86,20 @@ class SubmissionsController extends Controller
         return $this->response->sendContentAsFile($csv, 'submissions.csv', ['mimeType' => 'text/csv']);
     }
 
+    /**
+     * The submissions listing is Craft's native element index (sources per
+     * form + read status, customizable/sortable columns, native bulk actions,
+     * exporters, and saved views). The `{% hook 'cp.layouts.elementindex' %}`
+     * in the layout derives sources, display names, and column config from the
+     * element type, so the controller only needs to name it.
+     *
+     * Deep links from the rest of the CP (`?formId=`, `?status=`) still work:
+     * those map to the per-form / per-status sources the JS index resolves.
+     */
     public function actionIndex(): Response
     {
-        /** @var \craft\web\Request $request */
-        $request = Craft::$app->getRequest();
-        $formId = $request->getQueryParam('formId');
-        $status = $request->getQueryParam('status', SubmissionStatus::NEW);
-        $search = $request->getQueryParam('search');
-        $dateFrom = $request->getQueryParam('dateFrom');
-        $dateTo = $request->getQueryParam('dateTo');
-        $siteId = Craft::$app->getSites()->getCurrentSite()->id;
-
-        $query = $this->buildFilteredQuery($request, $siteId);
-
-        // Store total count before pagination
-        $total = $query->count();
-
-        // Pagination. F6 (CWE-770): clamp perPage so a caller can't request the
-        // entire table (e.g. ?perPage=99999999) and exhaust memory.
-        $page = max(1, (int) ($request->getQueryParam('page') ?? 1));
-        $perPage = max(1, min((int) $request->getQueryParam('perPage', 50), 500));
-        $query->offset(($page - 1) * $perPage)->limit($perPage);
-
         return $this->renderTemplate('simple-form/submissions/index', [
-            'submissions' => $query->all(),
-            'total' => $total,
-            'page' => $page,
-            'perPage' => $perPage,
-            'formId' => $formId,
-            'status' => $status,
-            'search' => $search,
-            'dateFrom' => $dateFrom,
-            'dateTo' => $dateTo,
-            'forms' => Form::find()->siteId($siteId)->orderBy(['title' => SORT_ASC])->all(),
-            'stats' => Plugin::getInstance()->getReports()->statusBreakdown($siteId, $formId !== null ? (int) $formId : null),
-            // Approval-workflow column + filter (#248); empty/false when off.
-            'workflowEnabled' => Plugin::getInstance()->getWorkflow()->isEnabled(),
-            'workflowStatuses' => Plugin::getInstance()->getWorkflow()->getStatuses(),
-            'workflowFilter' => $request->getQueryParam('workflow'),
+            'title' => Craft::t('simple-form', 'Submissions'),
         ]);
     }
 

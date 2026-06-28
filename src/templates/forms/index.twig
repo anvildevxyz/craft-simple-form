@@ -51,7 +51,9 @@
             <tr>
                 <th>{{ 'Name'|t('simple-form') }}</th>
                 <th>{{ 'Handle'|t('simple-form') }}</th>
-                <th>{{ 'Email To'|t('simple-form') }}</th>
+                <th>{{ 'Status'|t('simple-form') }}</th>
+                <th class="rightalign">{{ 'Submissions'|t('simple-form') }}</th>
+                <th>{{ 'Last submission'|t('simple-form') }}</th>
                 <th>{{ 'Date Created'|t('simple-form') }}</th>
                 <th></th>
                 <th></th>
@@ -61,6 +63,7 @@
         </thead>
         <tbody>
             {% for form in forms %}
+                {% set fstat = formStats[form.id] ?? { count: 0, spam: 0, last: null } %}
                 <tr>
                     <td>
                         <a href="{{ cpUrl('simple-form/forms/edit/' ~ form.id) }}">
@@ -68,7 +71,19 @@
                         </a>
                     </td>
                     <td>{{ form.handle }}</td>
-                    <td>{{ form.emailTo }}</td>
+                    <td>
+                        <span class="status {{ form.status == 'live' or form.status == 'enabled' ? 'enabled' : 'disabled' }}"></span>
+                        {{ form.status == 'live' or form.status == 'enabled' ? 'Enabled'|t('simple-form') : 'Disabled'|t('simple-form') }}
+                    </td>
+                    <td class="rightalign">
+                        {% if fstat.count %}
+                            <a href="{{ cpUrl('simple-form/submissions', { formId: form.id, status: 'all' }) }}">{{ fstat.count }}</a>
+                            {%- if fstat.spam %} <span class="light">({{ fstat.spam }} {{ 'spam'|t('simple-form') }})</span>{% endif %}
+                        {% else %}
+                            <span class="light">0</span>
+                        {% endif %}
+                    </td>
+                    <td>{{ fstat.last ? fstat.last|timestamp('short') : '—' }}</td>
                     <td>{{ form.dateCreated|date('short') }}</td>
                     <td class="thin">
                         <a class="btn small"

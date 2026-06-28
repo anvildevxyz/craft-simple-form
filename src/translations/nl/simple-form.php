@@ -369,4 +369,19 @@ return [
     'Search for an address' => 'Een adres zoeken',
     'Start typing an address…' => 'Begin met het typen van een adres…',
     'Address lookup is unavailable. Please enter your address manually.' => 'Adres zoeken is niet beschikbaar. Voer je adres handmatig in.',
+
+    // Notification log (#…)
+    'Notifications' => 'Meldingen',
+    'Sent' => 'Verzonden',
+    'Failed' => 'Mislukt',
+    'Legacy email' => 'Verouderde e-mail',
+    'Failed to send email.' => 'Kan de e-mail niet verzenden.',
+    'No notifications yet.' => 'Nog geen meldingen.',
+    'Notification emails dispatched for form submissions will appear here, including failed sends.' => 'Meldings-e-mails die voor formulierinzendingen worden verstuurd, verschijnen hier, inclusief mislukte verzendingen.',
+    'Every notification email dispatched for a form submission, including failures.' => 'Elke meldings-e-mail die voor een formulierinzending wordt verstuurd, inclusief mislukkingen.',
+    'View notification log' => 'Meldingslogboek bekijken',
+    'No notifications match your filters.' => 'Geen meldingen komen overeen met je filters.',
+    'Clear filters' => 'Filters wissen',
+    'Delete sent email logs after (days)' => 'Meldingslogboeken verwijderen na (dagen)',
+    'Notification send-log rows older than this are pruned. 0 = keep forever.' => 'Regels in het verzendlogboek van meldingen die ouder zijn dan dit worden opgeschoond. 0 = voor altijd bewaren.',
 ];
