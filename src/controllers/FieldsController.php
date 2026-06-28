@@ -2,6 +2,7 @@
 
 namespace anvildev\simpleform\controllers;
 
+use anvildev\simpleform\Editions;
 use anvildev\simpleform\elements\Form;
 use anvildev\simpleform\helpers\SimpleFormPermissions;
 use anvildev\simpleform\helpers\SiteHelper;
@@ -37,6 +38,14 @@ class FieldsController extends Controller
         $errors = $this->validateFieldInput($type, $label, $handle, $config, (int)$formId, null);
         if (!empty($errors)) {
             return $this->asJsonErrors($errors);
+        }
+
+        // Edition gate (authoritative): adding a field is always a new escalation,
+        // so Solo may not add a Pro field type here — the same rule the form-save
+        // and MCP authoring paths enforce, which this single-field CP route would
+        // otherwise bypass.
+        if (!Editions::fieldTypeAllowed((string)$type)) {
+            return $this->asJsonError(Craft::t('simple-form', 'The “{type}” field type requires the Pro edition.', ['type' => $type]));
         }
 
         try {

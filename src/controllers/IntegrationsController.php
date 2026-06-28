@@ -148,6 +148,11 @@ class IntegrationsController extends Controller
         }
         $integration ??= new IntegrationModel();
 
+        // The type already stored on this integration (empty for a new one), used
+        // by the edition gate below to tell "keep an existing Pro integration" from
+        // "introduce a Pro type".
+        $storedType = (string) $integration->type;
+
         $integration->type = (string) $request->getRequiredBodyParam('type');
         $integration->name = (string) $request->getBodyParam('name', $integration->type);
         $integration->enabled = (bool) $request->getBodyParam('enabled', true);
@@ -159,9 +164,11 @@ class IntegrationsController extends Controller
             throw new NotFoundHttpException('Unknown integration type');
         }
 
-        // Edition gate (authoritative): Solo may not create a new integration of
-        // a Pro type. Existing ones (loaded by id) stay editable after downgrade.
-        if (!$integrationId && !Editions::integrationAllowed($integration->type)) {
+        // Edition gate (authoritative): Solo may not introduce a Pro integration
+        // type — whether by creating one or by editing an existing Solo-allowed
+        // integration and swapping its type. Keeping an integration on the Pro type
+        // it already had (e.g. after a downgrade) stays allowed.
+        if ($integration->type !== $storedType && !Editions::integrationAllowed($integration->type)) {
             Craft::$app->getSession()->setError($this->proIntegrationMessage($type));
             return $this->renderTemplate('simple-form/settings/integrations/edit', [
                 'integration' => $integration,
