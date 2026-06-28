@@ -179,7 +179,6 @@
             'block': 'Block (silently drop the submission)'|t('simple-form'),
         },
         value: settings.akismetMode ?? 'flag',
-        disabled: 'akismetMode' in proLockedFields,
     }) }}
 </div>
 
@@ -207,7 +206,6 @@
             'block': 'Block (silently drop the submission)'|t('simple-form'),
         },
         value: settings.denylistMode ?? 'flag',
-        disabled: 'denylistMode' in proLockedFields,
     }) }}
 
     {{ forms.textareaField({

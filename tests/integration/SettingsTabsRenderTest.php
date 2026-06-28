@@ -107,20 +107,41 @@ class SettingsTabsRenderTest extends SimpleFormTestCase
 
             $soloSpam = $this->render('spam', new Settings());
             $this->assertStringContainsString('Pro feature', $soloSpam);
-            // Off-switches operable...
+            // Off-switches operable (can turn off)...
             $this->assertDoesNotMatchRegularExpression('/name="enableAkismet"[^>]*\bdisabled\b/', $soloSpam);
             $this->assertDoesNotMatchRegularExpression('/name="enableDenylists"[^>]*\bdisabled\b/', $soloSpam);
-            // ...companion config frozen.
-            $this->assertMatchesRegularExpression('/name="blockedKeywords"[^>]*\bdisabled\b/', $soloSpam);
-            $this->assertMatchesRegularExpression('/name="akismetMode"[^>]*\bdisabled\b/', $soloSpam);
+            // ...spam verdict modes operable (can de-escalate block -> flag)...
+            $this->assertDoesNotMatchRegularExpression('/name="akismetMode"[^>]*\bdisabled\b/', $soloSpam);
+            $this->assertDoesNotMatchRegularExpression('/name="denylistMode"[^>]*\bdisabled\b/', $soloSpam);
 
             $soloPrivacy = $this->render('privacy', new Settings());
             $this->assertStringContainsString('Pro feature', $soloPrivacy);
-            // Retention day count (the off-switch) operable; anonymize mode frozen.
+            // Retention day count (the off-switch) operable.
             $this->assertDoesNotMatchRegularExpression('/name="retainSubmissionsDays"[^>]*\bdisabled\b/', $soloPrivacy);
+
+            // The anonymize lightswitch renders its frozen state as 'noteditable'.
             $this->assertStringContainsString('noteditable', $soloPrivacy);
         } finally {
             $plugin->edition = $originalEdition;
+        }
+    }
+
+    public function testEveryFrozenProConfigFieldIsWiredReadOnly(): void
+    {
+        $this->requireCraft();
+
+        // Source-level guardrail: every field frozen on save (PRO_CONFIG_SETTINGS)
+        // must also be wired to `proLockedFields` in its settings template — else a
+        // Solo operator could edit it and have the change silently dropped on save.
+        $dir = __DIR__ . '/../../src/templates/settings/_tabs/';
+        $tpl = file_get_contents($dir . 'spam.twig') . file_get_contents($dir . 'privacy.twig');
+
+        foreach (\anvildev\simpleform\Editions::PRO_CONFIG_SETTINGS as $field) {
+            $this->assertStringContainsString(
+                "'$field' in proLockedFields",
+                $tpl,
+                "$field is frozen on save but not disabled via proLockedFields in its template",
+            );
         }
     }
 

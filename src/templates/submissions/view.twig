@@ -4,9 +4,38 @@
 {% set selectedSubnavItem = 'submissions' %}
 {% do craft.app.view.registerAssetBundle('anvildev\\simpleform\\web\\assets\\cp\\SimpleFormCpAsset') %}
 
-{% block content %}
-<div class="buttons">
-    <a href="{{ cpUrl('simple-form/submissions') }}" class="btn">{{ '← Back'|t('simple-form') }}</a>
+{% set crumbs = [
+    { label: 'Simple Form'|t('simple-form'), url: cpUrl('simple-form/forms') },
+    { label: 'Submissions'|t('simple-form'), url: cpUrl('simple-form/submissions', form ? { formId: form.id } : {}) },
+] %}
+
+{% set readStatusLabels = {
+    new: 'New'|t('simple-form'),
+    read: 'Read'|t('simple-form'),
+    archived: 'Archived'|t('simple-form'),
+    spam: 'Spam'|t('simple-form'),
+} %}
+{% set dispatchStatusLabels = {
+    success: 'Success'|t('simple-form'),
+    failed: 'Failed'|t('simple-form'),
+    pending: 'Pending'|t('simple-form'),
+} %}
+{% set paymentLabels = {
+    pending: 'Pending'|t('simple-form'),
+    paid: 'Paid'|t('simple-form'),
+    canceled: 'Canceled'|t('simple-form'),
+} %}
+{% set attrLabels = {
+    utm_source: 'UTM Source'|t('simple-form'),
+    utm_medium: 'UTM Medium'|t('simple-form'),
+    utm_campaign: 'UTM Campaign'|t('simple-form'),
+    utm_term: 'UTM Term'|t('simple-form'),
+    utm_content: 'UTM Content'|t('simple-form'),
+    referrer: 'Referrer'|t('simple-form'),
+    landing_page: 'Landing page'|t('simple-form'),
+} %}
+
+{% set additionalButtons %}
     {% if form %}
         <a href="{{ cpUrl('simple-form/forms/edit/' ~ form.id) }}" class="btn">{{ 'Edit Form'|t('simple-form') }}</a>
     {% endif %}
@@ -15,60 +44,61 @@
             {{ 'Download PDF'|t('simple-form') }}
         </a>
     {% endif %}
-    <button id="toggle-status-btn" class="btn secondary"
+{% endset %}
+
+{% block actionButton %}
+    <button id="toggle-status-btn" class="btn submit"
             data-action="{{ cpUrl('simple-form/submissions/toggle-status') }}"
             data-submission-id="{{ submission.id }}"
             data-error="{{ 'Couldn’t update the status.'|t('simple-form') }}">
         {{ 'Mark as {status}'|t('simple-form', { status: (submission.readStatus == 'new' ? 'Read'|t('simple-form') : (submission.readStatus == 'read' ? 'Archived'|t('simple-form') : 'New'|t('simple-form'))) }) }}
     </button>
-</div>
+{% endblock %}
 
-<div class="submission-detail">
-    <div class="detail-header">
-        <div class="detail-info">
-            <p>
-                <strong>{{ 'Form:'|t('simple-form') }}</strong>
-                <a href="{{ cpUrl('simple-form/submissions', {formId: form.id}) }}">
-                    {{ form.title ?? form.name }}
-                </a>
-            </p>
-            <p>
-                <strong>{{ 'Status:'|t('simple-form') }}</strong>
+{% set details %}
+    <div class="meta read-only">
+        {% if form %}
+            <div class="data">
+                <h5 class="heading">{{ 'Form'|t('simple-form') }}</h5>
+                <div class="value">
+                    <a href="{{ cpUrl('simple-form/submissions', {formId: form.id}) }}">
+                        {{ form.title ?? form.name }}
+                    </a>
+                </div>
+            </div>
+        {% endif %}
+
+        <div class="data">
+            <h5 class="heading">{{ 'Status'|t('simple-form') }}</h5>
+            <div class="value">
                 <span class="status {{ submission.readStatus }}">
-                    {{ submission.readStatus|upper }}
+                    {{ readStatusLabels[submission.readStatus] ?? submission.readStatus }}
                 </span>
-            </p>
-            {% if workflowEnabled %}
-                <p>
-                    <strong>{{ 'Stage:'|t('simple-form') }}</strong>
+            </div>
+        </div>
+
+        {% if workflowEnabled %}
+            <div class="data">
+                <h5 class="heading">{{ 'Stage'|t('simple-form') }}</h5>
+                <div class="value">
                     {% if workflowStatus %}
                         <span class="status {{ workflowStatus.color }}"></span> {{ workflowStatus.label }}
                     {% else %}
                         <span class="light">{{ '—'|t('simple-form') }}</span>
                     {% endif %}
-                </p>
-                {% if workflowTransitions is not empty %}
-                    <div class="sf-workflow-actions">
-                        {% for transition in workflowTransitions %}
-                            <form method="post" accept-charset="UTF-8" class="sf-inline-form">
-                                {{ csrfInput() }}
-                                <input type="hidden" name="action" value="simple-form/submissions/transition">
-                                <input type="hidden" name="submissionId" value="{{ submission.id }}">
-                                <input type="hidden" name="toStatus" value="{{ transition.to }}">
-                                {{ redirectInput('simple-form/submissions/' ~ submission.id) }}
-                                <button type="submit" class="btn">{{ transition.label }}</button>
-                            </form>
-                        {% endfor %}
-                    </div>
-                {% endif %}
-            {% endif %}
-            <p>
-                <strong>{{ 'Date:'|t('simple-form') }}</strong>
-                {{ submission.dateCreated|date('Y-m-d H:i:s') }}
-            </p>
-            {% if submission.quizScore is not null %}
-                <p>
-                    <strong>{{ 'Score:'|t('simple-form') }}</strong>
+                </div>
+            </div>
+        {% endif %}
+
+        <div class="data">
+            <h5 class="heading">{{ 'Date'|t('simple-form') }}</h5>
+            <div class="value">{{ submission.dateCreated|datetime('short') }}</div>
+        </div>
+
+        {% if submission.quizScore is not null %}
+            <div class="data">
+                <h5 class="heading">{{ 'Score'|t('simple-form') }}</h5>
+                <div class="value">
                     {{ submission.quizScore }}{% if submission.quizMaxScore %} / {{ submission.quizMaxScore }}{% endif %}
                     {% if submission.quizPercentage is not null %}
                         ({{ submission.quizPercentage }}%)
@@ -76,85 +106,100 @@
                     {% if submission.quizGrade %}
                         <span class="status-label">{{ submission.quizGrade }}</span>
                     {% endif %}
-                </p>
-            {% endif %}
-            {% if submission.attribution %}
-                {% set attrLabels = {
-                    utm_source: 'UTM Source'|t('simple-form'),
-                    utm_medium: 'UTM Medium'|t('simple-form'),
-                    utm_campaign: 'UTM Campaign'|t('simple-form'),
-                    utm_term: 'UTM Term'|t('simple-form'),
-                    utm_content: 'UTM Content'|t('simple-form'),
-                    referrer: 'Referrer'|t('simple-form'),
-                    landing_page: 'Landing page'|t('simple-form'),
-                } %}
-                <p><strong>{{ 'Attribution:'|t('simple-form') }}</strong></p>
-                <dl class="sf-attribution">
-                    {% for key, label in attrLabels %}
-                        {% if submission.attribution[key] is defined %}
-                            <dt>{{ label }}</dt>
-                            <dd>{{ submission.attribution[key] }}</dd>
-                        {% endif %}
-                    {% endfor %}
-                </dl>
-            {% endif %}
-            {% if submission.userId %}
-                {% set user = craft.users.id(submission.userId).one() %}
-                <p>
-                    <strong>{{ 'User:'|t('simple-form') }}</strong>
+                </div>
+            </div>
+        {% endif %}
+
+        {% if submission.userId %}
+            {% set user = craft.users.id(submission.userId).one() %}
+            <div class="data">
+                <h5 class="heading">{{ 'User'|t('simple-form') }}</h5>
+                <div class="value">
                     {% if user %}
                         {{ user.fullName ?? user.username }}
                     {% else %}
                         {{ 'Unknown User'|t('simple-form') }}
                     {% endif %}
-                </p>
-            {% endif %}
-            {% if submission.paymentStatus %}
-                {% set paymentLabels = {
-                    pending: 'Pending'|t('simple-form'),
-                    paid: 'Paid'|t('simple-form'),
-                    canceled: 'Canceled'|t('simple-form'),
-                } %}
-                <p>
-                    <strong>{{ 'Payment:'|t('simple-form') }}</strong>
+                </div>
+            </div>
+        {% endif %}
+
+        {% if submission.paymentStatus %}
+            <div class="data">
+                <h5 class="heading">{{ 'Payment'|t('simple-form') }}</h5>
+                <div class="value">
                     <span class="status-label status-{{ submission.paymentStatus }}">
                         {{ paymentLabels[submission.paymentStatus] ?? submission.paymentStatus|capitalize }}
                     </span>
-                </p>
-                {% if submission.paymentAmount %}
-                    <p>
-                        <strong>{{ 'Amount:'|t('simple-form') }}</strong>
-                        {{ submission.paymentAmount|number_format(2) }}
-                    </p>
-                {% endif %}
-                {% if submission.couponCode %}
-                    <p>
-                        <strong>{{ 'Coupon:'|t('simple-form') }}</strong>
+                </div>
+            </div>
+            {% if submission.paymentAmount %}
+                <div class="data">
+                    <h5 class="heading">{{ 'Amount'|t('simple-form') }}</h5>
+                    <div class="value">{{ submission.paymentAmount|number_format(2) }}</div>
+                </div>
+            {% endif %}
+            {% if submission.couponCode %}
+                <div class="data">
+                    <h5 class="heading">{{ 'Coupon'|t('simple-form') }}</h5>
+                    <div class="value">
                         <code>{{ submission.couponCode }}</code>
                         {% if submission.discountAmount %}
                             <span class="light">(−{{ submission.discountAmount|number_format(2) }})</span>
                         {% endif %}
-                    </p>
-                {% endif %}
-                {% if submission.orderId %}
-                    <p>
-                        <strong>{{ 'Order:'|t('simple-form') }}</strong>
+                    </div>
+                </div>
+            {% endif %}
+            {% if submission.orderId %}
+                <div class="data">
+                    <h5 class="heading">{{ 'Order'|t('simple-form') }}</h5>
+                    <div class="value">
                         {% if craft.app.plugins.isPluginInstalled('commerce') %}
-                            <a href="{{ cpUrl('commerce/orders/' ~ submission.orderId) }}">
-                                #{{ submission.orderId }}
-                            </a>
+                            <a href="{{ cpUrl('commerce/orders/' ~ submission.orderId) }}">#{{ submission.orderId }}</a>
                         {% else %}
                             #{{ submission.orderId }}
                         {% endif %}
-                    </p>
-                {% endif %}
+                    </div>
+                </div>
             {% endif %}
-        </div>
+        {% endif %}
     </div>
 
-    <hr>
+    {% if submission.attribution %}
+        <div class="meta read-only">
+            <h5 class="heading">{{ 'Attribution'|t('simple-form') }}</h5>
+            <dl class="sf-attribution">
+                {% for key, label in attrLabels %}
+                    {% if submission.attribution[key] is defined %}
+                        <dt>{{ label }}</dt>
+                        <dd>{{ submission.attribution[key] }}</dd>
+                    {% endif %}
+                {% endfor %}
+            </dl>
+        </div>
+    {% endif %}
 
-    <h3>{{ 'Submission Data'|t('simple-form') }}</h3>
+    {% if workflowEnabled and workflowTransitions is not empty %}
+        <div class="meta">
+            <h5 class="heading">{{ 'Workflow'|t('simple-form') }}</h5>
+            <div class="sf-workflow-actions">
+                {% for transition in workflowTransitions %}
+                    <form method="post" accept-charset="UTF-8" class="sf-inline-form">
+                        {{ csrfInput() }}
+                        <input type="hidden" name="action" value="simple-form/submissions/transition">
+                        <input type="hidden" name="submissionId" value="{{ submission.id }}">
+                        <input type="hidden" name="toStatus" value="{{ transition.to }}">
+                        {{ redirectInput('simple-form/submissions/' ~ submission.id) }}
+                        <button type="submit" class="btn small">{{ transition.label }}</button>
+                    </form>
+                {% endfor %}
+            </div>
+        </div>
+    {% endif %}
+{% endset %}
+
+{% block content %}
+    <h2>{{ 'Submission Data'|t('simple-form') }}</h2>
 
     <table class="data fullwidth">
         <thead>
@@ -166,7 +211,7 @@
         <tbody>
             {% for fieldKey, fieldData in data %}
                 <tr>
-                    <td>{{ fieldData.label ?? fieldKey }}</td>
+                    <td class="thin">{{ fieldData.label ?? fieldKey }}</td>
                     <td>
                         {% if fieldData.type == 'consent' %}
                             {% set consent = fieldData.value %}
@@ -191,7 +236,7 @@
                                 {% set asset = craft.assets().id(assetId).one() %}
                                 {% if asset %}
                                     <a href="{{ asset.url }}" target="_blank" rel="noopener" class="simple-form-signature-asset">
-                                        <img src="{{ asset.url }}" alt="{{ 'Signature'|t('simple-form') }}" style="max-width:240px;max-height:120px;border:1px solid var(--hairline-color);background:#fff;">
+                                        <img src="{{ asset.url }}" alt="{{ 'Signature'|t('simple-form') }}" class="sf-signature-preview">
                                     </a>{% if not loop.last %}<br>{% endif %}
                                 {% endif %}
                             {% else %}
@@ -255,8 +300,7 @@
     </table>
 
     {% if integrationLogs is defined and integrationLogs %}
-        <hr>
-        <h3>{{ 'Integration Dispatches'|t('simple-form') }}</h3>
+        <h2 class="sf-section-heading">{{ 'Integration Dispatches'|t('simple-form') }}</h2>
 
         {# Logs come newest-first, so the first row seen per integration is its
            latest dispatch. Warn if any integration's latest attempt failed. #}
@@ -267,32 +311,36 @@
             {% endif %}
         {% endfor %}
         {% if 'failed' in latestStatus|values %}
-            <p class="sf-dispatch-warning">
-                {{ 'The most recent dispatch failed for one or more integrations. Resend below to retry.'|t('simple-form') }}
+            <p class="light">
+                <span class="error">{{ 'The most recent dispatch failed for one or more integrations. Resend below to retry.'|t('simple-form') }}</span>
             </p>
         {% endif %}
 
-        <table class="data fullwidth">
+        <table class="data fullwidth collapsible">
             <thead>
                 <tr>
                     <th>{{ 'Integration'|t('simple-form') }}</th>
                     <th>{{ 'Status'|t('simple-form') }}</th>
-                    <th>{{ 'Code'|t('simple-form') }}</th>
-                    <th>{{ 'Attempt'|t('simple-form') }}</th>
+                    <th class="thin">{{ 'Code'|t('simple-form') }}</th>
+                    <th class="thin">{{ 'Attempt'|t('simple-form') }}</th>
                     <th>{{ 'When'|t('simple-form') }}</th>
-                    <th>{{ 'Created'|t('simple-form') }}</th>
+                    <th>{{ 'Element'|t('simple-form') }}</th>
                     <th>{{ 'Message'|t('simple-form') }}</th>
-                    {% if canManageIntegrations %}<th></th>{% endif %}
+                    {% if canManageIntegrations %}<th class="thin"></th>{% endif %}
                 </tr>
             </thead>
             <tbody>
                 {% for log in integrationLogs %}
                     <tr>
                         <td>{{ integrationNames[log.integrationId] ?? ('#' ~ log.integrationId) }}</td>
-                        <td><span class="status-label status-{{ log.status }}">{{ log.status|upper }}</span></td>
-                        <td>{{ log.responseCode ?? '—' }}</td>
-                        <td>{{ log.attempts }}</td>
-                        <td>{{ log.dateCreated }}</td>
+                        <td>
+                            <span class="status-label status-{{ log.status }}">
+                                {{ dispatchStatusLabels[log.status] ?? log.status }}
+                            </span>
+                        </td>
+                        <td class="thin">{{ log.responseCode ?? '—' }}</td>
+                        <td class="thin">{{ log.attempts }}</td>
+                        <td>{{ log.dateCreated|datetime('short') }}</td>
                         <td>
                             {%- set link = elementLinks[log.id] ?? null -%}
                             {%- if link -%}
@@ -304,7 +352,7 @@
                         <td class="sf-log-message{{ log.status == 'failed' ? ' is-error' : '' }}">{{ log.message ?: '—' }}</td>
                         {% if canManageIntegrations %}
                             <td class="thin">
-                                <form method="post" style="display:inline" data-sf-confirm="{{ 'Resend this dispatch?'|t('simple-form') }}">
+                                <form method="post" class="sf-inline-form" data-sf-confirm="{{ 'Resend this dispatch?'|t('simple-form') }}">
                                     {{ csrfInput() }}
                                     <input type="hidden" name="action" value="simple-form/integrations/resend">
                                     {{ redirectInput('simple-form/submissions/' ~ submission.id) }}
@@ -319,7 +367,4 @@
             </tbody>
         </table>
     {% endif %}
-</div>
-
-
 {% endblock %}

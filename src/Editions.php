@@ -79,22 +79,38 @@ final class Editions
         'enableAkismet',
         'enableDenylists',
         'retainSubmissionsDays',
+        'retainAuditLogDays',
     ];
 
     /**
-     * Companion configuration for the Pro features above (API keys, modes, denylist
+     * Pro spam "verdict mode" settings (flag vs block). On Solo these stay editable
+     * but may only move toward the non-destructive {@see self::SAFE_MODE} value:
+     * a downgraded site can de-escalate a still-running filter from silently
+     * dropping ('block') to flagging for review ('flag') — so it can stop losing
+     * legitimate submissions — but can't escalate to 'block'.
+     *
+     * @var list<string>
+     */
+    public const PRO_MODE_SETTINGS = [
+        'akismetMode',
+        'denylistMode',
+    ];
+
+    /** The non-destructive verdict mode a Solo site may always select. */
+    public const SAFE_MODE = 'flag';
+
+    /**
+     * Companion configuration for the Pro features above (API key, denylist
      * contents, the anonymize mode). On Solo these are frozen entirely — the
      * settings save keeps their stored value and the CP renders them read-only — so
-     * a downgraded site can't *reconfigure* a still-running Pro feature (e.g. switch
-     * it to silently block, or broaden a denylist). The single source of truth the
-     * settings templates read to decide which inputs to disable.
+     * a downgraded site can't *reconfigure* a still-running Pro feature (e.g.
+     * broaden a denylist). The single source of truth the settings templates read
+     * to decide which inputs to disable.
      *
      * @var list<string>
      */
     public const PRO_CONFIG_SETTINGS = [
         'akismetApiKey',
-        'akismetMode',
-        'denylistMode',
         'blockedKeywords',
         'blockedEmails',
         'blockedIps',
@@ -152,23 +168,32 @@ final class Editions
     }
 
     /**
-     * Whether a settings save must reject this change to a Pro "off switch"
-     * ({@see self::PRO_ENABLE_SETTINGS}) on a non-Pro edition. The only changes
-     * allowed on Solo are turning the feature *off* (posted not "on") or leaving it
-     * exactly as stored; everything else — enabling it, or changing a still-on
-     * value such as shrinking the retention window to delete more aggressively — is
-     * blocked. A value counts as "on" when > 0 (covers both booleans and numeric
-     * thresholds).
+     * Whether a settings save must reject this change to a Pro setting on a non-Pro
+     * edition, allowing only changes that can't escalate a Pro feature:
+     *
+     *  - {@see self::PRO_ENABLE_SETTINGS} (off switches / thresholds): only turning
+     *    off (posted <= 0) or leaving it exactly as stored is allowed; enabling, or
+     *    changing a still-on threshold (e.g. shrinking the retention window to
+     *    delete more aggressively), is blocked. "On" means > 0.
+     *  - {@see self::PRO_MODE_SETTINGS} (spam verdict modes): only the safe
+     *    {@see self::SAFE_MODE} value, or no change, is allowed; escalating to a
+     *    destructive value (e.g. 'block') is blocked.
      */
     public static function blocksProSettingChange(string $field, mixed $stored, mixed $posted, ?string $edition = null): bool
     {
-        if (self::isPro($edition) || !in_array($field, self::PRO_ENABLE_SETTINGS, true)) {
+        if (self::isPro($edition)) {
             return false;
         }
 
-        // Allowed: posted is off (<= 0), or unchanged. Blocked: any on-and-different
-        // value (newly enabling, or reconfiguring a still-on threshold).
-        return (float) $posted > 0 && (float) $posted !== (float) $stored;
+        if (in_array($field, self::PRO_ENABLE_SETTINGS, true)) {
+            return (float) $posted > 0 && (float) $posted !== (float) $stored;
+        }
+
+        if (in_array($field, self::PRO_MODE_SETTINGS, true)) {
+            return $posted !== self::SAFE_MODE && $posted !== $stored;
+        }
+
+        return false;
     }
 
     /**

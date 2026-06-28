@@ -47,7 +47,7 @@ class SettingsController extends Controller
             'submitRateLimitPerMinute',
             'allowGraphqlCaptchaBypass',
         ],
-        'privacy' => ['retainSubmissionsDays', 'retainIntegrationLogsDays', 'retainAuditLogDays', 'anonymizeInsteadOfDelete'],
+        'privacy' => ['retainSubmissionsDays', 'retainIntegrationLogsDays', 'retainAuditLogDays', 'anonymizeInsteadOfDelete', 'partialRetentionDays'],
         // The MCP tab persists only the enable toggle through the generic save;
         // tokens are created/revoked via dedicated actions (one-time secret).
         'mcp' => ['enableMcp'],
@@ -55,7 +55,7 @@ class SettingsController extends Controller
 
     private const BOOL_FIELDS = ['enableHoneypot', 'enableCaptcha', 'enableMcp', 'enableAkismet', 'enableDenylists', 'anonymizeInsteadOfDelete', 'allowGraphqlCaptchaBypass', 'enableWorkflow'];
     private const FLOAT_FIELDS = ['recaptchaV3MinScore'];
-    private const INT_FIELDS = ['retainSubmissionsDays', 'retainIntegrationLogsDays', 'retainAuditLogDays', 'submitRateLimitPerMinute', 'maxAttachmentSizeMb'];
+    private const INT_FIELDS = ['retainSubmissionsDays', 'retainIntegrationLogsDays', 'retainAuditLogDays', 'partialRetentionDays', 'submitRateLimitPerMinute', 'maxAttachmentSizeMb'];
 
     public function actionIndex(): Response
     {
@@ -138,13 +138,13 @@ class SettingsController extends Controller
         }
 
         if ($blockedEnables !== []) {
-            $labels = array_map(
+            $labels = array_values(array_unique(array_map(
                 fn(string $field): string => $this->settingLabel($field),
                 $blockedEnables,
-            );
+            )));
             Craft::$app->getSession()->setError(Craft::t(
                 'simple-form',
-                'Settings saved, but these require the Pro edition and were not enabled: {features}',
+                'Settings saved. These are Pro-only, so the changes that would enable or expand them were left unchanged: {features}',
                 ['features' => implode(', ', $labels)],
             ));
         } else {
@@ -381,15 +381,17 @@ class SettingsController extends Controller
     }
 
     /**
-     * Human-readable label for a Pro "off switch" setting, for the
-     * blocked-on-Solo flash message (so it never leaks raw camelCase handles).
+     * Human-readable label for a gated Pro setting, for the blocked-on-Solo flash
+     * message (so it never leaks raw camelCase handles). Modes map to their
+     * feature's name since that's what the operator recognises.
      */
     private function settingLabel(string $field): string
     {
         return match ($field) {
-            'enableAkismet' => Craft::t('simple-form', 'Akismet'),
-            'enableDenylists' => Craft::t('simple-form', 'Denylists'),
-            'retainSubmissionsDays' => Craft::t('simple-form', 'Automatic submission retention'),
+            'enableAkismet', 'akismetMode' => Craft::t('simple-form', 'Akismet'),
+            'enableDenylists', 'denylistMode' => Craft::t('simple-form', 'Denylists'),
+            'retainSubmissionsDays' => Craft::t('simple-form', 'Automatic submission deletion'),
+            'retainAuditLogDays' => Craft::t('simple-form', 'Audit log retention'),
             default => $field,
         };
     }

@@ -95,6 +95,7 @@ class EditionsTest extends TestCase
         $this->assertTrue(Editions::blocksProSettingChange('enableAkismet', false, true, Editions::SOLO));
         $this->assertTrue(Editions::blocksProSettingChange('enableDenylists', false, true, Editions::SOLO));
         $this->assertTrue(Editions::blocksProSettingChange('retainSubmissionsDays', 0, 30, Editions::SOLO));
+        $this->assertTrue(Editions::blocksProSettingChange('retainAuditLogDays', 0, 30, Editions::SOLO));
 
         // ...as is changing a still-on value (e.g. shrinking — more destructive —
         // or even growing the retention window: it's still reconfiguring Pro).
@@ -107,6 +108,15 @@ class EditionsTest extends TestCase
         $this->assertFalse(Editions::blocksProSettingChange('enableAkismet', true, true, Editions::SOLO));
         $this->assertFalse(Editions::blocksProSettingChange('retainSubmissionsDays', 30, 0, Editions::SOLO));
         $this->assertFalse(Editions::blocksProSettingChange('retainSubmissionsDays', 30, 30, Editions::SOLO));
+
+        // Spam verdict modes: escalating to the destructive 'block' is blocked,
+        // but de-escalating to the safe 'flag' (so a downgraded site can stop
+        // silently dropping legitimate submissions) is always allowed.
+        $this->assertTrue(Editions::blocksProSettingChange('akismetMode', 'flag', 'block', Editions::SOLO));
+        $this->assertTrue(Editions::blocksProSettingChange('denylistMode', 'flag', 'block', Editions::SOLO));
+        $this->assertFalse(Editions::blocksProSettingChange('akismetMode', 'block', 'flag', Editions::SOLO));
+        $this->assertFalse(Editions::blocksProSettingChange('akismetMode', 'block', 'block', Editions::SOLO));
+        $this->assertFalse(Editions::blocksProSettingChange('akismetMode', 'flag', 'block', Editions::PRO));
     }
 
     public function testDefaultOpenForUnknownEdition(): void
