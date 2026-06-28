@@ -90,6 +90,7 @@ class CpScreensRenderTest extends SimpleFormTestCase
             'perDay' => [['date' => '2026-06-27', 'count' => 1], ['date' => '2026-06-28', 'count' => 3]],
             'chartDays' => 30,
             'perForm' => [['formId' => (int) $form->id, 'name' => 'Dashboard Form', 'count' => 5]],
+            'byWeekday' => [0, 0, 0, 0, 1, 3, 0],
             'recent' => [],
             'failedDispatches' => 2,
             'canManageForms' => true,
@@ -101,6 +102,9 @@ class CpScreensRenderTest extends SimpleFormTestCase
         // The chart carries a date axis and a total/peak summary (not just bars).
         $this->assertStringContainsString('sf-chart-axis', $html);
         $this->assertStringContainsString('peak', $html);
+        // The by-weekday breakdown renders labelled horizontal bars.
+        $this->assertStringContainsString('By weekday', $html);
+        $this->assertStringContainsString('sf-hbar-fill', $html);
         // Needs-attention (native note) surfaces both unread submissions and failed dispatches.
         $this->assertStringContainsString('Needs attention', $html);
         $this->assertStringContainsString('note warning', $html);

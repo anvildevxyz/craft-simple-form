@@ -1,0 +1,45 @@
+{# =========================================================================
+   Submissions-over-time chart: daily bars + a real date axis + a total/peak
+   summary. Shared by the Dashboard and the Analytics page so they stay in sync.
+
+   Params (pass with `only`):
+     perDay  list<{date: 'Y-m-d', count: int}>  ascending daily series
+     days    int                                window length, for the summary
+   ========================================================================= #}
+{% set maxCount = 0 %}
+{% set rangeTotal = 0 %}
+{% for point in perDay %}
+    {% set maxCount = max(maxCount, point.count) %}
+    {% set rangeTotal = rangeTotal + point.count %}
+{% endfor %}
+{# ~5–6 evenly spaced date labels whatever the window length. #}
+{% set tickEvery = max(1, (perDay|length / 5)|round) %}
+
+<div class="sf-chart-head">
+    <h2>{{ 'Submissions over time'|t('simple-form') }}</h2>
+    <span class="light sf-chart-sub">
+        {{ '{n} in {d} days'|t('simple-form', { n: rangeTotal, d: days }) }}
+        {%- if maxCount %} · {{ 'peak {n}/day'|t('simple-form', { n: maxCount }) }}{% endif -%}
+    </span>
+</div>
+
+{% if rangeTotal %}
+    <div class="sf-bar-chart" role="img"
+         aria-label="{{ 'Submissions over the last {d} days'|t('simple-form', { d: days }) }}">
+        {% for point in perDay %}
+            <div class="sf-bar-col" title="{{ point.date }}: {{ point.count }}">
+                <div class="sf-bar" style="height: {{ maxCount ? (point.count / maxCount * 100)|round : 0 }}%"></div>
+            </div>
+        {% endfor %}
+    </div>
+
+    {# Date axis: a label every `tickEvery` days plus the last day, each aligned
+       under its bar (empty ticks keep the columns in step with the bars). #}
+    <div class="sf-chart-axis" aria-hidden="true">
+        {% for point in perDay %}
+            <span class="sf-chart-tick">{% if loop.index0 % tickEvery == 0 or loop.last %}{{ point.date|date('M j') }}{% endif %}</span>
+        {% endfor %}
+    </div>
+{% else %}
+    <p class="light">{{ 'No submissions in this range.'|t('simple-form') }}</p>
+{% endif %}
