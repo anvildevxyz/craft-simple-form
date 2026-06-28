@@ -158,7 +158,7 @@ class Plugin extends BasePlugin
     /** The full-featured edition. */
     public const EDITION_PRO = Editions::PRO;
 
-    public string $schemaVersion = '2.13.7';
+    public string $schemaVersion = '2.13.8';
     public bool $hasCpSection = true;
     public bool $hasCpSettings = false;
     public bool $hasCpPermissions = true;

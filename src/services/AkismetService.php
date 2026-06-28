@@ -2,7 +2,6 @@
 
 namespace anvildev\simpleform\services;
 
-use anvildev\simpleform\Editions;
 use anvildev\simpleform\elements\Form;
 use anvildev\simpleform\elements\Submission;
 use anvildev\simpleform\fields\EmailFieldType;
@@ -33,11 +32,10 @@ class AkismetService extends Component
      */
     public function isSpam(Form $form, array $data): bool
     {
-        // Pro-only spam check; inert on Solo even if a stale setting is enabled.
-        if (!Editions::can(Editions::CAP_SPAM_ADVANCED)) {
-            return false;
-        }
-
+        // Edition-blind at runtime: if Akismet is enabled it keeps scoring
+        // regardless of edition, so a Pro->Solo downgrade never silently lets spam
+        // through. Solo is prevented from *enabling* it (the settings authoring
+        // gate); the toggle below is the real on/off switch.
         $settings = Plugin::getInstance()->getSettings();
         if (!$settings->enableAkismet) {
             return false;

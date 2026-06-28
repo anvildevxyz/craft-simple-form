@@ -2,7 +2,6 @@
 
 namespace anvildev\simpleform\services;
 
-use anvildev\simpleform\Editions;
 use anvildev\simpleform\elements\Form;
 use anvildev\simpleform\fields\EmailFieldType;
 use anvildev\simpleform\Plugin;
@@ -39,11 +38,10 @@ class DenylistService extends Component
      */
     public function match(Form $form, array $data): ?string
     {
-        // Pro-only spam denylists; inert on Solo even if a stale setting is on.
-        if (!Editions::can(Editions::CAP_SPAM_ADVANCED)) {
-            return null;
-        }
-
+        // Edition-blind at runtime: enabled denylists keep matching regardless of
+        // edition, so a Pro->Solo downgrade never silently lets banned senders
+        // through. Solo is prevented from *enabling* them (the settings authoring
+        // gate); the toggle below is the real on/off switch.
         $settings = Plugin::getInstance()->getSettings();
         if (!$settings->enableDenylists) {
             return null;

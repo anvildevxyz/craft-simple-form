@@ -510,14 +510,13 @@ class FormsController extends Controller
         if ($proFields !== []) {
             $features[] = Craft::t('simple-form', 'Pro field types ({types})', ['types' => implode(', ', $proFields)]);
         }
-        if (Editions::usesConditionalLogic($fields)) {
-            $features[] = $this->capabilityLabel(Editions::CAP_CONDITIONAL_LOGIC);
-        }
-        if (Editions::usesMultiPage($fields)) {
-            $features[] = $this->capabilityLabel(Editions::CAP_MULTI_PAGE);
-        }
-        if ($form->allowSaveResume) {
-            $features[] = $this->capabilityLabel(Editions::CAP_SAVE_CONTINUE);
+
+        // Derive the form-level capabilities from the same enumeration the save
+        // gate uses (empty "existing" => every Pro capability currently in use is
+        // reported), so the banner and the gate can never drift apart.
+        $capabilities = Editions::blockedNewFormCapabilities($fields, (bool)$form->allowSaveResume, [], false);
+        foreach ($capabilities as $capability) {
+            $features[] = $this->capabilityLabel($capability);
         }
 
         return $features;

@@ -2,6 +2,7 @@
 
 namespace anvildev\simpleform\mcp\tools;
 
+use anvildev\simpleform\Editions;
 use anvildev\simpleform\elements\Form;
 use anvildev\simpleform\mcp\Scopes;
 use anvildev\simpleform\mcp\tools\support\FieldOps;
@@ -77,6 +78,16 @@ class AddFieldTool implements ToolInterface
         $form = Form::find()->id($formId)->siteId('*')->status(null)->one();
         if (!$form instanceof Form) {
             return ['isError' => true, 'error' => 'Form not found.'];
+        }
+
+        // Edition gate (authoritative): adding a new field is always an escalation,
+        // so Solo may not add a Pro field type here — the same rule the CP save
+        // enforces, which this non-CP authoring path would otherwise bypass.
+        if (!Editions::fieldTypeAllowed($type)) {
+            return [
+                'isError' => true,
+                'errors' => ['type' => [sprintf('The "%s" field type requires the Pro edition.', $type)]],
+            ];
         }
 
         $errors = FieldOps::validate($type, $label, $handle, $config, $formId, null);

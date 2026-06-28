@@ -2,7 +2,6 @@
 
 namespace anvildev\simpleform\services;
 
-use anvildev\simpleform\Editions;
 use anvildev\simpleform\elements\Form;
 use anvildev\simpleform\elements\Submission;
 use anvildev\simpleform\fields\EmailFieldType;
@@ -87,11 +86,11 @@ class PaymentsService extends Component
      */
     public function requiresPayment(Form $form): bool
     {
-        // Payments are Pro. On Solo the payment step is skipped — a downgraded
-        // form with an existing Payment field still submits, just without
-        // collecting payment (no runtime error).
-        return Editions::can(Editions::CAP_PAYMENTS)
-            && $this->commerceAvailable()
+        // Edition-blind at runtime: a form that already has a Payment field keeps
+        // collecting payment regardless of edition, so a Pro->Solo downgrade never
+        // silently turns a pay-to-submit form into a free one. Adding a *new*
+        // Payment field is what's gated to Pro (the builder palette + save gate).
+        return $this->commerceAvailable()
             && $this->paymentFieldConfig($form) !== null;
     }
 

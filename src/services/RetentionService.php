@@ -2,7 +2,6 @@
 
 namespace anvildev\simpleform\services;
 
-use anvildev\simpleform\Editions;
 use anvildev\simpleform\elements\Submission;
 use anvildev\simpleform\Plugin;
 use Craft;
@@ -50,13 +49,11 @@ class RetentionService extends Component
      */
     public function purgeSubmissions(?int $days = null, ?bool $anonymize = null, ?int $formId = null): int
     {
-        // Automated submission retention/anonymization is a Pro governance
-        // feature. On Solo this destructive sweep never runs, so a downgraded
-        // site keeps its submissions rather than silently losing them.
-        if (!Editions::can(Editions::CAP_GOVERNANCE)) {
-            return 0;
-        }
-
+        // Edition-blind at runtime: a configured retention/anonymization policy
+        // keeps running regardless of edition, so a Pro->Solo downgrade never
+        // silently stops purging PII. Solo is prevented from *enabling* the policy
+        // in the first place (the settings authoring gate); a `0` threshold is
+        // still a no-op below.
         $settings = Plugin::getInstance()->getSettings();
         $days ??= $settings->retainSubmissionsDays;
         $anonymize ??= $settings->anonymizeInsteadOfDelete;

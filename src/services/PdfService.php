@@ -43,14 +43,27 @@ class PdfService extends Component
     // =========================================================================
 
     /**
-     * Whether a usable PDF engine is installed. When false, every other method
-     * here is a no-op and PDF toggles must stay disabled in the CP.
+     * Whether submission PDFs can actually be generated: a usable engine is
+     * installed *and* the edition allows it. When false, every other method here
+     * is a no-op and PDF toggles must stay disabled in the CP. Callers that need
+     * to tell the two causes apart (to message the operator correctly) should also
+     * check {@see engineAvailable()}.
      */
     public function isAvailable(): bool
     {
         // PDF generation is Pro; gating the single availability check keeps every
         // caller (notification attach, CP download) inert on Solo.
-        return Editions::can(Editions::CAP_PDF) && ($this->getEngine()?->isAvailable() ?? false);
+        return Editions::can(Editions::CAP_PDF) && $this->engineAvailable();
+    }
+
+    /**
+     * Whether the optional PDF engine (dompdf) is installed — independent of
+     * edition. Lets callers distinguish "no engine" (install dompdf) from "engine
+     * present but the edition gates it" (upgrade to Pro).
+     */
+    public function engineAvailable(): bool
+    {
+        return $this->getEngine()?->isAvailable() ?? false;
     }
 
     /**

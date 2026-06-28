@@ -1,5 +1,9 @@
 {% import "_includes/forms.twig" as forms %}
 
+{# Automatic submission deletion/anonymization is Pro: Solo may not enable it
+   (the settings save also enforces this), so those inputs render read-only. #}
+{% set proDisabled = not craft.simpleForm.isPro() %}
+
 <h2>{{ 'Data Retention'|t('simple-form') }}</h2>
 <p class="light">
     {{ 'Automatically prune old data on Craft’s garbage-collection run. Use 0 to keep data forever.'|t('simple-form') }}
@@ -17,6 +21,7 @@
     step: 1,
     size: 6,
     value: settings.retainSubmissionsDays,
+    disabled: proDisabled,
 }) }}
 
 {{ forms.lightswitchField({
@@ -25,6 +30,7 @@
     id: 'anonymizeInsteadOfDelete',
     name: 'anonymizeInsteadOfDelete',
     on: settings.anonymizeInsteadOfDelete,
+    disabled: proDisabled,
 }) }}
 
 {{ forms.textField({

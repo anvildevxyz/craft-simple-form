@@ -83,6 +83,32 @@ class SettingsTabsRenderTest extends SimpleFormTestCase
         $this->assertStringContainsString('name="blockedIps"', $html);
     }
 
+    public function testProSettingsInputsAreDisabledOnSolo(): void
+    {
+        $this->requireCraft();
+
+        $plugin = \anvildev\simpleform\Plugin::getInstance();
+        $originalEdition = $plugin->edition;
+
+        try {
+            // Pro: the Akismet/denylist + retention inputs are editable. (Some
+            // baseline `disabled` markup is always present — e.g. autosuggest
+            // preview inputs — so the gate is asserted as a *delta*, not absence.)
+            $plugin->edition = \anvildev\simpleform\Editions::PRO;
+            $proSpam = substr_count($this->render('spam', new Settings()), 'disabled');
+            $proPrivacy = substr_count($this->render('privacy', new Settings()), 'disabled');
+
+            // Solo: those Pro-only inputs render read-only (the authoring gate; the
+            // settings save enforces the same skip server-side).
+            $plugin->edition = \anvildev\simpleform\Editions::SOLO;
+            $this->assertFalse(\anvildev\simpleform\Editions::isPro(), 'edition should be Solo');
+            $this->assertGreaterThan($proSpam, substr_count($this->render('spam', new Settings()), 'disabled'));
+            $this->assertGreaterThan($proPrivacy, substr_count($this->render('privacy', new Settings()), 'disabled'));
+        } finally {
+            $plugin->edition = $originalEdition;
+        }
+    }
+
     public function testMcpTokenUiGatedOnEnableFlag(): void
     {
         $this->requireCraft();

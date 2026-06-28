@@ -71,7 +71,13 @@ final class Editions
      */
     public static function current(): string
     {
-        return Plugin::getInstance()->edition;
+        // Default-open: if the plugin instance isn't resolvable yet (e.g. a gated
+        // static reached from a teardown/uninstall path, where Yii's getInstance()
+        // can return null), treat the edition as Pro rather than fatalling on a
+        // null dereference.
+        /** @var Plugin|null $plugin */
+        $plugin = Plugin::getInstance();
+        return $plugin?->edition ?? self::PRO;
     }
 
     /**
@@ -112,9 +118,10 @@ final class Editions
 
     /**
      * The Pro field-type handles in $types that are *newly introduced* relative
-     * to $existing — i.e. the escalations a save must reject on Solo. A Pro field
-     * already present in the saved form is allowed through (no-new-escalation
-     * rule), so a downgraded form stays editable without being forced to drop it.
+     * to $existing — i.e. the escalations a save must reject on Solo. The
+     * comparison is by *count* per type: a downgraded form keeps the Pro fields it
+     * already has (no-new-escalation rule), but adding another field of an
+     * already-present Pro type is still an escalation and is blocked.
      *
      * @param list<string> $types the field-type handles being saved
      * @param list<string> $existing the field-type handles already on the form
@@ -126,17 +133,27 @@ final class Editions
             return [];
         }
 
-        $blocked = array_filter(
-            $types,
-            static fn(string $t): bool => in_array($t, self::PRO_FIELDS, true) && !in_array($t, $existing, true),
-        );
+        $existingCounts = array_count_values($existing);
+        $blocked = [];
+        foreach (array_count_values($types) as $type => $count) {
+            if (!in_array((string) $type, self::PRO_FIELDS, true)) {
+                continue;
+            }
+            if ($count > ($existingCounts[$type] ?? 0)) {
+                $blocked[] = (string) $type;
+            }
+        }
 
         return array_values(array_unique($blocked));
     }
 
     /**
-     * Whether any field in a builder/DB field set uses conditional logic — a
-     * non-empty visibility or required rule set under `config.conditional`.
+     * Whether any field in a builder/DB field set *actively* uses conditional
+     * logic — an enabled visibility or conditional-required block carrying a
+     * non-empty rule set. Mirrors the gating in
+     * {@see \anvildev\simpleform\helpers\ConditionalEvaluator} (the single source
+     * of truth): a block with rules but `enabled: false` is inert at render time,
+     * so it must not count as Pro usage here either.
      *
      * @param iterable<array<string, mixed>> $items
      */
@@ -147,9 +164,18 @@ final class Editions
             if (!is_array($conditional)) {
                 continue;
             }
+            // Visibility block: active only when enabled with a non-empty rule set.
             if (
-                (isset($conditional['rules']) && is_array($conditional['rules']) && $conditional['rules'] !== [])
-                || (isset($conditional['required']['rules']) && is_array($conditional['required']['rules']) && $conditional['required']['rules'] !== [])
+                !empty($conditional['enabled'])
+                && isset($conditional['rules']) && is_array($conditional['rules']) && $conditional['rules'] !== []
+            ) {
+                return true;
+            }
+            // Conditional-required block: independent, with its own enabled flag.
+            $required = $conditional['required'] ?? null;
+            if (
+                is_array($required) && !empty($required['enabled'])
+                && isset($required['rules']) && is_array($required['rules']) && $required['rules'] !== []
             ) {
                 return true;
             }

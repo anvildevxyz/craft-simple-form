@@ -2,6 +2,7 @@
 
 namespace anvildev\simpleform\controllers;
 
+use anvildev\simpleform\Editions;
 use anvildev\simpleform\helpers\SimpleFormPermissions;
 use anvildev\simpleform\mcp\Scopes;
 use anvildev\simpleform\Plugin;
@@ -52,6 +53,18 @@ class SettingsController extends Controller
         'mcp' => ['enableMcp'],
     ];
 
+    /**
+     * Pro-only settings. On Solo these are read-only authoring-wise: a posted
+     * change is ignored so Solo can never *enable* a Pro feature, while any value
+     * already stored (e.g. after a Pro->Solo downgrade) is preserved untouched —
+     * the runtime services honor whatever is stored, edition-blind.
+     */
+    private const PRO_FIELDS = [
+        'enableAkismet', 'akismetApiKey', 'akismetMode',
+        'enableDenylists', 'denylistMode', 'blockedKeywords', 'blockedEmails', 'blockedIps',
+        'retainSubmissionsDays', 'anonymizeInsteadOfDelete',
+    ];
+
     private const BOOL_FIELDS = ['enableHoneypot', 'enableCaptcha', 'enableMcp', 'enableAkismet', 'enableDenylists', 'anonymizeInsteadOfDelete', 'allowGraphqlCaptchaBypass', 'enableWorkflow'];
     private const FLOAT_FIELDS = ['recaptchaV3MinScore'];
     private const INT_FIELDS = ['retainSubmissionsDays', 'retainIntegrationLogsDays', 'retainAuditLogDays', 'submitRateLimitPerMinute', 'maxAttachmentSizeMb'];
@@ -83,7 +96,12 @@ class SettingsController extends Controller
         $bool = array_flip(self::BOOL_FIELDS);
         $float = array_flip(self::FLOAT_FIELDS);
         $int = array_flip(self::INT_FIELDS);
+        $proGated = Editions::isPro() ? [] : array_flip(self::PRO_FIELDS);
         foreach (self::TAB_FIELDS[$tab] as $field) {
+            // Authoring gate: keep Pro-only settings at their stored value on Solo.
+            if (isset($proGated[$field])) {
+                continue;
+            }
             if (isset($bool[$field])) {
                 $values[$field] = (bool) $request->getBodyParam($field);
             } elseif (isset($float[$field])) {

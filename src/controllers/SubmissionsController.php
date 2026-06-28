@@ -286,7 +286,12 @@ class SubmissionsController extends Controller
     {
         $pdf = Plugin::getInstance()->getPdf();
         if (!$pdf->isAvailable()) {
-            throw new \yii\web\ServerErrorHttpException(Craft::t('simple-form', 'Install the dompdf library to generate submission PDFs.'));
+            // Distinguish the two causes so the operator gets the right fix: a
+            // missing engine vs. an edition that gates PDF generation.
+            $message = $pdf->engineAvailable()
+                ? Craft::t('simple-form', 'Submission PDFs require the Pro edition.')
+                : Craft::t('simple-form', 'Install the dompdf library to generate submission PDFs.');
+            throw new \yii\web\ServerErrorHttpException($message);
         }
 
         $siteId = Craft::$app->getSites()->getCurrentSite()->id;

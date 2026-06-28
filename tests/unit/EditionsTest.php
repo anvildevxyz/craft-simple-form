@@ -75,6 +75,10 @@ class EditionsTest extends TestCase
             Editions::blockedNewProFields(['payment', 'signature'], ['payment'], Editions::SOLO),
         );
 
+        // Count-aware: keeping the one existing Pro field is allowed, but adding a
+        // *second* field of that already-present type is still an escalation.
+        $this->assertSame(['rating'], Editions::blockedNewProFields(['rating', 'rating'], ['rating'], Editions::SOLO));
+
         // Duplicate blocked handles collapse to one.
         $this->assertSame(['rating'], Editions::blockedNewProFields(['rating', 'rating'], [], Editions::SOLO));
     }
@@ -92,13 +96,17 @@ class EditionsTest extends TestCase
     public function testDetectsConditionalLogicAndMultiPage(): void
     {
         $plain = [['type' => 'text', 'config' => []]];
-        $conditional = [['type' => 'text', 'config' => ['conditional' => ['rules' => [['field' => 'a', 'value' => 'x']]]]]];
-        $conditionalRequired = [['type' => 'text', 'config' => ['conditional' => ['required' => ['rules' => [['field' => 'a']]]]]]];
-        $emptyConditional = [['type' => 'text', 'config' => ['conditional' => ['rules' => []]]]];
+        $conditional = [['type' => 'text', 'config' => ['conditional' => ['enabled' => true, 'rules' => [['field' => 'a', 'value' => 'x']]]]]];
+        $conditionalRequired = [['type' => 'text', 'config' => ['conditional' => ['required' => ['enabled' => true, 'rules' => [['field' => 'a']]]]]]];
+        $emptyConditional = [['type' => 'text', 'config' => ['conditional' => ['enabled' => true, 'rules' => []]]]];
+        // Rules present but the block is disabled: inert at render time per
+        // ConditionalEvaluator, so it must not count as Pro usage here either.
+        $disabledConditional = [['type' => 'text', 'config' => ['conditional' => ['enabled' => false, 'rules' => [['field' => 'a', 'value' => 'x']]]]]];
         $multiPage = [['type' => 'text', 'config' => ['page' => 1]], ['type' => 'email', 'config' => ['page' => 2]]];
 
         $this->assertFalse(Editions::usesConditionalLogic($plain));
         $this->assertFalse(Editions::usesConditionalLogic($emptyConditional));
+        $this->assertFalse(Editions::usesConditionalLogic($disabledConditional));
         $this->assertTrue(Editions::usesConditionalLogic($conditional));
         $this->assertTrue(Editions::usesConditionalLogic($conditionalRequired));
 
@@ -108,7 +116,7 @@ class EditionsTest extends TestCase
 
     public function testBlockedNewFormCapabilitiesAppliesNoEscalationRule(): void
     {
-        $conditional = [['type' => 'text', 'config' => ['conditional' => ['rules' => [['field' => 'a']]]]]];
+        $conditional = [['type' => 'text', 'config' => ['conditional' => ['enabled' => true, 'rules' => [['field' => 'a']]]]]];
         $plain = [['type' => 'text', 'config' => []]];
 
         // Pro: never blocked.
