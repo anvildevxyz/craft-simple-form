@@ -41,26 +41,8 @@
         {% endfor %}
     </div>
 
-    {# Submissions over time — lightweight CSS bar chart #}
-    <h2>{{ 'Submissions over time'|t('simple-form') }}</h2>
-    {% set maxCount = 1 %}
-    {% for point in perDay %}{% set maxCount = max(maxCount, point.count) %}{% endfor %}
-    {% set totalInRange = 0 %}
-    {% for point in perDay %}{% set totalInRange = totalInRange + point.count %}{% endfor %}
-
-    {% if totalInRange %}
-        <div class="sf-bar-chart" role="img"
-             aria-label="{{ '{n} submissions over the last {d} days'|t('simple-form', { n: totalInRange, d: days }) }}">
-            {% for point in perDay %}
-                <div class="sf-bar-col" title="{{ point.date }}: {{ point.count }}">
-                    <div class="sf-bar" style="height: {{ (point.count / maxCount * 100)|round }}%"></div>
-                </div>
-            {% endfor %}
-        </div>
-        <p class="light">{{ '{n} submissions in this range.'|t('simple-form', { n: totalInRange }) }}</p>
-    {% else %}
-        <p class="light">{{ 'No submissions in this range.'|t('simple-form') }}</p>
-    {% endif %}
+    {# Submissions over time — shared chart partial (bars + date axis + summary). #}
+    {% include 'simple-form/_partials/timechart' with { perDay: perDay, days: days } only %}
 
     {# Spam vs ham #}
     <h2>{{ 'Spam'|t('simple-form') }}</h2>

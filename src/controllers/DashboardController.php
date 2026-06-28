@@ -65,6 +65,7 @@ class DashboardController extends Controller
         }
 
         return $this->renderTemplate('simple-form/dashboard/index', [
+            'byWeekday' => $this->byWeekday($perDay),
             'title' => Craft::t('simple-form', 'Dashboard'),
             'formCount' => (int) Form::find()->siteId($siteId)->status(null)->count(),
             'enabledFormCount' => (int) Form::find()->siteId($siteId)->status('enabled')->count(),
@@ -79,6 +80,27 @@ class DashboardController extends Controller
             'canManageForms' => $isAdmin || (bool) $user?->can(SimpleFormPermissions::MANAGE_FORMS),
             'hasAnySubmissions' => $breakdown['total'] > 0,
         ]);
+    }
+
+    /**
+     * Bucket the daily series into submissions-per-weekday (Mon→Sun), so the
+     * dashboard can show *when* submissions tend to arrive. Derived from the
+     * already-loaded `perDay` data — no extra query, and DB-agnostic (no
+     * weekday SQL function that would differ across MySQL/Postgres).
+     *
+     * @param list<array{date: string, count: int}> $perDay
+     * @return list<int> seven counts, index 0 = Monday … 6 = Sunday
+     */
+    private function byWeekday(array $perDay): array
+    {
+        $buckets = array_fill(0, 7, 0);
+        foreach ($perDay as $point) {
+            // ISO-8601 day of week: 1 (Mon) … 7 (Sun) → 0 … 6.
+            $dow = (int) (new \DateTime($point['date']))->format('N') - 1;
+            $buckets[$dow] += (int) $point['count'];
+        }
+
+        return $buckets;
     }
 
     /**

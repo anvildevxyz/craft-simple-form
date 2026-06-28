@@ -63,40 +63,9 @@
             {% endif %}
         </div>
     {% else %}
-        {# Submissions over time — daily bars with a real date axis + summary. #}
+        {# Submissions over time — shared chart partial (bars + date axis + summary). #}
         <div class="pane">
-            {% set maxCount = 0 %}
-            {% set rangeTotal = 0 %}
-            {% for point in perDay %}
-                {% set maxCount = max(maxCount, point.count) %}
-                {% set rangeTotal = rangeTotal + point.count %}
-            {% endfor %}
-
-            <div class="sf-chart-head">
-                <h2>{{ 'Submissions over time'|t('simple-form') }}</h2>
-                <span class="light sf-chart-sub">
-                    {{ '{n} in {d} days'|t('simple-form', { n: rangeTotal, d: chartDays }) }}
-                    {%- if maxCount %} · {{ 'peak {n}/day'|t('simple-form', { n: maxCount }) }}{% endif -%}
-                </span>
-            </div>
-
-            <div class="sf-bar-chart" role="img"
-                 aria-label="{{ 'Submissions over the last {d} days'|t('simple-form', { d: chartDays }) }}">
-                {% for point in perDay %}
-                    <div class="sf-bar-col" title="{{ point.date }}: {{ point.count }}">
-                        <div class="sf-bar" style="height: {{ maxCount ? (point.count / maxCount * 100)|round : 0 }}%"></div>
-                    </div>
-                {% endfor %}
-            </div>
-
-            {# Date axis: a label every ~6 days plus the last day, aligned under
-               its bar (empty ticks keep the columns in step with the bars). #}
-            <div class="sf-chart-axis" aria-hidden="true">
-                {% for point in perDay %}
-                    <span class="sf-chart-tick">{% if loop.index0 % 6 == 0 or loop.last %}{{ point.date|date('M j') }}{% endif %}</span>
-                {% endfor %}
-            </div>
-
+            {% include 'simple-form/_partials/timechart' with { perDay: perDay, days: chartDays } only %}
             <p class="light"><a href="{{ cpUrl('simple-form/submissions/analytics') }}">{{ 'View full analytics →'|t('simple-form') }}</a></p>
         </div>
 
@@ -126,9 +95,24 @@
                 <p class="light sf-tight-top"><a href="{{ cpUrl('simple-form/submissions') }}">{{ 'All submissions →'|t('simple-form') }}</a></p>
             </div>
 
-            {# Top forms + quick actions. #}
+            {# By weekday + Top forms + quick actions. #}
             <div class="pane">
-                <h2>{{ 'Top forms'|t('simple-form') }}</h2>
+                <h2>{{ 'By weekday'|t('simple-form') }}</h2>
+                {% set wdMax = max(byWeekday) %}
+                {% set wdNames = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'] %}
+                <div class="sf-hbars">
+                    {% for i, label in wdNames %}
+                        <div class="sf-hbar-row">
+                            <span class="sf-hbar-label">{{ label|t('simple-form') }}</span>
+                            <span class="sf-hbar-track">
+                                <span class="sf-hbar-fill" style="width: {{ wdMax ? (byWeekday[i] / wdMax * 100)|round : 0 }}%"></span>
+                            </span>
+                            <span class="sf-hbar-val">{{ byWeekday[i]|number }}</span>
+                        </div>
+                    {% endfor %}
+                </div>
+
+                <h2 class="sf-dash-h2-spaced">{{ 'Top forms'|t('simple-form') }}</h2>
                 {% if perForm|length %}
                     <table class="data fullwidth">
                         <thead>
