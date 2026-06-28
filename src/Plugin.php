@@ -21,6 +21,7 @@ use anvildev\simpleform\models\Settings;
 use anvildev\simpleform\services\AkismetService;
 use anvildev\simpleform\services\AssetUploadService;
 use anvildev\simpleform\services\AuditService;
+use anvildev\simpleform\services\NotificationLogService;
 use anvildev\simpleform\services\CaptchaProviderRegistry;
 use anvildev\simpleform\services\CaptchaService;
 use anvildev\simpleform\services\CouponsService;
@@ -213,6 +214,7 @@ class Plugin extends BasePlugin
             'workflow' => WorkflowService::class,
             'notifications' => NotificationsService::class,
             'audit' => AuditService::class,
+            'notificationLog' => NotificationLogService::class,
             'payments' => PaymentsService::class,
             'fields' => FieldsService::class,
             'fieldSync' => FieldSyncService::class,
@@ -677,6 +679,13 @@ class Plugin extends BasePlugin
         return $service;
     }
 
+    public function getNotificationLog(): NotificationLogService
+    {
+        /** @var NotificationLogService $service */
+        $service = $this->get('notificationLog');
+        return $service;
+    }
+
     public function getPayments(): PaymentsService
     {
         /** @var PaymentsService $service */
@@ -725,6 +734,7 @@ class Plugin extends BasePlugin
         }
         if ($isAdmin || $user?->can(SimpleFormPermissions::VIEW_SUBMISSIONS)) {
             $subnav['submissions'] = ['label' => Craft::t('simple-form', 'Submissions'), 'url' => 'simple-form/submissions'];
+            $subnav['notifications'] = ['label' => Craft::t('simple-form', 'Notifications'), 'url' => 'simple-form/notifications'];
         }
         if ($isAdmin || $user?->can(SimpleFormPermissions::MANAGE_SETTINGS)) {
             $subnav['settings'] = ['label' => Craft::t('simple-form', 'Settings'), 'url' => 'simple-form/settings'];
@@ -777,6 +787,7 @@ class Plugin extends BasePlugin
         $event->rules['simple-form/forms/<formId:\d+>/partials'] = 'simple-form/partials/index';
         $event->rules['simple-form/partials/delete'] = 'simple-form/partials/delete';
 
+        $event->rules['simple-form/notifications'] = 'simple-form/notification-log/index';
         $event->rules['simple-form/submissions'] = 'simple-form/submissions/index';
         $event->rules['simple-form/submissions/analytics'] = 'simple-form/submissions/analytics';
         $event->rules['simple-form/submissions/export'] = 'simple-form/submissions/export';

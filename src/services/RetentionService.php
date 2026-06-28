@@ -22,6 +22,7 @@ class RetentionService extends Component
 {
     private const SUBMISSIONS = '{{%simpleform_submissions}}';
     private const INTEGRATION_LOGS = '{{%simpleform_integration_logs}}';
+    private const NOTIFICATION_LOGS = '{{%simpleform_notification_logs}}';
 
     /** Delete elements in bounded batches so a large backlog never loads at once. */
     private const BATCH = 500;
@@ -29,13 +30,14 @@ class RetentionService extends Component
     /**
      * Run all retention sweeps. Returns counts for logging/telemetry.
      *
-     * @return array{submissions: int, integrationLogs: int, auditLog: int}
+     * @return array{submissions: int, integrationLogs: int, notificationLogs: int, auditLog: int, drafts: int}
      */
     public function runGarbageCollection(): array
     {
         return [
             'submissions' => $this->purgeSubmissions(),
             'integrationLogs' => $this->pruneIntegrationLogs(),
+            'notificationLogs' => $this->pruneNotificationLogs(),
             'auditLog' => Plugin::getInstance()->getAudit()->prune(
                 Plugin::getInstance()->getSettings()->retainAuditLogDays,
             ),
@@ -91,6 +93,22 @@ class RetentionService extends Component
 
         return (int) Craft::$app->getDb()->createCommand()
             ->delete(self::INTEGRATION_LOGS, ['<', 'dateCreated', Db::prepareDateForDb($this->cutoff($days))])
+            ->execute();
+    }
+
+    /**
+     * Delete notification send-log rows older than `retainNotificationLogsDays`.
+     * Returns the number of rows deleted. No-op when the setting is 0.
+     */
+    public function pruneNotificationLogs(?int $days = null): int
+    {
+        $days ??= Plugin::getInstance()->getSettings()->retainNotificationLogsDays;
+        if ($days <= 0) {
+            return 0;
+        }
+
+        return (int) Craft::$app->getDb()->createCommand()
+            ->delete(self::NOTIFICATION_LOGS, ['<', 'dateCreated', Db::prepareDateForDb($this->cutoff($days))])
             ->execute();
     }
 

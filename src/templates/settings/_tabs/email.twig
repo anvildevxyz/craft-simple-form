@@ -48,3 +48,7 @@
     instructions: 'Total cap on a notification’s attachments. Uploaded files over this cap fall back to in-body download links. 0 disables the cap.'|t('simple-form'),
     errors: settings.getErrors('maxAttachmentSizeMb') ?? [],
 }) }}
+
+<p class="light">
+    <a href="{{ cpUrl('simple-form/notifications') }}">{{ 'View notification log'|t('simple-form') }}</a>
+</p>

@@ -371,4 +371,20 @@ return [
     'Search for an address' => 'Search for an address',
     'Start typing an address…' => 'Start typing an address…',
     'Address lookup is unavailable. Please enter your address manually.' => 'Address lookup is unavailable. Please enter your address manually.',
+
+    // Sent notification log (global index)
+    'Notifications' => 'Notifications',
+    'Sent' => 'Sent',
+    'Failed' => 'Failed',
+    'Legacy email' => 'Legacy email',
+    'Failed to send email.' => 'Failed to send email.',
+    'No notifications yet.' => 'No notifications yet.',
+    'Notification emails dispatched for form submissions will appear here, including failed sends.' => 'Notification emails dispatched for form submissions will appear here, including failed sends.',
+    'Every notification email dispatched for a form submission, including failures.' => 'Every notification email dispatched for a form submission, including failures.',
+    'View notification log' => 'View notification log',
+    'No notifications match your filters.' => 'No notifications match your filters.',
+    'Clear filters' => 'Clear filters',
+    'Message' => 'Message',
+    'Delete sent email logs after (days)' => 'Delete notification logs after (days)',
+    'Notification send-log rows older than this are pruned. 0 = keep forever.' => 'Notification send-log rows older than this are pruned. 0 = keep forever.',
 ];

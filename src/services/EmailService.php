@@ -60,13 +60,24 @@ class EmailService extends Component
                 $recipients = $event->recipients;
             }
 
-            $allSent = $this->send(
+            $subject = $this->renderSubjectFor($notification->subject, $form);
+            $sent = $this->send(
                 $recipients,
-                $this->renderSubjectFor($notification->subject, $form),
+                $subject,
                 $this->renderBodyFor($notification->body, $form, $submission, $data),
                 $notification->replyTo,
                 $this->attachmentsFor($notification, $form, $submission, $data),
-            ) && $allSent;
+            );
+            $this->_logSend(
+                $form,
+                $submission,
+                $notification->id,
+                $notification->name,
+                $recipients,
+                $subject,
+                $sent,
+            );
+            $allSent = $sent && $allSent;
         }
 
         return $allSent;
@@ -209,11 +220,52 @@ class EmailService extends Component
             $recipients = $event->recipients;
         }
 
-        return $this->send(
+        $subject = $this->renderSubjectFor($form->emailSubject, $form);
+        $sent = $this->send(
             $recipients,
-            $this->renderSubjectFor($form->emailSubject, $form),
+            $subject,
             $this->renderBodyFor($form->emailBody, $form, $submission, $data),
             $form->emailReplyTo,
+        );
+        $this->_logSend(
+            $form,
+            $submission,
+            null,
+            Craft::t('simple-form', 'Legacy email'),
+            $recipients,
+            $subject,
+            $sent,
+        );
+
+        return $sent;
+    }
+
+    /**
+     * @param list<string>|string $recipients
+     */
+    private function _logSend(
+        Form $form,
+        Submission $submission,
+        ?int $notificationId,
+        string $notificationName,
+        array|string $recipients,
+        string $subject,
+        bool $sent,
+    ): void {
+        if ($form->id === null) {
+            return;
+        }
+
+        $recipientList = is_array($recipients) ? $recipients : [$recipients];
+        Plugin::getInstance()->getNotificationLog()->logSend(
+            (int) $form->id,
+            $submission->id !== null ? (int) $submission->id : null,
+            $notificationId,
+            $notificationName,
+            $sent,
+            array_values($recipientList),
+            $subject,
+            $sent ? '' : Craft::t('simple-form', 'Failed to send email.'),
         );
     }
 

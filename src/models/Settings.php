@@ -173,6 +173,7 @@ class Settings extends Model
      */
     public int $retainSubmissionsDays = 0;
     public int $retainIntegrationLogsDays = 90;
+    public int $retainNotificationLogsDays = 90;
     public int $retainAuditLogDays = 365;
 
     /**
@@ -327,7 +328,7 @@ class Settings extends Model
             // resolve at runtime.
             [['defaultEmailSender'], 'email', 'when' => fn(): bool => !str_starts_with((string) $this->defaultEmailSender, '$')],
             [['enableHoneypot', 'enableCaptcha', 'cacheFormStructure', 'inlineFormAssets', 'enableMcp', 'dispatchIntegrationsSynchronously', 'enableAkismet', 'anonymizeInsteadOfDelete', 'allowGraphqlCaptchaBypass', 'enableDenylists'], 'boolean'],
-            [['retainSubmissionsDays', 'retainIntegrationLogsDays', 'retainAuditLogDays', 'submitRateLimitPerMinute', 'maxAttachmentSizeMb'], 'integer', 'min' => 0],
+            [['retainSubmissionsDays', 'retainIntegrationLogsDays', 'retainNotificationLogsDays', 'retainAuditLogDays', 'submitRateLimitPerMinute', 'maxAttachmentSizeMb'], 'integer', 'min' => 0],
             [['pdfStorageVolume'], 'string'],
             [['draftRetentionDays', 'partialRetentionDays'], 'integer', 'min' => 1],
             [['akismetMode'], 'in', 'range' => [self::AKISMET_FLAG, self::AKISMET_BLOCK]],
