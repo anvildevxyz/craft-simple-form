@@ -64,6 +64,18 @@
     margin-top: 5px;
 }
 
+/* Form-level error summary (no-JS POST round-trip / hand-authored layouts).
+   Reset the browser's default bullet + indent so it reads as a clean list. */
+.simple-form-errors {
+    list-style: none;
+    margin: 0 0 16px;
+    padding: 0;
+    color: #b91c1c;
+}
+.simple-form-errors li {
+    margin: 2px 0;
+}
+
 /* Multi-column rows: a CSS grid that collapses on mobile (no JS). Column widths
    come from the inline `--sf-cols` custom property (e.g. "2fr 1fr" for a 66/33
    split); the per-field weight is set in the builder. The data-cols fallbacks

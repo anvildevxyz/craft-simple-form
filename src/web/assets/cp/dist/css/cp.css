@@ -347,17 +347,26 @@
 .sf-bar-chart {
     display: flex;
     align-items: flex-end;
-    gap: 2px;
-    height: 160px;
-    padding: 8px 0;
-    border-bottom: 1px solid var(--hairline-color, #e3e5e8);
+    gap: 3px;
+    height: 140px;
+    padding: 0;
 }
-.sf-bar-col { flex: 1 1 0; display: flex; align-items: flex-end; height: 100%; min-width: 2px; }
+/* Each day is a faint full-height track so empty days still read as part of the
+   chart; the filled bar sits on top. */
+.sf-bar-col {
+    flex: 1 1 0;
+    display: flex;
+    align-items: flex-end;
+    height: 100%;
+    min-width: 3px;
+    background: var(--gray-100, #edf0f5);
+    border-radius: 3px;
+}
 .sf-bar {
     width: 100%;
-    min-height: 1px;
+    min-height: 0;
     background: var(--enabled-color, #3a85ee);
-    border-radius: 2px 2px 0 0;
+    border-radius: 3px;
 }
 
 /* Inline approve/delete actions in the spam review queue. */
