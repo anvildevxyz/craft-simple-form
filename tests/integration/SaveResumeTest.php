@@ -55,8 +55,12 @@ class SaveResumeTest extends SimpleFormTestCase
         $this->assertNull($drafts->getData($token, (int) $form->id + 999));
         $this->assertNull($drafts->getData('nope', (int) $form->id));
 
-        // The plaintext token is never stored.
-        $this->assertSame(0, (int) (new Query())->from(self::TABLE)->where(['data' => $token])->count());
+        // The plaintext token is never stored. Checked DB-agnostically: `data`
+        // is a json column, and Postgres rejects string-comparing it to a bare
+        // token (`WHERE data = '<token>'` → invalid json) where MySQL is lenient.
+        foreach ((new Query())->select(['data'])->from(self::TABLE)->column() as $payload) {
+            $this->assertStringNotContainsString($token, (string) $payload);
+        }
 
         $drafts->delete($token);
         $this->assertNull($drafts->getData($token, (int) $form->id));
