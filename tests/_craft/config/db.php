@@ -6,7 +6,10 @@ return [
     'dsn' => $dsn,
     'user' => getenv('CRAFT_DB_USER') ?: 'root',
     'password' => getenv('CRAFT_DB_PASSWORD') ?: 'root',
-    'schema' => getenv('CRAFT_DB_SCHEMA') ?: '',
+    // Postgres needs a real schema for column introspection; an empty default
+    // makes Yii build `d.nspname = ` (no value) and the suite dies at boot with
+    // a "syntax error at or near ORDER" before any test runs. MySQL ignores it.
+    'schema' => getenv('CRAFT_DB_SCHEMA') ?: (str_starts_with($dsn, 'pgsql') ? 'public' : ''),
     'tablePrefix' => getenv('CRAFT_DB_TABLE_PREFIX') ?: '',
     // utf8mb4 is MySQL-only; Postgres rejects it as an invalid client_encoding
     // (the PG CI job died at connection setup before any test ran). Use the
