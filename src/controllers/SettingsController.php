@@ -84,9 +84,19 @@ class SettingsController extends Controller
         $bool = array_flip(self::BOOL_FIELDS);
         $float = array_flip(self::FLOAT_FIELDS);
         $int = array_flip(self::INT_FIELDS);
+        // On Solo the Pro features' companion config is frozen (can't reconfigure a
+        // still-running Pro feature); their "off switches" stay operable but only
+        // accept off/unchanged (see below).
+        $frozen = Editions::isPro() ? [] : array_flip(Editions::PRO_CONFIG_SETTINGS);
         $blockedEnables = [];
         foreach (self::TAB_FIELDS[$tab] as $field) {
             $stored = $values[$field] ?? null;
+
+            // Frozen Pro config on Solo: keep the stored value untouched.
+            if (isset($frozen[$field])) {
+                continue;
+            }
+
             if (isset($bool[$field])) {
                 $new = (bool) $request->getBodyParam($field);
             } elseif (isset($float[$field])) {
@@ -101,10 +111,10 @@ class SettingsController extends Controller
             }
 
             // Authoring gate: Solo may turn a Pro feature off or leave it, but not
-            // newly switch it on. Keeping the off-switch available means a
-            // downgraded site can still stop a running Pro feature (the runtime
-            // itself stays edition-blind).
-            if (Editions::blocksSettingEnable($field, $stored, $new)) {
+            // newly enable it or change a still-on value. Keeping the off-switch
+            // operable means a downgraded site can still stop a running Pro feature
+            // (the runtime itself stays edition-blind).
+            if (Editions::blocksProSettingChange($field, $stored, $new)) {
                 $blockedEnables[] = $field;
                 continue;
             }
@@ -128,10 +138,14 @@ class SettingsController extends Controller
         }
 
         if ($blockedEnables !== []) {
+            $labels = array_map(
+                fn(string $field): string => $this->settingLabel($field),
+                $blockedEnables,
+            );
             Craft::$app->getSession()->setError(Craft::t(
                 'simple-form',
                 'Settings saved, but these require the Pro edition and were not enabled: {features}',
-                ['features' => implode(', ', $blockedEnables)],
+                ['features' => implode(', ', $labels)],
             ));
         } else {
             Craft::$app->getSession()->setNotice(Craft::t('simple-form', 'Settings saved.'));
@@ -329,6 +343,9 @@ class SettingsController extends Controller
         $vars = [
             'settings' => Plugin::getInstance()->getSettings(),
             'selectedSettingsSubnavItem' => $tab,
+            // Pro companion-config fields the templates must render read-only on
+            // Solo (empty on Pro). Single source: Editions::PRO_CONFIG_SETTINGS.
+            'proLockedFields' => Editions::isPro() ? [] : Editions::PRO_CONFIG_SETTINGS,
         ];
 
         if ($tab === 'spam') {
@@ -361,5 +378,19 @@ class SettingsController extends Controller
     {
         $tab = strtolower(trim((string) $raw));
         return isset(self::TAB_FIELDS[$tab]) ? $tab : 'general';
+    }
+
+    /**
+     * Human-readable label for a Pro "off switch" setting, for the
+     * blocked-on-Solo flash message (so it never leaks raw camelCase handles).
+     */
+    private function settingLabel(string $field): string
+    {
+        return match ($field) {
+            'enableAkismet' => Craft::t('simple-form', 'Akismet'),
+            'enableDenylists' => Craft::t('simple-form', 'Denylists'),
+            'retainSubmissionsDays' => Craft::t('simple-form', 'Automatic submission retention'),
+            default => $field,
+        };
     }
 }

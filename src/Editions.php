@@ -67,11 +67,11 @@ final class Editions
     ];
 
     /**
-     * Settings whose *enablement* is Pro-only: a Solo edition may turn them off or
-     * leave them as-is, but never newly switch them on. The single source of truth
-     * for both the save gate ({@see \anvildev\simpleform\controllers\SettingsController})
-     * and the upsell notice in the settings templates. A numeric setting (e.g. a
-     * retention day count) counts as "on" when > 0.
+     * The Pro features' "off switches": on Solo these stay operable so a site
+     * downgraded from Pro can still turn a running Pro feature off, but the only
+     * change accepted is toward off ({@see self::blocksProSettingChange()}) — never
+     * enabling, and never changing a still-on value (e.g. shrinking the retention
+     * window to be more destructive). A numeric setting counts as "on" when > 0.
      *
      * @var list<string>
      */
@@ -79,6 +79,26 @@ final class Editions
         'enableAkismet',
         'enableDenylists',
         'retainSubmissionsDays',
+    ];
+
+    /**
+     * Companion configuration for the Pro features above (API keys, modes, denylist
+     * contents, the anonymize mode). On Solo these are frozen entirely — the
+     * settings save keeps their stored value and the CP renders them read-only — so
+     * a downgraded site can't *reconfigure* a still-running Pro feature (e.g. switch
+     * it to silently block, or broaden a denylist). The single source of truth the
+     * settings templates read to decide which inputs to disable.
+     *
+     * @var list<string>
+     */
+    public const PRO_CONFIG_SETTINGS = [
+        'akismetApiKey',
+        'akismetMode',
+        'denylistMode',
+        'blockedKeywords',
+        'blockedEmails',
+        'blockedIps',
+        'anonymizeInsteadOfDelete',
     ];
 
     /**
@@ -132,20 +152,23 @@ final class Editions
     }
 
     /**
-     * Whether a settings save must reject this field's change as a Pro escalation:
-     * true only when, on a non-Pro edition, a {@see self::PRO_ENABLE_SETTINGS}
-     * field is being switched from off to on. Turning such a feature *off* (or
-     * leaving it unchanged) is always allowed, so a downgraded site can still stop
-     * a running Pro feature — it just can't newly enable one. A value counts as
-     * "on" when > 0 (covers both booleans and numeric thresholds).
+     * Whether a settings save must reject this change to a Pro "off switch"
+     * ({@see self::PRO_ENABLE_SETTINGS}) on a non-Pro edition. The only changes
+     * allowed on Solo are turning the feature *off* (posted not "on") or leaving it
+     * exactly as stored; everything else — enabling it, or changing a still-on
+     * value such as shrinking the retention window to delete more aggressively — is
+     * blocked. A value counts as "on" when > 0 (covers both booleans and numeric
+     * thresholds).
      */
-    public static function blocksSettingEnable(string $field, mixed $stored, mixed $posted, ?string $edition = null): bool
+    public static function blocksProSettingChange(string $field, mixed $stored, mixed $posted, ?string $edition = null): bool
     {
         if (self::isPro($edition) || !in_array($field, self::PRO_ENABLE_SETTINGS, true)) {
             return false;
         }
 
-        return (float) $posted > 0 && !((float) $stored > 0);
+        // Allowed: posted is off (<= 0), or unchanged. Blocked: any on-and-different
+        // value (newly enabling, or reconfiguring a still-on threshold).
+        return (float) $posted > 0 && (float) $posted !== (float) $stored;
     }
 
     /**

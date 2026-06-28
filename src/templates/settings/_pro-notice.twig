@@ -1,12 +1,13 @@
 {# ===========================================================================
    Pro-upsell notice — shown to Solo above a Pro-only settings area.
    Param: feature (human label of the gated feature).
-   Pairs with the service-level inertness in P4: these settings save but have
-   no effect on Solo.
+   The Solo edition can't enable or reconfigure these; a site downgraded from Pro
+   keeps whatever it already had running (the runtime is edition-blind) and can
+   turn it off here.
    =========================================================================== #}
 {% if not craft.simpleForm.isPro() %}
     <blockquote class="note">
         <strong>{{ 'Pro feature.'|t('simple-form') }}</strong>
-        {{ '{feature} is part of the Pro edition — these settings have no effect on the Solo edition.'|t('simple-form', { feature: feature ?? 'This feature'|t('simple-form') }) }}
+        {{ '{feature} is part of the Pro edition. The Solo edition can’t enable or reconfigure it; a site downgraded from Pro keeps anything it already had running and can switch it off here.'|t('simple-form', { feature: feature ?? 'This feature'|t('simple-form') }) }}
     </blockquote>
 {% endif %}

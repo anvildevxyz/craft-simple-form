@@ -393,8 +393,11 @@ class Plugin extends BasePlugin
      * `{{%queue}}` (whose serialized class name a migration can't safely rewrite)
      * and project-config field types on read-only installs the rename migration
      * can't write to. The DB type columns are still normalized by
-     * {@see \anvildev\simpleform\migrations\m260628_000001_rename_fqcns} so this
-     * alias can be dropped in a future major version.
+     * {@see \anvildev\simpleform\migrations\m260628_000001_rename_fqcns}, but
+     * read-only (allowAdminChanges=false) installs keep the old FQCN in their
+     * deployed YAML, so this alias must stay until every such install has updated
+     * its project config — treat removing it as a documented breaking change, not a
+     * routine cleanup.
      */
     private function _registerLegacyClassAliases(): void
     {

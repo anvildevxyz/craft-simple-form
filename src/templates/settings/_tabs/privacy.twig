@@ -16,14 +16,17 @@
     min: 0,
     step: 1,
     size: 6,
-    value: settings.retainSubmissionsDays,}) }}
+    value: settings.retainSubmissionsDays,
+}) }}
 
 {{ forms.lightswitchField({
     label: 'Anonymize instead of delete'|t('simple-form'),
     instructions: 'When on, expired submissions keep their row (so counts/stats survive) but their submitted data and user reference are scrubbed.'|t('simple-form'),
     id: 'anonymizeInsteadOfDelete',
     name: 'anonymizeInsteadOfDelete',
-    on: settings.anonymizeInsteadOfDelete,}) }}
+    on: settings.anonymizeInsteadOfDelete,
+    disabled: 'anonymizeInsteadOfDelete' in proLockedFields,
+}) }}
 
 {{ forms.textField({
     label: 'Delete integration logs after (days)'|t('simple-form'),

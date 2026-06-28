@@ -31,6 +31,9 @@ class SettingsTabsRenderTest extends SimpleFormTestCase
                 'typeNames' => ['webhook' => 'Webhook'],
                 'auditEntries' => [],
                 'auditUserNames' => [],
+                // Mirrors SettingsController::renderTab so the Pro-locked inputs
+                // render the same way the real CP renders them.
+                'proLockedFields' => \anvildev\simpleform\Editions::isPro() ? [] : \anvildev\simpleform\Editions::PRO_CONFIG_SETTINGS,
             ], $extra));
         } finally {
             $view->setTemplateMode($mode);
@@ -96,19 +99,26 @@ class SettingsTabsRenderTest extends SimpleFormTestCase
             $this->assertStringNotContainsString('Pro feature', $this->render('spam', new Settings()));
             $this->assertStringNotContainsString('Pro feature', $this->render('privacy', new Settings()));
 
-            // Solo: the upsell notice appears, but the Pro inputs are NOT disabled —
-            // the operator must still be able to turn a running Pro feature OFF after
-            // a downgrade (only newly enabling it is gated, server-side on save).
+            // Solo: the upsell notice appears. The off-switches stay operable (so a
+            // downgraded site can still stop a running Pro feature), but the
+            // companion config inputs render read-only (can't reconfigure it).
             $plugin->edition = \anvildev\simpleform\Editions::SOLO;
             $this->assertFalse(\anvildev\simpleform\Editions::isPro(), 'edition should be Solo');
 
             $soloSpam = $this->render('spam', new Settings());
             $this->assertStringContainsString('Pro feature', $soloSpam);
+            // Off-switches operable...
             $this->assertDoesNotMatchRegularExpression('/name="enableAkismet"[^>]*\bdisabled\b/', $soloSpam);
+            $this->assertDoesNotMatchRegularExpression('/name="enableDenylists"[^>]*\bdisabled\b/', $soloSpam);
+            // ...companion config frozen.
+            $this->assertMatchesRegularExpression('/name="blockedKeywords"[^>]*\bdisabled\b/', $soloSpam);
+            $this->assertMatchesRegularExpression('/name="akismetMode"[^>]*\bdisabled\b/', $soloSpam);
 
             $soloPrivacy = $this->render('privacy', new Settings());
             $this->assertStringContainsString('Pro feature', $soloPrivacy);
+            // Retention day count (the off-switch) operable; anonymize mode frozen.
             $this->assertDoesNotMatchRegularExpression('/name="retainSubmissionsDays"[^>]*\bdisabled\b/', $soloPrivacy);
+            $this->assertStringContainsString('noteditable', $soloPrivacy);
         } finally {
             $plugin->edition = $originalEdition;
         }

@@ -83,25 +83,30 @@ class EditionsTest extends TestCase
         $this->assertSame(['rating'], Editions::blockedNewProFields(['rating', 'rating'], [], Editions::SOLO));
     }
 
-    public function testBlocksSettingEnableGatesOnlyOffToOnEscalation(): void
+    public function testBlocksProSettingChangeAllowsOnlyOffOrUnchanged(): void
     {
         // Pro: never blocked.
-        $this->assertFalse(Editions::blocksSettingEnable('enableAkismet', false, true, Editions::PRO));
+        $this->assertFalse(Editions::blocksProSettingChange('enableAkismet', false, true, Editions::PRO));
 
-        // A non-Pro-gated setting is never blocked.
-        $this->assertFalse(Editions::blocksSettingEnable('enableHoneypot', false, true, Editions::SOLO));
+        // A non-gated setting is never blocked.
+        $this->assertFalse(Editions::blocksProSettingChange('enableHoneypot', false, true, Editions::SOLO));
 
-        // Solo: switching a Pro feature on is blocked...
-        $this->assertTrue(Editions::blocksSettingEnable('enableAkismet', false, true, Editions::SOLO));
-        $this->assertTrue(Editions::blocksSettingEnable('enableDenylists', false, true, Editions::SOLO));
-        $this->assertTrue(Editions::blocksSettingEnable('retainSubmissionsDays', 0, 30, Editions::SOLO));
+        // Solo: enabling a Pro feature is blocked...
+        $this->assertTrue(Editions::blocksProSettingChange('enableAkismet', false, true, Editions::SOLO));
+        $this->assertTrue(Editions::blocksProSettingChange('enableDenylists', false, true, Editions::SOLO));
+        $this->assertTrue(Editions::blocksProSettingChange('retainSubmissionsDays', 0, 30, Editions::SOLO));
 
-        // ...but turning it off, or leaving it as-is, is always allowed (so a
+        // ...as is changing a still-on value (e.g. shrinking — more destructive —
+        // or even growing the retention window: it's still reconfiguring Pro).
+        $this->assertTrue(Editions::blocksProSettingChange('retainSubmissionsDays', 30, 1, Editions::SOLO));
+        $this->assertTrue(Editions::blocksProSettingChange('retainSubmissionsDays', 30, 60, Editions::SOLO));
+
+        // But turning it off, or leaving it exactly as-is, is always allowed (so a
         // downgraded site can still stop a running Pro feature).
-        $this->assertFalse(Editions::blocksSettingEnable('enableAkismet', true, false, Editions::SOLO));
-        $this->assertFalse(Editions::blocksSettingEnable('enableAkismet', true, true, Editions::SOLO));
-        $this->assertFalse(Editions::blocksSettingEnable('retainSubmissionsDays', 30, 0, Editions::SOLO));
-        $this->assertFalse(Editions::blocksSettingEnable('retainSubmissionsDays', 30, 60, Editions::SOLO));
+        $this->assertFalse(Editions::blocksProSettingChange('enableAkismet', true, false, Editions::SOLO));
+        $this->assertFalse(Editions::blocksProSettingChange('enableAkismet', true, true, Editions::SOLO));
+        $this->assertFalse(Editions::blocksProSettingChange('retainSubmissionsDays', 30, 0, Editions::SOLO));
+        $this->assertFalse(Editions::blocksProSettingChange('retainSubmissionsDays', 30, 30, Editions::SOLO));
     }
 
     public function testDefaultOpenForUnknownEdition(): void
