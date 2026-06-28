@@ -12,7 +12,7 @@
 {% set selectedSubnavItem = 'submissions' %}
 
 {# Preserve the CP's existing deep links: a `?formId=`/`?status=` query (from the
-   Overview, the Forms index, or a form chip) opens the index on the matching
+   Dashboard, the Forms index, or a form chip) opens the index on the matching
    native source instead of being silently ignored. #}
 {% set qFormId = craft.app.request.getQueryParam('formId') %}
 {% set qStatus = craft.app.request.getQueryParam('status') %}

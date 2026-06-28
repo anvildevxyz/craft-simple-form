@@ -545,7 +545,7 @@ class FormsController extends Controller
      * At-a-glance submission stats for the form edit screen's Stats tab: the
      * status breakdown (total/new/read/archived/spam) plus the most recent
      * submission's timestamp. Null for an unsaved form. Counts go through the
-     * element query (same source as the Submissions index and Overview).
+     * element query (same source as the Submissions index and Dashboard).
      *
      * @return array{breakdown: array{total: int, new: int, read: int, archived: int, spam: int}, last: ?\DateTime}|null
      */
