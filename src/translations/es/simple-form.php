@@ -375,4 +375,19 @@ return [
     'Search for an address' => 'Buscar una dirección',
     'Start typing an address…' => 'Empieza a escribir una dirección…',
     'Address lookup is unavailable. Please enter your address manually.' => 'La búsqueda de direcciones no está disponible. Introduce tu dirección manualmente.',
+
+    // Notification log
+    'Notifications' => 'Notificaciones',
+    'Sent' => 'Enviado',
+    'Failed' => 'Fallido',
+    'Legacy email' => 'Correo heredado',
+    'Failed to send email.' => 'No se pudo enviar el correo electrónico.',
+    'No notifications yet.' => 'Aún no hay notificaciones.',
+    'Notification emails dispatched for form submissions will appear here, including failed sends.' => 'Los correos de notificación enviados por los envíos del formulario aparecerán aquí, incluidos los que fallaron.',
+    'Every notification email dispatched for a form submission, including failures.' => 'Cada correo de notificación enviado por un envío del formulario, incluidos los fallidos.',
+    'View notification log' => 'Ver registro de notificaciones',
+    'No notifications match your filters.' => 'Ninguna notificación coincide con tus filtros.',
+    'Clear filters' => 'Borrar filtros',
+    'Delete sent email logs after (days)' => 'Eliminar los registros de notificaciones después de (días)',
+    'Notification send-log rows older than this are pruned. 0 = keep forever.' => 'Las entradas del registro de envío de notificaciones más antiguas que esto se eliminan. 0 = conservar indefinidamente.',
 ];

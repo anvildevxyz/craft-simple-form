@@ -39,6 +39,7 @@ class TranslationCatalogParityTest extends TestCase
         'Message',     // identical in fr (de=Nachricht, es=Mensaje, it=Messaggio)
         'Honeypot',    // borrowed term — kept verbatim in all shipped locales
         'CAPTCHA',     // acronym — identical in all shipped locales
+        'Notifications', // cognate — identical in fr (de=Benachrichtigungen, etc.)
     ];
 
     /**

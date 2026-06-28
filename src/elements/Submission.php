@@ -5,13 +5,16 @@ namespace anvildev\simpleform\elements;
 use anvildev\simpleform\elements\actions\SetSubmissionStatus;
 use anvildev\simpleform\elements\db\SubmissionQuery;
 use anvildev\simpleform\elements\exporters\SubmissionExporter;
+use anvildev\simpleform\Plugin;
 use Craft;
 use craft\base\Element;
 use craft\db\Query;
 use craft\elements\actions\Delete;
+use craft\helpers\Cp;
 use craft\helpers\Db;
 use craft\helpers\Html;
 use craft\helpers\StringHelper;
+use craft\helpers\UrlHelper;
 
 /**
  * @phpstan-type SubmissionData array<string, array{label: string, type: string, value: mixed}>
@@ -68,7 +71,12 @@ class Submission extends Element
 
     public static function displayName(): string
     {
-        return 'Submission';
+        return Craft::t('simple-form', 'Submission');
+    }
+
+    public static function pluralDisplayName(): string
+    {
+        return Craft::t('simple-form', 'Submissions');
     }
 
     /** Whether this submission has a required payment that hasn't settled yet. */
@@ -111,6 +119,16 @@ class Submission extends Element
     public function __toString(): string
     {
         return "Submission #{$this->id}";
+    }
+
+    /**
+     * The CP detail-view URL, so native element-index rows (and relation chips)
+     * link straight to the submission. The view is read-only, but it is the
+     * canonical "open this submission" target.
+     */
+    public function getCpEditUrl(): ?string
+    {
+        return $this->id !== null ? UrlHelper::cpUrl('simple-form/submissions/' . $this->id) : null;
     }
 
     public function getForm(): ?Form
@@ -222,11 +240,13 @@ class Submission extends Element
     protected static function defineTableAttributes(): array
     {
         return [
-            'form' => ['label' => 'Form'],
-            'dateCreated' => ['label' => 'Date'],
-            'readStatus' => ['label' => 'Status'],
+            'form' => ['label' => Craft::t('simple-form', 'Form')],
+            'dateCreated' => ['label' => Craft::t('simple-form', 'Date')],
+            'readStatus' => ['label' => Craft::t('simple-form', 'Status')],
+            'workflow' => ['label' => Craft::t('simple-form', 'Stage')],
+            'spamReason' => ['label' => Craft::t('simple-form', 'Spam reason')],
             'payment' => ['label' => Craft::t('simple-form', 'Payment')],
-            'userId' => ['label' => 'User'],
+            'userId' => ['label' => Craft::t('simple-form', 'User')],
         ];
     }
 
@@ -240,10 +260,76 @@ class Submission extends Element
      */
     protected function attributeHtml(string $attribute): string
     {
-        if ($attribute !== 'payment') {
-            return parent::attributeHtml($attribute);
+        return match ($attribute) {
+            'form' => $this->formHtml(),
+            'userId' => $this->userHtml(),
+            'readStatus' => $this->readStatusHtml(),
+            'workflow' => $this->workflowHtml(),
+            'spamReason' => $this->spamReason !== null && $this->spamReason !== ''
+                ? Html::tag('span', Html::encode($this->spamReason))
+                : Html::tag('span', '—', ['class' => 'light']),
+            'payment' => $this->paymentHtml(),
+            default => parent::attributeHtml($attribute),
+        };
+    }
+
+    /** The parent form's title, linking to that form's filtered submissions. */
+    private function formHtml(): string
+    {
+        $form = $this->getForm();
+        if ($form === null) {
+            return Html::tag('span', '#' . $this->formId, ['class' => 'light']);
         }
 
+        return Html::a(
+            Html::encode((string) ($form->title ?? $form->name)),
+            UrlHelper::cpUrl('simple-form/submissions', ['formId' => $this->formId, 'status' => 'all']),
+        );
+    }
+
+    /** The submitter as an element chip, or a dash for anonymous submissions. */
+    private function userHtml(): string
+    {
+        if ($this->userId === null) {
+            return Html::tag('span', '—', ['class' => 'light']);
+        }
+
+        $user = Craft::$app->getUsers()->getUserById($this->userId);
+        return $user !== null
+            ? Cp::elementChipHtml($user)
+            : Html::tag('span', '#' . $this->userId, ['class' => 'light']);
+    }
+
+    /** Status dot + label, matching the CP submissions listing. */
+    private function readStatusHtml(): string
+    {
+        return Html::tag('span', '', ['class' => "status {$this->readStatus}"])
+            . Html::tag('span', StringHelper::titleize($this->readStatus));
+    }
+
+    /** The approval-workflow stage pill, or a dash when the row isn't in a pipeline. */
+    private function workflowHtml(): string
+    {
+        if ($this->workflowStatus === null || $this->workflowStatus === '') {
+            return Html::tag('span', '—', ['class' => 'light']);
+        }
+
+        foreach (Plugin::getInstance()->getWorkflow()->getStatuses() as $stage) {
+            if ($stage['handle'] === $this->workflowStatus) {
+                return Html::tag('span', '', ['class' => 'status ' . $stage['color']])
+                    . Html::tag('span', Html::encode($stage['label']));
+            }
+        }
+
+        return Html::tag('span', Html::encode($this->workflowStatus));
+    }
+
+    /**
+     * Render the `payment` column as a small, translated status pill. Submissions
+     * with no payment requirement (`paymentStatus === null`) show a neutral dash.
+     */
+    private function paymentHtml(): string
+    {
         if ($this->paymentStatus === null) {
             return Html::tag('span', '—', ['class' => 'light']);
         }
@@ -316,17 +402,26 @@ class Submission extends Element
         $sources = [
             [
                 'key' => '*',
-                'label' => 'All Submissions',
+                'label' => Craft::t('simple-form', 'All Submissions'),
+                'defaultSort' => ['dateCreated', 'desc'],
             ],
+            ['heading' => Craft::t('simple-form', 'Status')],
+            ['key' => 'status:new', 'label' => Craft::t('simple-form', 'New'), 'criteria' => ['readStatus' => SubmissionStatus::NEW]],
+            ['key' => 'status:read', 'label' => Craft::t('simple-form', 'Read'), 'criteria' => ['readStatus' => SubmissionStatus::READ]],
+            ['key' => 'status:archived', 'label' => Craft::t('simple-form', 'Archived'), 'criteria' => ['readStatus' => SubmissionStatus::ARCHIVED]],
+            ['key' => 'status:spam', 'label' => Craft::t('simple-form', 'Spam'), 'criteria' => ['readStatus' => SubmissionStatus::SPAM]],
         ];
 
         $forms = Form::find()->all();
-        foreach ($forms as $form) {
-            $sources[] = [
-                'key' => 'form:' . $form->id,
-                'label' => $form->title ?? $form->name,
-                'criteria' => ['formId' => $form->id],
-            ];
+        if ($forms !== []) {
+            $sources[] = ['heading' => Craft::t('simple-form', 'Forms')];
+            foreach ($forms as $form) {
+                $sources[] = [
+                    'key' => 'form:' . $form->id,
+                    'label' => $form->title ?? $form->name,
+                    'criteria' => ['formId' => $form->id],
+                ];
+            }
         }
 
         // Recoverable deletes: a Trashed source so soft-deleted submissions can be

@@ -39,6 +39,9 @@
     'sf-rules': { label: 'Rules'|t('simple-form'), url: '#sf-rules' },
 } %}
 {% if form.id %}
+    {% if stats is defined and stats %}
+        {% set tabs = tabs|merge({ 'sf-stats': { label: 'Stats'|t('simple-form'), url: '#sf-stats' } }) %}
+    {% endif %}
     {% set tabs = tabs|merge({
         'sf-share': { label: 'Share & embed'|t('simple-form'), url: '#sf-share' },
         notifications: { label: 'Notifications'|t('simple-form'), url: cpUrl('simple-form/forms/' ~ form.id ~ '/notifications') },
@@ -55,6 +58,9 @@
 {% if form.id %}
     {% set additionalButtons %}
         <div class="btngroup">
+            <a class="btn icon view" href="{{ siteUrl('simple-form/form/' ~ form.handle) }}" target="_blank" rel="noopener">
+                {{ 'Preview'|t('simple-form') }}
+            </a>
             <a class="btn formsubmit"
                data-action="simple-form/forms/duplicate"
                data-params="{{ { formId: form.id }|json_encode }}">
@@ -579,6 +585,45 @@
         instructions: 'Conversational mode shows one question per screen with Back / Next navigation and a progress indicator; authored steps each become a screen. Standard shows the whole form on one page.'|t('simple-form'),
     }) }}
 </div>
+
+{% if form.id and stats is defined and stats %}
+    {# =======================================================================
+       Stats — at-a-glance submission summary + jump-off links for this form.
+       ======================================================================= #}
+    <div id="sf-stats" class="hidden">
+        <h2>{{ 'Submissions'|t('simple-form') }}</h2>
+        {% set b = stats.breakdown %}
+        <div class="submission-stats">
+            {% set cards = [
+                { label: 'Total'|t('simple-form'), value: b.total },
+                { label: 'New'|t('simple-form'), value: b.new, key: 'new' },
+                { label: 'Read'|t('simple-form'), value: b.read, key: 'read' },
+                { label: 'Archived'|t('simple-form'), value: b.archived, key: 'archived' },
+                { label: 'Spam'|t('simple-form'), value: b.spam, key: 'spam' },
+            ] %}
+            {% for card in cards %}
+                <div class="stat-card{{ (card.key ?? null) ? ' stat-' ~ card.key : '' }}">
+                    <span class="stat-value">{{ card.value }}</span>
+                    <span class="stat-label">{{ card.label }}</span>
+                </div>
+            {% endfor %}
+        </div>
+
+        <p class="light">
+            {% if stats.last %}
+                {{ 'Last submission: {date}'|t('simple-form', { date: stats.last|datetime('short') }) }}
+            {% else %}
+                {{ 'No submissions yet.'|t('simple-form') }}
+            {% endif %}
+        </p>
+
+        <div class="buttons">
+            <a class="btn" href="{{ cpUrl('simple-form/submissions', { formId: form.id, status: 'all' }) }}">{{ 'View submissions'|t('simple-form') }}</a>
+            <a class="btn" href="{{ cpUrl('simple-form/forms/' ~ form.id ~ '/report') }}">{{ 'Survey report'|t('simple-form') }}</a>
+            <a class="btn" href="{{ cpUrl('simple-form/submissions/analytics', { formId: form.id }) }}">{{ 'Analytics'|t('simple-form') }}</a>
+        </div>
+    </div>
+{% endif %}
 
 {% if form.id %}
     {% set shareUrl = siteUrl('simple-form/form/' ~ form.handle) %}

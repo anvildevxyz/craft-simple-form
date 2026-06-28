@@ -384,7 +384,6 @@ return [
     'View notification log' => 'View notification log',
     'No notifications match your filters.' => 'No notifications match your filters.',
     'Clear filters' => 'Clear filters',
-    'Message' => 'Message',
     'Delete sent email logs after (days)' => 'Delete notification logs after (days)',
     'Notification send-log rows older than this are pruned. 0 = keep forever.' => 'Notification send-log rows older than this are pruned. 0 = keep forever.',
 ];

@@ -369,4 +369,19 @@ return [
     'Search for an address' => '住所を検索',
     'Start typing an address…' => '住所を入力し始めてください…',
     'Address lookup is unavailable. Please enter your address manually.' => '住所検索を利用できません。住所を手動で入力してください。',
+
+    // Notification log (#251)
+    'Notifications' => '通知',
+    'Sent' => '送信済み',
+    'Failed' => '失敗',
+    'Legacy email' => '従来のメール',
+    'Failed to send email.' => 'メールを送信できませんでした。',
+    'No notifications yet.' => 'まだ通知がありません。',
+    'Notification emails dispatched for form submissions will appear here, including failed sends.' => 'フォーム送信に対して配信された通知メールが、失敗した送信も含めてここに表示されます。',
+    'Every notification email dispatched for a form submission, including failures.' => 'フォーム送信に対して配信されたすべての通知メールを、失敗分も含めて表示します。',
+    'View notification log' => '通知ログを表示',
+    'No notifications match your filters.' => 'フィルターに一致する通知はありません。',
+    'Clear filters' => 'フィルターをクリア',
+    'Delete sent email logs after (days)' => '通知ログを削除するまでの日数',
+    'Notification send-log rows older than this are pruned. 0 = keep forever.' => 'これより古い通知の送信ログ行は削除されます。0 は無期限に保持します。',
 ];

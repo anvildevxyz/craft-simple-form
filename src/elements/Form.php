@@ -170,7 +170,12 @@ class Form extends Element
 
     public static function displayName(): string
     {
-        return 'Form';
+        return Craft::t('simple-form', 'Form');
+    }
+
+    public static function pluralDisplayName(): string
+    {
+        return Craft::t('simple-form', 'Forms');
     }
 
     public static function tableName(): string
@@ -416,10 +421,10 @@ class Form extends Element
     protected static function defineTableAttributes(): array
     {
         return [
-            'title' => ['label' => 'Title'],
-            'handle' => ['label' => 'Handle'],
-            'emailTo' => ['label' => 'Email To'],
-            'dateCreated' => ['label' => 'Date Created'],
+            'title' => ['label' => Craft::t('simple-form', 'Title')],
+            'handle' => ['label' => Craft::t('simple-form', 'Handle')],
+            'emailTo' => ['label' => Craft::t('simple-form', 'Email To')],
+            'dateCreated' => ['label' => Craft::t('simple-form', 'Date Created')],
         ];
     }
 
