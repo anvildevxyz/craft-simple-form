@@ -1,10 +1,15 @@
 <?php
 
+$dsn = getenv('CRAFT_DB_DSN') ?: 'mysql:host=db;port=3306;dbname=craft_test';
+
 return [
-    'dsn' => getenv('CRAFT_DB_DSN') ?: 'mysql:host=db;port=3306;dbname=craft_test',
+    'dsn' => $dsn,
     'user' => getenv('CRAFT_DB_USER') ?: 'root',
     'password' => getenv('CRAFT_DB_PASSWORD') ?: 'root',
     'schema' => getenv('CRAFT_DB_SCHEMA') ?: '',
     'tablePrefix' => getenv('CRAFT_DB_TABLE_PREFIX') ?: '',
-    'charset' => 'utf8mb4',
+    // utf8mb4 is MySQL-only; Postgres rejects it as an invalid client_encoding
+    // (the PG CI job died at connection setup before any test ran). Use the
+    // driver-appropriate charset so the suite runs on both.
+    'charset' => str_starts_with($dsn, 'pgsql') ? 'utf8' : 'utf8mb4',
 ];
