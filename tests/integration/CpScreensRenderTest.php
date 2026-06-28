@@ -8,8 +8,8 @@ use craft\elements\User;
 use craft\web\View;
 
 /**
- * Render-smoke the CP screens added in the overview/element-index work (#cp):
- * the Overview landing page, the form edit screen's Stats tab + Preview button,
+ * Render-smoke the CP screens added in the dashboard/element-index work (#cp):
+ * the Dashboard landing page, the form edit screen's Stats tab + Preview button,
  * and the Forms index signal columns. The unit gate doesn't render Twig, so a
  * broken variable contract only surfaces here.
  *
@@ -49,12 +49,13 @@ class CpScreensRenderTest extends SimpleFormTestCase
         }
     }
 
-    public function testOverviewEmptyStateRenders(): void
+    public function testDashboardEmptyStateRenders(): void
     {
         $this->requireCraft();
 
-        $html = $this->render('simple-form/overview/index', [
+        $html = $this->render('simple-form/dashboard/index', [
             'formCount' => 0,
+            'enabledFormCount' => 0,
             'stats' => ['total' => 0, 'new' => 0, 'read' => 0, 'archived' => 0, 'spam' => 0],
             'today' => 0,
             'last7' => 0,
@@ -67,26 +68,28 @@ class CpScreensRenderTest extends SimpleFormTestCase
             'hasAnySubmissions' => false,
         ]);
 
-        $this->assertStringContainsString('Overview', $html);
+        // The at-a-glance cards reuse the existing .stat-card component.
+        $this->assertStringContainsString('stat-card', $html);
         $this->assertStringContainsString('No submissions yet.', $html);
-        // No chart or needs-attention banner on a clean install.
+        // No chart or needs-attention note on a clean install.
         $this->assertStringNotContainsString('Needs attention', $html);
     }
 
-    public function testOverviewWithActivityRendersChartAttentionAndRecent(): void
+    public function testDashboardWithActivityRendersChartAttentionAndTopForms(): void
     {
         $this->requireCraft();
 
-        $form = $this->createForm('Overview Form', 'ov_form_' . uniqid());
+        $form = $this->createForm('Dashboard Form', 'dash_form_' . uniqid());
 
-        $html = $this->render('simple-form/overview/index', [
+        $html = $this->render('simple-form/dashboard/index', [
             'formCount' => 1,
+            'enabledFormCount' => 1,
             'stats' => ['total' => 5, 'new' => 2, 'read' => 1, 'archived' => 0, 'spam' => 2],
             'today' => 1,
             'last7' => 4,
             'perDay' => [['date' => '2026-06-27', 'count' => 1], ['date' => '2026-06-28', 'count' => 3]],
             'chartDays' => 30,
-            'perForm' => [['formId' => (int) $form->id, 'name' => 'Overview Form', 'count' => 5]],
+            'perForm' => [['formId' => (int) $form->id, 'name' => 'Dashboard Form', 'count' => 5]],
             'recent' => [],
             'failedDispatches' => 2,
             'canManageForms' => true,
@@ -95,12 +98,13 @@ class CpScreensRenderTest extends SimpleFormTestCase
 
         $this->assertStringContainsString('Submissions over time', $html);
         $this->assertStringContainsString('sf-bar-chart', $html);
-        // Needs-attention surfaces both unread submissions and failed dispatches.
+        // Needs-attention (native note) surfaces both unread submissions and failed dispatches.
         $this->assertStringContainsString('Needs attention', $html);
+        $this->assertStringContainsString('note warning', $html);
         $this->assertStringContainsString('status=new', $html);
         $this->assertStringContainsString('integrations/failures', $html);
         // Top forms lists the seeded form.
-        $this->assertStringContainsString('Overview Form', $html);
+        $this->assertStringContainsString('Dashboard Form', $html);
     }
 
     public function testFormEditStatsTabAndPreviewRender(): void

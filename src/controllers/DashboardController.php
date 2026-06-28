@@ -13,19 +13,19 @@ use yii\web\ForbiddenHttpException;
 use yii\web\Response;
 
 /**
- * The plugin's landing screen: an at-a-glance overview of submission activity,
+ * The plugin's landing screen: an at-a-glance dashboard of submission activity,
  * health, and recent entries. Reuses {@see \anvildev\simpleform\services\ReportsService}
- * so its numbers agree with the analytics dashboard.
+ * so its numbers agree with the analytics page.
  *
- * No hard PERMISSION const: the overview is the section root, so a user who
+ * No hard PERMISSION const: the dashboard is the section root, so a user who
  * can't view submissions is forwarded to the first screen they *can* reach
  * rather than hitting a 403.
  */
-class OverviewController extends Controller
+class DashboardController extends Controller
 {
     use SimpleFormControllerTrait;
 
-    /** How many recent submissions to surface on the overview. */
+    /** How many recent submissions to surface on the dashboard. */
     private const RECENT_LIMIT = 8;
 
     /** Trailing window (days) for the "submissions over time" chart. */
@@ -37,7 +37,7 @@ class OverviewController extends Controller
         $isAdmin = (bool) $user?->admin;
         $canViewSubmissions = $isAdmin || (bool) $user?->can(SimpleFormPermissions::VIEW_SUBMISSIONS);
 
-        // The overview is submission-centric. Forward users without submission
+        // The dashboard is submission-centric. Forward users without submission
         // access to whichever section they can actually use. An admin always
         // passes the check above, so $isAdmin is necessarily false here.
         if (!$canViewSubmissions) {
@@ -64,11 +64,10 @@ class OverviewController extends Controller
             $last7 += (int) $point['count'];
         }
 
-        $canManageForms = $isAdmin || (bool) $user?->can(SimpleFormPermissions::MANAGE_FORMS);
-
-        return $this->renderTemplate('simple-form/overview/index', [
-            'title' => Craft::t('simple-form', 'Overview'),
+        return $this->renderTemplate('simple-form/dashboard/index', [
+            'title' => Craft::t('simple-form', 'Dashboard'),
             'formCount' => (int) Form::find()->siteId($siteId)->status(null)->count(),
+            'enabledFormCount' => (int) Form::find()->siteId($siteId)->status('enabled')->count(),
             'stats' => $breakdown,
             'today' => $today,
             'last7' => $last7,
@@ -77,7 +76,7 @@ class OverviewController extends Controller
             'perForm' => array_slice($reports->perFormTotals($siteId), 0, 5),
             'recent' => $this->recentSubmissions($siteId),
             'failedDispatches' => Plugin::getInstance()->getIntegrations()->countFailedDispatches(),
-            'canManageForms' => $canManageForms,
+            'canManageForms' => $isAdmin || (bool) $user?->can(SimpleFormPermissions::MANAGE_FORMS),
             'hasAnySubmissions' => $breakdown['total'] > 0,
         ]);
     }

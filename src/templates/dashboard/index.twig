@@ -1,0 +1,141 @@
+{% extends '_layouts/cp.twig' %}
+
+{% set title = 'Dashboard'|t('simple-form') %}
+{% set selectedSubnavItem = 'dashboard' %}
+{% do craft.app.view.registerAssetBundle('anvildev\\simpleform\\web\\assets\\cp\\SimpleFormCpAsset') %}
+
+{% block actionButton %}
+    {% if canManageForms %}
+        <a class="btn submit add icon" href="{{ cpUrl('simple-form/forms/new') }}">{{ 'New Form'|t('simple-form') }}</a>
+    {% endif %}
+{% endblock %}
+
+{% block content %}
+<div class="sf-dash">
+    {# Maps a read status to a native CP status-dot colour (round dot). #}
+    {% set statusDot = { new: 'blue', read: 'green', archived: 'gray', spam: 'red' } %}
+
+    {# At-a-glance cards — the plugin's existing .stat-card component, linked. #}
+    <div class="submission-stats">
+        <a class="stat-card stat-clickable" href="{{ cpUrl('simple-form/forms') }}">
+            <span class="stat-value">{{ formCount|number }}</span>
+            <span class="stat-label">{{ 'Forms'|t('simple-form') }}</span>
+        </a>
+        <a class="stat-card stat-clickable{{ stats.new ? ' stat-new' }}" href="{{ cpUrl('simple-form/submissions') }}">
+            <span class="stat-value">{{ stats.total|number }}</span>
+            <span class="stat-label">{{ 'Submissions'|t('simple-form') }}</span>
+        </a>
+        <a class="stat-card stat-clickable" href="{{ cpUrl('simple-form/submissions/analytics') }}">
+            <span class="stat-value">{{ last7|number }}</span>
+            <span class="stat-label">{{ 'Last 7 days'|t('simple-form') }}</span>
+        </a>
+        <a class="stat-card stat-clickable stat-spam" href="{{ cpUrl('simple-form/submissions', { status: 'spam' }) }}">
+            <span class="stat-value">{{ stats.spam|number }}</span>
+            <span class="stat-label">{{ 'Spam blocked'|t('simple-form') }}</span>
+        </a>
+    </div>
+
+    {# Needs attention — native CP note. Only shown when there's something to do. #}
+    {% set attention = [] %}
+    {% if stats.new > 0 %}
+        {% set attention = attention|merge([{ label: '{n} new submission(s) to review'|t('simple-form', { n: stats.new }), url: cpUrl('simple-form/submissions', { status: 'new' }) }]) %}
+    {% endif %}
+    {% if failedDispatches > 0 %}
+        {% set attention = attention|merge([{ label: '{n} failed integration dispatch(es)'|t('simple-form', { n: failedDispatches }), url: cpUrl('simple-form/settings/integrations/failures') }]) %}
+    {% endif %}
+    {% if attention|length %}
+        <blockquote class="note warning">
+            <strong>{{ 'Needs attention'|t('simple-form') }}</strong>
+            <ul>
+                {% for item in attention %}
+                    <li><a href="{{ item.url }}">{{ item.label }}</a></li>
+                {% endfor %}
+            </ul>
+        </blockquote>
+    {% endif %}
+
+    {% if not hasAnySubmissions %}
+        <div class="pane zilch">
+            <p>{{ 'No submissions yet.'|t('simple-form') }}</p>
+            {% if canManageForms %}
+                <p class="light">{{ 'Create a form and embed it on your site to start collecting submissions.'|t('simple-form') }}</p>
+                <a class="btn submit" href="{{ cpUrl('simple-form/forms/new') }}">{{ 'New Form'|t('simple-form') }}</a>
+            {% endif %}
+        </div>
+    {% else %}
+        {# Submissions over time — existing CSS bar chart, in a native pane. #}
+        <div class="pane">
+            <h2>{{ 'Submissions over time'|t('simple-form') }}</h2>
+            {% set maxCount = 1 %}
+            {% for point in perDay %}{% set maxCount = max(maxCount, point.count) %}{% endfor %}
+            <div class="sf-bar-chart" role="img"
+                 aria-label="{{ 'Submissions over the last {d} days'|t('simple-form', { d: chartDays }) }}">
+                {% for point in perDay %}
+                    <div class="sf-bar-col" title="{{ point.date }}: {{ point.count }}">
+                        <div class="sf-bar" style="height: {{ (point.count / maxCount * 100)|round }}%"></div>
+                    </div>
+                {% endfor %}
+            </div>
+            <p class="light sf-tight-top"><a href="{{ cpUrl('simple-form/submissions/analytics') }}">{{ 'View full analytics →'|t('simple-form') }}</a></p>
+        </div>
+
+        <div class="sf-dash-cols">
+            {# Recent submissions — native data table. #}
+            <div class="pane">
+                <h2>{{ 'Recent submissions'|t('simple-form') }}</h2>
+                <table class="data fullwidth">
+                    <thead>
+                        <tr>
+                            <th>{{ 'Form'|t('simple-form') }}</th>
+                            <th>{{ 'Status'|t('simple-form') }}</th>
+                            <th>{{ 'Date'|t('simple-form') }}</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for submission in recent %}
+                            {% set form = submission.getForm() %}
+                            <tr>
+                                <td><a href="{{ cpUrl('simple-form/submissions/' ~ submission.id) }}">{{ form ? (form.title ?? form.name) : '#' ~ submission.formId }}</a></td>
+                                <td><span class="status {{ statusDot[submission.readStatus] ?? 'gray' }}"></span>{{ submission.readStatus|t('simple-form')|title }}</td>
+                                <td>{{ submission.dateCreated ? submission.dateCreated|timestamp('short') : '—' }}</td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+                <p class="light sf-tight-top"><a href="{{ cpUrl('simple-form/submissions') }}">{{ 'All submissions →'|t('simple-form') }}</a></p>
+            </div>
+
+            {# Top forms + quick actions. #}
+            <div class="pane">
+                <h2>{{ 'Top forms'|t('simple-form') }}</h2>
+                {% if perForm|length %}
+                    <table class="data fullwidth">
+                        <thead>
+                            <tr>
+                                <th>{{ 'Form'|t('simple-form') }}</th>
+                                <th>{{ 'Submissions'|t('simple-form') }}</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for row in perForm %}
+                                <tr>
+                                    <td><a href="{{ cpUrl('simple-form/submissions', { formId: row.formId, status: 'all' }) }}">{{ row.name }}</a></td>
+                                    <td>{{ row.count|number }}</td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                {% else %}
+                    <p class="light">{{ 'No forms yet.'|t('simple-form') }}</p>
+                {% endif %}
+
+                <hr>
+                <div class="sf-dash-actions">
+                    <a class="btn" href="{{ cpUrl('simple-form/submissions/analytics') }}">{{ 'Analytics'|t('simple-form') }}</a>
+                    <a class="btn" href="{{ cpUrl('simple-form/notifications') }}">{{ 'Notifications'|t('simple-form') }}</a>
+                </div>
+            </div>
+        </div>
+    {% endif %}
+</div>
+{% endblock %}

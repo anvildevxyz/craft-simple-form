@@ -730,7 +730,7 @@ class Plugin extends BasePlugin
         $subnav = [];
 
         if ($isAdmin || $user?->can(SimpleFormPermissions::VIEW_SUBMISSIONS)) {
-            $subnav['overview'] = ['label' => Craft::t('simple-form', 'Overview'), 'url' => 'simple-form/overview'];
+            $subnav['dashboard'] = ['label' => Craft::t('simple-form', 'Dashboard'), 'url' => 'simple-form/dashboard'];
         }
         if ($isAdmin || $user?->can(SimpleFormPermissions::MANAGE_FORMS)) {
             $subnav['forms'] = ['label' => Craft::t('simple-form', 'Forms'), 'url' => 'simple-form/forms'];
@@ -753,8 +753,8 @@ class Plugin extends BasePlugin
 
     public function registerCpUrlRules(RegisterUrlRulesEvent $event): void
     {
-        $event->rules['simple-form'] = 'simple-form/overview/index';
-        $event->rules['simple-form/overview'] = 'simple-form/overview/index';
+        $event->rules['simple-form'] = 'simple-form/dashboard/index';
+        $event->rules['simple-form/dashboard'] = 'simple-form/dashboard/index';
         $event->rules['simple-form/forms'] = 'simple-form/forms/index';
         $event->rules['simple-form/forms/new'] = 'simple-form/forms/edit';
         $event->rules['simple-form/forms/edit/<formId:\d+>'] = 'simple-form/forms/edit';
