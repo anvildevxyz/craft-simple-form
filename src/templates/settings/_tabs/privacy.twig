@@ -41,6 +41,18 @@
 }) }}
 
 {{ forms.textField({
+    label: 'Delete notification logs after (days)'|t('simple-form'),
+    instructions: 'Notification send-log rows older than this are pruned. 0 = keep forever.'|t('simple-form'),
+    id: 'retainNotificationLogsDays',
+    name: 'retainNotificationLogsDays',
+    type: 'number',
+    min: 0,
+    step: 1,
+    size: 6,
+    value: settings.retainNotificationLogsDays,
+}) }}
+
+{{ forms.textField({
     label: 'Delete audit log after (days)'|t('simple-form'),
     instructions: 'Audit-trail rows older than this are pruned. 0 = keep forever.'|t('simple-form'),
     id: 'retainAuditLogDays',

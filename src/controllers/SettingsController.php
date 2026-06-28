@@ -47,7 +47,7 @@ class SettingsController extends Controller
             'submitRateLimitPerMinute',
             'allowGraphqlCaptchaBypass',
         ],
-        'privacy' => ['retainSubmissionsDays', 'retainIntegrationLogsDays', 'retainAuditLogDays', 'anonymizeInsteadOfDelete', 'partialRetentionDays'],
+        'privacy' => ['retainSubmissionsDays', 'retainIntegrationLogsDays', 'retainNotificationLogsDays', 'retainAuditLogDays', 'anonymizeInsteadOfDelete', 'partialRetentionDays'],
         // The MCP tab persists only the enable toggle through the generic save;
         // tokens are created/revoked via dedicated actions (one-time secret).
         'mcp' => ['enableMcp'],
@@ -55,7 +55,7 @@ class SettingsController extends Controller
 
     private const BOOL_FIELDS = ['enableHoneypot', 'enableCaptcha', 'enableMcp', 'enableAkismet', 'enableDenylists', 'anonymizeInsteadOfDelete', 'allowGraphqlCaptchaBypass', 'enableWorkflow'];
     private const FLOAT_FIELDS = ['recaptchaV3MinScore'];
-    private const INT_FIELDS = ['retainSubmissionsDays', 'retainIntegrationLogsDays', 'retainAuditLogDays', 'partialRetentionDays', 'submitRateLimitPerMinute', 'maxAttachmentSizeMb'];
+    private const INT_FIELDS = ['retainSubmissionsDays', 'retainIntegrationLogsDays', 'retainNotificationLogsDays', 'retainAuditLogDays', 'partialRetentionDays', 'submitRateLimitPerMinute', 'maxAttachmentSizeMb'];
 
     public function actionIndex(): Response
     {
