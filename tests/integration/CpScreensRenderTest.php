@@ -98,6 +98,9 @@ class CpScreensRenderTest extends SimpleFormTestCase
 
         $this->assertStringContainsString('Submissions over time', $html);
         $this->assertStringContainsString('sf-bar-chart', $html);
+        // The chart carries a date axis and a total/peak summary (not just bars).
+        $this->assertStringContainsString('sf-chart-axis', $html);
+        $this->assertStringContainsString('peak', $html);
         // Needs-attention (native note) surfaces both unread submissions and failed dispatches.
         $this->assertStringContainsString('Needs attention', $html);
         $this->assertStringContainsString('note warning', $html);

@@ -368,6 +368,28 @@
     background: var(--enabled-color, #3a85ee);
     border-radius: 3px;
 }
+/* Chart header (title + total/peak summary) and the date axis below the bars.
+   The axis mirrors the bar row's flex layout so each tick sits under its bar. */
+.sf-chart-head {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 8px;
+    margin-bottom: 14px;
+}
+.sf-chart-head h2 { margin: 0; }
+.sf-chart-sub { font-size: 12px; }
+.sf-chart-axis { display: flex; gap: 3px; margin-top: 6px; }
+.sf-chart-tick {
+    flex: 1 1 0;
+    min-width: 3px;
+    font-size: 10px;
+    line-height: 1.2;
+    color: var(--medium-text-color, #606d7b);
+    text-align: center;
+    white-space: nowrap;
+}
 
 /* Inline approve/delete actions in the spam review queue. */
 .sf-inline-action {
