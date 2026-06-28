@@ -83,7 +83,7 @@ class SettingsTabsRenderTest extends SimpleFormTestCase
         $this->assertStringContainsString('name="blockedIps"', $html);
     }
 
-    public function testProSettingsInputsAreDisabledOnSolo(): void
+    public function testSoloShowsProUpsellButLeavesInputsOperable(): void
     {
         $this->requireCraft();
 
@@ -91,19 +91,24 @@ class SettingsTabsRenderTest extends SimpleFormTestCase
         $originalEdition = $plugin->edition;
 
         try {
-            // Pro: the Akismet/denylist + retention inputs are editable. (Some
-            // baseline `disabled` markup is always present — e.g. autosuggest
-            // preview inputs — so the gate is asserted as a *delta*, not absence.)
+            // Pro: no upsell notice on the Pro tabs.
             $plugin->edition = \anvildev\simpleform\Editions::PRO;
-            $proSpam = substr_count($this->render('spam', new Settings()), 'disabled');
-            $proPrivacy = substr_count($this->render('privacy', new Settings()), 'disabled');
+            $this->assertStringNotContainsString('Pro feature', $this->render('spam', new Settings()));
+            $this->assertStringNotContainsString('Pro feature', $this->render('privacy', new Settings()));
 
-            // Solo: those Pro-only inputs render read-only (the authoring gate; the
-            // settings save enforces the same skip server-side).
+            // Solo: the upsell notice appears, but the Pro inputs are NOT disabled —
+            // the operator must still be able to turn a running Pro feature OFF after
+            // a downgrade (only newly enabling it is gated, server-side on save).
             $plugin->edition = \anvildev\simpleform\Editions::SOLO;
             $this->assertFalse(\anvildev\simpleform\Editions::isPro(), 'edition should be Solo');
-            $this->assertGreaterThan($proSpam, substr_count($this->render('spam', new Settings()), 'disabled'));
-            $this->assertGreaterThan($proPrivacy, substr_count($this->render('privacy', new Settings()), 'disabled'));
+
+            $soloSpam = $this->render('spam', new Settings());
+            $this->assertStringContainsString('Pro feature', $soloSpam);
+            $this->assertDoesNotMatchRegularExpression('/name="enableAkismet"[^>]*\bdisabled\b/', $soloSpam);
+
+            $soloPrivacy = $this->render('privacy', new Settings());
+            $this->assertStringContainsString('Pro feature', $soloPrivacy);
+            $this->assertDoesNotMatchRegularExpression('/name="retainSubmissionsDays"[^>]*\bdisabled\b/', $soloPrivacy);
         } finally {
             $plugin->edition = $originalEdition;
         }

@@ -67,6 +67,21 @@ final class Editions
     ];
 
     /**
+     * Settings whose *enablement* is Pro-only: a Solo edition may turn them off or
+     * leave them as-is, but never newly switch them on. The single source of truth
+     * for both the save gate ({@see \anvildev\simpleform\controllers\SettingsController})
+     * and the upsell notice in the settings templates. A numeric setting (e.g. a
+     * retention day count) counts as "on" when > 0.
+     *
+     * @var list<string>
+     */
+    public const PRO_ENABLE_SETTINGS = [
+        'enableAkismet',
+        'enableDenylists',
+        'retainSubmissionsDays',
+    ];
+
+    /**
      * The active edition handle (what the site is *running as*).
      */
     public static function current(): string
@@ -114,6 +129,23 @@ final class Editions
     public static function integrationAllowed(string $handle, ?string $edition = null): bool
     {
         return self::isPro($edition) || in_array($handle, self::SOLO_INTEGRATIONS, true);
+    }
+
+    /**
+     * Whether a settings save must reject this field's change as a Pro escalation:
+     * true only when, on a non-Pro edition, a {@see self::PRO_ENABLE_SETTINGS}
+     * field is being switched from off to on. Turning such a feature *off* (or
+     * leaving it unchanged) is always allowed, so a downgraded site can still stop
+     * a running Pro feature — it just can't newly enable one. A value counts as
+     * "on" when > 0 (covers both booleans and numeric thresholds).
+     */
+    public static function blocksSettingEnable(string $field, mixed $stored, mixed $posted, ?string $edition = null): bool
+    {
+        if (self::isPro($edition) || !in_array($field, self::PRO_ENABLE_SETTINGS, true)) {
+            return false;
+        }
+
+        return (float) $posted > 0 && !((float) $stored > 0);
     }
 
     /**

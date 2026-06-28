@@ -86,6 +86,22 @@ class MigrationRenameFqcnsTest extends SimpleFormTestCase
         $this->assertSame(SubmissionCountWidget::class, $this->typeOf('{{%widgets}}', $widgetId));
     }
 
+    public function testLegacyClassNamesStillResolveAfterRename(): void
+    {
+        $this->requireCraft();
+
+        // The plugin registers a back-compat autoloader so serialized old FQCNs —
+        // most importantly queued jobs in {{%queue}}, which a migration can't
+        // safely rewrite in-place — still deserialize to their anvildev classes.
+        $this->assertTrue(class_exists('fabianhaef\\simpleform\\jobs\\SendNotifications'));
+        $this->assertTrue(is_a('fabianhaef\\simpleform\\jobs\\SendNotifications', \anvildev\simpleform\jobs\SendNotifications::class, true));
+        $this->assertTrue(is_a('fabianhaef\\simpleform\\jobs\\SendIntegrationJob', \anvildev\simpleform\jobs\SendIntegrationJob::class, true));
+        $this->assertTrue(is_a('fabianhaef\\simpleform\\fields\\FormField', FormField::class, true));
+
+        // A genuinely unknown old class still does not resolve.
+        $this->assertFalse(class_exists('fabianhaef\\simpleform\\jobs\\NoSuchJob'));
+    }
+
     /**
      * @param array<string, mixed> $columns
      */

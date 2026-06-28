@@ -184,6 +184,8 @@ class Plugin extends BasePlugin
     {
         parent::init();
 
+        $this->_registerLegacyClassAliases();
+
         $this->setComponents([
             'fieldTypeRegistry' => FieldTypeRegistry::class,
             'safeRender' => SafeRenderService::class,
@@ -381,6 +383,37 @@ class Plugin extends BasePlugin
                 }
             }
         );
+    }
+
+    /**
+     * Back-compat for the fabianhaef -> anvildev namespace rename: lazily alias any
+     * old `fabianhaef\simpleform\…` class name to its `anvildev\simpleform\…`
+     * counterpart on first reference. This is what lets persisted/serialized old
+     * FQCNs keep resolving after the rename — most importantly queued jobs in
+     * `{{%queue}}` (whose serialized class name a migration can't safely rewrite)
+     * and project-config field types on read-only installs the rename migration
+     * can't write to. The DB type columns are still normalized by
+     * {@see \anvildev\simpleform\migrations\m260628_000001_rename_fqcns} so this
+     * alias can be dropped in a future major version.
+     */
+    private function _registerLegacyClassAliases(): void
+    {
+        static $registered = false;
+        if ($registered) {
+            return;
+        }
+        $registered = true;
+
+        spl_autoload_register(static function(string $class): void {
+            $oldPrefix = 'fabianhaef\\simpleform\\';
+            if (!str_starts_with($class, $oldPrefix)) {
+                return;
+            }
+            $new = 'anvildev\\simpleform\\' . substr($class, strlen($oldPrefix));
+            if (class_exists($new) || interface_exists($new) || trait_exists($new)) {
+                class_alias($new, $class);
+            }
+        });
     }
 
     /**

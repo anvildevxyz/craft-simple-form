@@ -102,6 +102,11 @@ class EditionDowngradeTest extends SimpleFormTestCase
         // PDF generation is off on Solo regardless of whether an engine is present.
         $this->assertFalse($pdf->isAvailable());
 
+        // The generation path itself is gated too (not just the availability flag),
+        // so a downgraded site never emails or stores a PDF for the same submission
+        // the CP reports as Pro-only.
+        $this->assertNull($pdf->render(new \anvildev\simpleform\elements\Form(), new \anvildev\simpleform\elements\Submission(), []));
+
         // The audit log is a no-op on Solo: logging adds no rows.
         $before = count($audit->recent(1000));
         $audit->log(

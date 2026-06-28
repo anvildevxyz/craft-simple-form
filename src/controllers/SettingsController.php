@@ -53,18 +53,6 @@ class SettingsController extends Controller
         'mcp' => ['enableMcp'],
     ];
 
-    /**
-     * Pro-only settings. On Solo these are read-only authoring-wise: a posted
-     * change is ignored so Solo can never *enable* a Pro feature, while any value
-     * already stored (e.g. after a Pro->Solo downgrade) is preserved untouched —
-     * the runtime services honor whatever is stored, edition-blind.
-     */
-    private const PRO_FIELDS = [
-        'enableAkismet', 'akismetApiKey', 'akismetMode',
-        'enableDenylists', 'denylistMode', 'blockedKeywords', 'blockedEmails', 'blockedIps',
-        'retainSubmissionsDays', 'anonymizeInsteadOfDelete',
-    ];
-
     private const BOOL_FIELDS = ['enableHoneypot', 'enableCaptcha', 'enableMcp', 'enableAkismet', 'enableDenylists', 'anonymizeInsteadOfDelete', 'allowGraphqlCaptchaBypass', 'enableWorkflow'];
     private const FLOAT_FIELDS = ['recaptchaV3MinScore'];
     private const INT_FIELDS = ['retainSubmissionsDays', 'retainIntegrationLogsDays', 'retainAuditLogDays', 'submitRateLimitPerMinute', 'maxAttachmentSizeMb'];
@@ -96,24 +84,32 @@ class SettingsController extends Controller
         $bool = array_flip(self::BOOL_FIELDS);
         $float = array_flip(self::FLOAT_FIELDS);
         $int = array_flip(self::INT_FIELDS);
-        $proGated = Editions::isPro() ? [] : array_flip(self::PRO_FIELDS);
+        $blockedEnables = [];
         foreach (self::TAB_FIELDS[$tab] as $field) {
-            // Authoring gate: keep Pro-only settings at their stored value on Solo.
-            if (isset($proGated[$field])) {
-                continue;
-            }
+            $stored = $values[$field] ?? null;
             if (isset($bool[$field])) {
-                $values[$field] = (bool) $request->getBodyParam($field);
+                $new = (bool) $request->getBodyParam($field);
             } elseif (isset($float[$field])) {
-                $values[$field] = (float) $request->getBodyParam($field, $values[$field] ?? 0.5);
+                $new = (float) $request->getBodyParam($field, $stored ?? 0.5);
             } elseif (isset($int[$field])) {
-                $values[$field] = (int) $request->getBodyParam($field, $values[$field] ?? 0);
+                $new = (int) $request->getBodyParam($field, $stored ?? 0);
             } else {
-                $value = $request->getBodyParam($field, $values[$field] ?? null);
+                $value = $request->getBodyParam($field, $stored);
                 // F19: trim string settings (API keys, secrets, sender) so a
                 // stray copy-paste space doesn't silently break verification.
-                $values[$field] = is_string($value) ? trim($value) : $value;
+                $new = is_string($value) ? trim($value) : $value;
             }
+
+            // Authoring gate: Solo may turn a Pro feature off or leave it, but not
+            // newly switch it on. Keeping the off-switch available means a
+            // downgraded site can still stop a running Pro feature (the runtime
+            // itself stays edition-blind).
+            if (Editions::blocksSettingEnable($field, $stored, $new)) {
+                $blockedEnables[] = $field;
+                continue;
+            }
+
+            $values[$field] = $new;
         }
 
         if (!Craft::$app->getPlugins()->savePluginSettings($plugin, $values)) {
@@ -131,7 +127,15 @@ class SettingsController extends Controller
             return $this->renderTab($tab);
         }
 
-        Craft::$app->getSession()->setNotice(Craft::t('simple-form', 'Settings saved.'));
+        if ($blockedEnables !== []) {
+            Craft::$app->getSession()->setError(Craft::t(
+                'simple-form',
+                'Settings saved, but these require the Pro edition and were not enabled: {features}',
+                ['features' => implode(', ', $blockedEnables)],
+            ));
+        } else {
+            Craft::$app->getSession()->setNotice(Craft::t('simple-form', 'Settings saved.'));
+        }
         return $this->redirect('simple-form/settings/' . $tab);
     }
 

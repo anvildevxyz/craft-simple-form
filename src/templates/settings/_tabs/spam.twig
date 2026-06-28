@@ -1,9 +1,5 @@
 {% import "_includes/forms.twig" as forms %}
 
-{# Akismet + denylists are Pro: Solo may not enable them (the settings save also
-   enforces this), so the inputs render read-only here. #}
-{% set proDisabled = not craft.simpleForm.isPro() %}
-
 <h2>{{ 'Spam Protection'|t('simple-form') }}</h2>
 <p class="light">{{ 'These defenses stack — enable any combination of the honeypot, CAPTCHA, and Akismet below.'|t('simple-form') }}</p>
 
@@ -159,9 +155,7 @@
     name: 'enableAkismet',
     value: 1,
     checked: settings.enableAkismet ?? false,
-    toggle: '#akismet-settings',
-    disabled: proDisabled,
-    instructions: 'Score each submission with Akismet and flag or block likely spam.'|t('simple-form'),
+    toggle: '#akismet-settings',    instructions: 'Score each submission with Akismet and flag or block likely spam.'|t('simple-form'),
 }) }}
 
 <div id="akismet-settings" style="display: {% if settings.enableAkismet ?? false %}block{% else %}none{% endif %};">
@@ -169,9 +163,7 @@
         label: 'Akismet API Key'|t('simple-form'),
         name: 'akismetApiKey',
         value: settings.akismetApiKey ?? '',
-        suggestEnvVars: true,
-        disabled: proDisabled,
-        instructions: 'Your Akismet API key. Use an environment variable (e.g. $AKISMET_KEY) to keep it out of project config.'|t('simple-form'),
+        suggestEnvVars: true,        instructions: 'Your Akismet API key. Use an environment variable (e.g. $AKISMET_KEY) to keep it out of project config.'|t('simple-form'),
         errors: settings.getErrors('akismetApiKey') ?? [],
     }) }}
 
@@ -183,9 +175,7 @@
             'flag': 'Flag (save as spam for review)'|t('simple-form'),
             'block': 'Block (silently drop the submission)'|t('simple-form'),
         },
-        value: settings.akismetMode ?? 'flag',
-        disabled: proDisabled,
-    }) }}
+        value: settings.akismetMode ?? 'flag',    }) }}
 </div>
 
 <hr>
@@ -198,9 +188,7 @@
     name: 'enableDenylists',
     value: 1,
     checked: settings.enableDenylists ?? false,
-    toggle: '#denylist-settings',
-    disabled: proDisabled,
-    instructions: 'Block or flag submissions that match a keyword, email/domain, or IP you specify below.'|t('simple-form'),
+    toggle: '#denylist-settings',    instructions: 'Block or flag submissions that match a keyword, email/domain, or IP you specify below.'|t('simple-form'),
 }) }}
 
 <div id="denylist-settings" style="display: {% if settings.enableDenylists ?? false %}block{% else %}none{% endif %};">
@@ -212,17 +200,13 @@
             'flag': 'Flag (save as spam for review)'|t('simple-form'),
             'block': 'Block (silently drop the submission)'|t('simple-form'),
         },
-        value: settings.denylistMode ?? 'flag',
-        disabled: proDisabled,
-    }) }}
+        value: settings.denylistMode ?? 'flag',    }) }}
 
     {{ forms.textareaField({
         label: 'Blocked keywords'|t('simple-form'),
         name: 'blockedKeywords',
         value: settings.blockedKeywords ?? '',
-        rows: 4,
-        disabled: proDisabled,
-        instructions: 'One keyword per line. Matched case-insensitively against any text value. Use * as a wildcard (e.g. buy*now).'|t('simple-form'),
+        rows: 4,        instructions: 'One keyword per line. Matched case-insensitively against any text value. Use * as a wildcard (e.g. buy*now).'|t('simple-form'),
         errors: settings.getErrors('blockedKeywords') ?? [],
     }) }}
 
@@ -230,9 +214,7 @@
         label: 'Blocked emails'|t('simple-form'),
         name: 'blockedEmails',
         value: settings.blockedEmails ?? '',
-        rows: 4,
-        disabled: proDisabled,
-        instructions: 'One per line. Exact address (bob@x.tld), whole domain (@x.tld), or domain + subdomains (*.x.tld).'|t('simple-form'),
+        rows: 4,        instructions: 'One per line. Exact address (bob@x.tld), whole domain (@x.tld), or domain + subdomains (*.x.tld).'|t('simple-form'),
         errors: settings.getErrors('blockedEmails') ?? [],
     }) }}
 
@@ -240,9 +222,7 @@
         label: 'Blocked IPs'|t('simple-form'),
         name: 'blockedIps',
         value: settings.blockedIps ?? '',
-        rows: 4,
-        disabled: proDisabled,
-        instructions: 'One per line. A single IPv4/IPv6 address or a CIDR range (e.g. 203.0.113.0/24, 2001:db8::/32).'|t('simple-form'),
+        rows: 4,        instructions: 'One per line. A single IPv4/IPv6 address or a CIDR range (e.g. 203.0.113.0/24, 2001:db8::/32).'|t('simple-form'),
         errors: settings.getErrors('blockedIps') ?? [],
     }) }}
 </div>

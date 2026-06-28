@@ -74,10 +74,20 @@ class m260628_000001_rename_fqcns extends Migration
     /**
      * Rewrite the Form field type in project config so a later project-config
      * apply doesn't revert the `{{%fields}}` table back to the old FQCN.
+     *
+     * Skipped when project config is read-only (allowAdminChanges=false): set()
+     * would throw NotSupportedException and roll the whole migration back. On those
+     * installs the deployed YAML is authoritative; the legacy-class-alias
+     * registered in {@see \anvildev\simpleform\Plugin} keeps the old FQCN resolving
+     * if the YAML still carries it.
      */
     private function _rewriteProjectConfigFields(): void
     {
         $projectConfig = Craft::$app->getProjectConfig();
+        if ($projectConfig->readOnly) {
+            return;
+        }
+
         $fields = $projectConfig->get('fields') ?? [];
         if (!is_array($fields)) {
             return;

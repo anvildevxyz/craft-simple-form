@@ -83,6 +83,27 @@ class EditionsTest extends TestCase
         $this->assertSame(['rating'], Editions::blockedNewProFields(['rating', 'rating'], [], Editions::SOLO));
     }
 
+    public function testBlocksSettingEnableGatesOnlyOffToOnEscalation(): void
+    {
+        // Pro: never blocked.
+        $this->assertFalse(Editions::blocksSettingEnable('enableAkismet', false, true, Editions::PRO));
+
+        // A non-Pro-gated setting is never blocked.
+        $this->assertFalse(Editions::blocksSettingEnable('enableHoneypot', false, true, Editions::SOLO));
+
+        // Solo: switching a Pro feature on is blocked...
+        $this->assertTrue(Editions::blocksSettingEnable('enableAkismet', false, true, Editions::SOLO));
+        $this->assertTrue(Editions::blocksSettingEnable('enableDenylists', false, true, Editions::SOLO));
+        $this->assertTrue(Editions::blocksSettingEnable('retainSubmissionsDays', 0, 30, Editions::SOLO));
+
+        // ...but turning it off, or leaving it as-is, is always allowed (so a
+        // downgraded site can still stop a running Pro feature).
+        $this->assertFalse(Editions::blocksSettingEnable('enableAkismet', true, false, Editions::SOLO));
+        $this->assertFalse(Editions::blocksSettingEnable('enableAkismet', true, true, Editions::SOLO));
+        $this->assertFalse(Editions::blocksSettingEnable('retainSubmissionsDays', 30, 0, Editions::SOLO));
+        $this->assertFalse(Editions::blocksSettingEnable('retainSubmissionsDays', 30, 60, Editions::SOLO));
+    }
+
     public function testDefaultOpenForUnknownEdition(): void
     {
         // Anything that is not explicitly Solo behaves as Pro, so an unset or

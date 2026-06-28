@@ -75,6 +75,15 @@ class PdfService extends Component
      */
     public function render(Form $form, Submission $submission, array $data, ?int $siteId = null): ?string
     {
+        // PDF generation is Pro. Gating the generation path itself (not just
+        // isAvailable()) keeps every caller coherent: the CP download, the
+        // notification-email attachment (EmailService::attachmentsFor), and asset
+        // storage all go inert on Solo together, with no "emailed but CP says no"
+        // divergence.
+        if (!Editions::can(Editions::CAP_PDF)) {
+            return null;
+        }
+
         $engine = $this->getEngine();
         if ($engine === null || !$engine->isAvailable()) {
             return null;
