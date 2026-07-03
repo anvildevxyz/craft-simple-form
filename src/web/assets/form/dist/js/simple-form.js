@@ -466,6 +466,19 @@
         }
     };
 
+    // Build the "continue later" resume URL from the current location, preserving
+    // any existing query string (e.g. ?handle=… or ?utm_source=…) and merging in
+    // the sfresume token — overwriting a stale token from an earlier save.
+    SF.resumeUrl = function (href, token) {
+        try {
+            var u = new URL(href);
+            u.searchParams.set("sfresume", token);
+            return u.toString();
+        } catch (e) {
+            return href;
+        }
+    };
+
     // Logic jumps (#245) — page-level branching, mirroring PHP JumpResolver so
     // the navigator and the server agree on the path. `stepRules[i]` is the list
     // of { field, operator, value, to } rules on step i (to = target index).
@@ -683,8 +696,7 @@
                     if (!data || !data.success || !data.token) { return; }
                     // Reuse the same draft on the next save.
                     form.setAttribute("data-sf-resume-token", data.token);
-                    var resumeUrl = location.origin + location.pathname + "?sfresume=" + encodeURIComponent(data.token);
-                    showResumeLink(form, resumeUrl);
+                    showResumeLink(form, SF.resumeUrl(location.href, data.token));
                 })
                 .catch(function () { btn.disabled = false; });
         });
