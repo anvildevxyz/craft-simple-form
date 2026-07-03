@@ -58,4 +58,42 @@ eq("effective last shows submit", [s1.next, s1.submit], [false, true]);
 eq("progress label", SF.stepNav.progress("Question {current} of {total}", 2, 3), "Question 2 of 3");
 eq("progress fallback", SF.stepNav.progress(null, 1, 4), "1 of 4");
 
+// --- applyVisibility disables off-screen steps' controls ------------------
+// A step hidden from the visitor (including one a logic jump skips) keeps its
+// inputs in the DOM; if those `required` inputs stay enabled they block native
+// constraint validation on submit. applyVisibility must disable them and re-enable
+// the current step's, while never re-enabling a conditionally-hidden control.
+function fakeStep(controls) {
+    return {
+        hidden: false,
+        querySelectorAll: function () { return controls; }
+    };
+}
+function ctrl(cond) { return { disabled: false, _sfCondHidden: !!cond }; }
+
+// three steps; middle (skipped) holds a required control
+var c0 = ctrl(false);
+var cMiddle = ctrl(false); // the field on the skipped step (e.g. field_70)
+var c2 = ctrl(false);
+var vsteps = [fakeStep([c0]), fakeStep([cMiddle]), fakeStep([c2])];
+
+// land on the final step (a jump skipped the middle one)
+SF.stepNav.applyVisibility(vsteps, 2);
+eq("current step visible", vsteps[2].hidden, false);
+eq("current step control enabled", c2.disabled, false);
+eq("skipped step hidden", vsteps[1].hidden, true);
+eq("skipped step required control disabled", cMiddle.disabled, true);
+eq("earlier step hidden", vsteps[0].hidden, true);
+eq("earlier step control disabled", c0.disabled, true);
+
+// navigating back to the middle step re-enables its control
+SF.stepNav.applyVisibility(vsteps, 1);
+eq("revisited step control re-enabled", cMiddle.disabled, false);
+eq("now off-screen final control disabled", c2.disabled, true);
+
+// a conditionally-hidden control stays disabled even on the current step
+var cCond = ctrl(true);
+SF.stepNav.applyVisibility([fakeStep([cCond])], 0);
+eq("conditionally-hidden control stays disabled on current step", cCond.disabled, true);
+
 console.log("step-nav.test.js: " + passed + " assertions passed");

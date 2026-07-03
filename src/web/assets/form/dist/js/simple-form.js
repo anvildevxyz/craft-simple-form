@@ -331,6 +331,11 @@
             var visible = SF.isVisible(g._sfCond, values);
             g.style.display = visible ? "" : "none";
             g.querySelectorAll("input, select, textarea").forEach(function (el) {
+                // Record the condition-only hidden state so step visibility
+                // (SF.stepNav.applyVisibility) and stepActive() can tell a
+                // conditionally-hidden control apart from one merely on an
+                // off-screen step — the two reasons share the `disabled` flag.
+                el._sfCondHidden = !visible;
                 el.disabled = !visible; // disabled inputs are excluded from the POST
             });
 
@@ -463,6 +468,24 @@
             return (tpl || "{current} of {total}")
                 .replace("{current}", String(pos))
                 .replace("{total}", String(total));
+        },
+        // Show only `current`; hide the rest. A hidden step's inputs stay in the
+        // DOM, so its `required` controls would otherwise still block native
+        // constraint validation on final submit (checkValidity/requestSubmit) —
+        // even a step a logic jump skipped entirely. Disabling them removes them
+        // from validation AND the POST. On the current step the flag falls back
+        // to each control's condition-only hidden state (_sfCondHidden), so a
+        // step becoming visible again re-enables exactly the controls conditional
+        // logic left visible — never re-enabling a conditionally-hidden one.
+        applyVisibility: function (steps, current) {
+            steps.forEach(function (s, i) {
+                var hidden = i !== current;
+                s.hidden = hidden;
+                var controls = s.querySelectorAll("input, select, textarea");
+                Array.prototype.forEach.call(controls, function (el) {
+                    el.disabled = hidden || !!el._sfCondHidden;
+                });
+            });
         }
     };
 
@@ -513,14 +536,17 @@
         try { stepJumps = JSON.parse(form.getAttribute("data-sf-jumps") || "null"); } catch (e) { stepJumps = null; }
 
         // A step is "active" unless every input control it holds is conditionally
-        // hidden (initConditions disables hidden fields). Inactive steps — e.g. a
+        // hidden (initConditions records _sfCondHidden). Inactive steps — e.g. a
         // conversational screen whose only question conditional logic hid — are
-        // skipped by the navigator and excluded from the progress count.
+        // skipped by the navigator and excluded from the progress count. This
+        // reads _sfCondHidden, not `disabled`: the latter now also carries step
+        // visibility (applyVisibility disables off-screen steps), so it can't tell
+        // a conditionally-empty step from one that is merely not current.
         function stepActive(i) {
             var controls = steps[i].querySelectorAll("input, select, textarea");
             if (controls.length === 0) { return true; }
             for (var j = 0; j < controls.length; j++) {
-                if (!controls[j].disabled) { return true; }
+                if (!controls[j]._sfCondHidden) { return true; }
             }
             return false;
         }
@@ -530,7 +556,7 @@
         }
 
         function render() {
-            steps.forEach(function (s, i) { s.hidden = i !== current; });
+            SF.stepNav.applyVisibility(steps, current);
 
             var st = SF.stepNav.state(activeFlags(), current);
             if (backBtn) { backBtn.hidden = !st.back; }
