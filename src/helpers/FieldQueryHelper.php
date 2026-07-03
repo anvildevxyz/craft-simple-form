@@ -69,7 +69,7 @@ class FieldQueryHelper
                 [':siteId' => $siteId]
             )
             ->where(['f.formId' => $formIds])
-            ->orderBy(['f.formId' => SORT_ASC, 'f.sortOrder' => SORT_ASC])
+            ->orderBy(['f.formId' => SORT_ASC, 'f.sortOrder' => SORT_ASC, 'f.id' => SORT_ASC])
             ->all();
 
         foreach ($rows as $row) {

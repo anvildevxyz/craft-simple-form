@@ -73,13 +73,19 @@ abstract class SimpleFormTestCase extends TestCase
         $db = Craft::$app->getDb();
         $now = date('Y-m-d H:i:s');
 
+        $maxSort = (new \craft\db\Query())
+            ->from('{{%simpleform_fields}}')
+            ->where(['formId' => $formId])
+            ->max('[[sortOrder]]');
+        $sortOrder = ($maxSort !== false && $maxSort !== null ? (int) $maxSort : 0) + 1;
+
         $db->createCommand()->insert('{{%simpleform_fields}}', [
             'formId' => $formId,
             'type' => $type,
             'name' => $name,
             'required' => $required,
             'config' => $config,
-            'sortOrder' => 1,
+            'sortOrder' => $sortOrder,
             'dateCreated' => $now,
             'dateUpdated' => $now,
             'uid' => StringHelper::UUID(),
