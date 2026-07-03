@@ -62,6 +62,27 @@ class FieldsServiceTest extends SimpleFormTestCase
         $this->assertSame('Your name', $site['helpText']);
     }
 
+    public function testAddParagraphBlockRoundTripsHelpTextBody(): void
+    {
+        $this->requireCraft();
+
+        // The CP field builder persists a Text (paragraph) layout block through
+        // this same add() path: no label, no required, its copy in helpText.
+        $form = $this->createForm('Paragraph', 'svc_paragraph');
+        $siteId = (int) Craft::$app->getSites()->getPrimarySite()->id;
+        $body = "Please have your order number ready.\nThanks!";
+
+        $fieldId = $this->fields()->add((int) $form->id, 'paragraph', 'intro', false, [], '', $body, [$siteId]);
+
+        $structural = $this->structuralRow($fieldId);
+        $this->assertNotNull($structural);
+        $this->assertSame('paragraph', $structural['type']);
+        $this->assertSame(0, (int) $structural['required']);
+
+        // The multi-line body round-trips verbatim in the per-site helpText column.
+        $this->assertSame($body, $this->siteRow($fieldId, $siteId)['helpText']);
+    }
+
     public function testAddIncrementsSortOrder(): void
     {
         $this->requireCraft();

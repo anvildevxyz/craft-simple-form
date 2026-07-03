@@ -608,7 +608,7 @@ class FormRenderService extends Component
     }
 
     /**
-     * Render a presentational/layout block (heading, divider, html) bare — no
+     * Render a presentational/layout block (heading, divider, html, paragraph) bare — no
      * label, required marker or input wrapper. Its per-site translatable content
      * lives in the label/helpText columns, threaded into the config keys the
      * layout field types read. Returns '' when the block renders nothing.
@@ -631,6 +631,10 @@ class FormRenderService extends Component
             $config['label'] = ($label !== '' && $label !== (string) ($row['name'] ?? '')) ? $label : '';
         } elseif ($type === 'html') {
             $config['html'] = $helpText;
+        } elseif ($type === 'paragraph') {
+            // Static "Text" copy: the plain-text body lives in the per-site
+            // helpText column and renders escaped + line-break-preserved.
+            $config['text'] = $helpText;
         }
 
         $fieldType = Plugin::getInstance()->getFieldTypeRegistry()->getFieldType($type, $config);

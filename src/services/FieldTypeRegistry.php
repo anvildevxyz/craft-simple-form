@@ -21,6 +21,7 @@ use anvildev\simpleform\fields\HtmlFieldType;
 use anvildev\simpleform\fields\NameFieldType;
 use anvildev\simpleform\fields\NumberFieldType;
 use anvildev\simpleform\fields\OpinionScaleFieldType;
+use anvildev\simpleform\fields\ParagraphFieldType;
 use anvildev\simpleform\fields\PaymentFieldType;
 use anvildev\simpleform\fields\PhoneFieldType;
 use anvildev\simpleform\fields\RadioFieldType;
@@ -109,6 +110,7 @@ class FieldTypeRegistry extends Component
             HeadingFieldType::class,
             DividerFieldType::class,
             HtmlFieldType::class,
+            ParagraphFieldType::class,
         ] as $class) {
             $this->registerFieldType($class);
         }
@@ -131,7 +133,7 @@ class FieldTypeRegistry extends Component
 
     /**
      * The registered non-input (presentational/layout) field-type handles —
-     * heading, divider, html. Skipped by validation, storage, and export.
+     * heading, divider, html, paragraph. Skipped by validation, storage, and export.
      *
      * @return list<string>
      */

@@ -5,7 +5,9 @@ namespace anvildev\simpleform\tests\unit;
 use anvildev\simpleform\fields\DividerFieldType;
 use anvildev\simpleform\fields\HeadingFieldType;
 use anvildev\simpleform\fields\HtmlFieldType;
+use anvildev\simpleform\fields\ParagraphFieldType;
 use anvildev\simpleform\fields\TextFieldType;
+use anvildev\simpleform\services\FieldTypeRegistry;
 use PHPUnit\Framework\TestCase;
 
 /**
@@ -30,6 +32,7 @@ class LayoutFieldTypesTest extends TestCase
         $this->assertFalse((new HeadingFieldType())->isInput());
         $this->assertFalse((new DividerFieldType())->isInput());
         $this->assertFalse((new HtmlFieldType())->isInput());
+        $this->assertFalse((new ParagraphFieldType())->isInput());
     }
 
     public function testLayoutBlocksNeverValidate(): void
@@ -38,6 +41,27 @@ class LayoutFieldTypesTest extends TestCase
         $this->assertSame([], (new HeadingFieldType(['required' => true]))->validate(''));
         $this->assertSame([], (new DividerFieldType(['required' => true]))->validate(null));
         $this->assertSame([], (new HtmlFieldType(['required' => true]))->validate(''));
+        $this->assertSame([], (new ParagraphFieldType(['required' => true]))->validate(''));
+    }
+
+    // =========================================================================
+    // Registry seam
+    // =========================================================================
+
+    public function testRegistryClassifiesLayoutBlocks(): void
+    {
+        $layout = (new FieldTypeRegistry())->layoutTypeHandles();
+
+        // The value-less presentational blocks — including the new paragraph
+        // ("Text") element — are classified as layout, derived from isInput().
+        $this->assertContains('heading', $layout);
+        $this->assertContains('divider', $layout);
+        $this->assertContains('html', $layout);
+        $this->assertContains('paragraph', $layout);
+
+        // A value-collecting input is never a layout handle.
+        $this->assertNotContains('text', $layout);
+        $this->assertNotContains('email', $layout);
     }
 
     // =========================================================================
@@ -86,6 +110,47 @@ class LayoutFieldTypesTest extends TestCase
         $this->assertStringContainsString('<hr>', $html);
         $this->assertStringContainsString('simple-form-divider__label', $html);
         $this->assertStringContainsString('Or &amp; &quot;more&quot;', $html);
+    }
+
+    // =========================================================================
+    // Paragraph ("Text" element)
+    // =========================================================================
+
+    public function testParagraphType(): void
+    {
+        $this->assertSame('paragraph', ParagraphFieldType::getType());
+        $this->assertSame('Text', ParagraphFieldType::getLabel());
+    }
+
+    public function testParagraphPreservesLineBreaksWithEscapedText(): void
+    {
+        $html = (new ParagraphFieldType(['text' => "Line one\nLine two"]))->renderInput('field_1');
+        $this->assertStringContainsString('<div class="simple-form-text">', $html);
+        $this->assertStringContainsString('Line one', $html);
+        $this->assertStringContainsString('Line two', $html);
+        // A newline is preserved as a <br>.
+        $this->assertMatchesRegularExpression('/Line one<br\s*\/?>\s*\n?Line two/', $html);
+    }
+
+    public function testParagraphEscapesMarkupInsteadOfExecutingIt(): void
+    {
+        // Security line vs. the HTML block: raw markup is rendered as literal
+        // escaped text, never as executed HTML.
+        $html = (new ParagraphFieldType([
+            'text' => '<script>alert(1)</script> & <b>bold</b>',
+        ]))->renderInput('field_1');
+
+        $this->assertStringNotContainsString('<script>', $html);
+        $this->assertStringNotContainsString('<b>bold</b>', $html);
+        $this->assertStringContainsString('&lt;script&gt;alert(1)&lt;/script&gt;', $html);
+        $this->assertStringContainsString('&amp;', $html);
+        $this->assertStringContainsString('&lt;b&gt;bold&lt;/b&gt;', $html);
+    }
+
+    public function testParagraphWithEmptyTextRendersNothing(): void
+    {
+        $this->assertSame('', (new ParagraphFieldType(['text' => '   ']))->renderInput('field_1'));
+        $this->assertSame('', (new ParagraphFieldType([]))->renderInput('field_1'));
     }
 
     // =========================================================================
