@@ -5,6 +5,7 @@ namespace anvildev\simpleform\tests\integration;
 use anvildev\simpleform\elements\Form;
 use anvildev\simpleform\elements\Submission;
 use anvildev\simpleform\elements\SubmissionStatus;
+use anvildev\simpleform\models\Settings;
 use anvildev\simpleform\Plugin;
 use craft\db\Query;
 
@@ -108,6 +109,95 @@ class DuplicatePreventionTest extends SimpleFormTestCase
         $this->assertTrue($reloaded->preventDuplicates);
         $this->assertSame(Form::DUPLICATE_KEY_CONTENT, $reloaded->duplicateKey);
         $this->assertSame(15, $reloaded->duplicateWindowMinutes);
+    }
+
+    /**
+     * Apply plugin-settings overrides for the duration of a closure, then restore.
+     *
+     * @param array<string, mixed> $overrides
+     */
+    private function withSettings(array $overrides, callable $fn): void
+    {
+        $settings = Plugin::getInstance()->getSettings();
+        $original = $settings->getAttributes();
+        try {
+            $settings->setAttributes($overrides, false);
+            $fn();
+        } finally {
+            $settings->setAttributes($original, false);
+        }
+    }
+
+    public function testDuplicateFlagModeSavesAndFlagsRegardlessOfDenylistMode(): void
+    {
+        $this->requireCraft();
+        // Default duplicateMode is 'flag'. Denylist set to 'block' must NOT bleed
+        // into duplicate handling (regression guard for the shared-toggle bug).
+        $this->withSettings(
+            ['duplicateMode' => Settings::DUPLICATE_FLAG, 'denylistMode' => Settings::DENYLIST_BLOCK],
+            function(): void {
+                $form = $this->dupForm('dup_flag_mode', Form::DUPLICATE_KEY_EMAIL);
+                $emailField = $this->createField((int) $form->id, 'email', 'email', 'Email');
+                $service = Plugin::getInstance()->getSubmissionService();
+
+                $first = $service->submit($form, ['field_' . $emailField => 'flag@example.com'], ['skipCaptcha' => true]);
+                $this->assertSame(SubmissionStatus::NEW, $first['submission']->readStatus);
+
+                $second = $service->submit($form, ['field_' . $emailField => 'flag@example.com'], ['skipCaptcha' => true]);
+                $this->assertNotNull($second['submission'], 'flag mode saves the duplicate');
+                $this->assertSame(SubmissionStatus::SPAM, $second['submission']->readStatus);
+                $this->assertSame('duplicate', $second['submission']->spamReason);
+            },
+        );
+    }
+
+    public function testDuplicateBlockModeDropsRegardlessOfDenylistMode(): void
+    {
+        $this->requireCraft();
+        // duplicateMode='block' drops the duplicate even though denylistMode is 'flag'.
+        $this->withSettings(
+            ['duplicateMode' => Settings::DUPLICATE_BLOCK, 'denylistMode' => Settings::DENYLIST_FLAG],
+            function(): void {
+                $form = $this->dupForm('dup_block_mode', Form::DUPLICATE_KEY_EMAIL);
+                $emailField = $this->createField((int) $form->id, 'email', 'email', 'Email');
+                $service = Plugin::getInstance()->getSubmissionService();
+
+                $first = $service->submit($form, ['field_' . $emailField => 'block@example.com'], ['skipCaptcha' => true]);
+                $this->assertSame(SubmissionStatus::NEW, $first['submission']->readStatus);
+
+                $second = $service->submit($form, ['field_' . $emailField => 'block@example.com'], ['skipCaptcha' => true]);
+                $this->assertNull($second['submission'], 'block mode drops the duplicate');
+                $this->assertNull($second['errors']);
+
+                $count = (new Query())->from('{{%simpleform_submissions}}')->where(['formId' => $form->id])->count();
+                $this->assertSame(1, (int) $count, 'only the original row persisted');
+            },
+        );
+    }
+
+    public function testDenylistBlockModeNoLongerDropsDuplicates(): void
+    {
+        $this->requireCraft();
+        // Regression guard for the fixed bug: denylistMode='block' with the default
+        // duplicateMode='flag' must flag (not drop) a duplicate. denylistMode alone
+        // no longer governs duplicate-prevention behavior.
+        $this->withSettings(
+            ['denylistMode' => Settings::DENYLIST_BLOCK, 'duplicateMode' => Settings::DUPLICATE_FLAG],
+            function(): void {
+                $form = $this->dupForm('dup_denylist_guard', Form::DUPLICATE_KEY_EMAIL);
+                $emailField = $this->createField((int) $form->id, 'email', 'email', 'Email');
+                $service = Plugin::getInstance()->getSubmissionService();
+
+                $service->submit($form, ['field_' . $emailField => 'guard@example.com'], ['skipCaptcha' => true]);
+                $second = $service->submit($form, ['field_' . $emailField => 'guard@example.com'], ['skipCaptcha' => true]);
+
+                $this->assertNotNull($second['submission'], 'denylist block must not drop a duplicate');
+                $this->assertSame(SubmissionStatus::SPAM, $second['submission']->readStatus);
+
+                $count = (new Query())->from('{{%simpleform_submissions}}')->where(['formId' => $form->id])->count();
+                $this->assertSame(2, (int) $count, 'both rows persisted (flagged, not dropped)');
+            },
+        );
     }
 
     public function testDuplicateScopeIsPerForm(): void

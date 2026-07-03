@@ -57,6 +57,9 @@ class Settings extends Model
     public const DENYLIST_FLAG = 'flag';
     public const DENYLIST_BLOCK = 'block';
 
+    public const DUPLICATE_FLAG = 'flag';
+    public const DUPLICATE_BLOCK = 'block';
+
     /**
      * Deterministic, owner-controlled denylists (#140) that run before Akismet:
      * blocked keywords, emails/domains, and IPs/CIDR ranges. Off by default so
@@ -73,6 +76,15 @@ class Settings extends Model
     public ?string $blockedEmails = null;
     /** Newline-separated single IPs or CIDR ranges (v4/v6). */
     public ?string $blockedIps = null;
+
+    /**
+     * What to do when a per-form duplicate-prevention hit is detected (#140):
+     * flag the submission as spam for review (flag, the default) or silently drop
+     * it (block). Independent of {@see self::$denylistMode}/{@see self::$akismetMode}
+     * so duplicate handling can be configured on its own — the per-form toggle
+     * lives on each {@see \anvildev\simpleform\elements\Form::$preventDuplicates}.
+     */
+    public string $duplicateMode = self::DUPLICATE_FLAG;
 
     /**
      * Max public form submissions accepted per visitor IP per minute, an abuse
@@ -333,6 +345,7 @@ class Settings extends Model
             [['draftRetentionDays', 'partialRetentionDays'], 'integer', 'min' => 1],
             [['akismetMode'], 'in', 'range' => [self::AKISMET_FLAG, self::AKISMET_BLOCK]],
             [['denylistMode'], 'in', 'range' => [self::DENYLIST_FLAG, self::DENYLIST_BLOCK]],
+            [['duplicateMode'], 'in', 'range' => [self::DUPLICATE_FLAG, self::DUPLICATE_BLOCK]],
             [['blockedKeywords', 'blockedEmails', 'blockedIps'], 'string'],
             // Reject malformed IP/CIDR entries at save so they never fail silently
             // at submit time (a bad line would simply never match).

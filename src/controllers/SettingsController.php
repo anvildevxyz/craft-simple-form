@@ -44,6 +44,7 @@ class SettingsController extends Controller
             'blockedKeywords',
             'blockedEmails',
             'blockedIps',
+            'duplicateMode',
             'submitRateLimitPerMinute',
             'allowGraphqlCaptchaBypass',
         ],
