@@ -262,6 +262,40 @@ class SubmitMessagesService extends Component
     }
 
     /**
+     * Field handles referenced by the posted conditional-message rules that are
+     * not among the form's live field handles — the save-time guard rail (#267),
+     * mirroring the field-conditional dangling-reference check by reusing
+     * {@see ConditionalEvaluator::referencedFields()}. Each such reference is
+     * pruned on {@see self::sync()} (so a stored rule never points at a removed
+     * field at runtime), but is reported here so the form owner is warned that a
+     * rule was silently weakened by an unrelated field delete/rename — rather than
+     * left to wonder why a message stopped matching.
+     *
+     * @param list<array<string, mixed>> $rows the posted rows in display order
+     * @param array<string, bool> $validHandles handle => true for the form's live field handles
+     * @return list<string> the missing handles, de-duplicated in first-seen order
+     */
+    public function danglingReferences(array $rows, array $validHandles): array
+    {
+        $missing = [];
+
+        foreach ($rows as $row) {
+            $conditional = is_array($row['conditional'] ?? null) ? $row['conditional'] : null;
+            if ($conditional === null) {
+                continue;
+            }
+
+            foreach (ConditionalEvaluator::referencedFields(['conditional' => $conditional]) as $handle) {
+                if (!isset($validHandles[$handle]) && !in_array($handle, $missing, true)) {
+                    $missing[] = $handle;
+                }
+            }
+        }
+
+        return $missing;
+    }
+
+    /**
      * Replace a form's conditional submit messages with the posted ordered set in
      * one transaction — insert new rows, update existing ones, rewrite sort order,
      * and delete any that were removed — mirroring {@see FieldSyncService::sync()}

@@ -213,6 +213,99 @@ class FormSubmitMessagesCpTest extends SimpleFormTestCase
         $this->assertSame('Thanks for getting in touch.', $this->resolveMessage($saved, [$reasonId => 'other']));
     }
 
+    /**
+     * A field builder payload for a live `reason` select plus a `priority` select,
+     * so a message rule can reference both.
+     */
+    private function reasonAndPriorityFieldsData(): string
+    {
+        return (string) json_encode([
+            [
+                'id' => null,
+                'type' => 'select',
+                'handle' => 'reason',
+                'label' => 'Reason',
+                'required' => false,
+                'config' => ['options' => [
+                    ['value' => 'sales', 'label' => 'Sales'],
+                    ['value' => 'support', 'label' => 'Support'],
+                ]],
+            ],
+            [
+                'id' => null,
+                'type' => 'select',
+                'handle' => 'priority',
+                'label' => 'Priority',
+                'required' => false,
+                'config' => ['options' => [
+                    ['value' => 'high', 'label' => 'High'],
+                    ['value' => 'low', 'label' => 'Low'],
+                ]],
+            ],
+        ]);
+    }
+
+    /**
+     * Save-time guard rail (#267): deleting/renaming a field that a conditional
+     * message rule references surfaces a non-blocking warning on the next form
+     * save (the row still saves — the dangling rule is pruned), while a form whose
+     * rules all reference live fields saves warning-free.
+     */
+    public function testDanglingReferenceWarnsOnNextSave(): void
+    {
+        $this->requireCraft();
+
+        $form = $this->createForm('CP Dangling', 'cp_dangling_form');
+        $siteId = (int) Craft::$app->getSites()->getCurrentSite()->id;
+        $service = Plugin::getInstance()->getSubmitMessages();
+
+        // First save: an AND rule referencing both live fields — no warning, and
+        // the row saves cleanly.
+        $this->save((int) $form->id, [
+            'handle' => 'cp_dangling_form',
+            'name' => 'CP Dangling',
+            'fieldsData' => $this->reasonAndPriorityFieldsData(),
+            'submitMessagesData' => (string) json_encode([[
+                'id' => null,
+                'conditional' => ['match' => 'all', 'rules' => [
+                    ['field' => 'reason', 'operator' => 'eq', 'value' => 'sales'],
+                    ['field' => 'priority', 'operator' => 'eq', 'value' => 'high'],
+                ]],
+                'message' => 'A specialist will call you.',
+            ]]),
+        ]);
+        $existingId = (int) $service->getForFormAndSite((int) $form->id, $siteId)[0]->id;
+        $this->assertStringNotContainsString('no longer exists', (string) Craft::$app->getSession()->getNotice());
+
+        // Second save: `priority` is dropped, but the stored message row still
+        // references it. The live `reason` rule keeps the row valid (so the save
+        // succeeds), the dangling `priority` rule is pruned, and the guard rail
+        // warns rather than blocking the save.
+        $this->save((int) $form->id, [
+            'handle' => 'cp_dangling_form',
+            'name' => 'CP Dangling',
+            'fieldsData' => $this->reasonFieldsData(),
+            'submitMessagesData' => (string) json_encode([[
+                'id' => $existingId,
+                'conditional' => ['match' => 'all', 'rules' => [
+                    ['field' => 'reason', 'operator' => 'eq', 'value' => 'sales'],
+                    ['field' => 'priority', 'operator' => 'eq', 'value' => 'high'],
+                ]],
+                'message' => 'A specialist will call you.',
+            ]]),
+        ]);
+
+        $notice = (string) Craft::$app->getSession()->getNotice();
+        $this->assertStringContainsString('priority', $notice);
+        $this->assertStringContainsString('no longer exists', $notice);
+
+        // The row survived (non-blocking): only the live `reason` rule remains.
+        $rows = $service->getForFormAndSite((int) $form->id, $siteId);
+        $this->assertCount(1, $rows);
+        $this->assertCount(1, $rows[0]->conditional['rules']);
+        $this->assertSame('reason', $rows[0]->conditional['rules'][0]['field']);
+    }
+
     public function testSoloCannotAddButKeepsEditingExisting(): void
     {
         $this->requireCraft();

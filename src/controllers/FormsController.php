@@ -380,7 +380,22 @@ class FormsController extends Controller
 
         Plugin::getInstance()->getAudit()->log(AuditService::ACTION_FORM_SAVE, AuditService::TARGET_FORM, (int) $form->id, (string) ($form->title ?? $form->name));
 
-        Craft::$app->getSession()->setNotice(Craft::t('simple-form', 'Form saved successfully'));
+        // Save-time guard rail (#267): a conditional message rule referencing a
+        // field handle that no longer exists on the form is pruned above and
+        // evaluates as non-matching at runtime, so it can silently stop matching
+        // after an unrelated field delete/rename. Surface a non-blocking warning
+        // (appended to the save notice) so the owner can fix or remove the rule.
+        $notice = Craft::t('simple-form', 'Form saved successfully');
+        $danglingHandles = $submitMessages->danglingReferences($messageRows, $validHandles);
+        if ($danglingHandles !== []) {
+            $notice .= ' ' . Craft::t(
+                'simple-form',
+                'A conditional message rule references a field that no longer exists: {handles}. That condition was ignored.',
+                ['handles' => implode(', ', $danglingHandles)],
+            );
+        }
+
+        Craft::$app->getSession()->setNotice($notice);
         return $this->redirect("simple-form/forms/edit/{$form->id}?site={$site->handle}");
     }
 
