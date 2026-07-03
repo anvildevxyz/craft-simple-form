@@ -236,6 +236,7 @@ mutation {
     success
     submissionId
     redirectUrl
+    message                   # resolved confirmation text; matches the AJAX response
     errors { key messages }
   }
 }

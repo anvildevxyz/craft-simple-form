@@ -36,6 +36,12 @@ class SubmitFormPayloadType extends SimpleFormObjectType
                 'description' => 'The resolved post-submit redirect URL on success (per the form\'s '
                     . 'post-submit action), or null when the form shows an inline message.',
             ],
+            'message' => [
+                'type' => Type::string(),
+                'description' => 'The resolved post-submit confirmation message on success (per the form\'s '
+                    . 'submit message, falling back to the global setting), or null otherwise. Matches the '
+                    . '`message` the front-end AJAX SubmitController response returns.',
+            ],
             'quizScore' => [
                 'type' => Type::int(),
                 'description' => 'Raw quiz score on a quiz form, or null when the form is not a quiz.',

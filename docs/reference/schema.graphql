@@ -313,6 +313,13 @@ type SimpleFormSubmitPayload {
   """The resolved post-submit redirect URL on success, or null for an inline message."""
   redirectUrl: String
 
+  """
+  The resolved post-submit confirmation message on success (per-form submit
+  message, falling back to the global setting), or null otherwise. Matches the
+  `message` the front-end AJAX SubmitController response returns.
+  """
+  message: String
+
   """Validation/processing errors; empty on success."""
   errors: [SimpleFormSubmissionError!]!
 }

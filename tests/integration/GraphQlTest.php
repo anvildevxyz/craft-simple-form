@@ -2,12 +2,14 @@
 
 namespace anvildev\simpleform\tests\integration;
 
+use anvildev\simpleform\controllers\SubmitController;
 use anvildev\simpleform\elements\Submission;
 use anvildev\simpleform\Plugin;
 use anvildev\simpleform\services\CaptchaService;
 use Craft;
 use craft\models\GqlSchema;
 use craft\test\TestMailer;
+use craft\web\Response;
 use yii\mail\MessageInterface;
 
 /** Deterministic captcha for F8 tests: only "good-token" verifies. */
@@ -528,6 +530,90 @@ class GraphQlTest extends SimpleFormTestCase
         $payload = $result['data']['submitForm'];
         $this->assertTrue($payload['success']);
         $this->assertSame('/thanks?e=ada%40example.com', $payload['redirectUrl']);
+    }
+
+    public function testSubmitMutationReturnsResolvedMessage(): void
+    {
+        $this->requireCraft();
+
+        $siteId = Craft::$app->getSites()->getPrimarySite()->id;
+        $form = $this->createForm('GqlMessage', 'gqlMessageForm', 'GqlMessage', $siteId);
+        // Default post-submit action is the inline message; set a plain per-form
+        // message so headless clients receive the confirmation text (#263).
+        $form->submitMessage = 'Thanks for signing up!';
+        $this->assertTrue(Craft::$app->getElements()->saveElement($form));
+        $nameId = $this->createField($form->id, 'text', 'fullName', 'Full Name', false);
+
+        $document = <<<'GQL'
+        mutation ($handle: String!, $siteId: Int, $values: [SimpleFormFieldValueInput!]!) {
+            submitForm(handle: $handle, siteId: $siteId, values: $values) {
+                success
+                message
+                redirectUrl
+            }
+        }
+        GQL;
+
+        $result = $this->execute($document, ['simpleFormSubmissions:create'], [
+            'handle' => 'gqlMessageForm',
+            'siteId' => $siteId,
+            'values' => [['fieldId' => $nameId, 'value' => 'Ada Lovelace']],
+        ]);
+
+        $this->assertArrayNotHasKey('errors', $result, json_encode($result['errors'] ?? null));
+        $payload = $result['data']['submitForm'];
+        $this->assertTrue($payload['success']);
+        $this->assertSame('Thanks for signing up!', $payload['message']);
+        // The inline-message action carries no redirect.
+        $this->assertNull($payload['redirectUrl']);
+    }
+
+    public function testSubmitMutationMessageMatchesControllerTransport(): void
+    {
+        $this->requireCraft();
+
+        $siteId = Craft::$app->getSites()->getPrimarySite()->id;
+        $form = $this->createForm('GqlParity', 'gqlParityForm', 'GqlParity', $siteId);
+        // A placeholder message proves both transports interpolate identically,
+        // not just that they return the same static string.
+        $form->submitMessage = 'Thanks {firstName}!';
+        $this->assertTrue(Craft::$app->getElements()->saveElement($form));
+        $nameId = $this->createField($form->id, 'text', 'firstName', 'First Name', false);
+
+        // GraphQL transport.
+        $document = <<<'GQL'
+        mutation ($handle: String!, $siteId: Int, $values: [SimpleFormFieldValueInput!]!) {
+            submitForm(handle: $handle, siteId: $siteId, values: $values) {
+                success
+                message
+            }
+        }
+        GQL;
+        $gqlResult = $this->execute($document, ['simpleFormSubmissions:create'], [
+            'handle' => 'gqlParityForm',
+            'siteId' => $siteId,
+            'values' => [['fieldId' => $nameId, 'value' => 'Ada']],
+        ]);
+        $this->assertArrayNotHasKey('errors', $gqlResult, json_encode($gqlResult['errors'] ?? null));
+        $gqlPayload = $gqlResult['data']['submitForm'];
+        $this->assertTrue($gqlPayload['success']);
+
+        // REST/AJAX transport: the same form + submitted value through the
+        // front-end SubmitController JSON response.
+        $request = Craft::$app->getRequest();
+        $request->setBodyParams(['formHandle' => 'gqlParityForm', 'field_' . $nameId => 'Ada']);
+        $_SERVER['REQUEST_METHOD'] = 'POST';
+        Craft::$app->set('response', new Response());
+        $controller = new SubmitController('submit', Plugin::getInstance());
+        $controller->enableCsrfValidation = false;
+        $controllerData = $controller->actionIndex()->data;
+        $this->assertIsArray($controllerData);
+        $this->assertTrue($controllerData['success']);
+
+        // Transport parity (#263): the GraphQL payload carries the exact message
+        // the front-end AJAX response returns for the same form/submission.
+        $this->assertSame('Thanks Ada!', $gqlPayload['message']);
+        $this->assertSame($controllerData['message'], $gqlPayload['message']);
     }
 
     public function testSubmitMutationEnforcesCaptchaUnlessBypassEnabled(): void

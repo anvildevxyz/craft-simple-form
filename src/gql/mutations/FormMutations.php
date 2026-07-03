@@ -161,6 +161,7 @@ class FormMutations extends BaseMutation
                 'success' => true,
                 'submissionId' => null,
                 'redirectUrl' => null,
+                'message' => null,
                 'errors' => [],
             ];
         }
@@ -183,6 +184,9 @@ class FormMutations extends BaseMutation
             'success' => true,
             'submissionId' => $submission?->id !== null ? (int) $submission->id : null,
             'redirectUrl' => $post['redirectUrl'],
+            // Transport parity (#263): headless clients receive the same resolved
+            // confirmation message the front-end AJAX SubmitController returns.
+            'message' => $post['message'],
             // Quiz scoring (#241): null on non-quiz forms.
             'quizScore' => $submission?->quizScore,
             'quizMaxScore' => $submission?->quizMaxScore,
@@ -316,6 +320,7 @@ class FormMutations extends BaseMutation
             'success' => false,
             'submissionId' => null,
             'redirectUrl' => null,
+            'message' => null,
             'errors' => $errors,
         ];
     }
