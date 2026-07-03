@@ -85,6 +85,9 @@
 {# The field builder serialises its whole set here; synced on save. #}
 <input type="hidden" name="fieldsData" id="sf-fields-data" value="">
 
+{# The conditional-messages editor serialises its whole ordered set here (#266). #}
+<input type="hidden" name="submitMessagesData" id="sf-submit-messages-data" value="">
+
 {{ redirectInput('simple-form/forms') }}
 {{ csrfInput() }}
 
@@ -251,16 +254,49 @@
     {% set placeholderHint = 'You can use {submissionId} and field handles like {handle} as placeholders.'|t('simple-form') %}
 
     {{ forms.textareaField({
-        label: 'Success Message'|t('simple-form'),
+        label: 'Default message'|t('simple-form'),
         id: 'submitMessage',
         name: 'submitMessage',
         value: form.submitMessage,
         rows: 3,
         errors: form.getErrors('submitMessage'),
-        instructions: 'Shown after a successful submission. Leave blank to use the global default. '|t('simple-form') ~ placeholderHint,
+        instructions: 'Shown after a successful submission when no conditional message below matches. Leave blank to use the global default. '|t('simple-form') ~ placeholderHint,
         translatable: true,
         first: true,
     }) }}
+
+    {# =======================================================================
+       Conditional messages (#266): an ordered list of messages, each gated by
+       the same rule builder as field visibility. The first whose condition
+       matches the submitted values wins; otherwise the default above shows.
+       Only evaluated for the "Show success message" action.
+       ======================================================================= #}
+    {% set isPro = craft.simpleForm.isPro() %}
+    <div class="field">
+        <div class="heading">
+            <label>{{ 'Conditional messages'|t('simple-form') }}</label>
+        </div>
+        <div class="instructions">
+            <p>{{ 'Show a different message based on what the visitor submitted. Rules are checked top to bottom — the first match wins. Applies to the “Show success message” action.'|t('simple-form') }}</p>
+        </div>
+
+        <div class="sf-submit-messages"
+             data-can-add="{{ isPro ? '1' : '' }}"
+             data-initial="{{ (submitMessagesData ?? '[]')|e('html_attr') }}">
+            <div class="sf-sm-rows"></div>
+            <p class="sf-sm-empty zilch">{{ 'No conditional messages yet.'|t('simple-form') }}</p>
+
+            {% if isPro %}
+                <button type="button" class="btn add icon sf-sm-add">{{ 'Add a conditional message'|t('simple-form') }}</button>
+            {% else %}
+                <span class="btn add icon sf-sm-add-locked" aria-disabled="true"
+                      title="{{ 'Available in the Pro edition'|t('simple-form') }}">
+                    {{ 'Add a conditional message'|t('simple-form') }}
+                    <span class="sf-pro-badge">{{ 'Pro'|t('simple-form') }}</span>
+                </span>
+            {% endif %}
+        </div>
+    </div>
 
     {{ forms.selectField({
         label: 'On Submit'|t('simple-form'),

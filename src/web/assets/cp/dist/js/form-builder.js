@@ -1367,14 +1367,19 @@
     // A rule list with a match (all/any) selector and an "Add rule" button.
     // `block` is the object holding `match` + `rules` (the visibility config or
     // the required sub-block). `rerender` redraws the whole conditions section.
-    function ruleList(self, block, rerender) {
+    // `onSerialize` persists after a change; it defaults to the field builder's
+    // serialize() so field conditionals are unaffected, but the conditional-
+    // messages editor (#266) passes its own serializer to reuse this exact
+    // component in that context instead of building a second rule editor.
+    function ruleList(self, block, rerender, onSerialize) {
+        onSerialize = onSerialize || serialize;
         var wrap = document.createElement('div'); wrap.className = 'sf-cond-rules';
 
         var matchRow = document.createElement('div'); matchRow.className = 'sf-cond-match';
         var pre = document.createElement('span'); pre.textContent = 'Match';
         matchRow.appendChild(pre);
         matchRow.appendChild(selectEl([{ value: 'all', label: 'all' }, { value: 'any', label: 'any' }],
-            block.match || 'all', function(v) { block.match = v; serialize(); }));
+            block.match || 'all', function(v) { block.match = v; onSerialize(); }));
         var post = document.createElement('span'); post.textContent = 'of:';
         matchRow.appendChild(post);
         wrap.appendChild(matchRow);
@@ -1382,10 +1387,10 @@
         if (!Array.isArray(block.rules)) { block.rules = []; }
         block.rules.forEach(function(rule, idx) {
             wrap.appendChild(ruleRow(self, rule,
-                function() { block.rules.splice(idx, 1); serialize(); rerender(); },
+                function() { block.rules.splice(idx, 1); onSerialize(); rerender(); },
                 // Changing the target field also changes the value widget, so
                 // redraw on field/operator change; a value-only change just saves.
-                function(needsRedraw) { serialize(); if (needsRedraw) { rerender(); } }
+                function(needsRedraw) { onSerialize(); if (needsRedraw) { rerender(); } }
             ));
         });
 
@@ -1393,7 +1398,7 @@
         add.type = 'button'; add.className = 'btn sf-cond-add'; add.textContent = 'Add rule';
         add.addEventListener('click', function() {
             block.rules.push({ field: '', operator: 'eq', value: '' });
-            serialize(); rerender();
+            onSerialize(); rerender();
         });
         wrap.appendChild(add);
         return wrap;
@@ -1799,6 +1804,158 @@
             if (selectedId) { renderInspector(); }
         });
     }
+
+    // ---- conditional submit messages (#266) ------------------------------
+    // An ordered list of confirmation messages, each gated by the SAME rule
+    // builder used for field visibility (ruleList/ruleRow above) plus a per-site
+    // message textarea. The first row whose condition matches the submitted
+    // values wins at submit time; otherwise the form's default message shows.
+    // Reuses the field conditional-rule component rather than duplicating it.
+    (function() {
+        var root = document.querySelector('.sf-submit-messages');
+        if (!root) { return; }
+
+        var rowsEl = root.querySelector('.sf-sm-rows');
+        var emptyEl = root.querySelector('.sf-sm-empty');
+        var addBtn = root.querySelector('.sf-sm-add');
+        var store = document.getElementById('sf-submit-messages-data');
+        if (!rowsEl || !store) { return; }
+
+        var canAdd = root.dataset.canAdd === '1';
+        var smRows = [];
+        try { smRows = JSON.parse(root.dataset.initial || '[]') || []; } catch (e) { smRows = []; }
+        smRows = smRows.map(normalizeMessageRow);
+
+        // A pseudo "self" so the reused targetFields() offers every form field as a
+        // condition target (a message has no owning field to exclude).
+        var MESSAGE_SELF = { clientId: '__sf_submit_message__' };
+
+        function normalizeMessageRow(r) {
+            r = r || {};
+            var c = r.conditional || {};
+            return {
+                id: (typeof r.id === 'number') ? r.id : null,
+                conditional: {
+                    enabled: true,
+                    match: c.match === 'any' ? 'any' : 'all',
+                    rules: Array.isArray(c.rules) ? c.rules : []
+                },
+                message: typeof r.message === 'string' ? r.message : ''
+            };
+        }
+
+        function serializeMessages() {
+            store.value = JSON.stringify(smRows.map(function(r) {
+                return { id: r.id, conditional: r.conditional, message: r.message };
+            }));
+        }
+
+        // Handles referenced by a row's rules that no longer exist on the form —
+        // surfaced as a warning (mirrors the field-conditional dangling guard).
+        function danglingHandles(row) {
+            var out = [];
+            (row.conditional.rules || []).forEach(function(rule) {
+                if (rule.field && !fieldByHandle(rule.field) && out.indexOf(rule.field) === -1) {
+                    out.push(rule.field);
+                }
+            });
+            return out;
+        }
+
+        function renderRow(row, index) {
+            var el = document.createElement('div');
+            el.className = 'sf-sm-row';
+            el.dataset.index = String(index);
+
+            var head = document.createElement('div'); head.className = 'sf-sm-row-head';
+            // Only the grip starts a drag, so selecting text in the message
+            // textarea never accidentally reorders the row.
+            var grip = document.createElement('span');
+            grip.className = 'sf-grip sf-sm-grip'; grip.setAttribute('aria-hidden', 'true');
+            grip.setAttribute('draggable', 'true'); grip.textContent = '⋮⋮';
+            head.appendChild(grip);
+            var title = document.createElement('span');
+            title.className = 'sf-sm-row-title'; title.textContent = 'Message ' + (index + 1);
+            head.appendChild(title);
+            var del = document.createElement('button');
+            del.type = 'button'; del.className = 'btn sf-sm-del'; del.textContent = '×'; del.title = 'Remove message';
+            del.addEventListener('click', function() {
+                smRows.splice(index, 1); serializeMessages(); renderMessages();
+            });
+            head.appendChild(del);
+            el.appendChild(head);
+
+            var showWhen = document.createElement('p');
+            showWhen.className = 'sf-sm-when light'; showWhen.textContent = 'Show this message when';
+            el.appendChild(showWhen);
+
+            // The reused rule builder (match all/any + field/operator/value rows).
+            el.appendChild(ruleList(MESSAGE_SELF, row.conditional, function() {
+                var fresh = renderRow(row, index);
+                el.parentNode.replaceChild(fresh, el);
+            }, serializeMessages));
+
+            var dangling = danglingHandles(row);
+            if (dangling.length) {
+                var warn = document.createElement('p');
+                warn.className = 'sf-sm-warning warning';
+                warn.textContent = 'A rule references a field that no longer exists: ' + dangling.join(', ') + '.';
+                el.appendChild(warn);
+            }
+
+            var msgLabel = document.createElement('label');
+            msgLabel.className = 'sf-sm-msg-label'; msgLabel.textContent = 'Message';
+            el.appendChild(msgLabel);
+            var ta = document.createElement('textarea');
+            ta.className = 'text fullwidth'; ta.rows = 2; ta.value = row.message || '';
+            ta.addEventListener('input', function() { row.message = ta.value; serializeMessages(); });
+            el.appendChild(ta);
+
+            return el;
+        }
+
+        function renderMessages() {
+            rowsEl.innerHTML = '';
+            smRows.forEach(function(row, i) { rowsEl.appendChild(renderRow(row, i)); });
+            if (emptyEl) { emptyEl.style.display = smRows.length ? 'none' : ''; }
+        }
+
+        if (addBtn && canAdd) {
+            addBtn.addEventListener('click', function() {
+                smRows.push(normalizeMessageRow({}));
+                serializeMessages(); renderMessages();
+            });
+        }
+
+        // Drag-to-reorder (HTML5), mirroring the field canvas: reorder the backing
+        // array on drop, then re-render so indices and titles stay in sync.
+        var dragIndex = null;
+        rowsEl.addEventListener('dragstart', function(e) {
+            var row = e.target.closest ? e.target.closest('.sf-sm-row') : null;
+            if (!row) { return; }
+            dragIndex = parseInt(row.dataset.index, 10);
+            e.dataTransfer.effectAllowed = 'move';
+        });
+        rowsEl.addEventListener('dragover', function(e) {
+            if (dragIndex === null) { return; }
+            e.preventDefault();
+            e.dataTransfer.dropEffect = 'move';
+        });
+        rowsEl.addEventListener('drop', function(e) {
+            if (dragIndex === null) { return; }
+            e.preventDefault();
+            var target = e.target.closest ? e.target.closest('.sf-sm-row') : null;
+            var to = target ? parseInt(target.dataset.index, 10) : smRows.length - 1;
+            var moved = smRows.splice(dragIndex, 1)[0];
+            if (to > dragIndex) { to--; }
+            smRows.splice(Math.min(to, smRows.length), 0, moved);
+            dragIndex = null;
+            serializeMessages(); renderMessages();
+        });
+
+        renderMessages();
+        serializeMessages();
+    })();
 
     // ---- init ------------------------------------------------------------
     render();

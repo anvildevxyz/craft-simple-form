@@ -335,6 +335,25 @@
 .sf-cond-del { padding: 4px 9px; }
 .sf-cond-add { margin-top: 2px; }
 
+/* Conditional submit messages (#266) */
+.sf-submit-messages { margin: 4px 0 8px; }
+.sf-sm-row {
+    border: 1px solid var(--hairline-color, #e3e5e8);
+    border-radius: 5px;
+    padding: 12px 14px;
+    margin-bottom: 10px;
+    background: var(--gray-050, #f9fafb);
+}
+.sf-sm-row-head { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+.sf-sm-grip { cursor: grab; color: #8a949e; }
+.sf-sm-row-title { font-weight: 600; flex: 1; }
+.sf-sm-del { padding: 2px 9px; }
+.sf-sm-when { margin: 0 0 6px; }
+.sf-sm-warning { margin: 6px 0; }
+.sf-sm-msg-label { display: block; font-weight: 500; margin: 8px 0 4px; }
+.sf-sm-empty { margin: 0 0 10px; }
+.sf-sm-add-locked { opacity: .65; cursor: not-allowed; }
+
 @media (max-width: 800px) {
     .sf-builder { flex-direction: column; }
     .sf-sidebar { width: 100%; flex-basis: auto; }

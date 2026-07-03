@@ -71,6 +71,22 @@ class FormEditPostSubmitRenderTest extends SimpleFormTestCase
         $this->assertStringContainsString('name="errorMessage"', $html);
     }
 
+    public function testConditionalMessagesSectionRenders(): void
+    {
+        $this->requireCraft();
+
+        $form = $this->createForm('RenderCM', 'render_cond_messages');
+        $html = $this->render($form);
+
+        // The conditional-messages editor (#266): its hidden serialization input,
+        // the rows container the JS mounts into, and the add action all render.
+        $this->assertStringContainsString('name="submitMessagesData"', $html);
+        $this->assertStringContainsString('class="sf-submit-messages"', $html);
+        $this->assertStringContainsString('sf-sm-rows', $html);
+        // The default-message field was relabeled but keeps its name.
+        $this->assertStringContainsString('name="submitMessage"', $html);
+    }
+
     public function testSelectReflectsCurrentAction(): void
     {
         $this->requireCraft();
