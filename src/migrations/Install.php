@@ -236,6 +236,35 @@ class Install extends Migration
         $this->addForeignKey(null, '{{%simpleform_notification_logs}}', ['submissionId'], '{{%simpleform_submissions}}', ['id'], 'SET NULL', 'CASCADE');
         $this->addForeignKey(null, '{{%simpleform_notification_logs}}', ['notificationId'], '{{%simpleform_notifications}}', ['id'], 'SET NULL', 'CASCADE');
 
+        // Conditional submit messages (#265) — an ordered, condition-gated list of
+        // confirmation messages per form. The rule/priority is shared/structural;
+        // the message text is per-site translatable (mirrors the fields split).
+        $this->createTable('{{%simpleform_submit_messages}}', [
+            'id' => $this->primaryKey(),
+            'formId' => $this->integer()->notNull(),
+            'conditional' => $this->json(),
+            'sortOrder' => $this->integer(),
+            'dateCreated' => $this->dateTime()->notNull(),
+            'dateUpdated' => $this->dateTime()->notNull(),
+            'uid' => $this->uid(),
+        ]);
+        $this->createIndex(null, '{{%simpleform_submit_messages}}', ['formId']);
+        $this->addForeignKey(null, '{{%simpleform_submit_messages}}', ['formId'], '{{%simpleform_forms}}', ['id'], 'CASCADE', 'CASCADE');
+
+        // Per-site conditional submit message text — translatable confirmation copy.
+        $this->createTable('{{%simpleform_submit_messages_sites}}', [
+            'id' => $this->primaryKey(),
+            'submitMessageId' => $this->integer()->notNull(),
+            'siteId' => $this->integer()->notNull(),
+            'message' => $this->text(),
+            'dateCreated' => $this->dateTime()->notNull(),
+            'dateUpdated' => $this->dateTime()->notNull(),
+            'uid' => $this->uid(),
+        ]);
+        $this->createIndex(null, '{{%simpleform_submit_messages_sites}}', ['submitMessageId', 'siteId'], true);
+        $this->addForeignKey(null, '{{%simpleform_submit_messages_sites}}', ['submitMessageId'], '{{%simpleform_submit_messages}}', ['id'], 'CASCADE', 'CASCADE');
+        $this->addForeignKey(null, '{{%simpleform_submit_messages_sites}}', ['siteId'], '{{%sites}}', ['id'], 'CASCADE', 'CASCADE');
+
         // Save-&-resume drafts.
         $this->createTable('{{%simpleform_form_drafts}}', [
             'id' => $this->primaryKey(),
@@ -304,6 +333,8 @@ class Install extends Migration
     {
         // Drop children before parents (FK-safe order).
         $this->dropTableIfExists('{{%simpleform_audit_log}}');
+        $this->dropTableIfExists('{{%simpleform_submit_messages_sites}}');
+        $this->dropTableIfExists('{{%simpleform_submit_messages}}');
         $this->dropTableIfExists('{{%simpleform_notification_logs}}');
         $this->dropTableIfExists('{{%simpleform_form_drafts}}');
         $this->dropTableIfExists('{{%simpleform_notifications}}');

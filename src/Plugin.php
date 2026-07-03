@@ -47,6 +47,7 @@ use anvildev\simpleform\services\SafeRenderService;
 use anvildev\simpleform\services\SubmissionBodyRenderer;
 use anvildev\simpleform\services\SubmissionEditTokenService;
 use anvildev\simpleform\services\SubmissionService;
+use anvildev\simpleform\services\SubmitMessagesService;
 use anvildev\simpleform\services\WorkflowService;
 use anvildev\simpleform\stencils\StencilLibrary;
 use anvildev\simpleform\web\twig\variables\SimpleFormVariable;
@@ -159,7 +160,7 @@ class Plugin extends BasePlugin
     /** The full-featured edition. */
     public const EDITION_PRO = Editions::PRO;
 
-    public string $schemaVersion = '2.13.8';
+    public string $schemaVersion = '2.13.9';
     public bool $hasCpSection = true;
     public bool $hasCpSettings = false;
     public bool $hasCpPermissions = true;
@@ -213,6 +214,7 @@ class Plugin extends BasePlugin
             'coupons' => CouponsService::class,
             'workflow' => WorkflowService::class,
             'notifications' => NotificationsService::class,
+            'submitMessages' => SubmitMessagesService::class,
             'audit' => AuditService::class,
             'notificationLog' => NotificationLogService::class,
             'payments' => PaymentsService::class,
@@ -662,6 +664,13 @@ class Plugin extends BasePlugin
     {
         /** @var NotificationsService $service */
         $service = $this->get('notifications');
+        return $service;
+    }
+
+    public function getSubmitMessages(): SubmitMessagesService
+    {
+        /** @var SubmitMessagesService $service */
+        $service = $this->get('submitMessages');
         return $service;
     }
 

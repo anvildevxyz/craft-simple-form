@@ -2,6 +2,7 @@
 
 namespace anvildev\simpleform\services;
 
+use anvildev\simpleform\Editions;
 use anvildev\simpleform\elements\Form;
 use anvildev\simpleform\elements\Submission;
 use anvildev\simpleform\elements\SubmissionStatus;
@@ -14,6 +15,7 @@ use anvildev\simpleform\fields\FileFieldType;
 use anvildev\simpleform\fields\HiddenFieldType;
 use anvildev\simpleform\fields\RepeaterFieldType;
 use anvildev\simpleform\fields\SignatureFieldType;
+use anvildev\simpleform\helpers\ConditionalEvaluator;
 use anvildev\simpleform\helpers\JumpResolver;
 use anvildev\simpleform\helpers\RateLimiter;
 use anvildev\simpleform\helpers\SafeUrl;
@@ -913,6 +915,22 @@ class SubmissionService extends Component
         $rawMessage = ($form->submitMessage !== null && trim($form->submitMessage) !== '')
             ? $form->submitMessage
             : $settings->submitMessage;
+
+        // Conditional submit messages (#265): the first enabled rule whose
+        // condition matches the submitted values overrides the default message.
+        // Scoped to the `message` action only, and only when the edition may
+        // evaluate conditional logic — a downgraded Solo keeps its stored rows but
+        // skips them, falling straight to the default (no error, no data loss).
+        if (
+            $form->postSubmitAction === Form::POST_SUBMIT_MESSAGE
+            && Editions::can(Editions::CAP_CONDITIONAL_LOGIC)
+        ) {
+            $conditionalMessage = $this->resolveConditionalMessage($form, $submission, $data);
+            if ($conditionalMessage !== null) {
+                $rawMessage = $conditionalMessage;
+            }
+        }
+
         $message = $this->interpolate($rawMessage, $placeholders, false);
 
         $redirectUrl = match ($form->postSubmitAction) {
@@ -927,6 +945,55 @@ class SubmissionService extends Component
         };
 
         return ['message' => $message, 'redirectUrl' => $redirectUrl];
+    }
+
+    /**
+     * The raw (un-interpolated) message text of the first conditional submit
+     * message ({@see SubmitMessagesService}) whose condition matches the submitted
+     * values, resolved for the submission's site. Returns null when no rows are
+     * configured, none match, or the first match has no translation for the
+     * submitting site — so the caller keeps the form's default message.
+     *
+     * @param array<string, mixed> $data the persisted submission data map
+     */
+    private function resolveConditionalMessage(Form $form, Submission $submission, array $data): ?string
+    {
+        $rows = Plugin::getInstance()->getSubmitMessages()->getForFormAndSite((int) $form->id, (int) $submission->siteId);
+        if ($rows === []) {
+            return null;
+        }
+
+        $valuesByHandle = $this->valuesByHandle($form, $data);
+        foreach ($rows as $row) {
+            if (ConditionalEvaluator::isVisible(['conditional' => $row->conditional], $valuesByHandle)) {
+                // First match wins. A null message means the submitting site has no
+                // translation, so the caller falls back to the default.
+                return $row->message;
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * Build a field-handle => submitted-value map from the persisted submission
+     * data, so a conditional submit message rule (which references field handles)
+     * can be evaluated. Values are kept raw (arrays intact) for
+     * {@see ConditionalEvaluator}; a rule referencing a handle not present on the
+     * form resolves to null and evaluates as non-matching (no throw).
+     *
+     * @param array<string, mixed> $data the persisted submission data map
+     * @return array<string, mixed>
+     */
+    private function valuesByHandle(Form $form, array $data): array
+    {
+        $values = [];
+        $formModel = new FormModel($form);
+        foreach ($formModel->getFields() as $fieldId => $field) {
+            $values[$field->getName()] = $data['field_' . $fieldId]['value'] ?? null;
+        }
+
+        return $values;
     }
 
     public function getSubmission(int $submissionId): ?Submission
