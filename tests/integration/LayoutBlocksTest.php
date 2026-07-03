@@ -33,12 +33,14 @@ class LayoutBlocksTest extends SimpleFormTestCase
         $this->createField($form->id, 'divider', 'div1', 'More');
         $emailId = $this->createField($form->id, 'email', 'email', 'Email');
         $this->createField($form->id, 'html', 'note', '', false, [], null, '<p>Hello</p>');
+        $paraId = $this->createField($form->id, 'paragraph', 'intro', '', false, [], null, "Please read this.\nThanks.");
 
         $service = Plugin::getInstance()->getSubmissionService();
         // Forge a posted value against every layout block too — it must be ignored.
         $result = $service->submit($form, [
             'field_' . $nameId => 'Ada',
             'field_' . $emailId => 'ada@example.test',
+            'field_' . $paraId => 'forged',
         ], ['skipCaptcha' => true]);
 
         $this->assertNull($result['errors']);
@@ -47,9 +49,9 @@ class LayoutBlocksTest extends SimpleFormTestCase
 
         $keys = array_keys($submission->data);
         $this->assertEqualsCanonicalizing(['field_' . $nameId, 'field_' . $emailId], $keys);
-        // No heading/divider/html entry of any kind.
+        // No heading/divider/html/paragraph entry of any kind.
         foreach ($submission->data as $entry) {
-            $this->assertNotContains($entry['type'], ['heading', 'divider', 'html']);
+            $this->assertNotContains($entry['type'], ['heading', 'divider', 'html', 'paragraph']);
         }
     }
 
@@ -187,6 +189,33 @@ class LayoutBlocksTest extends SimpleFormTestCase
         // Order: heading before the name input, name input before the divider.
         $this->assertLessThan(strpos($html, 'name="field_' . $nameId . '"'), strpos($html, '<h2'));
         $this->assertLessThan(strpos($html, 'simple-form-divider'), strpos($html, 'name="field_' . $nameId . '"'));
+    }
+
+    public function testParagraphBlockRendersEscapedWithLineBreaksAndNoLabel(): void
+    {
+        $this->requireCraft();
+
+        $form = $this->createForm('Layout', 'layoutParagraph', 'Layout');
+        // Multi-line copy containing markup: it must render as literal escaped
+        // text with the line break preserved, and never as a labelled field.
+        $body = "First line & <script>alert(1)</script>\nSecond line";
+        $this->createField($form->id, 'paragraph', 'intro', '', false, [], null, $body);
+        $nameId = $this->createField($form->id, 'text', 'name', 'Full Name');
+
+        $html = (new TwigExtension())->renderForm('layoutParagraph');
+
+        // Rendered as a layout block (displayMode = 'layout' → bare, no group).
+        $this->assertStringContainsString('simple-form-layout--paragraph', $html);
+        $this->assertStringContainsString('<div class="simple-form-text">', $html);
+
+        // Escaped, not executed; line break preserved as <br>.
+        $this->assertStringNotContainsString('<script>alert(1)', $html);
+        $this->assertStringContainsString('&lt;script&gt;alert(1)&lt;/script&gt;', $html);
+        $this->assertStringContainsString('First line &amp;', $html);
+        $this->assertMatchesRegularExpression('/First line.*<br\s*\/?>\s*\n?Second line/s', $html);
+
+        // No label / required marker for the block; it precedes the name input.
+        $this->assertLessThan(strpos($html, 'name="field_' . $nameId . '"'), strpos($html, 'simple-form-layout--paragraph'));
     }
 
     // =========================================================================

@@ -69,7 +69,8 @@
         entry: 'Entries', category: 'Categories', tag: 'Tags',
         user: 'Users', asset: 'Assets', calculation: 'Calculation',
         repeater: 'Repeater',
-        heading: 'Heading', divider: 'Section Divider', html: 'HTML Block'
+        heading: 'Heading', divider: 'Section Divider', html: 'HTML Block',
+        paragraph: 'Text'
     };
     var OPTION_TYPES = ['select', 'checkbox', 'radio'];
     // Non-visible types: the visitor never sees them, so the inspector suppresses
@@ -77,7 +78,7 @@
     var HIDDEN_TYPES = ['hidden'];
     // Presentational/layout blocks: value-less, so the inspector omits
     // Required / validation / conditions and the submit guard skips them.
-    var LAYOUT_TYPES = ['heading', 'divider', 'html'];
+    var LAYOUT_TYPES = ['heading', 'divider', 'html', 'paragraph'];
     function isLayout(type) { return LAYOUT_TYPES.indexOf(type) !== -1; }
     var RELATION_TYPES = ['entry', 'category', 'tag', 'user', 'asset'];
     // Inner field types a repeater may contain (mirrors
@@ -295,6 +296,11 @@
         if (f.type === 'heading') { return (f.label && f.label.trim()) || '(heading)'; }
         if (f.type === 'divider') { return (f.label && f.label.trim()) || '— divider —'; }
         if (f.type === 'html') { return 'HTML block'; }
+        if (f.type === 'paragraph') {
+            var body = (f.helpText || '').trim().replace(/\s+/g, ' ');
+            if (!body) { return '(text)'; }
+            return body.length > 60 ? body.slice(0, 60) + '…' : body;
+        }
         return f.label || '(untitled)';
     }
 
@@ -507,7 +513,8 @@
 
     // Tailored editor for the value-less layout blocks. The per-site
     // translatable content rides on the field's label (heading text / divider
-    // label) and helpText (HTML body) so it persists with no schema change.
+    // label) and helpText (HTML body / paragraph copy) so it persists with no
+    // schema change.
     function renderLayoutInspector(f) {
         var c = f.config || (f.config = {});
 
@@ -543,6 +550,18 @@
                 + 'scripts, inline handlers and unsafe URLs are stripped.';
             htmlHint.appendChild(htmlHintP); htmlRow._input.appendChild(htmlHint);
             inspector.appendChild(htmlRow);
+        } else if (f.type === 'paragraph') {
+            var textRow2 = row('Text');
+            var pta = document.createElement('textarea'); pta.className = 'text fullwidth'; pta.rows = 5;
+            pta.value = f.helpText || '';
+            pta.addEventListener('input', function() { f.helpText = pta.value; commit(); });
+            textRow2._input.appendChild(pta);
+            var pHint = document.createElement('div'); pHint.className = 'instructions';
+            var pHintP = document.createElement('p');
+            pHintP.textContent = 'Static paragraph copy shown between fields. Plain text only — '
+                + 'line breaks are preserved and any markup is escaped (use the HTML Block for real formatting).';
+            pHint.appendChild(pHintP); textRow2._input.appendChild(pHint);
+            inspector.appendChild(textRow2);
         }
 
         inspector.appendChild(numberRow('Step / Page', (f.config && f.config.page) || '', function(v) {
