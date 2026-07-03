@@ -469,21 +469,35 @@
                 .replace("{current}", String(pos))
                 .replace("{total}", String(total));
         },
-        // Show only `current`; hide the rest. A hidden step's inputs stay in the
-        // DOM, so its `required` controls would otherwise still block native
-        // constraint validation on final submit (checkValidity/requestSubmit) —
-        // even a step a logic jump skipped entirely. Disabling them removes them
-        // from validation AND the POST. On the current step the flag falls back
-        // to each control's condition-only hidden state (_sfCondHidden), so a
-        // step becoming visible again re-enables exactly the controls conditional
-        // logic left visible — never re-enabling a conditionally-hidden one.
-        applyVisibility: function (steps, current) {
+        // Show only `current`; visually hide the rest (the `hidden` attribute).
+        //
+        // Disabling a step's controls drops them from native constraint
+        // validation AND the POST. We do that ONLY for a step that is genuinely
+        // UNREACHABLE from the jump graph given the current answers — e.g. a
+        // required field on a step a logic jump skipped, which the visitor never
+        // saw and can't fill, so it must not block submit. A reachable step the
+        // visitor has already filled and moved past stays ENABLED even while
+        // off-screen, so its real answer still submits — disabling it would
+        // silently drop that data.
+        //
+        // `reachable` is the list of reachable step indices (from
+        // SF.jumps.reachable); pass null for a form with no jumps, where every
+        // step is reachable. The current step is always treated as reachable.
+        // Independently of reachability, a conditionally-hidden control
+        // (_sfCondHidden, set by initConditions) stays disabled so it never
+        // re-enters validation or the POST.
+        applyVisibility: function (steps, current, reachable) {
+            var reachableSet = null;
+            if (reachable) {
+                reachableSet = {};
+                reachable.forEach(function (i) { reachableSet[i] = true; });
+            }
             steps.forEach(function (s, i) {
-                var hidden = i !== current;
-                s.hidden = hidden;
+                s.hidden = i !== current;
+                var unreachable = reachableSet !== null && i !== current && !reachableSet[i];
                 var controls = s.querySelectorAll("input, select, textarea");
                 Array.prototype.forEach.call(controls, function (el) {
-                    el.disabled = hidden || !!el._sfCondHidden;
+                    el.disabled = unreachable || !!el._sfCondHidden;
                 });
             });
         }
@@ -539,9 +553,9 @@
         // hidden (initConditions records _sfCondHidden). Inactive steps — e.g. a
         // conversational screen whose only question conditional logic hid — are
         // skipped by the navigator and excluded from the progress count. This
-        // reads _sfCondHidden, not `disabled`: the latter now also carries step
-        // visibility (applyVisibility disables off-screen steps), so it can't tell
-        // a conditionally-empty step from one that is merely not current.
+        // reads _sfCondHidden, not `disabled`: the latter also carries jump
+        // reachability (applyVisibility disables unreachable steps), so it can't
+        // tell a conditionally-empty step from one merely skipped by a jump.
         function stepActive(i) {
             var controls = steps[i].querySelectorAll("input, select, textarea");
             if (controls.length === 0) { return true; }
@@ -556,7 +570,13 @@
         }
 
         function render() {
-            SF.stepNav.applyVisibility(steps, current);
+            // Disable only the controls of steps unreachable from the jump graph
+            // for the current answers — not every off-screen step — so an already
+            // filled, moved-past step still submits its data (#245 regression).
+            var reachable = stepJumps
+                ? SF.jumps.reachable(stepJumps, steps.length, formValues(form))
+                : null;
+            SF.stepNav.applyVisibility(steps, current, reachable);
 
             var st = SF.stepNav.state(activeFlags(), current);
             if (backBtn) { backBtn.hidden = !st.back; }
