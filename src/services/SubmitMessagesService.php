@@ -3,6 +3,7 @@
 namespace anvildev\simpleform\services;
 
 use anvildev\simpleform\Editions;
+use anvildev\simpleform\helpers\ConditionalEvaluator;
 use anvildev\simpleform\models\SubmitMessageModel;
 use Craft;
 use craft\db\Query;
@@ -102,6 +103,22 @@ class SubmitMessagesService extends Component
         $model->messages = $this->messagesFor($id);
 
         return $model;
+    }
+
+    /**
+     * The ids of a form's stored submit messages (no per-site hydration), for the
+     * save path's edition gate — a posted row whose id isn't among these is a new
+     * row, which Solo may not create ({@see Editions::CAP_CONDITIONAL_LOGIC}).
+     *
+     * @return list<int>
+     */
+    public function idsForForm(int $formId): array
+    {
+        return array_map('intval', (new Query())
+            ->select(['id'])
+            ->from(self::TABLE)
+            ->where(['formId' => $formId])
+            ->column());
     }
 
     /**
@@ -206,8 +223,186 @@ class SubmitMessagesService extends Component
         });
     }
 
+    /**
+     * Validate a posted conditional-message set without touching the database,
+     * mirroring {@see FieldSyncService::validate()} (the whole ordered set is
+     * checked up front, before any write). Fully-empty rows (no usable rule and
+     * no message) are ignored — they represent a half-added row the author never
+     * completed. A row that carries content must have both at least one complete
+     * rule referencing a live field and a non-blank message for the editing site.
+     *
+     * @param list<array<string, mixed>> $rows the posted rows in display order
+     * @param array<string, bool> $validHandles handle => true for the form's live field handles
+     * @return string[] human-readable error messages (empty when valid)
+     */
+    public function validate(array $rows, array $validHandles): array
+    {
+        $errors = [];
+
+        foreach ($rows as $i => $row) {
+            $pos = $i + 1;
+            $message = trim((string) ($row['message'] ?? ''));
+            $conditional = $this->pruneRules(is_array($row['conditional'] ?? null) ? $row['conditional'] : null, $validHandles);
+            $hasRules = $conditional !== null;
+
+            // A row the author never filled in — silently skipped on save.
+            if (!$hasRules && $message === '') {
+                continue;
+            }
+
+            if (!$hasRules) {
+                $errors[] = Craft::t('simple-form', 'Conditional message {pos}: add at least one condition.', ['pos' => $pos]);
+            }
+            if ($message === '') {
+                $errors[] = Craft::t('simple-form', 'Conditional message {pos}: a message is required.', ['pos' => $pos]);
+            }
+        }
+
+        return $errors;
+    }
+
+    /**
+     * Replace a form's conditional submit messages with the posted ordered set in
+     * one transaction — insert new rows, update existing ones, rewrite sort order,
+     * and delete any that were removed — mirroring {@see FieldSyncService::sync()}
+     * so add/edit/delete/reorder all compose in a single save.
+     *
+     * The message text is per-site translatable: a new row seeds the editing
+     * site's text across all supported sites (like a new field's label), while an
+     * update touches the editing site only so other sites' translations are
+     * preserved. Rules referencing a handle not in $validHandles are pruned, so
+     * stored rules never point at a field that no longer exists.
+     *
+     * @param list<array<string, mixed>> $rows the posted rows in display order
+     * @param array<string, bool> $validHandles handle => true for the form's live field handles
+     * @param list<int> $supportedSiteIds sites a new row's text is seeded to
+     */
+    public function sync(int $formId, array $rows, int $currentSiteId, array $validHandles, array $supportedSiteIds): void
+    {
+        $supportedSiteIds = $supportedSiteIds ?: [$currentSiteId];
+
+        $existingIds = array_map('intval', (new Query())
+            ->select(['id'])->from(self::TABLE)->where(['formId' => $formId])->column());
+
+        $db = Craft::$app->getDb();
+        $now = Db::prepareDateForDb(new \DateTime());
+
+        $db->transaction(function() use ($db, $formId, $rows, $currentSiteId, $validHandles, $supportedSiteIds, $existingIds, $now): void {
+            $keptIds = [];
+            $sortOrder = 0;
+
+            foreach ($rows as $row) {
+                $message = trim((string) ($row['message'] ?? ''));
+                $conditional = $this->pruneRules(is_array($row['conditional'] ?? null) ? $row['conditional'] : null, $validHandles);
+
+                // Skip rows the author never completed (parity with validate()).
+                if ($conditional === null && $message === '') {
+                    continue;
+                }
+
+                $sortOrder++;
+                $rawId = $row['id'] ?? null;
+                $id = is_numeric($rawId) ? (int) $rawId : null;
+
+                if ($id !== null && in_array($id, $existingIds, true)) {
+                    $db->createCommand()->update(self::TABLE, [
+                        'conditional' => $conditional,
+                        'sortOrder' => $sortOrder,
+                        'dateUpdated' => $now,
+                    ], ['id' => $id])->execute();
+
+                    $db->createCommand()->upsert(self::SITES_TABLE, [
+                        'submitMessageId' => $id,
+                        'siteId' => $currentSiteId,
+                        'message' => $message,
+                        'dateCreated' => $now,
+                        'dateUpdated' => $now,
+                        'uid' => StringHelper::UUID(),
+                    ], [
+                        'message' => $message,
+                        'dateUpdated' => $now,
+                    ])->execute();
+
+                    $keptIds[] = $id;
+                } else {
+                    $db->createCommand()->insert(self::TABLE, [
+                        'formId' => $formId,
+                        'conditional' => $conditional,
+                        'sortOrder' => $sortOrder,
+                        'dateCreated' => $now,
+                        'dateUpdated' => $now,
+                        'uid' => StringHelper::UUID(),
+                    ])->execute();
+
+                    $newId = (int) $db->getLastInsertID();
+                    foreach ($supportedSiteIds as $siteId) {
+                        $db->createCommand()->insert(self::SITES_TABLE, [
+                            'submitMessageId' => $newId,
+                            'siteId' => (int) $siteId,
+                            'message' => $message,
+                            'dateCreated' => $now,
+                            'dateUpdated' => $now,
+                            'uid' => StringHelper::UUID(),
+                        ])->execute();
+                    }
+
+                    $keptIds[] = $newId;
+                }
+            }
+
+            // Delete removed rows; their per-site rows cascade via FK.
+            $toDelete = array_diff($existingIds, $keptIds);
+            if ($toDelete !== []) {
+                $db->createCommand()->delete(self::TABLE, ['id' => $toDelete])->execute();
+            }
+        });
+    }
+
     // Private Methods
     // =========================================================================
+
+    /**
+     * Normalize a posted conditional block into the stored shape
+     * (`enabled`/`match`/`rules`) that {@see ConditionalEvaluator::isVisible()}
+     * evaluates, keeping only complete rules (a selected field plus operator) that
+     * reference a live field handle. Returns null when no usable rule survives, so
+     * an inert block is never persisted and never points at a removed field.
+     *
+     * @param array<string, mixed>|null $conditional
+     * @param array<string, bool> $validHandles
+     * @return array<string, mixed>|null
+     */
+    private function pruneRules(?array $conditional, array $validHandles): ?array
+    {
+        $rawRules = is_array($conditional['rules'] ?? null) ? $conditional['rules'] : [];
+
+        $rules = [];
+        foreach ($rawRules as $rule) {
+            if (!is_array($rule)) {
+                continue;
+            }
+            $field = trim((string) ($rule['field'] ?? ''));
+            $operator = trim((string) ($rule['operator'] ?? ''));
+            if ($field === '' || $operator === '' || !isset($validHandles[$field])) {
+                continue;
+            }
+            $rules[] = [
+                'field' => $field,
+                'operator' => $operator,
+                'value' => $rule['value'] ?? '',
+            ];
+        }
+
+        if ($rules === []) {
+            return null;
+        }
+
+        return [
+            'enabled' => true,
+            'match' => (($conditional['match'] ?? 'all') === 'any') ? 'any' : 'all',
+            'rules' => $rules,
+        ];
+    }
 
     /**
      * The per-site message map for a submit message, keyed by site id.

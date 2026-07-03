@@ -249,11 +249,34 @@ class FormsController extends Controller
         $items = $this->parseFieldsData((string)$request->getBodyParam('fieldsData', ''));
         $fieldSync = new FieldSyncService();
 
+        // Conditional submit messages (#266): the Confirmation tab posts its whole
+        // ordered set as JSON, synced (validate → replace-in-transaction) after the
+        // form saves, mirroring the field builder. Kept for the failure re-renders
+        // so in-progress rows aren't lost.
+        $messageRows = $this->parseFieldsData((string)$request->getBodyParam('submitMessagesData', ''));
+        $submitMessagesJson = $this->encodeBuilderJson($messageRows);
+        // Handles the message rules may reference — the form's live field handles.
+        $validHandles = [];
+        foreach ($items as $item) {
+            $handle = trim((string)($item['handle'] ?? ''));
+            if ($handle !== '') {
+                $validHandles[$handle] = true;
+            }
+        }
+        $submitMessages = Plugin::getInstance()->getSubmitMessages();
+
         // Validate the field set before any DB writes so a bad field never half-saves.
         $fieldErrors = $fieldSync->validate($items, $form->renderMode === 'conversational');
         if ($fieldErrors) {
             Craft::$app->getSession()->setError(reset($fieldErrors));
-            return $this->renderEdit($form, $site, $this->encodeBuilderJson($items));
+            return $this->renderEdit($form, $site, $this->encodeBuilderJson($items), $submitMessagesJson);
+        }
+
+        // Validate the conditional-message set the same way (whole set up front).
+        $messageErrors = $submitMessages->validate($messageRows, $validHandles);
+        if ($messageErrors) {
+            Craft::$app->getSession()->setError(reset($messageErrors));
+            return $this->renderEdit($form, $site, $this->encodeBuilderJson($items), $submitMessagesJson);
         }
 
         // Edition gate (authoritative): Solo may not introduce *new* Pro field
@@ -277,7 +300,7 @@ class FormsController extends Controller
                 'These field types require the Pro edition: {types}',
                 ['types' => implode(', ', $blockedProFields)],
             ));
-            return $this->renderEdit($form, $site, $this->encodeBuilderJson($items));
+            return $this->renderEdit($form, $site, $this->encodeBuilderJson($items), $submitMessagesJson);
         }
 
         // Edition gate (authoritative): Solo may not newly enable Pro form-level
@@ -295,7 +318,30 @@ class FormsController extends Controller
                 'These features require the Pro edition: {features}',
                 ['features' => implode(', ', array_map($this->capabilityLabel(...), $blockedCaps))],
             ));
-            return $this->renderEdit($form, $site, $this->encodeBuilderJson($items));
+            return $this->renderEdit($form, $site, $this->encodeBuilderJson($items), $submitMessagesJson);
+        }
+
+        // Edition gate (authoritative): Solo may not create *new* conditional
+        // submit messages. A posted row whose id isn't already stored on the form
+        // is a new row; existing rows survive a downgrade and stay editable /
+        // deletable / reorderable (no-new-escalation rule).
+        if (!Editions::isPro()) {
+            $existingMessageIds = $form->id ? $submitMessages->idsForForm((int) $form->id) : [];
+            foreach ($messageRows as $messageRow) {
+                // A half-added empty row is dropped on save, so it isn't a new row.
+                if (trim((string) ($messageRow['message'] ?? '')) === '' && empty($messageRow['conditional']['rules'])) {
+                    continue;
+                }
+                $rawId = $messageRow['id'] ?? null;
+                $id = is_numeric($rawId) ? (int) $rawId : null;
+                if ($id === null || !in_array($id, $existingMessageIds, true)) {
+                    Craft::$app->getSession()->setError(Craft::t(
+                        'simple-form',
+                        'Conditional submit messages require the Pro edition.',
+                    ));
+                    return $this->renderEdit($form, $site, $this->encodeBuilderJson($items), $submitMessagesJson);
+                }
+            }
         }
 
         // Editing an HTML layout block's body requires a dedicated permission.
@@ -312,17 +358,20 @@ class FormsController extends Controller
             Craft::$app->getSession()->setError(
                 Craft::t('simple-form', 'You don’t have permission to edit HTML layout blocks.')
             );
-            return $this->renderEdit($form, $site, $this->encodeBuilderJson($items));
+            return $this->renderEdit($form, $site, $this->encodeBuilderJson($items), $submitMessagesJson);
         }
 
         if (!Craft::$app->getElements()->saveElement($form)) {
             Craft::$app->getSession()->setError(Craft::t('simple-form', 'Unable to save form'));
             Craft::warning('Form save failed: ' . json_encode($form->getErrors()), 'simple-form');
-            return $this->renderEdit($form, $site, $this->encodeBuilderJson($items));
+            return $this->renderEdit($form, $site, $this->encodeBuilderJson($items), $submitMessagesJson);
         }
 
         try {
             $fieldSync->sync($form, $items, $site->id);
+            // Sync the conditional messages against the freshly-saved field set, so
+            // rules are pruned against the handles that actually survived the save.
+            $submitMessages->sync((int) $form->id, $messageRows, $site->id, $validHandles, $form->supportedSiteIds());
         } catch (\Throwable $e) {
             Craft::warning('Field sync failed: ' . $e->getMessage(), 'simple-form');
             Craft::$app->getSession()->setError(Craft::t('simple-form', 'Form saved, but its fields could not be saved.'));
@@ -483,9 +532,12 @@ class FormsController extends Controller
      * builder JSON (DB fields on load, or the posted set when re-rendering after
      * a validation failure so in-progress field edits aren't lost).
      */
-    private function renderEdit(Form $form, Site $site, string $builderDataJson): Response
+    private function renderEdit(Form $form, Site $site, string $builderDataJson, ?string $submitMessagesJson = null): Response
     {
         $supportedSites = $this->getSupportedSitesForForm($form);
+        // Conditional submit messages (#266) seeded from the DB for this site, or
+        // the posted set on a validation-failure re-render so typed rows survive.
+        $submitMessagesJson ??= $this->submitMessagesToJson((int) ($form->id ?? 0), $site->id);
 
         // Resolve the redirect entry (on the edited site) for the element select.
         $redirectEntry = null;
@@ -520,6 +572,7 @@ class FormsController extends Controller
             'currentSite' => $site,
             'supportedSites' => $supportedSites,
             'builderData' => $builderDataJson,
+            'submitMessagesData' => $submitMessagesJson,
             // At-a-glance submission stats for the saved form's Stats tab (#cp).
             'stats' => $this->formEditStats($form, $site),
             'redirectEntry' => $redirectEntry,
@@ -704,6 +757,27 @@ class FormsController extends Controller
         unset($opt);
 
         return $config;
+    }
+
+    /**
+     * The form's conditional submit messages (#266) in the builder shape the
+     * Confirmation tab's JS reads — each row with its structural condition and the
+     * message text resolved to the editing site (empty when untranslated there).
+     * Empty for an unsaved form.
+     */
+    private function submitMessagesToJson(int $formId, int $siteId): string
+    {
+        if ($formId === 0) {
+            return '[]';
+        }
+
+        $rows = Plugin::getInstance()->getSubmitMessages()->getForFormAndSite($formId, $siteId);
+
+        return $this->encodeBuilderJson(array_map(static fn($row): array => [
+            'id' => (int) $row->id,
+            'conditional' => $row->conditional,
+            'message' => (string) ($row->message ?? ''),
+        ], $rows));
     }
 
     /**
