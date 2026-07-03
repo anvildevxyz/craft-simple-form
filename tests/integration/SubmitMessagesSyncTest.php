@@ -131,6 +131,32 @@ class SubmitMessagesSyncTest extends SimpleFormTestCase
         $this->assertSame('reason', $rows[0]->conditional['rules'][0]['field']);
     }
 
+    public function testDanglingReferencesDetectsMissingHandles(): void
+    {
+        $this->requireCraft();
+
+        // Two rows: the second's `ghost` rule references a handle that is not live.
+        $rows = [
+            $this->row(null, [$this->rule('reason', 'eq', 'sales')], 'Live ref'),
+            $this->row(null, [
+                $this->rule('reason', 'eq', 'support'),
+                $this->rule('ghost', 'eq', 'x'),
+            ], 'One dangling ref'),
+        ];
+        $this->assertSame(['ghost'], $this->service()->danglingReferences($rows, ['reason' => true]));
+
+        // A missing handle referenced by more than one row is reported once.
+        $this->assertSame(['ghost'], $this->service()->danglingReferences([
+            $this->row(null, [$this->rule('ghost', 'eq', 'a')], 'First'),
+            $this->row(null, [$this->rule('ghost', 'eq', 'b')], 'Second'),
+        ], ['reason' => true]));
+
+        // All references live → nothing reported.
+        $this->assertSame([], $this->service()->danglingReferences([
+            $this->row(null, [$this->rule('reason', 'eq', 'sales')], 'All good'),
+        ], ['reason' => true]));
+    }
+
     public function testSyncSkipsEmptyRows(): void
     {
         $this->requireCraft();
