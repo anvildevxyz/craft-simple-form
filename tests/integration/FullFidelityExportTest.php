@@ -36,6 +36,11 @@ class FullFidelityExportTest extends SimpleFormTestCase
         $form->duplicateKey = Form::DUPLICATE_KEY_IP;
         $form->useCustomTemplate = true;
         $form->templatePath = '_my/forms';
+        $form->renderMode = 'conversational';
+        $form->quizMode = true;
+        $form->quizGradeBands = "90 Excellent\n50 Pass";
+        $form->autoCaptureAttribution = true;
+        $form->capturePartials = true;
         $form->openDate = new \DateTime('2026-01-01T00:00:00+00:00');
         $form->closeDate = new \DateTime('2026-12-31T00:00:00+00:00');
         Craft::$app->getElements()->saveElement($form);
@@ -61,6 +66,11 @@ class FullFidelityExportTest extends SimpleFormTestCase
         $this->assertSame(Form::DUPLICATE_KEY_IP, $f['duplicateKey']);
         $this->assertTrue($f['useCustomTemplate']);
         $this->assertSame('_my/forms', $f['templatePath']);
+        $this->assertSame('conversational', $f['renderMode']);
+        $this->assertTrue($f['quizMode']);
+        $this->assertSame("90 Excellent\n50 Pass", $f['quizGradeBands']);
+        $this->assertTrue($f['autoCaptureAttribution']);
+        $this->assertTrue($f['capturePartials']);
         $this->assertNotEmpty($f['openDate']);
         $this->assertNotEmpty($f['closeDate']);
     }
@@ -82,6 +92,11 @@ class FullFidelityExportTest extends SimpleFormTestCase
         $this->assertSame(30, $clone->duplicateWindowMinutes);
         $this->assertTrue($clone->allowEditing);
         $this->assertSame('_my/forms', $clone->templatePath);
+        $this->assertSame('conversational', $clone->renderMode);
+        $this->assertTrue($clone->quizMode);
+        $this->assertSame("90 Excellent\n50 Pass", $clone->quizGradeBands);
+        $this->assertTrue($clone->autoCaptureAttribution);
+        $this->assertTrue($clone->capturePartials);
         // Compare the instant (timezone-agnostic): the same moment round-trips.
         $this->assertSame($src->openDate?->getTimestamp(), $clone->openDate?->getTimestamp());
         $this->assertSame($src->closeDate?->getTimestamp(), $clone->closeDate?->getTimestamp());
@@ -117,6 +132,7 @@ class FullFidelityExportTest extends SimpleFormTestCase
             'submissionsPerUser', 'requireLogin', 'guestLimitKey', 'allowEditing',
             'editWindowMinutes', 'preventDuplicates', 'duplicateWindowMinutes',
             'duplicateKey', 'useCustomTemplate', 'templatePath',
+            'renderMode', 'quizMode', 'quizGradeBands', 'autoCaptureAttribution', 'capturePartials',
         ] as $key) {
             unset($doc['form'][$key]);
         }
@@ -129,6 +145,35 @@ class FullFidelityExportTest extends SimpleFormTestCase
         $this->assertTrue($reloaded->requireLogin, 'v1 doc must not reset settings');
         $this->assertSame(3, $reloaded->submissionsPerUser);
         $this->assertSame(Form::DUPLICATE_KEY_IP, $reloaded->duplicateKey);
+        $this->assertSame('conversational', $reloaded->renderMode, 'v1 doc must not reset renderMode');
+        $this->assertTrue($reloaded->quizMode, 'v1 doc must not reset quizMode');
+    }
+
+    /**
+     * Regression guard: the conversational/quiz/attribution/partial-capture
+     * toggles (renderMode, quizMode, quizGradeBands, autoCaptureAttribution,
+     * capturePartials) must survive a JSON export → re-import round-trip onto a
+     * fresh form. Previously they were absent from both the export document and
+     * applyFormSettings(), so a re-import silently reset them to their defaults.
+     */
+    public function testConversationalQuizSettingsRoundTripThroughJson(): void
+    {
+        $this->requireCraft();
+        $src = $this->seedWithSettings('ff_cq_src');
+
+        // Round-trip through the actual JSON string (the forms-as-code path).
+        $json = $this->service()->exportJson($src);
+        $doc = json_decode($json, true);
+        $doc['form']['handle'] = 'ff_cq_clone';
+
+        $result = $this->service()->import($doc, ['mode' => FormPortabilityService::MODE_ABORT]);
+        $clone = Form::find()->id($result->form->id)->siteId('*')->status(null)->one();
+
+        $this->assertSame('conversational', $clone->renderMode);
+        $this->assertTrue($clone->quizMode);
+        $this->assertSame("90 Excellent\n50 Pass", $clone->quizGradeBands);
+        $this->assertTrue($clone->autoCaptureAttribution);
+        $this->assertTrue($clone->capturePartials);
     }
 
     public function testUnresolvableRedirectEntryWarnsAndUnsets(): void
