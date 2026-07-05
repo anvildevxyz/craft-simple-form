@@ -178,11 +178,6 @@ class Form extends Element
         return Craft::t('simple-form', 'Forms');
     }
 
-    public static function tableName(): string
-    {
-        return 'simpleform_forms';
-    }
-
     public static function hasContent(): bool
     {
         return true;

@@ -91,11 +91,6 @@ class Submission extends Element
         return $this->paymentStatus === self::PAYMENT_PAID;
     }
 
-    public static function tableName(): string
-    {
-        return 'simpleform_submissions';
-    }
-
     public static function hasContent(): bool
     {
         return false;

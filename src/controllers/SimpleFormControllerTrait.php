@@ -24,7 +24,7 @@ trait SimpleFormControllerTrait
 
     public function beforeAction($action): bool
     {
-        // Get permission from child class. Each controller must define: protected const PERMISSION = '...';
+        // Each controller must define: protected const PERMISSION = '...';
         $permission = defined('static::PERMISSION') ? static::PERMISSION : '';
 
         if ($permission && !Yii::$app->getUser()->getIdentity()?->admin) {
