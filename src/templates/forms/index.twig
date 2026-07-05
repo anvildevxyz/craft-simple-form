@@ -26,7 +26,11 @@
                 <ul>
                     {% for stencil in stencils %}
                         <li>
+                            {# data-form="false": this page has no fullPageForm (and
+                               Garnish detaches menus to <body>), so Craft must build
+                               the hidden CSRF form itself. #}
                             <a class="formsubmit"
+                               data-form="false"
                                data-action="simple-form/forms/new-from-stencil"
                                data-params="{{ { stencil: stencil.handle }|json_encode }}"
                                title="{{ stencil.description }}">
@@ -93,6 +97,7 @@
                     </td>
                     <td class="thin">
                         <a class="btn small formsubmit"
+                           data-form="false"
                            data-action="simple-form/forms/duplicate"
                            data-params="{{ { formId: form.id }|json_encode }}">
                             {{ 'Duplicate'|t('simple-form') }}
@@ -106,12 +111,13 @@
                         </a>
                     </td>
                     <td class="thin">
-                        <a class="delete icon"
+                        <a class="delete icon formsubmit"
                            title="{{ 'Delete'|t('simple-form') }}"
-                           onclick="return confirm('{{ 'Delete this form?'|t('simple-form')|e('js') }}')"
-                           href="javascript:;"
+                           role="button"
+                           tabindex="0"
+                           data-form="false"
                            data-action="simple-form/forms/delete"
-                           data-method="post"
+                           data-confirm="{{ 'Delete this form?'|t('simple-form') }}"
                            data-param="formId"
                            data-value="{{ form.id }}">
                         </a>
