@@ -2,6 +2,7 @@
 
 namespace anvildev\simpleform\services;
 
+use anvildev\simpleform\Editions;
 use anvildev\simpleform\elements\Form;
 use anvildev\simpleform\helpers\FieldQueryHelper;
 use anvildev\simpleform\helpers\FormContentHelper;
@@ -81,6 +82,12 @@ class FormCloneService extends Component
             $fieldsBySite[$siteId] = $this->sourceFieldsToSyncItems($sourceId, $siteId);
         }
 
+        // The copy is a brand-new form, so the edition gate sees every Pro
+        // feature it carries as an escalation (empty "existing" set) — same
+        // contract as importing the source's export document (#282). Without
+        // this, duplication would mint unlimited Pro forms on Solo.
+        $this->assertEditionAllows($fieldsBySite[$primarySiteId] ?? [], (bool) $source->allowSaveResume);
+
         $primaryContent = $contentBySite[$primarySiteId] ?? reset($contentBySite) ?: [];
         $name = (string) ($overrides['name'] ?? $this->copyName((string) $source->name));
         $handle = $this->uniqueHandle((string) $source->handle . '-copy');
@@ -124,6 +131,11 @@ class FormCloneService extends Component
         // happens later in the editor).
         /** @var array<int,array<int,array<string,mixed>>> $fieldsBySite */
         $fieldsBySite = [$primarySiteId => $stencil->fields];
+
+        // Built-in stencils are Solo-safe, but third parties can contribute
+        // stencils via EVENT_REGISTER_STENCILS — gate them like any other
+        // new-form source so a Pro-featured stencil can't escalate Solo (#282).
+        $this->assertEditionAllows($stencil->fields, false);
 
         return $this->build(
             name: $name,
@@ -379,8 +391,38 @@ class FormCloneService extends Component
     }
 
     /**
+     * Reject cloning a form (or stencil) that would introduce Pro field types
+     * or Pro form-capabilities onto Solo. The clone is always a brand-new form,
+     * so there is no "existing" usage to grandfather — every Pro feature in the
+     * source counts as new escalation, mirroring
+     * {@see FormPortabilityService::assertEditionAllows()} for a fresh import.
+     *
+     * @param iterable<array<string, mixed>> $items field set in sync-item shape
+     * @throws InvalidArgumentException when Solo would be escalated
+     */
+    private function assertEditionAllows(iterable $items, bool $saveResume, ?string $edition = null): void
+    {
+        $items = is_array($items) ? $items : iterator_to_array($items);
+        $types = array_map(static fn(array $f): string => (string)($f['type'] ?? ''), array_values($items));
+
+        $blocked = array_merge(
+            Editions::blockedNewProFields($types, [], $edition),
+            Editions::blockedNewFormCapabilities($items, $saveResume, [], false, $edition),
+        );
+
+        if ($blocked !== []) {
+            throw new InvalidArgumentException(Craft::t(
+                'simple-form',
+                'This form requires the Pro edition (uses: {items}).',
+                ['items' => implode(', ', $blocked)],
+            ));
+        }
+    }
+
+    /**
      * Re-save each source notification against the new form id with a fresh id
-     * and uid, preserving sort order, recipient, condition, and body.
+     * and uid, preserving sort order, recipient, condition, body, and the
+     * attachment flags.
      *
      * @param list<NotificationModel> $notifications
      */
@@ -398,6 +440,8 @@ class FormCloneService extends Component
             $copy->replyTo = $source->replyTo;
             $copy->body = $source->body;
             $copy->conditional = $source->conditional;
+            $copy->attachPdf = $source->attachPdf;
+            $copy->attachUploads = $source->attachUploads;
             $copy->sortOrder = $source->sortOrder;
             $service->save($copy);
         }
