@@ -258,6 +258,10 @@
         el.setAttribute('aria-label', blockPreviewText(f) + ' — ' + (TYPE_LABELS[f.type] || f.type));
         el.addEventListener('keydown', function(e) {
             if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); select(f.clientId); focusInspector(); }
+            if ((e.altKey || e.ctrlKey) && (e.key === 'ArrowUp' || e.key === 'ArrowDown')) {
+                e.preventDefault();
+                moveField(f.clientId, e.key === 'ArrowUp' ? -1 : 1);
+            }
         });
         el.dataset.cid = f.clientId;
 
@@ -276,6 +280,16 @@
             type.title = 'Hidden — captured silently; never shown on the form.';
         }
 
+        var idx = fields.indexOf(f);
+        var up = document.createElement('button');
+        up.type = 'button'; up.className = 'sf-field-move'; up.dataset.dir = '-1';
+        up.title = 'Move up'; up.setAttribute('aria-label', 'Move up'); up.textContent = '\u25B4';
+        up.disabled = idx <= 0;
+        var down = document.createElement('button');
+        down.type = 'button'; down.className = 'sf-field-move'; down.dataset.dir = '1';
+        down.title = 'Move down'; down.setAttribute('aria-label', 'Move down'); down.textContent = '\u25BE';
+        down.disabled = idx === fields.length - 1;
+
         var del = document.createElement('button');
         del.type = 'button'; del.className = 'sf-field-del'; del.title = 'Remove'; del.textContent = '×';
 
@@ -286,7 +300,7 @@
             req.className = 'sf-field-req'; req.textContent = f.required ? '*' : '';
             el.appendChild(req);
         }
-        el.appendChild(type); el.appendChild(del);
+        el.appendChild(type); el.appendChild(up); el.appendChild(down); el.appendChild(del);
         return el;
     }
 
@@ -388,6 +402,25 @@
             if (ok) { removeField(cid); }
             else if (refocusEl && typeof refocusEl.focus === 'function') { refocusEl.focus(); }
         });
+    }
+
+    // Vertical reorder without drag (#291): keyboard (Alt/Ctrl+Arrow on the
+    // focused card) and touch (the per-card arrows) both land here. HTML5 DnD
+    // never fires on iOS/Android and had no keyboard path, so drag-only meant
+    // tablet authors couldn't reorder at all.
+    function moveField(cid, delta) {
+        var idx = -1;
+        fields.forEach(function(f, i) { if (f.clientId === cid) { idx = i; } });
+        var target = idx + delta;
+        if (idx === -1 || target < 0 || target >= fields.length) { return; }
+        var moved = fields.splice(idx, 1)[0];
+        fields.splice(target, 0, moved);
+        commit();
+        announce('Moved to position ' + (target + 1) + ' of ' + fields.length + '.');
+        // render() rebuilt the cards — put focus back on the moved one so a
+        // keyboard user can keep arrowing.
+        var el = canvas.querySelector('.sf-field[data-cid="' + cid + '"]');
+        if (el && typeof el.focus === 'function') { el.focus(); }
     }
 
     function removeField(cid) {
@@ -1649,6 +1682,12 @@
     // ---- canvas events: select / delete ---------------------------------
 
     canvas.addEventListener('click', function(e) {
+        var move = e.target.closest('.sf-field-move');
+        if (move) {
+            e.preventDefault();
+            moveField(move.closest('.sf-field').dataset.cid, parseInt(move.dataset.dir, 10));
+            return;
+        }
         var del = e.target.closest('.sf-field-del');
         if (del) { e.preventDefault(); confirmRemoveField(del.closest('.sf-field').dataset.cid, del); return; }
         var block = e.target.closest('.sf-field');
