@@ -64,6 +64,7 @@ use craft\events\RegisterGqlTypesEvent;
 use craft\events\RegisterTemplateRootsEvent;
 use craft\events\RegisterUrlRulesEvent;
 use craft\events\RegisterUserPermissionsEvent;
+use craft\helpers\App;
 use craft\services\Dashboard;
 use craft\services\Fields;
 use craft\services\Gc;
@@ -490,6 +491,33 @@ class Plugin extends BasePlugin
     protected function createSettingsModel(): ?Model
     {
         return new Settings();
+    }
+
+    /**
+     * Seed the required sender address from Craft's system email settings so a
+     * fresh install starts with a valid settings model. Without this, saving
+     * ANY settings tab fails whole-model validation on the (invisible) blank
+     * Email-tab sender (#280). An env reference (`$VAR`) is carried as-is; the
+     * email-format rule already skips those.
+     */
+    protected function afterInstall(): void
+    {
+        parent::afterInstall();
+
+        /** @var Settings $settings */
+        $settings = $this->getSettings();
+        if ($settings->defaultEmailSender !== null && $settings->defaultEmailSender !== '') {
+            return;
+        }
+
+        $mail = App::mailSettings();
+        $values = array_filter([
+            'defaultEmailSender' => $mail->fromEmail,
+            'defaultEmailSenderName' => $mail->fromName,
+        ]);
+        if (($values['defaultEmailSender'] ?? '') !== '') {
+            Craft::$app->getPlugins()->savePluginSettings($this, $values);
+        }
     }
 
     public function getCaptchaService(): CaptchaService

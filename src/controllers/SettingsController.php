@@ -125,9 +125,8 @@ class SettingsController extends Controller
 
         if (!Craft::$app->getPlugins()->savePluginSettings($plugin, $values)) {
             $settings = $plugin->getSettings();
-            $firstErrors = $settings->getFirstErrors();
             Craft::$app->getSession()->setError(
-                $firstErrors ? reset($firstErrors) : Craft::t('simple-form', 'Couldn’t save settings.'),
+                $this->saveErrorSummary($settings->getFirstErrors(), $tab),
             );
 
             // Re-render the same tab with the invalid model so errors show inline.
@@ -394,6 +393,59 @@ class SettingsController extends Controller
             'retainSubmissionsDays' => Craft::t('simple-form', 'Automatic submission deletion'),
             'retainAuditLogDays' => Craft::t('simple-form', 'Audit log retention'),
             default => $field,
+        };
+    }
+
+    /**
+     * Flash summary for a failed save. Settings validate as a whole model, so a
+     * save on one tab can fail on a field the author can't see (#280) — each
+     * error from another tab is prefixed with that tab's name so the author
+     * knows where to go, and every first-error is included (not just the first).
+     *
+     * @param array<string, string> $firstErrors attribute => first error message
+     */
+    private function saveErrorSummary(array $firstErrors, string $currentTab): string
+    {
+        if ($firstErrors === []) {
+            return Craft::t('simple-form', 'Couldn’t save settings.');
+        }
+
+        $parts = [];
+        foreach ($firstErrors as $attribute => $error) {
+            $tab = $this->tabForField($attribute);
+            $parts[] = ($tab !== null && $tab !== $currentTab)
+                ? Craft::t('simple-form', '{error} (on the {tab} tab)', [
+                    'error' => rtrim($error, '.'),
+                    'tab' => $this->tabLabel($tab),
+                ])
+                : $error;
+        }
+
+        return implode(' ', $parts);
+    }
+
+    /** The settings tab a model attribute is edited on, if any. */
+    private function tabForField(string $attribute): ?string
+    {
+        foreach (self::TAB_FIELDS as $tab => $fields) {
+            if (in_array($attribute, $fields, true)) {
+                return $tab;
+            }
+        }
+        return null;
+    }
+
+    /** Human-readable tab name, matching the labels in settings/index.twig. */
+    private function tabLabel(string $tab): string
+    {
+        return match ($tab) {
+            'general' => Craft::t('simple-form', 'General'),
+            'email' => Craft::t('simple-form', 'Email'),
+            'spam' => Craft::t('simple-form', 'Spam Protection'),
+            'privacy' => Craft::t('simple-form', 'Privacy'),
+            'workflow' => Craft::t('simple-form', 'Workflow'),
+            'mcp' => Craft::t('simple-form', 'MCP Server'),
+            default => $tab,
         };
     }
 }
