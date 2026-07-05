@@ -7,12 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+> Rename this heading to the release version + date before tagging — the
+> Plugin Store changelog parser skips an "Unreleased" section (#278).
+
 ### Added
 - Two commercial editions, **Solo** and **Pro**. Solo is the "better contact
-  form": unlimited forms, stored submissions, 16 core field types, email
+  form": unlimited forms, stored submissions, the 18 core field types, email
   notifications, honeypot/rate-limit/CAPTCHA spam protection, the webhook +
   Craft entry/user integrations, and full multi-site / translatable forms. Pro
-  adds the 12 advanced field types (signature, payment, rating, opinion scale,
+  adds the 11 advanced field types (signature, payment, rating, opinion scale,
   calculation, repeater, the element relations), conditional logic, multi-page,
   save & continue later, the third-party integrations (Slack/Discord/CRM/Sheets),
   Commerce payments, Akismet + denylists, PDF attachments, the audit log,
@@ -25,10 +28,92 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   downgrade; the Pro-only back-office services (conditional submit-message
   resolution, PDF attachments, audit logging) pause gracefully and resume on
   returning to Pro.
+- A CP **Dashboard** landing page (Simple Form's default screen): submission
+  activity with a real time axis and value summary, a by-weekday breakdown
+  shared with Analytics, a "needs attention" list (new submissions, failed
+  integration dispatches), and per-form quick links (#255).
+- Submissions now use a **native element index**: All/status/per-form sources,
+  an explicit Trashed source for restore, bulk set-status/delete, CSV plus the
+  native JSON/XML exporters, and deep links from the forms listing. Each form
+  gains a **Stats** tab and a front-end **Preview** button (#255).
+- **Conditional submit messages** (#265, #266): per-form ordered rules that
+  swap the post-submit message based on the submitted values, with a CP rules
+  editor, per-site translations, and a save-time guard rail that warns when a
+  rule references a field that no longer exists (#267).
+- **Text** layout block (#264): a static paragraph element for instructions
+  between fields — value-less, skipped by validation, storage, and export.
+- **Quiz mode** (#241): per-option scores, grade bands, and quiz results on the
+  GraphQL submit payload; per-form **survey reporting** with per-question
+  aggregates (#240).
+- **Conversational render mode** (#239) with a built-in centered-card theme and
+  progress bar (#243), and **logic jumps** to branch a multi-page form to a
+  non-adjacent step (#245) — jump targets are validated at save.
+- **Payment coupons / discount codes** (#246): percent or fixed discounts with
+  usage limits and windows, a CP management screen, a live discount preview on
+  the form, and case-insensitive code uniqueness (also on Postgres).
+- **Address autocomplete** (#250): opt-in suggestions on the Address field via
+  Photon, Nominatim, or Google Places.
+- **Submission approval workflow** (#248): configurable statuses/transitions,
+  CP transition buttons, and an `EVENT_SUBMISSION_TRANSITIONED` hook.
+- **Passive partial capture** (#242, #244): debounced auto-save of in-progress
+  forms with a CP "abandoned" view, a consent gate, its own retention setting,
+  and an `EVENT_PARTIAL_CAPTURED` developer event.
+- **UTM/referrer attribution capture** (#249): opt-in auto-capture stored with
+  the submission and shown on the CP detail.
+- **Embed & share modes** (#247): a shareable standalone form URL and an
+  embeddable variant.
+- A CP **notification log** for outbound form emails: per-send rows with
+  sent/failed status, error messages, filters, and stat cards.
+- **No-JS submissions** (#287): a plain form POST (no JavaScript) now
+  round-trips as HTML — errors are flashed per-form and rendered through the
+  `errors.twig` theme seam with field labels, success shows the resolved
+  message or follows the redirect action. Programmatic/JSON clients are
+  unaffected.
+- Builder: **keyboard and touch reordering** (#291) — per-card Move up/down
+  buttons and Alt/Ctrl+Arrow on the focused card, with live-region
+  announcements; reordering no longer requires drag-and-drop.
+- Builder: deleting a field now asks for confirmation and names the other
+  fields whose rules depend on it; saves that prune rules referencing a
+  removed field say so in the save notice instead of dropping them silently
+  (#288).
+- Privacy: a **"Collect IP addresses"** opt-out for GDPR data minimization
+  (#293) — rate limiting keeps working (nothing stored), IP-based duplicate
+  detection degrades to the other keys.
 
 ### Changed
 - A freshly-installed plugin resolves to the Solo edition by default; run the
   Pro edition to unlock the full feature set.
+- Fresh installs seed the default email sender from Craft's system mail
+  settings, so settings tabs save out of the box (#280); failed settings saves
+  now list every error and name the tab an offending field lives on.
+- A failed form save now flashes every validation error (not just the first),
+  and element errors open the Details tab selected and error-badged instead of
+  leaving a seemingly clean Build tab (#289).
+- The CP Overview screen was renamed **Dashboard** and rebuilt from native CP
+  components.
+
+### Fixed
+- The Forms index row actions (Delete, Duplicate, "Start from a stencil") did
+  nothing when clicked — they posted into a nonexistent form (#279). Delete now
+  confirms through Craft's dialog and redirects with a notice.
+- The signature field was registered, documented, and Pro-gated but missing
+  from the builder palette, so it couldn't be added through the UI (#281).
+- Form duplication (and third-party stencils) bypassed the edition gate,
+  letting Solo mint new forms carrying Pro features; duplicated forms also
+  lost their notifications' PDF/upload attachment flags (#282). Two further
+  edition-gate bypasses in CP write paths were closed (#254).
+- Duplicate-submission prevention wrongly reused the denylist's block/flag
+  mode, silently dropping duplicates when the denylist was set to block — it
+  now has its own mode setting (#273).
+- The save-&-resume link discarded the page's query string, breaking
+  `?handle=`-routed forms and UTM attribution on resume (#274).
+- Required fields on steps skipped by logic jumps blocked the browser's native
+  validation, leaving a dead submit button; skipped and jump-unreachable
+  steps' controls are now disabled correctly (#275).
+- Form export/apply silently reset `renderMode`, quiz settings, attribution
+  capture, and partial capture to defaults (#276).
+- The `submitForm` GraphQL mutation now returns the resolved (per-form,
+  per-site, conditional) message instead of the global default (#263).
 
 ## [1.0.0] - 2026-06-24
 
