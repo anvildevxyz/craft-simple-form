@@ -734,7 +734,7 @@
             fetch(url, {
                 method: "POST",
                 body: formData,
-                headers: { "X-Requested-With": "XMLHttpRequest" }
+                headers: { "X-Requested-With": "XMLHttpRequest", "Accept": "application/json" }
             })
                 .then(function (r) { return r.json(); })
                 .then(function (data) {
@@ -793,7 +793,7 @@
             fetch(url, {
                 method: "POST",
                 body: formData,
-                headers: { "X-Requested-With": "XMLHttpRequest" }
+                headers: { "X-Requested-With": "XMLHttpRequest", "Accept": "application/json" }
             })
                 .then(function (r) { return r.json(); })
                 .then(function (data) {
@@ -1247,7 +1247,8 @@
                 method: "POST",
                 body: formData,
                 headers: {
-                    "X-Requested-With": "XMLHttpRequest"
+                    "X-Requested-With": "XMLHttpRequest",
+                    "Accept": "application/json"
                 }
             })
                 .then(function (response) { return response.json(); })

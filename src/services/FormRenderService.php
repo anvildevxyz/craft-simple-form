@@ -319,9 +319,22 @@ class FormRenderService extends Component
             }
         }
 
+        // No-JS submit round-trip (#287): SubmitController flashes the outcome
+        // under per-form keys and redirects back here; the re-render shows it.
+        // Read-and-clear, guarded so console/queue renders never touch a session.
+        $flashSuccess = '';
+        $flashErrors = [];
+        if (!Craft::$app->getRequest()->getIsConsoleRequest()) {
+            $session = Craft::$app->getSession();
+            $flashSuccess = (string) $session->getFlash("simpleForm:success:{$form->handle}", '');
+            $flashErrors = (array) $session->getFlash("simpleForm:errors:{$form->handle}", []);
+        }
+
         $context = [
             'form' => $form,
             'handle' => $form->handle,
+            'flashSuccess' => $flashSuccess,
+            'flashErrors' => $flashErrors,
             'fields' => $resolvedFields,
             'rows' => $rows,
             'steps' => $steps,
