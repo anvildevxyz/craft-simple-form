@@ -32,9 +32,13 @@
 {# Pane ids are namespaced (sf-*) so they can't collide with reserved Craft CP
    ids — e.g. an unprefixed `details` would inherit the metadata sidebar's
    fixed width. #}
+{# Element validation errors (name/handle/…) render inline on the Details
+   pane — badge that tab and open it so a failed save never shows a seemingly
+   clean Build tab (#289). #}
+{% set detailsHasErrors = form.hasErrors() %}
 {% set tabs = {
     'sf-build': { label: 'Build'|t('simple-form'), url: '#sf-build' },
-    'sf-details': { label: 'Details'|t('simple-form'), url: '#sf-details' },
+    'sf-details': { label: 'Details'|t('simple-form'), url: '#sf-details', class: detailsHasErrors ? 'error' : null },
     'sf-confirmation': { label: 'Confirmation'|t('simple-form'), url: '#sf-confirmation' },
     'sf-rules': { label: 'Rules'|t('simple-form'), url: '#sf-rules' },
 } %}
@@ -52,7 +56,7 @@
         {% set tabs = tabs|merge({ partials: { label: 'Partials'|t('simple-form'), url: cpUrl('simple-form/forms/' ~ form.id ~ '/partials') } }) %}
     {% endif %}
 {% endif %}
-{% set selectedTab = 'sf-build' %}
+{% set selectedTab = detailsHasErrors ? 'sf-details' : 'sf-build' %}
 
 {# Page-level actions (not navigation): duplicate + export the saved form. #}
 {% if form.id %}
@@ -104,7 +108,7 @@
 {# ===========================================================================
    Build — the form's field builder (primary tab)
    =========================================================================== #}
-<div id="sf-build">
+<div id="sf-build"{% if detailsHasErrors %} class="hidden"{% endif %}>
     <h2>{{ 'Form Fields'|t('simple-form') }}</h2>
     <p class="light">{{ 'Drag a field type from the right onto the form, or click it to add. Click a field to edit its properties. Changes are saved when you save the form.'|t('simple-form') }}</p>
 
@@ -190,7 +194,7 @@
 {# ===========================================================================
    Details — naming + multi-site propagation
    =========================================================================== #}
-<div id="sf-details" class="hidden">
+<div id="sf-details"{% if not detailsHasErrors %} class="hidden"{% endif %}>
     {% if craft.app.isMultiSite %}
     {{ forms.selectField({
         label: 'Save to'|t('simple-form'),

@@ -269,14 +269,16 @@ class FormsController extends Controller
         // Validate the field set before any DB writes so a bad field never half-saves.
         $fieldErrors = $fieldSync->validate($items, $form->renderMode === 'conversational');
         if ($fieldErrors) {
-            Craft::$app->getSession()->setError(reset($fieldErrors));
+            // Flash the whole set (#289): one-error-per-save round-trips are
+            // brutal when a paste-in form has five problems at once.
+            Craft::$app->getSession()->setError(implode(' ', $fieldErrors));
             return $this->renderEdit($form, $site, $this->encodeBuilderJson($items), $submitMessagesJson);
         }
 
         // Validate the conditional-message set the same way (whole set up front).
         $messageErrors = $submitMessages->validate($messageRows, $validHandles);
         if ($messageErrors) {
-            Craft::$app->getSession()->setError(reset($messageErrors));
+            Craft::$app->getSession()->setError(implode(' ', $messageErrors));
             return $this->renderEdit($form, $site, $this->encodeBuilderJson($items), $submitMessagesJson);
         }
 
@@ -363,7 +365,14 @@ class FormsController extends Controller
         }
 
         if (!Craft::$app->getElements()->saveElement($form)) {
-            Craft::$app->getSession()->setError(Craft::t('simple-form', 'Unable to save form'));
+            // The inline errors render on the Details pane, which re-opens
+            // selected + error-badged (#289) — the flash still names them so
+            // the author isn't left staring at a seemingly clean Build tab.
+            $firstErrors = $form->getFirstErrors();
+            $summary = $firstErrors !== []
+                ? Craft::t('simple-form', 'Unable to save form:') . ' ' . implode(' ', $firstErrors)
+                : Craft::t('simple-form', 'Unable to save form');
+            Craft::$app->getSession()->setError($summary);
             Craft::warning('Form save failed: ' . json_encode($form->getErrors()), 'simple-form');
             return $this->renderEdit($form, $site, $this->encodeBuilderJson($items), $submitMessagesJson);
         }
