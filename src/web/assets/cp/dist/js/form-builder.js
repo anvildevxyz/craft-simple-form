@@ -225,12 +225,43 @@
 
     // ---- canvas rendering ------------------------------------------------
 
+    // A field's 1-based page, mirroring FormSteps::pageOf() server-side.
+    function pageOf(f) {
+        var page = parseInt(f.config && f.config.page, 10);
+        return (!isNaN(page) && page >= 1) ? page : 1;
+    }
+
     function render() {
-        Array.prototype.slice.call(canvas.querySelectorAll('.sf-field, .sf-builder-row')).forEach(function(el) { el.remove(); });
+        Array.prototype.slice.call(canvas.querySelectorAll('.sf-field, .sf-builder-row, .sf-page-sep')).forEach(function(el) { el.remove(); });
         var empty = canvas.querySelector('.sf-empty');
         if (empty) { empty.style.display = fields.length ? 'none' : ''; }
+        // Step separators (#292): when the form is multi-page, bracket each
+        // page's fields so the author sees the grouping instead of tracking
+        // "Step / Page" numbers mentally. The runtime compacts page-number
+        // gaps (FormSteps::group), so the label shows the EFFECTIVE step and
+        // flags non-contiguous numbering.
+        var pages = [];
+        fields.forEach(function(f) {
+            var page = pageOf(f);
+            if (pages.indexOf(page) === -1) { pages.push(page); }
+        });
+        pages.sort(function(a, b) { return a - b; });
+        var multiStep = pages.length > 1;
+        var lastPage = null;
         // Group into visual rows so columns sit side by side in the builder too.
         groupRows(fields).forEach(function(row) {
+            if (multiStep) {
+                var rowPage = pageOf(row[0]);
+                if (rowPage !== lastPage) {
+                    lastPage = rowPage;
+                    var sep = document.createElement('div');
+                    sep.className = 'sf-page-sep';
+                    var ordinal = pages.indexOf(rowPage) + 1;
+                    sep.textContent = 'Step ' + ordinal
+                        + (ordinal !== rowPage ? ' (numbered ' + rowPage + ' — steps renumber contiguously on the form)' : '');
+                    canvas.appendChild(sep);
+                }
+            }
             if (row.length <= 1) {
                 canvas.appendChild(renderBlock(row[0]));
                 return;
