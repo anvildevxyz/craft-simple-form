@@ -232,6 +232,14 @@
     font-size: 18px; line-height: 1; cursor: pointer; padding: 0 4px;
 }
 .sf-field-del:hover { color: #cf2c2c; }
+/* Touch/keyboard reorder arrows (#291) — drag stays available, these are the
+   path that works on tablets and for keyboard users. */
+.sf-field-move {
+    border: none; background: transparent; color: #8a949e;
+    font-size: 14px; line-height: 1; cursor: pointer; padding: 0 3px;
+}
+.sf-field-move:hover:not(:disabled) { color: #1f6fff; }
+.sf-field-move:disabled { color: #d4dae0; cursor: default; }
 .sf-grip { color: #b3bcc6; cursor: grab; user-select: none; letter-spacing: -2px; }
 
 /* Multi-column rows in the canvas mirror the front-end grid so paired fields
