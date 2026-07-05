@@ -65,7 +65,7 @@
         phone: 'Phone', file: 'File Upload',
         name: 'Name', address: 'Address',
         payment: 'Payment', hidden: 'Hidden', consent: 'Agree / Consent',
-        rating: 'Rating', opinion: 'Opinion Scale',
+        rating: 'Rating', opinion: 'Opinion Scale', signature: 'Signature',
         entry: 'Entries', category: 'Categories', tag: 'Tags',
         user: 'Users', asset: 'Assets', calculation: 'Calculation',
         repeater: 'Repeater',
@@ -679,6 +679,32 @@
             cb.addEventListener('change', function() { c.multiple = cb.checked; serialize(); });
             multRow._input.appendChild(cb);
             inspector.appendChild(multRow);
+        } else if (f.type === 'signature') {
+            // Stored as an asset, same as the File field, so it gets the same
+            // volume choice; pen/background are presentational (blank = default).
+            var sigVolOpts = [{ value: '', label: '(first available)' }].concat(
+                (SF_VOLUMES || []).map(function(v) { return { value: v.handle, label: v.name }; }));
+            var sigVolRow = row('Asset Volume');
+            sigVolRow._input.appendChild(selectEl(sigVolOpts, c.volume || '', function(v) {
+                if (v === '') { delete c.volume; } else { c.volume = v; } serialize();
+            }));
+            inspector.appendChild(sigVolRow);
+
+            var penRow = row('Pen Color');
+            var penInput = textInput(c.penColor || '', function(v) {
+                if (v.trim() === '') { delete c.penColor; } else { c.penColor = v.trim(); } serialize();
+            });
+            penInput.placeholder = '#1a1a1a';
+            penRow._input.appendChild(penInput);
+            inspector.appendChild(penRow);
+
+            var bgRow = row('Pad Background');
+            var bgInput = textInput(c.background || '', function(v) {
+                if (v.trim() === '') { delete c.background; } else { c.background = v.trim(); } serialize();
+            });
+            bgInput.placeholder = '#ffffff';
+            bgRow._input.appendChild(bgInput);
+            inspector.appendChild(bgRow);
         } else if (f.type === 'payment') {
             var atRow = row('Amount Type');
             atRow._input.appendChild(selectEl(
