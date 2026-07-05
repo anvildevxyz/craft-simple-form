@@ -49,9 +49,13 @@ class SubmitController extends Controller
 
         // The bundled front-end script posts via fetch with X-Requested-With
         // (and Accept: application/json); a visitor with JS disabled/failed
-        // posts a plain form. The plain POST must round-trip as HTML — flashed
-        // message/errors + redirect — never raw JSON in the browser (#287).
-        $wantsJson = $request->getAcceptsJson() || $request->getIsAjax();
+        // posts a plain form whose Accept header leads with text/html. Only
+        // that explicit-HTML case round-trips as flashed message/errors +
+        // redirect (#287) — everything else (fetch defaults to */*, curl sends
+        // no Accept, existing headless clients) keeps getting JSON, so custom
+        // front-ends built against the JSON contract are unaffected.
+        $acceptsHtml = str_contains((string) $request->getHeaders()->get('Accept'), 'text/html');
+        $wantsJson = !$acceptsHtml || $request->getAcceptsJson() || $request->getIsAjax();
 
         $formHandle = (string) $request->getBodyParam('formHandle', '');
         if (empty($formHandle)) {

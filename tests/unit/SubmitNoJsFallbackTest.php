@@ -22,9 +22,12 @@ class SubmitNoJsFallbackTest extends TestCase
     {
         $code = $this->source('controllers/SubmitController.php');
 
-        // Ajax detection must cover both signals: the bundled script's
-        // X-Requested-With (getIsAjax) and an explicit Accept header.
-        $this->assertStringContainsString('$request->getAcceptsJson() || $request->getIsAjax()', $code);
+        // Only an explicit text/html Accept (a plain browser form POST) takes
+        // the HTML path; fetch defaults (*/*), missing Accept, and the bundled
+        // script's X-Requested-With all keep the JSON contract, so existing
+        // headless clients are unaffected.
+        $this->assertStringContainsString("str_contains((string) \$request->getHeaders()->get('Accept'), 'text/html')", $code);
+        $this->assertStringContainsString('!$acceptsHtml || $request->getAcceptsJson() || $request->getIsAjax()', $code);
 
         // The HTML branch exists for both outcomes and redirects back.
         $this->assertStringContainsString('private function htmlSuccess(', $code);
