@@ -20,6 +20,7 @@ use craft\enums\PropagationMethod;
 use craft\helpers\DateTimeHelper;
 use craft\models\Site;
 use craft\web\Controller;
+use yii\base\InvalidArgumentException;
 use yii\web\NotFoundHttpException;
 use yii\web\Response;
 
@@ -421,6 +422,10 @@ class FormsController extends Controller
 
         try {
             $copy = Plugin::getInstance()->getFormClone()->duplicate($source);
+        } catch (InvalidArgumentException $e) {
+            // Edition gate (or invalid source): the message is author-facing.
+            Craft::$app->getSession()->setError($e->getMessage());
+            return $this->redirect("simple-form/forms/edit/{$formId}");
         } catch (\Throwable $e) {
             Craft::warning('Form duplicate failed: ' . $e->getMessage(), 'simple-form');
             Craft::$app->getSession()->setError(Craft::t('simple-form', 'Couldn’t duplicate the form.'));
@@ -452,6 +457,10 @@ class FormsController extends Controller
 
         try {
             $form = Plugin::getInstance()->getFormClone()->createFromStencil($stencil);
+        } catch (InvalidArgumentException $e) {
+            // Edition gate: the message is author-facing.
+            Craft::$app->getSession()->setError($e->getMessage());
+            return $this->redirect('simple-form/forms');
         } catch (\Throwable $e) {
             Craft::warning('Stencil create failed: ' . $e->getMessage(), 'simple-form');
             Craft::$app->getSession()->setError(Craft::t('simple-form', 'Couldn’t create the form from the stencil.'));
