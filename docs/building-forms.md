@@ -66,6 +66,35 @@ columns responsive, collapsing to a single column on narrow viewports; a custom
 theme can restyle the row/column wrappers (see
 [render-templates.md](render-templates.md)).
 
+## Conversational mode
+
+A form can render **one question per screen** — typeform-style — instead of the
+whole form at once. It's a per-form display choice, picked under the Rules tab's
+**Display** section: **Render mode** (`renderMode`), either **Standard form**
+(`standard`, the default) or **Conversational (one question per screen)**
+(`conversational`).
+
+- **Screens** — on a single-page form, each input field becomes its own screen
+  (layout blocks like headings attach to the adjacent question's screen). On an
+  authored multi-page form, each page becomes a screen.
+- **Navigation** — the same Back / Next controls as a multi-step form, with a
+  *"Question {n} of {total}"* progress announcement. Each step validates before
+  advancing, and focus moves to the new screen's first control so keyboard and
+  screen-reader users land in the right place.
+- **Built-in theme** — conversational forms get a centered-card look with a thin
+  animated **progress bar** across the top of the card, hero-sized question
+  labels, and roomy inputs. All of it is plain, single-class-scoped CSS
+  (`simple-form--conversational` on the `<form>`), so a host site can override
+  it — or replace the partials entirely via
+  [render templates](render-templates.md). `prefers-reduced-motion` is honored.
+- Screens whose only question is hidden by [conditional logic](conditional-logic.md)
+  are skipped automatically and excluded from the progress count.
+- The mode is set on the form, not per render — the Twig `render()` options
+  (`class`, `id`, `submitText`, …) apply unchanged.
+
+Conversational mode pairs naturally with [logic jumps](conditional-logic.md#logic-jumps)
+to branch the question flow.
+
 ## Save & continue later
 
 Opt a form into partial submissions so a visitor can save their progress and
@@ -85,6 +114,55 @@ return via a link.
 - Drafts expire after the configured **draft retention** window (Settings →
   General; default **30 days**) and expired drafts are garbage-collected.
 - On a completed submission, the draft for that token is deleted.
+
+## Passive partial capture (abandoned attempts)
+
+Where save-&-continue is visitor-initiated, **partial capture** is passive: the
+form quietly auto-saves answers as they are entered, so an abandoned attempt is
+not lost. It is per-form and off by default — turn on **Capture abandoned
+attempts** (`capturePartials`) on the form edit screen.
+
+- The front end auto-saves on blur / change (debounced, ~1.2 s) and immediately
+  on a step change. File uploads are never captured.
+- Capturing is **best-effort and side-effect-free**: it fires no notifications,
+  integrations, payments, or spam checks, and a failed capture never bothers the
+  visitor.
+- **Consent gate:** if the form has any [Consent field](field-types.md#agree--consent-consent),
+  nothing is captured until every consent box is ticked — an unticked consent
+  blocks the capture entirely.
+- Captured partials appear on the form's **Partials** tab in the CP (visible
+  once the toggle is on; needs `manageForms`), newest first, with the entered
+  values mapped to field labels. They can be deleted there, but not resumed —
+  like save-&-resume drafts, only a **SHA-256 hash** of the token is stored, so
+  the CP can never reconstruct a visitor's session.
+- **Completing the form deletes its partial** — a finished submission leaves
+  exactly one Submission and no partial behind.
+- Partials expire after **`partialRetentionDays`** (default **7**, deliberately
+  shorter than the 30-day save-&-resume window — abandoned PII shouldn't
+  linger) and are garbage-collected.
+
+Developers can hook abandonment follow-up (a CRM ping, a "you left something
+behind" email — the plugin itself sends nothing) via the `EVENT_PARTIAL_CAPTURED`
+event — see [Twig & developer API](twig-and-api.md#events).
+
+## Attribution capture (UTM & referrer)
+
+Turn on **Capture UTM & referrer** (`autoCaptureAttribution`) under *Marketing
+attribution* on the form edit screen to record where a submission came from —
+no manual hidden fields needed.
+
+- Captured keys: `utm_source`, `utm_medium`, `utm_campaign`, `utm_term`,
+  `utm_content`, the **referrer**, and the **landing page**.
+- Capture is **first-touch, session-scoped**: the first values seen in the
+  visitor's session are kept (in `sessionStorage`), so navigating around the
+  site before submitting doesn't overwrite where the visitor originally came
+  from. Attribution is stored when the submission is created, never rewritten
+  on an edit.
+- The values are stored on the submission and shown in a read-only
+  **Attribution** block on its CP detail screen; they also flow into CSV exports
+  (columns appear only when some submission carries attribution) and the webhook
+  integration payload.
+- Forms without the toggle ignore any posted attribution values.
 
 ## Conditional logic
 
@@ -118,6 +196,38 @@ What happens after a successful submission is set per form on the edit screen vi
 
 These messages are translatable (per-site); the *action choice* itself is
 structural and shared across sites.
+
+## Sharing & embedding a form
+
+Besides rendering a form in your own templates, every saved, **enabled** form
+can be shared as a standalone page or embedded on any site — no Twig required.
+The form edit screen's **Share & embed** tab holds ready-to-copy snippets, and
+the **Preview** button opens the standalone page in a new tab.
+
+### Shareable standalone URL
+
+Each form gets a hosted page at `<site URL>/simple-form/form/<handle>` — a
+minimal, `noindex` page containing just the form (a disabled form 404s). It
+submits through the exact same pipeline as an embedded form (CSRF, spam
+protection, validation), and a theme can restyle it by overriding the
+`simple-form/standalone` template like any [render template](render-templates.md).
+
+### Embedding on another page
+
+The **Embed** section offers three copy-paste snippets, all powered by a small
+loader script served from `<site URL>/simple-form/embed.js`:
+
+| Mode | Snippet | Behaviour |
+| --- | --- | --- |
+| **Inline** | a `<div data-sf-embed data-sf-mode="inline" …>` | An auto-resizing iframe in the page flow (height synced from the form). |
+| **Popup** | a `<button … data-sf-mode="modal">` | Opens the form in a centered overlay. |
+| **Slide-in** | a `<button … data-sf-mode="slide-in">` | Opens the form in a right-side panel. |
+
+The loader is self-contained (injects its own CSS, safe to drop on third-party
+pages), closes on Escape / overlay click, and respects `prefers-reduced-motion`.
+
+There is nothing to enable: the standalone URL and embed snippets exist for
+every enabled form, on every site the form is enabled for.
 
 ## Stencils (presets)
 

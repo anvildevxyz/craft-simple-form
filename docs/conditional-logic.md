@@ -60,6 +60,39 @@ The form refuses to save when conditions would not make sense:
 - Rules **cannot form a loop** (A depends on B which depends on A).
 - A rule pointing at a field that was deleted is dropped automatically on save.
 
+## Logic jumps
+
+Where visibility rules show/hide single fields, **logic jumps** branch the
+*step flow* of a [multi-page](building-forms.md#multi-step-multi-page-forms) or
+[conversational](building-forms.md#conversational-mode) form: "when this answer
+matches, skip ahead to a later step". Classic use: *"Are you an existing
+customer?" — Yes jumps straight to the support questions, skipping the signup
+pages.*
+
+### Configuring jumps
+
+Jumps are set on the **source field**, in the field inspector's **Logic jumps**
+section: each rule is `[operator] [value] → [target field]`, using the same
+operators as visibility rules. The target select only offers **later** fields —
+the jump goes to the step that holds the target field. The **first matching
+rule wins**; when none match, the form advances to the next step as usual.
+
+### Guard rails & behavior
+
+- Jumps are **forward-only** by construction (the builder only offers later
+  fields), and saving rejects a jump whose target isn't on a strictly later
+  step: *"a logic jump must point to a later step"*. Renaming a field's handle
+  updates the jumps that point at it; a rule whose target field was deleted is
+  pruned on save.
+- The **Back** button replays the visitor's actual path, so jumped-over screens
+  aren't revisited.
+- **Skipped steps can't block submission**: the server replays the same jump
+  path and skips validation for fields on jumped-over (unreachable) steps — a
+  required field the visitor legitimately never saw is not enforced, while a
+  step they filled in before jumping past still submits normally.
+- On a plain single-page, standard-mode form there is nothing to navigate, so
+  jumps are inert.
+
 ## Headless (GraphQL & MCP)
 
 Conditional logic is exposed so headless front-ends can mirror the same

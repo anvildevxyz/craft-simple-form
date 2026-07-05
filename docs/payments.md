@@ -124,12 +124,76 @@ offsite/redirect gateways.)
 
 ---
 
+## Coupons / discount codes
+
+Payment forms can accept **discount codes**: a visitor enters a code next to the
+payment fields, sees the discounted total immediately, and is charged the reduced
+amount on submit.
+
+### Creating coupons
+
+Coupons are managed under **Simple Form → Settings → Coupons** (requires the
+**Manage plugin settings** permission). They are **global** — any coupon works on
+any payment form that accepts coupons; there is no per-form association.
+
+| Field | Meaning |
+| --- | --- |
+| **Code** | The code visitors type. Matched **case-insensitively** (`COUPON10` = `coupon10`), stored as entered; uniqueness is enforced case-insensitively too. Max 64 characters. |
+| **Discount type** | **Fixed amount** (in the Commerce store currency) or **Percentage** (0–100). |
+| **Amount** | The amount off, per the type. |
+| **Expiry date** | Optional. After this date (evaluated in UTC) the code is rejected. |
+| **Usage limit** | Optional maximum number of redemptions, global across all forms; blank = unlimited. The edit screen shows how often it has been redeemed. |
+| **Enabled** | When off, the code is rejected at checkout. |
+
+The Coupons list flags codes that are *expired* or have *reached their limit*, and
+each row can be toggled or deleted. (The screen is available without Commerce, but
+coupons only *apply* to forms that collect a payment.)
+
+### Accepting coupons on a form
+
+Turn on **Allow Coupons** on the form's **Payment field** (config key
+`enableCoupons`). The rendered field then shows a **Coupon code** input with an
+**Apply** button:
+
+- Clicking **Apply** validates the code against a public, rate-limited endpoint
+  (max 30 attempts per IP per minute, to deter code guessing) and shows a live
+  preview: *"Coupon applied: … off. You'll pay …"* — without consuming a use.
+- Invalid, disabled, expired, or used-up codes get a specific message; unknown
+  and disabled codes deliberately share the same *"This coupon code isn't
+  valid."* so codes can't be enumerated.
+- The preview is **advisory only**. On submit the code is re-validated and the
+  discount recomputed **authoritatively server-side**; a code that fails at
+  submit time rejects the whole submission (nothing is saved) so the visitor can
+  fix or remove it.
+
+### How the discount is applied
+
+- The discount is computed off the resolved amount (after the field's
+  `min`/`max` bounds) and **clamped so the total never goes negative**. Fixed
+  discounts are in the **Commerce store's primary currency** — the authoritative
+  one for the charge.
+- The Commerce order's Donation line item carries the **discounted** amount; the
+  coupon is not a Commerce promotion object.
+- If the discount covers the full amount (**free after discount**), the
+  submission is recorded as `paid` without contacting the gateway at all.
+- **Usage counting is race-safe**: a use is reserved atomically right before the
+  charge, so a once-only code can't be redeemed twice concurrently. A declined
+  charge releases the reservation immediately; an abandoned offsite payment
+  releases it when the pending submission expires or is canceled (see
+  [above](#payment-status--abandoned-checkouts)). Previewing never consumes a use.
+
+The applied code and discount amount are stored with the submission and shown as
+a **Coupon** row on its CP detail screen.
+
+---
+
 ## In the Control Panel
 
 - **Submissions index** — add the optional **Payment** column (and sort by it) to
   see each submission's status at a glance. It is off by default; enable it from
   the column picker.
-- **Submission detail** — a Payment block shows the status, the amount, and a link
+- **Submission detail** — a Payment block shows the status, the amount, a
+  **Coupon** row (code + discount) when one was redeemed, and a link
   to the underlying Commerce **order** (when Commerce is installed).
 
 Filter programmatically with the submission query params

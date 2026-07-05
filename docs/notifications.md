@@ -179,6 +179,31 @@ uploads) is capped by the **Max attachment size (MB)** setting
 the email over the cap are **skipped from the attachment** (and logged) — they
 remain available as in-body download links instead.
 
+## The notification log
+
+Every outbound form email — per-notification sends and the legacy single email
+alike — is recorded in a **notification log**, so "did the confirmation go out?"
+has a checkable answer. Open it from the top-level **Simple Form →
+Notifications** nav item (requires the `viewSubmissions` permission).
+
+- **Stat cards** — Total / Sent / Failed counts. Clicking a card filters the
+  list by that status.
+- **Per-send rows** — each row records when it was sent, the form, the
+  notification's name (or *Legacy email*), a link to the submission, the
+  recipients, the subject, and a Sent/Failed status with a failure message.
+- **Filters** — a form dropdown plus the status cards; the list shows the 200
+  most recent matching rows.
+
+The log is **read-only** — there is no per-row resend or delete. (Failed
+*integration* dispatches have their own log with resend, see
+[Outbound integrations](integrations.md).) Logging is best-effort: a log-write
+failure never blocks the email itself.
+
+Rows are pruned on Craft's garbage-collection run after
+**`retainNotificationLogsDays`** days (default **90**; `0` = keep forever) — the
+*"Delete notification logs after (days)"* setting on the privacy settings tab.
+A submission's detail screen also lists the log rows for that submission.
+
 ## Queued / async delivery
 
 On a successful submission, notification sending is pushed to Craft's queue (a

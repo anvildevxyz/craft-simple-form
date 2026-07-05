@@ -59,6 +59,32 @@ The variable adds element lookups, render granularity and front-end editing.
 | `forms(criteria = {})` | `FormQuery` | `criteria` is applied with `Craft::configure`. |
 | `submissions(criteria = {})` | `SubmissionQuery` | Same pattern for submissions. |
 
+`submissions()` gives your own (trusted) templates query access to stored
+submissions — e.g. a members-only "your submissions" page:
+
+```twig
+{% set mine = craft.simpleForm.submissions({
+    formId: form.id,
+    userId: currentUser.id,
+    limit: 10,
+}).all() %}
+```
+
+This is a site-template convenience with full read access — GraphQL
+deliberately has no equivalent (see [GraphQL](#graphql)).
+
+#### Edition helpers
+
+```twig
+{% if craft.simpleForm.isPro() %} … {% endif %}
+```
+
+| Method | Returns | Notes |
+| --- | --- | --- |
+| `edition()` | `string` | The active edition handle: `solo` or `pro`. |
+| `isPro()` | `bool` | Whether the active edition is Pro. |
+| `can(capability)` | `bool` | Whether the active edition may use a capability, e.g. `craft.simpleForm.can('payments')`. |
+
 #### Rendering
 
 ```twig
@@ -237,10 +263,23 @@ mutation {
     submissionId
     redirectUrl
     message                   # resolved confirmation text; matches the AJAX response
+    quizScore                 # quiz results — all null when the form isn't a quiz
+    quizMaxScore
+    quizPercentage            # 0–100
+    quizGrade                 # grade-band label, or null without bands
     errors { key messages }
   }
 }
 ```
+
+On a [quiz-mode](quiz-and-surveys.md) form the payload carries the submission's
+score, so a headless client can show the result immediately.
+
+> **File fields can't be submitted over GraphQL.** `SimpleFormFieldValueInput`
+> accepts only `String` / `[String]` values — there is no upload scalar and no
+> multipart handling in the mutation. Submit forms with File Upload (or
+> Signature) fields through the rendered front end or a plain HTTP POST to the
+> submit endpoint, which accept multipart uploads.
 
 `updateSubmission` edits an existing submission through the same save core,
 authorized by a valid edit `token` **or** an authenticated owner:
@@ -289,6 +328,41 @@ Event::on(
 | --- | --- |
 | `Plugin::EVENT_BEFORE_SUBMISSION_SAVE` | Before the submission is persisted. |
 | `Plugin::EVENT_AFTER_SUBMISSION_SAVE` | After it is persisted (the plugin's own outbound integrations dispatch off this). |
+
+### Workflow & partial-capture events
+
+Two follow-up hooks fire on `Plugin::class` for features where the plugin
+deliberately sends nothing itself:
+
+```php
+use anvildev\simpleform\Plugin;
+use anvildev\simpleform\events\WorkflowTransitionEvent;
+use anvildev\simpleform\events\PartialCaptureEvent;
+use yii\base\Event;
+
+// After a submission moves between workflow stages — e.g. notify the assignee
+// or dispatch an integration on "approved".
+Event::on(Plugin::class, Plugin::EVENT_SUBMISSION_TRANSITIONED, function(WorkflowTransitionEvent $e): void {
+    $e->submission;  // the Submission element
+    $e->from;        // previous stage handle (string|null)
+    $e->to;          // new stage handle (string)
+    $e->user;        // the acting User, or null for a programmatic move
+});
+
+// After a passive partial is captured — build your own abandonment follow-up
+// (a CRM ping, a "you left something behind" email); the plugin sends nothing.
+Event::on(Plugin::class, Plugin::EVENT_PARTIAL_CAPTURED, function(PartialCaptureEvent $e): void {
+    $e->form;    // the Form element
+    $e->values;  // the field_<id> => value map captured so far
+    $e->siteId;  // the capture site
+    $e->token;   // the partial's plaintext token (only its hash is persisted)
+});
+```
+
+| Constant | When | Guide |
+| --- | --- | --- |
+| `Plugin::EVENT_SUBMISSION_TRANSITIONED` | After a submission moves between workflow stages (not for the automatic initial-stage placement). | [Submissions](submissions.md#submission-approval-workflow) |
+| `Plugin::EVENT_PARTIAL_CAPTURED` | After a [passive partial](building-forms.md#passive-partial-capture-abandoned-attempts) is stored. | [Building forms](building-forms.md#passive-partial-capture-abandoned-attempts) |
 
 ### Lifecycle seam events (modify / cancel)
 
@@ -414,6 +488,12 @@ and analyse submissions over JSON-RPC 2.0. It is exposed at `simple-form/mcp`.
 turned on, and every request must carry a bearer token. Tokens are stored
 hash-only (`mcpTokens` setting) — the plaintext secret is shown once at creation
 and never persisted.
+
+**Request/response only — no SSE streaming.** The endpoint implements the
+POST (request → JSON response) half of MCP's *Streamable HTTP* transport.
+Server-initiated messages over a GET/SSE stream are **intentionally not
+implemented**; every shipped tool is a bounded request/response call, so
+clients should not open a stream connection.
 
 ### Scopes
 
