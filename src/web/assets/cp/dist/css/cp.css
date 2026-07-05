@@ -242,6 +242,16 @@
 .sf-field-move:disabled { color: #d4dae0; cursor: default; }
 .sf-grip { color: #b3bcc6; cursor: grab; user-select: none; letter-spacing: -2px; }
 
+/* Step separators (#292): bracket each page's fields in a multi-page form. */
+.sf-page-sep {
+    display: flex; align-items: center; gap: 8px;
+    margin: 14px 0 6px; font-size: 11px; font-weight: 700;
+    color: #596673; text-transform: uppercase; letter-spacing: .5px;
+}
+.sf-page-sep::before, .sf-page-sep::after {
+    content: ''; flex: 1; border-top: 1px dashed #cdd8e4;
+}
+
 /* Multi-column rows in the canvas mirror the front-end grid so paired fields
    preview side by side; widths come from the inline --sf-cols custom property. */
 .sf-builder-row {
