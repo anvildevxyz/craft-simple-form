@@ -396,6 +396,21 @@ class FormsController extends Controller
             );
         }
 
+        // Same guard rail for field visibility/required rules and logic jumps
+        // (#288): sync() prunes rules whose target left the set, so tell the
+        // owner which fields just lost rules instead of dropping them silently.
+        $prunedRules = FieldSyncService::prunedRuleReferences($items);
+        if ($prunedRules !== []) {
+            $notice .= ' ' . Craft::t(
+                'simple-form',
+                'Rules on {fields} referenced fields that no longer exist ({targets}) and were removed.',
+                [
+                    'fields' => implode(', ', array_keys($prunedRules)),
+                    'targets' => implode(', ', array_unique(array_merge(...array_values($prunedRules)))),
+                ],
+            );
+        }
+
         Craft::$app->getSession()->setNotice($notice);
         return $this->redirect("simple-form/forms/edit/{$form->id}?site={$site->handle}");
     }

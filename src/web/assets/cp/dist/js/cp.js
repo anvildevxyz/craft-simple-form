@@ -129,6 +129,11 @@
         });
     }
 
+    // Shared with form-builder.js (same asset bundle, loaded first) so the
+    // builder's destructive actions use the same accessible dialog (#288).
+    window.SimpleFormCp = window.SimpleFormCp || {};
+    window.SimpleFormCp.sfConfirm = sfConfirm;
+
     // Any form opting into confirmation defers submit until the user agrees.
     document.querySelectorAll('form[data-sf-confirm]').forEach(function (form) {
         var armed = false;
