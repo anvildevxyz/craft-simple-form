@@ -63,6 +63,8 @@ A form already using Pro features when the license drops to Solo:
 
 This "no new escalation" rule (vs "must remove Pro") avoids both data loss and a support flood.
 
+Three deliberate exceptions run edition checks at **execution time** (not authoring): conditional submit-message resolution (`SubmissionService`, falls back to the default message), PDF generation (`PdfService::isAvailable()`, notifications send without the attachment), and audit logging (`AuditService::log()` no-ops). These pause on Solo and resume on Pro — they are back-office services, so pausing them never breaks a visitor-facing form. By contrast Akismet, denylists, and retention deliberately keep running after a downgrade so data hygiene never regresses. The published copy (README/CHANGELOG) states this scoping explicitly (#286).
+
 ## The keystone: `src/Editions.php`
 
 ```php
