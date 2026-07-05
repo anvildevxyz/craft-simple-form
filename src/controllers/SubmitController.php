@@ -3,9 +3,12 @@
 namespace anvildev\simpleform\controllers;
 
 use anvildev\simpleform\elements\Form;
+use anvildev\simpleform\helpers\FieldQueryHelper;
 use anvildev\simpleform\Plugin;
 use Craft;
 use craft\web\Controller;
+use yii\web\BadRequestHttpException;
+use yii\web\NotFoundHttpException;
 use yii\web\Response;
 
 class SubmitController extends Controller
@@ -44,8 +47,21 @@ class SubmitController extends Controller
         /** @var \craft\web\Request $request */
         $request = Craft::$app->getRequest();
 
+        // The bundled front-end script posts via fetch with X-Requested-With
+        // (and Accept: application/json); a visitor with JS disabled/failed
+        // posts a plain form whose Accept header leads with text/html. Only
+        // that explicit-HTML case round-trips as flashed message/errors +
+        // redirect (#287) — everything else (fetch defaults to */*, curl sends
+        // no Accept, existing headless clients) keeps getting JSON, so custom
+        // front-ends built against the JSON contract are unaffected.
+        $acceptsHtml = str_contains((string) $request->getHeaders()->get('Accept'), 'text/html');
+        $wantsJson = !$acceptsHtml || $request->getAcceptsJson() || $request->getIsAjax();
+
         $formHandle = (string) $request->getBodyParam('formHandle', '');
         if (empty($formHandle)) {
+            if (!$wantsJson) {
+                throw new BadRequestHttpException('Form handle is required');
+            }
             return $this->asJson([
                 'success' => false,
                 'errors' => ['form' => ['Form handle is required']],
@@ -59,6 +75,9 @@ class SubmitController extends Controller
         // returns 429 with the standard error envelope; 0 disables it.
         if ($submissions->isRateLimited($request->getUserIP())) {
             $message = Craft::t('simple-form', 'Too many submissions. Please wait a moment and try again.');
+            if (!$wantsJson) {
+                return $this->htmlErrors($formHandle, [$message]);
+            }
             $this->response->setStatusCode(429);
             return $this->asJson([
                 'success' => false,
@@ -73,6 +92,9 @@ class SubmitController extends Controller
             ->one();
 
         if (!$form) {
+            if (!$wantsJson) {
+                throw new NotFoundHttpException('Form not found');
+            }
             return $this->asJson([
                 'success' => false,
                 'errors' => ['form' => ['Form not found']],
@@ -90,6 +112,9 @@ class SubmitController extends Controller
         // report success so bots get no signal, but never persist the row. No row
         // means no per-form resolution, so fall back to the global message.
         if ($result['submission'] === null && $result['errors'] === null) {
+            if (!$wantsJson) {
+                return $this->htmlSuccess($formHandle, (string) $plugin->getSettings()->submitMessage);
+            }
             return $this->asJson([
                 'success' => true,
                 'message' => $plugin->getSettings()->submitMessage,
@@ -98,6 +123,9 @@ class SubmitController extends Controller
         }
 
         if (!empty($result['errors'])) {
+            if (!$wantsJson) {
+                return $this->htmlErrors($formHandle, $this->flattenErrors($form, $result['errors']));
+            }
             return $this->asJson([
                 'success' => false,
                 'errors' => $result['errors'],
@@ -108,6 +136,9 @@ class SubmitController extends Controller
         // "done": send the visitor straight to the gateway redirect, overriding
         // the normal post-submit behavior (#116).
         if (!empty($result['paymentRedirectUrl'])) {
+            if (!$wantsJson) {
+                return $this->redirect($result['paymentRedirectUrl']);
+            }
             return $this->asJson([
                 'success' => true,
                 'redirectUrl' => $result['paymentRedirectUrl'],
@@ -118,11 +149,79 @@ class SubmitController extends Controller
         // sharing the exact resolution the GraphQL path uses.
         $post = $submissions->resolvePostSubmit($form, $result['submission'], $result['data'] ?? []);
 
+        if (!$wantsJson) {
+            if (!empty($post['redirectUrl'])) {
+                return $this->redirect($post['redirectUrl']);
+            }
+            return $this->htmlSuccess($formHandle, (string) $post['message']);
+        }
+
         return $this->asJson([
             'success' => true,
             'message' => $post['message'],
             'redirectUrl' => $post['redirectUrl'],
         ]);
+    }
+
+    // =========================================================================
+    // Private Methods
+    // =========================================================================
+
+    /**
+     * No-JS success: flash the resolved message under a per-form key (so two
+     * forms on one page can't cross-talk) and send the visitor back to the page
+     * they posted from. The form render reads and clears the flash.
+     */
+    private function htmlSuccess(string $formHandle, string $message): Response
+    {
+        Craft::$app->getSession()->setFlash("simpleForm:success:$formHandle", $message);
+        return $this->redirectBack();
+    }
+
+    /**
+     * No-JS failure: flash the error list per-form and redirect back so the
+     * re-rendered form shows them via the errors partial.
+     *
+     * @param list<string> $errors
+     */
+    private function htmlErrors(string $formHandle, array $errors): Response
+    {
+        Craft::$app->getSession()->setFlash("simpleForm:errors:$formHandle", $errors);
+        return $this->redirectBack();
+    }
+
+    private function redirectBack(): Response
+    {
+        /** @var \craft\web\Request $request */
+        $request = Craft::$app->getRequest();
+        return $this->redirect($request->getReferrer() ?: Craft::$app->getSites()->getCurrentSite()->getBaseUrl());
+    }
+
+    /**
+     * Flatten the per-field error map into displayable lines, prefixing each
+     * message with the field's label so a top-of-form list stays attributable
+     * ("Email: This field is required."). Form-level errors pass through bare.
+     *
+     * @param array<string, list<string>> $errors field handle => messages
+     * @return list<string>
+     */
+    private function flattenErrors(Form $form, array $errors): array
+    {
+        $labels = [];
+        foreach (FieldQueryHelper::fieldsForForm((int) $form->id, (int) $form->siteId) as $field) {
+            $labels[$field['name']] = $field['label'];
+        }
+
+        $lines = [];
+        foreach ($errors as $handle => $messages) {
+            $label = $labels[$handle] ?? null;
+            foreach ((array) $messages as $message) {
+                $lines[] = ($label !== null && $label !== '')
+                    ? sprintf('%s: %s', $label, $message)
+                    : (string) $message;
+            }
+        }
+        return $lines;
     }
 
     /**

@@ -16,6 +16,8 @@
     action         submit endpoint URL
     hasFileField   whether a multipart enctype is needed
     errorMessage   configured (localized) error message
+    flashSuccess   no-JS round-trip: flashed success message or '' (#287)
+    flashErrors    no-JS round-trip: flashed list<string> of errors (#287)
     csrfInput      Markup — place verbatim
     honeypot       Markup|'' — hidden honeypot input
     captcha        Markup|'' — captcha widget
@@ -27,6 +29,12 @@
 -#}
 {%- apply spaceless -%}
 <form class="{{ formClass }}" method="POST"{% if hasFileField %} enctype="multipart/form-data"{% endif %}{% if errorMessage %} data-sf-error="{{ errorMessage }}"{% endif %}{% if captureUrl %} data-sf-capture="{{ captureUrl }}"{% endif %}{% if jumpsAttr %} data-sf-jumps="{{ jumpsAttr }}"{% endif %}{% if resume and resume.enabled %} data-sf-resume="{{ resume.url }}" data-sf-resume-label="{{ resume.labels.saved }}" data-sf-resume-copy="{{ resume.labels.copy }}" data-sf-resume-copied="{{ resume.labels.copied }}"{% if resume.token %} data-sf-resume-token="{{ resume.token }}"{% endif %}{% endif %}{% if formId %} id="{{ formId }}"{% endif %}{% for name, value in extraAttributes %} {{ name }}="{{ value }}"{% endfor %} action="{{ action }}">
+{%- if flashSuccess is defined and flashSuccess -%}
+<p class="simple-form-success" role="status">{{ flashSuccess }}</p>
+{%- endif -%}
+{%- if flashErrors is defined and flashErrors|length -%}
+{% include partials.errors with { errors: flashErrors } only %}
+{%- endif -%}
 {{- csrfInput -}}
 <input type="hidden" name="formHandle" value="{{ handle }}">
 {{- honeypot -}}
