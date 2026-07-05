@@ -38,6 +38,42 @@ toggle (Spam is excluded from the cycle — it's set by the spam check). The
 filter additionally offers **all**. A spam submission can be **approved** back to
 **New** (clearing its spam reason) from its detail screen.
 
+## Submission approval workflow
+
+Beyond the read statuses above, submissions can move through an **owner-defined
+approval pipeline** — e.g. *Submitted → In review → Approved / Rejected*. Off by
+default; configure it under **Simple Form → Settings → Workflow** (needs
+`manageSettings`):
+
+1. Toggle **Enable Workflow**.
+2. Add ordered **Stages** — each has a label, a slugified handle, and a color.
+   New (non-spam) submissions automatically enter the **first** stage.
+3. Add **Transitions** — each allows a move *From* one stage *To* another, with
+   an optional **button label** and optional **allowed user groups** (leave all
+   groups unchecked to allow any submission manager; admins always may).
+
+The pipeline lives in the plugin settings (project config), so it deploys with
+the project: `enableWorkflow`, `workflowStatuses`, `workflowTransitions` — see
+the [Settings reference](reference/SETTINGS.md).
+
+### Working the pipeline
+
+- A submission's detail screen shows a **Workflow** block with its current stage
+  and **one button per transition** allowed from that stage for the current user
+  (needs `manageSubmissions`; per-transition group limits are re-checked
+  server-side).
+- The submissions screen can filter by stage (`?workflow=<handle>`).
+- Every transition is **audit-logged** (`workflow: <from> → <to>`).
+
+The workflow stage is **independent of the read status** (new/read/archived/
+spam): a submission can be *read* and *In review* at once, and the spam queue is
+unaffected. Submissions created before the workflow was enabled simply have no
+stage.
+
+The plugin sends nothing on a transition by itself — hook
+`EVENT_SUBMISSION_TRANSITIONED` to notify people or dispatch integrations; see
+[Twig & developer API](twig-and-api.md#events).
+
 ## Bulk actions
 
 Select submissions in the index and apply a bulk **element action**:
@@ -78,9 +114,19 @@ plugin settings:
 |---------|---------|---------|
 | `retainSubmissionsDays` | `0` (keep) | Prune submissions older than N days. |
 | `retainIntegrationLogsDays` | `90` | Prune integration dispatch-log rows. |
+| `retainNotificationLogsDays` | `90` | Prune [notification-log](notifications.md#the-notification-log) rows. |
 | `retainAuditLogDays` | `365` | Prune audit-log rows. |
 | `draftRetentionDays` | `30` | Drop unfinished save-&-resume drafts (each save refreshes the expiry). |
+| `partialRetentionDays` | `7` | Drop [passively-captured partials](building-forms.md#passive-partial-capture-abandoned-attempts). |
 | `anonymizeInsteadOfDelete` | `false` | Anonymize submissions instead of deleting them. |
+
+### Not storing IP addresses
+
+For GDPR data minimization, the **Collect IP addresses** setting
+(`collectIpAddresses`, on by default) can be turned off so the visitor's IP is
+**never stored** on submissions. Rate limiting keeps working (it only reads the
+request IP transiently, persisting nothing), and IP-based duplicate detection
+degrades to its other keys.
 
 ### Anonymize instead of delete
 
@@ -90,6 +136,29 @@ nulled, but the row, its read status and the element survive — so aggregate
 counts and analytics stay meaningful. Whether deleting or anonymizing, any
 **assets** referenced by file/signature fields are also deleted, so an image
 never outlives the submission it belonged to.
+
+## The Dashboard
+
+**Simple Form → Dashboard** is the plugin's landing page (clicking the
+top-level *Simple Form* nav item lands here). It gives a one-glance answer to
+"what happened, and what needs me?", scoped to the **current CP site**:
+
+- **Stat cards** — Forms, total Submissions, Last 7 days, and Spam blocked;
+  each card links to the matching screen/filter.
+- **Needs attention** — a warning note listing *new submissions to review* and
+  *failed integration dispatches*, each linking to the filtered list. Shown
+  only when there is something to act on.
+- **Submissions over time** — a daily bar chart over a fixed trailing 30-day
+  window with a real date axis, plus a **By weekday** breakdown of the same
+  window.
+- **Recent submissions** — the latest 8 (spam excluded), each linking to its
+  detail screen.
+- **Top forms** — the five busiest forms, linking to their filtered submissions.
+
+Viewing the Dashboard requires `viewSubmissions` (users without it are
+redirected to the screen they *can* use). The numbers come from the same
+reporting service as the [Analytics dashboard](#analytics-dashboard) below, so
+the two always agree; use Analytics for selectable ranges and per-field detail.
 
 ## Analytics dashboard
 

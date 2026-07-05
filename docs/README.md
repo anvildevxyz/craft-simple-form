@@ -9,30 +9,36 @@ first form, and what to configure first.
 ## Feature guides
 
 - **[Building forms](building-forms.md)** — the form builder, multi-step pages,
-  multi-column layouts, save-and-continue-later, post-submit behaviour, stencils,
-  and duplicating forms.
-- **[Field types](field-types.md)** — reference for all 28 field types and their
-  configuration options.
+  multi-column layouts, conversational (one-question-per-screen) mode,
+  save-and-continue-later, passive partial capture, UTM/attribution capture,
+  post-submit behaviour, sharing & embedding, stencils, and duplicating forms.
+- **[Field types](field-types.md)** — reference for all 29 field types and their
+  configuration options, including address autocomplete.
 - **[Conditional logic](conditional-logic.md)** — show/hide fields and make them
   conditionally required based on other fields' values, with live client-side
-  evaluation and authoritative server-side enforcement.
+  evaluation and authoritative server-side enforcement — plus logic jumps to
+  branch a multi-page form.
+- **[Quizzes & surveys](quiz-and-surveys.md)** — score submissions against an
+  answer key with grade bands, and aggregate per-question survey reports.
 - **[Spam protection](spam-protection.md)** — honeypot, rate limiting, captcha
   providers (reCAPTCHA / hCaptcha / Turnstile), Akismet, denylists, duplicate
   prevention, and the spam-review queue.
 - **[Availability & limits](form-availability.md)** — open/close windows,
   submission quotas, login-required, and per-user submission limits.
 - **[Notifications](notifications.md)** — admin notifications, autoresponders,
-  conditional/multiple notifications, translatable templates, and PDF + file
-  attachments.
+  conditional/multiple notifications, translatable templates, PDF + file
+  attachments, and the CP notification log.
 - **[Outbound integrations](integrations.md)** — push submissions to webhooks and
   pluggable connectors (Slack/Discord, email marketing, CRMs, Google Sheets,
   Craft elements) asynchronously, with retries, dispatch logs, resend, and a
   read-only GraphQL/MCP surface. Includes how to write a custom connector.
-- **[Submissions](submissions.md)** — CP management, export, trash/restore,
-  retention/GDPR, analytics, audit log, and front-end editing.
+- **[Submissions](submissions.md)** — the CP Dashboard, submission management,
+  the approval workflow, export, trash/restore, retention/GDPR, analytics,
+  audit log, and front-end editing.
 - **[Payments](payments.md)** — collect a payment on submit via Craft Commerce:
-  the embedded gateway form, pay-to-submit flow, offsite/3-D-Secure handling,
-  payment status + abandoned-checkout expiry, and the CP surfaces.
+  the embedded gateway form, pay-to-submit flow, coupons/discount codes,
+  offsite/3-D-Secure handling, payment status + abandoned-checkout expiry, and
+  the CP surfaces.
 - **[Theming / render templates](render-templates.md)** — override how forms and
   fields render with your own Twig partials.
 - **[Import / export](import-export.md)** — move a form's full definition between

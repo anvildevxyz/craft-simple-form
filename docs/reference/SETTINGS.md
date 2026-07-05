@@ -49,6 +49,7 @@ Each section links to the guide that explains the feature in depth.
 | `akismetMode` | `flag` | On a spam verdict: `flag` (save as spam for review) or `block` (drop). |
 | `enableDenylists` | `false` | Owner-controlled keyword/email/IP denylists, evaluated before Akismet. |
 | `denylistMode` | `flag` | On a denylist hit: `flag` or `block`. |
+| `duplicateMode` | `flag` | On a per-form duplicate-prevention hit: `flag` (save as spam for review) or `block` (drop). Independent of `denylistMode` / `akismetMode`; the per-form toggle is the form's **Prevent duplicates** setting. |
 | `blockedKeywords` | `null` | Newline-separated keywords (`*` wildcard), matched case-insensitively. |
 | `blockedEmails` | `null` | Newline-separated emails, `@domain.tld`, or `*.domain.tld`. |
 | `blockedIps` | `null` | Newline-separated IPs or CIDR ranges (v4/v6). |
@@ -93,10 +94,13 @@ Each section links to the guide that explains the feature in depth.
 
 | Setting | Default | Purpose |
 | --- | --- | --- |
+| `collectIpAddresses` | `true` | When off, the visitor's IP is never stored on submissions (GDPR data minimization). Rate limiting still works (nothing persisted); IP-based duplicate detection degrades to the other keys. |
 | `retainSubmissionsDays` | `0` | Prune submissions older than N days on GC. `0` = keep forever. |
 | `retainIntegrationLogsDays` | `90` | Prune integration dispatch logs older than N days. |
+| `retainNotificationLogsDays` | `90` | Prune [notification-log](../notifications.md#the-notification-log) rows older than N days. `0` = keep forever. |
 | `retainAuditLogDays` | `365` | Prune audit-log entries older than N days. |
 | `draftRetentionDays` | `30` | Keep an unfinished save-&-resume draft for N days (each save refreshes expiry). Must be > 0. |
+| `partialRetentionDays` | `7` | Keep a passively-captured partial for N days before GC. Deliberately short (abandoned PII shouldn't linger) and independent of `draftRetentionDays`. Must be > 0. |
 | `anonymizeInsteadOfDelete` | `false` | When pruning, scrub PII in place instead of deleting the row, so aggregate stats survive. |
 
 ## MCP server — see [Twig & developer API › MCP](../twig-and-api.md)
@@ -112,3 +116,19 @@ Each section links to the guide that explains the feature in depth.
 | --- | --- | --- |
 | `paymentGatewayHandle` | `null` | Commerce gateway handle to charge through. Empty = the store's first customer-enabled gateway. |
 | `paymentPendingTtlMinutes` | `60` | Minutes a pending (unpaid) submission may linger before GC cancels it. `0` disables expiry. |
+
+## Address autocomplete — see [Field types › Address](../field-types.md#address-address)
+
+| Setting | Default | Purpose |
+| --- | --- | --- |
+| `addressAutocompleteProvider` | `'photon'` | Geocoding provider for the Address field's opt-in autocomplete: `photon` / `nominatim` (keyless OpenStreetMap services) or `google` (Places, reserved for a future provider; needs an API key). Each Address field opts in per field — this only picks the provider. |
+| `addressAutocompleteEndpoint` | `null` | Optional endpoint override (env-ref supported) — point at a self-hosted Photon/Nominatim instance. Blank = the provider's public default. |
+| `addressAutocompleteApiKey` | `null` | API key for providers that require one (env-ref supported); the keyless OSM providers ignore it. It is passed to the browser, so use a referrer-restricted key. |
+
+## Submission workflow — see [Submissions › Approval workflow](../submissions.md#submission-approval-workflow)
+
+| Setting | Default | Purpose |
+| --- | --- | --- |
+| `enableWorkflow` | `false` | Turn on the configurable approval pipeline. When off, submissions carry only the regular read status (new/read/archived/spam). |
+| `workflowStatuses` | `[]` | Ordered workflow stages, each `{handle, label, color}`. New submissions enter the **first** stage. |
+| `workflowTransitions` | `[]` | Allowed stage-to-stage moves, each `{from, to, label, groups}`. `groups` lists the user-group handles allowed to perform the transition; empty = any submission manager (admins always may). |

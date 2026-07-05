@@ -1,6 +1,6 @@
 # Field Types
 
-Simple Form ships **28 field types**, covering everything from a plain text box
+Simple Form ships **29 field types**, covering everything from a plain text box
 to composite name/address blocks, element pickers, a drawn signature, and a
 server-computed calculation. This guide is a reference for every type and the
 real config options each one exposes.
@@ -33,8 +33,8 @@ scale points, allowed countries), membership is enforced server-side so an
 out-of-set value is rejected regardless of what the browser sent.
 
 A few types collect **no** submitted value at all — the layout blocks (Heading,
-Divider, HTML) render on the page but are skipped by validation, storage, and
-export.
+Divider, HTML, Text) render on the page but are skipped by validation, storage,
+and export.
 
 ---
 
@@ -206,6 +206,31 @@ hardcoded). line1 / city / postalCode / country are primary.
 
 - `subFields` — per-sub overlay of `{enabled, required, label}`, keyed by
   `line1` / `line2` / `city` / `state` / `postalCode` / `country`.
+- `enableAutocomplete` — the **Enable Autocomplete** toggle renders a *"Search
+  for an address"* box above the sub-inputs that suggests addresses as the
+  visitor types (min. 3 characters) and fills the sub-fields from the picked
+  suggestion.
+
+#### Address autocomplete
+
+Autocomplete is **opt-in per field**; the *provider* is chosen globally in
+**Settings → General → Address Autocomplete**:
+
+- **Provider** (`addressAutocompleteProvider`) — **Photon** (default) or
+  **Nominatim**, both keyless OpenStreetMap services.
+- **Endpoint override** (`addressAutocompleteEndpoint`) — point at a
+  self-hosted Photon/Nominatim instance; blank uses the provider's public
+  endpoint (mind the public services' usage policies on high-traffic forms).
+- **API key** (`addressAutocompleteApiKey`) — only for providers that require
+  one; the keyless OSM providers ignore it. The key is passed to the browser,
+  so use a referrer-restricted key and keep it in an env variable.
+
+Suggestions are fetched **directly from the visitor's browser to the
+provider** (no server proxy), so typed address text is sent to that third
+party — worth a line in your privacy policy. The feature is fully progressive:
+without JavaScript (or if the lookup fails) the plain sub-inputs work
+unchanged, and the chosen values are validated server-side like any manual
+entry.
 
 ---
 
@@ -341,6 +366,18 @@ A horizontal rule (`<hr>`) with an optional label shown over the line. The label
 is the field's translatable **label**; leave it blank for a plain rule.
 
 - Label — authored in the field **label** (per-site translatable, optional).
+
+### Text (`paragraph`)
+
+A static paragraph of instructions or copy between fields. The body is treated
+as **plain text** — it is HTML-escaped with line breaks preserved, never parsed
+as HTML or Twig — making it the safe, low-friction sibling to the HTML block
+(no sandbox, no permission gate needed). The type handle is `paragraph`
+(`text` was already taken by the single-line input); the builder palette
+labels it **Text**.
+
+- Body text — per-site translatable multi-line copy. An empty body renders
+  nothing.
 
 ### HTML Block (`html`)
 

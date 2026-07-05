@@ -320,6 +320,18 @@ type SimpleFormSubmitPayload {
   """
   message: String
 
+  """Raw quiz score on a quiz form, or null when the form is not a quiz."""
+  quizScore: Int
+
+  """Maximum attainable quiz score, or null when the form is not a quiz."""
+  quizMaxScore: Int
+
+  """Quiz score as a percentage (0–100), or null when not a quiz / no answer key."""
+  quizPercentage: Int
+
+  """Quiz grade band label, or null when not a quiz / no bands configured."""
+  quizGrade: String
+
   """Validation/processing errors; empty on success."""
   errors: [SimpleFormSubmissionError!]!
 }
