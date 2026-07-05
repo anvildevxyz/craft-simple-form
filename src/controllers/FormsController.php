@@ -534,10 +534,20 @@ class FormsController extends Controller
         $form = $this->getFormOrFail((int)$formId);
 
         if (!Craft::$app->getElements()->deleteElement($form)) {
+            if (!$request->getAcceptsJson()) {
+                Craft::$app->getSession()->setError(Craft::t('simple-form', 'Couldn’t delete the form.'));
+                return $this->redirect('simple-form/forms');
+            }
             return $this->asJsonErrors($form->getErrors());
         }
 
         Plugin::getInstance()->getAudit()->log(AuditService::ACTION_FORM_DELETE, AuditService::TARGET_FORM, (int) $formId, (string) ($form->title ?? $form->name));
+
+        // The forms index posts here as a full-page formsubmit, not Ajax.
+        if (!$request->getAcceptsJson()) {
+            Craft::$app->getSession()->setNotice(Craft::t('simple-form', 'Form deleted.'));
+            return $this->redirect('simple-form/forms');
+        }
 
         return $this->asJsonSuccess();
     }
