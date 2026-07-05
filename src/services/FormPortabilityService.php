@@ -111,6 +111,11 @@ class FormPortabilityService extends Component
                 'duplicateKey' => $form->duplicateKey,
                 'useCustomTemplate' => $form->useCustomTemplate,
                 'templatePath' => $form->templatePath,
+                'renderMode' => $form->renderMode,
+                'quizMode' => $form->quizMode,
+                'quizGradeBands' => $form->quizGradeBands,
+                'autoCaptureAttribution' => $form->autoCaptureAttribution,
+                'capturePartials' => $form->capturePartials,
                 'content' => $this->exportFormContent($formId, $supportedSiteIds),
             ],
             'fields' => $this->exportFields($formId, $supportedSiteIds),
@@ -812,6 +817,21 @@ class FormPortabilityService extends Component
         }
         if (array_key_exists('templatePath', $node)) {
             $form->templatePath = $node['templatePath'] !== null ? (string)$node['templatePath'] : null;
+        }
+        if (array_key_exists('renderMode', $node) && in_array($node['renderMode'], ['standard', 'conversational'], true)) {
+            $form->renderMode = (string)$node['renderMode'];
+        }
+        if (array_key_exists('quizMode', $node)) {
+            $form->quizMode = (bool)$node['quizMode'];
+        }
+        if (array_key_exists('quizGradeBands', $node)) {
+            $form->quizGradeBands = $node['quizGradeBands'] !== null ? (string)$node['quizGradeBands'] : null;
+        }
+        if (array_key_exists('autoCaptureAttribution', $node)) {
+            $form->autoCaptureAttribution = (bool)$node['autoCaptureAttribution'];
+        }
+        if (array_key_exists('capturePartials', $node)) {
+            $form->capturePartials = (bool)$node['capturePartials'];
         }
 
         // A "redirect to entry" action with no resolvable target would fail
