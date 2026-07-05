@@ -241,6 +241,22 @@
 
 <hr>
 
+<h3>{{ 'Duplicate submissions'|t('simple-form') }}</h3>
+<p class="light">{{ 'Duplicate prevention is enabled per form (on each form’s Advanced settings). This global setting controls what happens when a duplicate is detected.'|t('simple-form') }}</p>
+
+{{ forms.selectField({
+    label: 'On a duplicate hit'|t('simple-form'),
+    id: 'duplicateMode',
+    name: 'duplicateMode',
+    options: {
+        'flag': 'Flag (save as spam for review)'|t('simple-form'),
+        'block': 'Block (silently drop the submission)'|t('simple-form'),
+    },
+    value: settings.duplicateMode ?? 'flag',
+}) }}
+
+<hr>
+
 <h3>{{ 'Rate limiting'|t('simple-form') }}</h3>
 <p class="light">{{ 'Throttle how often a single visitor can submit, independent of CAPTCHA/honeypot.'|t('simple-form') }}</p>
 

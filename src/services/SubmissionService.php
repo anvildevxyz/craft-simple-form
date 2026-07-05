@@ -863,7 +863,7 @@ class SubmissionService extends Component
         // hit either drops silently (block) or flags as spam (flag). The first
         // matching reason wins, so a denylist hit takes precedence.
         if ($quarantineReason === null && $this->isDuplicate($form, $data)) {
-            if ($settings->denylistMode === Settings::DENYLIST_BLOCK) {
+            if ($settings->duplicateMode === Settings::DUPLICATE_BLOCK) {
                 return ['result' => ['submission' => null, 'errors' => null], 'data' => [], 'isSpam' => false];
             }
             $quarantineReason = 'duplicate';
