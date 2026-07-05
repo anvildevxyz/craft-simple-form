@@ -1149,6 +1149,13 @@ class SubmissionService extends Component
      */
     private function sourceIp(): ?string
     {
+        // GDPR data-minimization opt-out (#293): never read the IP for storage
+        // when collection is off. (The rate limiter reads the request IP
+        // directly and persists nothing, so it is unaffected.)
+        if (!Plugin::getInstance()->getSettings()->collectIpAddresses) {
+            return null;
+        }
+
         /** @var \craft\web\Request $request */
         $request = Craft::$app->getRequest();
         if ($request->getIsConsoleRequest()) {

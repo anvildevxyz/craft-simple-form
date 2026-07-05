@@ -1,5 +1,15 @@
 {% import "_includes/forms.twig" as forms %}
 
+<h2>{{ 'Data Collection'|t('simple-form') }}</h2>
+
+{{ forms.lightswitchField({
+    label: 'Collect IP addresses'|t('simple-form'),
+    instructions: 'Store the visitor’s IP address on each submission. Turn off for GDPR data minimization — rate limiting still works (nothing is stored), but IP-based duplicate detection is disabled.'|t('simple-form'),
+    id: 'collectIpAddresses',
+    name: 'collectIpAddresses',
+    on: settings.collectIpAddresses,
+}) }}
+
 <h2>{{ 'Data Retention'|t('simple-form') }}</h2>
 <p class="light">
     {{ 'Automatically prune old data on Craft’s garbage-collection run. Use 0 to keep data forever.'|t('simple-form') }}

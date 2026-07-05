@@ -183,6 +183,14 @@ class Settings extends Model
      * configured number of days are pruned on Craft's garbage-collection run.
      * 0 = keep forever.
      */
+    /**
+     * GDPR data minimization (#293): when off, the visitor's IP is never
+     * stored on submissions. The transient rate limiter still reads the
+     * request IP (nothing persisted), and IP-based duplicate detection
+     * degrades to the other dedupe keys.
+     */
+    public bool $collectIpAddresses = true;
+
     public int $retainSubmissionsDays = 0;
     public int $retainIntegrationLogsDays = 90;
     public int $retainNotificationLogsDays = 90;
@@ -339,7 +347,7 @@ class Settings extends Model
             // Skip the email format check for env references (`$VAR`), which only
             // resolve at runtime.
             [['defaultEmailSender'], 'email', 'when' => fn(): bool => !str_starts_with((string) $this->defaultEmailSender, '$')],
-            [['enableHoneypot', 'enableCaptcha', 'cacheFormStructure', 'inlineFormAssets', 'enableMcp', 'dispatchIntegrationsSynchronously', 'enableAkismet', 'anonymizeInsteadOfDelete', 'allowGraphqlCaptchaBypass', 'enableDenylists'], 'boolean'],
+            [['enableHoneypot', 'enableCaptcha', 'cacheFormStructure', 'inlineFormAssets', 'enableMcp', 'dispatchIntegrationsSynchronously', 'enableAkismet', 'anonymizeInsteadOfDelete', 'allowGraphqlCaptchaBypass', 'enableDenylists', 'collectIpAddresses'], 'boolean'],
             [['retainSubmissionsDays', 'retainIntegrationLogsDays', 'retainNotificationLogsDays', 'retainAuditLogDays', 'submitRateLimitPerMinute', 'maxAttachmentSizeMb'], 'integer', 'min' => 0],
             [['pdfStorageVolume'], 'string'],
             [['draftRetentionDays', 'partialRetentionDays'], 'integer', 'min' => 1],
