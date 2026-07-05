@@ -617,6 +617,56 @@ class FieldSyncService extends Component
     }
 
     /**
+     * Report the conditional/jump references in a posted field set that
+     * {@see self::sanitizeConditional()} is about to prune — targets absent
+     * from the set or pointing at the field itself — keyed by the referencing
+     * field's handle. Pure, so the controller can warn the author about the
+     * exact rules that are being dropped instead of losing them silently
+     * (#288); mirrors the #267 guard rail for conditional messages.
+     *
+     * @param array<int,array<string,mixed>> $items
+     * @return array<string, list<string>> referencing handle => missing target handles
+     */
+    public static function prunedRuleReferences(array $items): array
+    {
+        $valid = [];
+        foreach ($items as $item) {
+            $handle = (string)($item['handle'] ?? '');
+            if ($handle !== '') {
+                $valid[$handle] = true;
+            }
+        }
+
+        $pruned = [];
+        foreach ($items as $item) {
+            $handle = (string)($item['handle'] ?? '');
+            $config = is_array($item['config'] ?? null) ? $item['config'] : [];
+            $missing = [];
+
+            $collect = static function(array $rules, string $key) use (&$missing, $valid, $handle): void {
+                foreach ($rules as $rule) {
+                    $target = is_array($rule) ? (string)($rule[$key] ?? '') : '';
+                    if ($target !== '' && ($target === $handle || !isset($valid[$target]))) {
+                        $missing[] = $target;
+                    }
+                }
+            };
+
+            $conditional = is_array($config['conditional'] ?? null) ? $config['conditional'] : [];
+            $collect(is_array($conditional['rules'] ?? null) ? $conditional['rules'] : [], 'field');
+            $required = is_array($conditional['required'] ?? null) ? $conditional['required'] : [];
+            $collect(is_array($required['rules'] ?? null) ? $required['rules'] : [], 'field');
+            $collect(is_array($config['jumps'] ?? null) ? $config['jumps'] : [], 'target');
+
+            if ($missing !== [] && $handle !== '') {
+                $pruned[$handle] = array_values(array_unique($missing));
+            }
+        }
+
+        return $pruned;
+    }
+
+    /**
      * Remove conditional rules whose target handle is not in the saved set, or
      * is the field's own handle. If a rule set ends up empty its block is
      * dropped; if the whole `conditional` config ends up inert it is removed.

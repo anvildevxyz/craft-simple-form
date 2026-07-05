@@ -347,6 +347,49 @@
         focusInspector();
     }
 
+    // Other fields whose visibility/required rules or logic jumps reference
+    // this handle — deleting it silently prunes those rules server-side on
+    // save, so the delete confirmation must warn about them (#288).
+    function fieldReferences(handle) {
+        if (!handle) { return []; }
+        return fields.filter(function(f) {
+            if (f.handle === handle) { return false; }
+            var c = f.config || {};
+            var rules = (c.conditional && c.conditional.rules) || [];
+            var reqRules = (c.conditional && c.conditional.required && c.conditional.required.rules) || [];
+            var jumps = c.jumps || [];
+            return rules.concat(reqRules).some(function(r) { return r && r.field === handle; })
+                || jumps.some(function(j) { return j && j.target === handle; });
+        });
+    }
+
+    // Confirmed delete: the small × is destructive (field config, rules, and
+    // any other field's rules that reference it, all gone on save) and there
+    // is no undo, so it always asks first — via the shared accessible dialog
+    // when available, the native confirm otherwise.
+    function confirmRemoveField(cid, refocusEl) {
+        var f = fields.filter(function(x) { return x.clientId === cid; })[0];
+        if (!f) { return; }
+        var name = f.label || TYPE_LABELS[f.type] || f.type;
+        var refs = fieldReferences(f.handle);
+        var message = 'Delete the \u201C' + name + '\u201D field?';
+        if (refs.length) {
+            var names = refs.map(function(r) { return r.label || r.handle; }).join(', ');
+            message += ' ' + refs.length + ' other field' + (refs.length === 1 ? ' has' : 's have')
+                + ' rules based on it (' + names + '); those rules will be removed too.';
+        }
+        // cp.js (same bundle, loaded first) provides the accessible dialog;
+        // native confirm() is banned in CP JS, so absent the dialog we keep the
+        // pre-#288 immediate-delete behavior rather than block deletion.
+        var ask = (window.SimpleFormCp && window.SimpleFormCp.sfConfirm)
+            ? window.SimpleFormCp.sfConfirm(message)
+            : Promise.resolve(true);
+        ask.then(function(ok) {
+            if (ok) { removeField(cid); }
+            else if (refocusEl && typeof refocusEl.focus === 'function') { refocusEl.focus(); }
+        });
+    }
+
     function removeField(cid) {
         fields = fields.filter(function(f) { return f.clientId !== cid; });
         if (selectedId === cid) { selectedId = null; showPalette(); }
@@ -1607,7 +1650,7 @@
 
     canvas.addEventListener('click', function(e) {
         var del = e.target.closest('.sf-field-del');
-        if (del) { e.preventDefault(); removeField(del.closest('.sf-field').dataset.cid); return; }
+        if (del) { e.preventDefault(); confirmRemoveField(del.closest('.sf-field').dataset.cid, del); return; }
         var block = e.target.closest('.sf-field');
         if (block) { select(block.dataset.cid); }
     });
