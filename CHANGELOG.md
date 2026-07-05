@@ -17,10 +17,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   save & continue later, the third-party integrations (Slack/Discord/CRM/Sheets),
   Commerce payments, Akismet + denylists, PDF attachments, the audit log,
   automated submission retention, and the MCP server / forms-as-code dev tools.
-- The edition gate governs **authoring, never runtime**: a form built on Pro
-  keeps rendering and accepting submissions after a downgrade to Solo. Saving
-  preserves its Pro features but can't extend them (no-new-escalation), and the
-  form editor shows a non-blocking "Pro features in use" banner.
+- The edition gate governs **authoring, never the visitor-facing runtime**: a
+  form built on Pro keeps rendering and accepting submissions after a downgrade
+  to Solo. Saving preserves its Pro features but can't extend them
+  (no-new-escalation), and the form editor shows a non-blocking "Pro features in
+  use" banner. Spam protection, denylists, and retention keep running after a
+  downgrade; the Pro-only back-office services (conditional submit-message
+  resolution, PDF attachments, audit logging) pause gracefully and resume on
+  returning to Pro.
 
 ### Changed
 - A freshly-installed plugin resolves to the Solo edition by default; run the

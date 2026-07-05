@@ -103,8 +103,13 @@ by default** — run the Pro edition to unlock the full feature set.
 | Commerce payments, PDF attachments, audit log, retention automation | — | ✅ |
 | MCP server + forms-as-code | — | ✅ |
 
-The edition gate governs *authoring*, never *runtime*: a form built on Pro keeps
-working after a downgrade to Solo — you just can't add more Pro features.
+The edition gate governs *authoring*, never the visitor-facing runtime: a form
+built on Pro keeps rendering and accepting submissions after a downgrade to
+Solo — you just can't add more Pro features. Spam protection, denylists, and
+retention keep running so data hygiene never regresses; the Pro-only back-office
+services (conditional submit-message resolution, PDF attachments, audit logging)
+pause gracefully — the default submit message is shown, emails send without the
+PDF, no audit rows are written — and resume on returning to Pro.
 
 ## License & Pricing
 
