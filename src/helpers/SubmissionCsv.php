@@ -245,7 +245,7 @@ final class SubmissionCsv
         /** @var array<int, true> $ids */
         $ids = [];
         foreach ($submissions as $submission) {
-            foreach (($submission->data ?? []) as $entry) {
+            foreach ($submission->getDisplayData() as $entry) {
                 self::collectAssetIds($entry, $ids);
             }
         }
@@ -555,7 +555,7 @@ final class SubmissionCsv
         $seen = [];
 
         foreach ($submissions as $submission) {
-            foreach (($submission->data ?? []) as $key => $entry) {
+            foreach ($submission->getDisplayData() as $key => $entry) {
                 $key = (string) $key;
 
                 if (self::isComposite($entry)) {
@@ -599,7 +599,7 @@ final class SubmissionCsv
      */
     private static function rowValues(Submission $submission, array $columns): array
     {
-        $data = $submission->data ?? [];
+        $data = $submission->getDisplayData();
 
         $values = [];
         foreach ($columns as $col) {

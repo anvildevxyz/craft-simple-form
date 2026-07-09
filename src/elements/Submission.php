@@ -18,6 +18,7 @@ use craft\helpers\UrlHelper;
 
 /**
  * @phpstan-type SubmissionData array<string, array{label: string, type: string, value: mixed}>
+ * @phpstan-type FieldSnapshot array<string, array{handle: string, label: string, type: string, order: int, options?: array<string, string>}>
  */
 class Submission extends Element
 {
@@ -31,6 +32,16 @@ class Submission extends Element
     public ?int $formId = null;
     /** @var SubmissionData|null */
     public ?array $data = null;
+    /**
+     * Immutable snapshot of the form's input-field structure captured at submit
+     * time (#312): handle, label, type, option labels, and display order, keyed by
+     * `field_<id>`. Renders the detail view and CSV export so a later rename,
+     * reorder, or delete never corrupts this submission. Null on pre-snapshot
+     * rows, which fall back to the labels/order stored inline on {@see self::$data}.
+     *
+     * @var FieldSnapshot|null
+     */
+    public ?array $fieldSnapshot = null;
     public ?int $userId = null;
     public string $readStatus = SubmissionStatus::NEW;
     /** Why this submission is flagged spam: 'akismet', 'manual', a denylist reason, 'duplicate', or null. */
@@ -147,6 +158,55 @@ class Submission extends Element
     }
 
     /**
+     * The submission's stored `data`, relabeled and reordered to honor the field
+     * snapshot captured at submit time (#312).
+     *
+     * When a {@see self::$fieldSnapshot} is present, each entry's label and the
+     * overall row order come from the snapshot — the authoritative record of how
+     * the form looked when this submission was made — so a later rename, reorder,
+     * or delete of a live field never changes how this historical submission
+     * reads. Entries with no matching snapshot key (and every entry on a
+     * pre-snapshot row, where the snapshot is null) fall back to the label and
+     * order already stored inline on `data`. The entry shape (`type`, `value`,
+     * `display`, …) is otherwise preserved so the detail view and exporter keep
+     * rendering each field type exactly as before.
+     *
+     * @return SubmissionData
+     */
+    public function getDisplayData(): array
+    {
+        $data = is_array($this->data) ? $this->data : [];
+        $snapshot = $this->fieldSnapshot;
+        if ($snapshot === null || $snapshot === []) {
+            return $data;
+        }
+
+        $ordered = [];
+
+        // Snapshot-ordered entries first, relabeled from the snapshot.
+        foreach ($snapshot as $key => $field) {
+            if (!array_key_exists($key, $data)) {
+                continue;
+            }
+            $entry = $data[$key];
+            if (is_array($entry)) {
+                $entry['label'] = $field['label'];
+            }
+            $ordered[$key] = $entry;
+        }
+
+        // Any stored entry the snapshot doesn't cover (defensive: a field type
+        // that stored data without a snapshot row) keeps its inline label/order.
+        foreach ($data as $key => $entry) {
+            if (!array_key_exists($key, $ordered)) {
+                $ordered[$key] = $entry;
+            }
+        }
+
+        return $ordered;
+    }
+
+    /**
      * Map the submission→form relationship so `Submission::find()->with(['form'])`
      * batch-loads parent forms in a bounded number of queries (Craft's standard
      * eager-loading mechanism).
@@ -191,6 +251,7 @@ class Submission extends Element
             'siteId' => $this->siteId,
             // Craft's json() column type encodes the array exactly once; pass the array.
             'data' => $this->data,
+            'fieldSnapshot' => $this->fieldSnapshot,
             'userId' => $this->userId,
             'readStatus' => $this->readStatus,
             'workflowStatus' => $this->workflowStatus,
