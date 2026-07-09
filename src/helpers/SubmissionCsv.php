@@ -62,9 +62,17 @@ final class SubmissionCsv
     private static array $fieldTypeMemo = [];
 
     /**
+     * Render the result set to a CSV string.
+     *
+     * When $onlyColumns is a non-empty list of header labels, only those columns
+     * are emitted (metadata + field columns alike), preserving natural order;
+     * null or an empty list keeps the default behaviour of every column (#317).
+     * Formula neutralization still applies to every emitted cell.
+     *
      * @param array<int, Submission> $submissions
+     * @param list<string>|null $onlyColumns header labels to keep, or null for all
      */
-    public static function fromSubmissions(array $submissions): string
+    public static function fromSubmissions(array $submissions, ?array $onlyColumns = null): string
     {
         self::warmAssetCache($submissions);
         $columns = self::discoverColumns($submissions);
@@ -83,7 +91,9 @@ final class SubmissionCsv
         if ($includeAttribution) {
             $header = [...$header, ...self::attributionHeaders()];
         }
-        fputcsv($handle, [...$header, ...array_column($columns, 'label')]);
+        $fullHeader = [...$header, ...array_column($columns, 'label')];
+        $mask = self::columnMask($fullHeader, $onlyColumns);
+        fputcsv($handle, self::applyMask($fullHeader, $mask));
 
         foreach ($submissions as $submission) {
             $form = $submission->getForm();
@@ -99,7 +109,7 @@ final class SubmissionCsv
             if ($includeAttribution) {
                 $meta = [...$meta, ...self::attributionValues($submission)];
             }
-            fputcsv($handle, [...$meta, ...self::rowValues($submission, $columns)]);
+            fputcsv($handle, self::applyMask([...$meta, ...self::rowValues($submission, $columns)], $mask));
         }
 
         rewind($handle);
@@ -110,20 +120,48 @@ final class SubmissionCsv
     }
 
     /**
+     * The ordered list of every column header the export would emit for the
+     * result set (metadata + field/sub-field labels), used to populate the
+     * export UI's column picker so the offered columns exactly match what the
+     * emitter can produce (#317).
+     *
+     * @param array<int, Submission> $submissions
+     * @return list<string>
+     */
+    public static function availableColumns(array $submissions): array
+    {
+        $header = ['ID', 'Form', 'Status', 'Submitted'];
+        if (self::includesQuiz($submissions)) {
+            $header = [...$header, ...self::quizHeaders()];
+        }
+        if (self::includesAttribution($submissions)) {
+            $header = [...$header, ...self::attributionHeaders()];
+        }
+
+        return [...$header, ...array_column(self::discoverColumns($submissions), 'label')];
+    }
+
+    /**
      * The same data as {@see fromSubmissions()} but as associative rows (metadata
      * keys + one key per field/sub-field label), for Craft's element-exporter
      * framework which formats the array to CSV/JSON/XML. Every row carries the
      * union of columns so they align.
      *
+     * When $onlyColumns is a non-empty list of header labels, each row is reduced
+     * to those keys (natural order preserved); null or an empty list keeps every
+     * column (#317). Formula neutralization still applies to every cell.
+     *
      * @param array<int, Submission> $submissions
+     * @param list<string>|null $onlyColumns header labels to keep, or null for all
      * @return list<array<string, string>>
      */
-    public static function toRows(array $submissions): array
+    public static function toRows(array $submissions, ?array $onlyColumns = null): array
     {
         self::warmAssetCache($submissions);
         $columns = self::discoverColumns($submissions);
         $includeQuiz = self::includesQuiz($submissions);
         $includeAttribution = self::includesAttribution($submissions);
+        $keep = ($onlyColumns === null || $onlyColumns === []) ? null : array_flip($onlyColumns);
 
         $rows = [];
         foreach ($submissions as $submission) {
@@ -146,6 +184,10 @@ final class SubmissionCsv
             $values = self::rowValues($submission, $columns);
             foreach ($columns as $i => $col) {
                 $row[$col['label']] = $values[$i];
+            }
+
+            if ($keep !== null) {
+                $row = array_intersect_key($row, $keep);
             }
             $rows[] = $row;
         }
@@ -436,6 +478,55 @@ final class SubmissionCsv
     // =========================================================================
     // Private Methods
     // =========================================================================
+
+    /**
+     * The ordered list of column indices to keep for the flat-CSV path, given the
+     * full header row and an optional selection of header labels. Returns null
+     * (keep every column) when the selection is null or empty, so the default
+     * export is byte-for-byte unchanged (#317).
+     *
+     * @param list<string> $fullHeader
+     * @param list<string>|null $onlyColumns
+     * @return list<int>|null
+     */
+    private static function columnMask(array $fullHeader, ?array $onlyColumns): ?array
+    {
+        if ($onlyColumns === null || $onlyColumns === []) {
+            return null;
+        }
+
+        $keep = array_flip($onlyColumns);
+        $mask = [];
+        foreach ($fullHeader as $i => $label) {
+            if (isset($keep[$label])) {
+                $mask[] = $i;
+            }
+        }
+
+        return $mask;
+    }
+
+    /**
+     * Reduce a flat row to the masked column indices (natural order), or return it
+     * unchanged when the mask is null (no selection).
+     *
+     * @param list<string> $row
+     * @param list<int>|null $mask
+     * @return list<string>
+     */
+    private static function applyMask(array $row, ?array $mask): array
+    {
+        if ($mask === null) {
+            return $row;
+        }
+
+        $out = [];
+        foreach ($mask as $i) {
+            $out[] = $row[$i] ?? '';
+        }
+
+        return $out;
+    }
 
     /**
      * Whether any submission in the set carries a quiz score, gating the quiz

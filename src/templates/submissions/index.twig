@@ -23,5 +23,11 @@
 {% endif %}
 
 {% block actionButton %}
+    {# Carry the deep-link filters (#317) so the column picker + export scope to
+       the same form/status the operator arrived on. #}
+    {% set exportParams = {} %}
+    {% if qFormId %}{% set exportParams = exportParams|merge({ formId: qFormId }) %}{% endif %}
+    {% if qStatus %}{% set exportParams = exportParams|merge({ status: qStatus }) %}{% endif %}
+    <a class="btn" href="{{ cpUrl('simple-form/submissions/export-options', exportParams) }}">{{ 'Export CSV'|t('simple-form') }}</a>
     <a class="btn" href="{{ cpUrl('simple-form/submissions/analytics') }}">{{ 'Analytics'|t('simple-form') }}</a>
 {% endblock %}

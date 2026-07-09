@@ -15,6 +15,21 @@ use craft\elements\db\ElementQueryInterface;
  */
 class SubmissionExporter extends ElementExporter
 {
+    // =========================================================================
+    // Public Properties
+    // =========================================================================
+
+    /**
+     * Header labels to restrict the export to. Empty = every column (#317).
+     *
+     * @var list<string>
+     */
+    public array $columns = [];
+
+    // =========================================================================
+    // Public Methods
+    // =========================================================================
+
     public static function displayName(): string
     {
         return Craft::t('simple-form', 'Submissions (with field columns)');
@@ -30,6 +45,6 @@ class SubmissionExporter extends ElementExporter
             static fn($element): bool => $element instanceof Submission,
         ));
 
-        return SubmissionCsv::toRows($submissions);
+        return SubmissionCsv::toRows($submissions, $this->columns ?: null);
     }
 }

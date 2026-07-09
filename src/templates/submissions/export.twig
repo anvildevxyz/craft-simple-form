@@ -1,0 +1,45 @@
+{% extends '_layouts/cp.twig' %}
+{% import '_includes/forms.twig' as forms %}
+
+{# CSV column-selection screen (#317): the operator picks which columns the
+   submission export emits (default = all). A plain GET form so the export URL
+   bookmarks/shares cleanly and re-uses the streaming export action, which
+   re-applies the same filters carried here as hidden inputs. #}
+
+{% set title = 'Export submissions'|t('simple-form') %}
+{% set selectedSubnavItem = 'submissions' %}
+
+{% set crumbs = [
+    { label: 'Simple Form'|t('simple-form'), url: cpUrl('simple-form/forms') },
+    { label: 'Submissions'|t('simple-form'), url: cpUrl('simple-form/submissions') },
+] %}
+
+{% set columnOptions = [] %}
+{% for label in columns %}
+    {% set columnOptions = columnOptions|merge([{ label: label, value: label }]) %}
+{% endfor %}
+
+{% block content %}
+    <form method="get" action="{{ cpUrl('simple-form/submissions/export') }}">
+        {% for name, value in filters %}
+            <input type="hidden" name="{{ name }}" value="{{ value }}">
+        {% endfor %}
+
+        {% if columnOptions|length %}
+            {{ forms.checkboxSelectField({
+                label: 'Columns'|t('simple-form'),
+                instructions: 'Choose the columns to include. All columns are exported by default.'|t('simple-form'),
+                name: 'columns',
+                options: columnOptions,
+                values: columns,
+                showAllOption: true,
+            }) }}
+        {% else %}
+            <p class="light">{{ 'No submissions match the current filters.'|t('simple-form') }}</p>
+        {% endif %}
+
+        <div class="buttons">
+            <button type="submit" class="btn submit">{{ 'Export CSV'|t('simple-form') }}</button>
+        </div>
+    </form>
+{% endblock %}
