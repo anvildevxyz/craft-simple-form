@@ -67,6 +67,8 @@ class EmailService extends Component
                 $this->renderBodyFor($notification->body, $form, $submission, $data),
                 $notification->replyTo,
                 $this->attachmentsFor($notification, $form, $submission, $data),
+                $this->parseAddressList($notification->cc),
+                $this->parseAddressList($notification->bcc),
             );
             $this->_logSend(
                 $form,
@@ -270,13 +272,43 @@ class EmailService extends Component
     }
 
     /**
+     * Parse a comma/semicolon/whitespace-separated address string into a
+     * de-duplicated list of valid email addresses (#313). Validation already
+     * rejects header-injection input at save time; this is a defensive filter so
+     * only clean addresses ever reach the mailer.
+     *
+     * @return list<string>
+     */
+    private function parseAddressList(?string $value): array
+    {
+        if ($value === null || trim($value) === '') {
+            return [];
+        }
+
+        $parts = preg_split('/[\s,;]+/', $value, -1, PREG_SPLIT_NO_EMPTY) ?: [];
+        return array_values(array_unique(array_filter(
+            $parts,
+            static fn(string $p): bool => (bool) filter_var($p, FILTER_VALIDATE_EMAIL),
+        )));
+    }
+
+    /**
      * Compose + send one email.
      *
      * @param list<string>|string $to
      * @param list<EmailAttachment> $attachments
+     * @param list<string> $cc
+     * @param list<string> $bcc
      */
-    private function send(array|string $to, string $subject, string $body, ?string $replyTo, array $attachments = []): bool
-    {
+    private function send(
+        array|string $to,
+        string $subject,
+        string $body,
+        ?string $replyTo,
+        array $attachments = [],
+        array $cc = [],
+        array $bcc = [],
+    ): bool {
         if ($to === [] || $to === '') {
             return false;
         }
@@ -287,6 +319,13 @@ class EmailService extends Component
                 ->setTo($to)
                 ->setSubject($subject)
                 ->setHtmlBody($body);
+
+            if ($cc !== []) {
+                $mail->setCc($cc);
+            }
+            if ($bcc !== []) {
+                $mail->setBcc($bcc);
+            }
 
             foreach ($attachments as $attachment) {
                 $mail->attachContent($attachment['content'], [
