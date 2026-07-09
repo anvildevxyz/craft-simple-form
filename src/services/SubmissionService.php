@@ -16,6 +16,7 @@ use anvildev\simpleform\fields\HiddenFieldType;
 use anvildev\simpleform\fields\RepeaterFieldType;
 use anvildev\simpleform\fields\SignatureFieldType;
 use anvildev\simpleform\helpers\ConditionalEvaluator;
+use anvildev\simpleform\helpers\IpHelper;
 use anvildev\simpleform\helpers\JumpResolver;
 use anvildev\simpleform\helpers\RateLimiter;
 use anvildev\simpleform\helpers\SafeUrl;
@@ -1149,10 +1150,12 @@ class SubmissionService extends Component
      */
     private function sourceIp(): ?string
     {
-        // GDPR data-minimization opt-out (#293): never read the IP for storage
-        // when collection is off. (The rate limiter reads the request IP
-        // directly and persists nothing, so it is unaffected.)
-        if (!Plugin::getInstance()->getSettings()->collectIpAddresses) {
+        // IP capture policy (#315, supersedes #293's boolean opt-out): store the
+        // full IP, an anonymized IP, or nothing. In `off` mode the IP is never
+        // read for storage. (The rate limiter reads the request IP directly and
+        // persists nothing, so it is unaffected by this policy.)
+        $policy = Plugin::getInstance()->getSettings()->ipCapturePolicy;
+        if ($policy === Settings::IP_CAPTURE_OFF) {
             return null;
         }
 
@@ -1161,8 +1164,15 @@ class SubmissionService extends Component
         if ($request->getIsConsoleRequest()) {
             return null;
         }
+
         $ip = $request->getUserIP();
-        return ($ip === null || $ip === '') ? null : $ip;
+        if ($ip === null || $ip === '') {
+            return null;
+        }
+
+        // Mask at capture time so a full IP is never written to the database in
+        // anonymized mode.
+        return $policy === Settings::IP_CAPTURE_ANONYMIZED ? IpHelper::anonymize($ip) : $ip;
     }
 
     /**

@@ -61,6 +61,17 @@ class Settings extends Model
     public const DUPLICATE_BLOCK = 'block';
 
     /**
+     * IP capture policy (#315). `full` stores the visitor's IP verbatim,
+     * `anonymized` stores a masked IP (last octet / low 80 bits zeroed) applied
+     * at capture time, and `off` stores nothing. Supersedes the legacy
+     * {@see $collectIpAddresses} boolean, which is kept in lockstep for
+     * backward compatibility.
+     */
+    public const IP_CAPTURE_FULL = 'full';
+    public const IP_CAPTURE_ANONYMIZED = 'anonymized';
+    public const IP_CAPTURE_OFF = 'off';
+
+    /**
      * Deterministic, owner-controlled denylists (#140) that run before Akismet:
      * blocked keywords, emails/domains, and IPs/CIDR ranges. Off by default so
      * existing installs are unchanged. A hit either flags the submission as spam
@@ -191,6 +202,15 @@ class Settings extends Model
      */
     public bool $collectIpAddresses = true;
 
+    /**
+     * Three-state IP capture policy (#315): one of {@see IP_CAPTURE_FULL},
+     * {@see IP_CAPTURE_ANONYMIZED}, or {@see IP_CAPTURE_OFF}. Null means "not
+     * yet set" — {@see init()} derives it from the legacy
+     * {@see $collectIpAddresses} boolean so pre-#315 installs behave unchanged
+     * (on → full, off → off). After init this is always a concrete value.
+     */
+    public ?string $ipCapturePolicy = null;
+
     public int $retainSubmissionsDays = 0;
     public int $retainIntegrationLogsDays = 90;
     public int $retainNotificationLogsDays = 90;
@@ -307,6 +327,27 @@ class Settings extends Model
     public array $workflowTransitions = [];
 
     /**
+     * @inheritdoc
+     */
+    public function init(): void
+    {
+        parent::init();
+
+        // Back-compat bridge between the legacy boolean and the three-state
+        // policy (#315). Properties are populated from project config before
+        // init() runs, so both reflect stored values here. When the policy was
+        // never set (pre-#315 install), derive it from the boolean; otherwise
+        // keep the boolean in lockstep so legacy readers stay correct.
+        if ($this->ipCapturePolicy === null) {
+            $this->ipCapturePolicy = $this->collectIpAddresses
+                ? self::IP_CAPTURE_FULL
+                : self::IP_CAPTURE_OFF;
+        } else {
+            $this->collectIpAddresses = $this->ipCapturePolicy !== self::IP_CAPTURE_OFF;
+        }
+    }
+
+    /**
      * @return array<string, array{class: class-string, attributes: list<string>}>
      */
     public function behaviors(): array
@@ -354,6 +395,7 @@ class Settings extends Model
             [['akismetMode'], 'in', 'range' => [self::AKISMET_FLAG, self::AKISMET_BLOCK]],
             [['denylistMode'], 'in', 'range' => [self::DENYLIST_FLAG, self::DENYLIST_BLOCK]],
             [['duplicateMode'], 'in', 'range' => [self::DUPLICATE_FLAG, self::DUPLICATE_BLOCK]],
+            [['ipCapturePolicy'], 'in', 'range' => [self::IP_CAPTURE_FULL, self::IP_CAPTURE_ANONYMIZED, self::IP_CAPTURE_OFF]],
             [['blockedKeywords', 'blockedEmails', 'blockedIps'], 'string'],
             // Reject malformed IP/CIDR entries at save so they never fail silently
             // at submit time (a bad line would simply never match).

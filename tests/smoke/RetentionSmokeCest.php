@@ -3,6 +3,7 @@
 namespace anvildev\simpleform\tests\smoke;
 
 use anvildev\simpleform\elements\Submission;
+use anvildev\simpleform\models\Settings;
 use anvildev\simpleform\Plugin;
 use Craft;
 use craft\db\Query;
@@ -58,6 +59,27 @@ class RetentionSmokeCest extends BaseSmokeCest
         $I->assertSame(0, Plugin::getInstance()->getRetention()->purgeSubmissions(0, false));
     }
 
+    public function testIpCapturePolicyControlsStoredSourceIp(SmokeTester $I): void
+    {
+        $settings = Plugin::getInstance()->getSettings();
+        $previous = $settings->ipCapturePolicy;
+        $this->setRequestIp('203.0.113.42');
+
+        try {
+            $settings->ipCapturePolicy = Settings::IP_CAPTURE_FULL;
+            $I->assertSame('203.0.113.42', $this->submitAndReadSourceIp('ipFull'), 'full mode stores the verbatim IP');
+
+            $settings->ipCapturePolicy = Settings::IP_CAPTURE_ANONYMIZED;
+            $I->assertSame('203.0.113.0', $this->submitAndReadSourceIp('ipAnon'), 'anonymized mode masks the last octet at capture time');
+
+            $settings->ipCapturePolicy = Settings::IP_CAPTURE_OFF;
+            $I->assertNull($this->submitAndReadSourceIp('ipOff'), 'off mode stores no IP');
+        } finally {
+            $settings->ipCapturePolicy = $previous;
+            $this->setRequestIp(null);
+        }
+    }
+
     // =========================================================================
     // PRIVATE METHODS
     // =========================================================================
@@ -68,5 +90,29 @@ class RetentionSmokeCest extends BaseSmokeCest
         Craft::$app->getDb()->createCommand()
             ->update('{{%simpleform_submissions}}', ['dateCreated' => $old], ['id' => $submissionId])
             ->execute();
+    }
+
+    /**
+     * Submit a fresh single-field form and return the sourceIp stored on the
+     * resulting submission.
+     */
+    private function submitAndReadSourceIp(string $handleSeed): ?string
+    {
+        $form = $this->createForm('IP', $handleSeed . uniqid());
+        $fieldId = $this->createField((int) $form->id, 'text', 'name', 'Name');
+        $submission = $this->submitRequest($form->handle, ['field_' . $fieldId => 'x'])['submission'];
+
+        return $submission?->sourceIp;
+    }
+
+    /**
+     * Force the request's resolved IP (memoized private field) so capture-time
+     * masking can be asserted deterministically. Passing null resets it.
+     */
+    private function setRequestIp(?string $ip): void
+    {
+        $request = Craft::$app->getRequest();
+        $property = new \ReflectionProperty($request, '_ipAddress');
+        $property->setValue($request, $ip ?? false);
     }
 }
