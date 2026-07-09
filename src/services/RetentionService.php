@@ -81,6 +81,67 @@ class RetentionService extends Component
     }
 
     /**
+     * Every submission id tied to an email address, for GDPR subject-access /
+     * right-to-erasure (#314). Matching scans both the linked Craft user's email
+     * and the submitted JSON `data` blob (any field value — Email, Text, or a
+     * composite/repeater sub-value — equal to the address), so it catches the
+     * email wherever it was captured. Scanning is done in PHP, not via a JSON
+     * `LIKE`, to stay database-agnostic (MySQL + Postgres).
+     *
+     * @return list<int>
+     */
+    public function findSubmissionIdsByEmail(string $email): array
+    {
+        $needle = mb_strtolower(trim($email));
+        if ($needle === '') {
+            return [];
+        }
+
+        $rows = (new Query())
+            ->select(['id', 'userId', 'data'])
+            ->from(self::SUBMISSIONS)
+            ->all();
+
+        $matchingUserIds = $this->userIdsForEmail($rows, $needle);
+
+        $ids = [];
+        foreach ($rows as $row) {
+            $id = (int) $row['id'];
+            if ($row['userId'] !== null && isset($matchingUserIds[(int) $row['userId']])) {
+                $ids[$id] = true;
+                continue;
+            }
+
+            $data = is_array($row['data']) ? $row['data'] : json_decode((string) $row['data'], true);
+            if ($this->valueContainsEmail($data, $needle)) {
+                $ids[$id] = true;
+            }
+        }
+
+        return array_map('intval', array_keys($ids));
+    }
+
+    /**
+     * Erase (delete or anonymize) the given submissions, honoring the existing
+     * `anonymizeInsteadOfDelete` setting unless `$anonymize` overrides it (#314).
+     * Reuses the same asset-scrubbing delete/anonymize path as the retention
+     * sweep. Returns the number of submissions affected.
+     *
+     * @param list<int> $ids
+     */
+    public function eraseSubmissions(array $ids, ?bool $anonymize = null): int
+    {
+        $ids = array_values(array_unique(array_map('intval', $ids)));
+        if ($ids === []) {
+            return 0;
+        }
+
+        $anonymize ??= Plugin::getInstance()->getSettings()->anonymizeInsteadOfDelete;
+
+        return $anonymize ? $this->anonymize($ids) : $this->hardDelete($ids);
+    }
+
+    /**
      * Delete integration dispatch-log rows older than `retainIntegrationLogsDays`.
      * Returns the number of rows deleted. No-op when the setting is 0.
      */
@@ -191,6 +252,62 @@ class RetentionService extends Component
         if ($assetIds !== []) {
             Plugin::getInstance()->getAssetUploadService()->deleteAssets(...array_keys($assetIds));
         }
+    }
+
+    /**
+     * The set (id => true) of the linked-user ids among $rows whose Craft user
+     * carries $needle as their (lowercased) email, resolved in one query so the
+     * email scan never issues a per-submission user lookup.
+     *
+     * @param array<int, array<string, mixed>> $rows
+     * @return array<int, true>
+     */
+    private function userIdsForEmail(array $rows, string $needle): array
+    {
+        $userIds = [];
+        foreach ($rows as $row) {
+            if ($row['userId'] !== null) {
+                $userIds[(int) $row['userId']] = true;
+            }
+        }
+        if ($userIds === []) {
+            return [];
+        }
+
+        $matching = [];
+        $users = (new Query())
+            ->select(['id', 'email'])
+            ->from('{{%users}}')
+            ->where(['id' => array_keys($userIds)])
+            ->all();
+        foreach ($users as $user) {
+            if (mb_strtolower(trim((string) $user['email'])) === $needle) {
+                $matching[(int) $user['id']] = true;
+            }
+        }
+
+        return $matching;
+    }
+
+    /**
+     * Whether $value (a submitted `data` blob, an entry, or a scalar) contains
+     * $needle as an email address anywhere in its structure. Recurses arrays so a
+     * match inside a composite (Name/Address) sub-value or a repeater row still
+     * counts. $needle must already be lowercased/trimmed.
+     */
+    private function valueContainsEmail(mixed $value, string $needle): bool
+    {
+        if (is_array($value)) {
+            foreach ($value as $child) {
+                if ($this->valueContainsEmail($child, $needle)) {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        return is_scalar($value) && mb_strtolower(trim((string) $value)) === $needle;
     }
 
     private function cutoff(int $days): \DateTime

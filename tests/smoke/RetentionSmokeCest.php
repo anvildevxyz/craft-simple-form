@@ -2,11 +2,14 @@
 
 namespace anvildev\simpleform\tests\smoke;
 
+use anvildev\simpleform\console\controllers\SubmissionsController;
+use anvildev\simpleform\elements\Form;
 use anvildev\simpleform\elements\Submission;
 use anvildev\simpleform\Plugin;
 use Craft;
 use craft\db\Query;
 use SmokeTester;
+use yii\console\ExitCode;
 
 /**
  * Data-retention smoke tests (#136): the purge deletes submissions older than the
@@ -58,9 +61,115 @@ class RetentionSmokeCest extends BaseSmokeCest
         $I->assertSame(0, Plugin::getInstance()->getRetention()->purgeSubmissions(0, false));
     }
 
+    public function testExportByEmailReturnsOnlyMatchingSubmissions(SmokeTester $I): void
+    {
+        $email = 'gdpr-' . uniqid() . '@example.test';
+        [$form, $emailFieldId, $nameFieldId] = $this->seedEmailForm();
+
+        $alice = 'Alice-' . uniqid();
+        $bob = 'Bob-' . uniqid();
+        $carol = 'Carol-' . uniqid();
+        $matchA = $this->submit($form, $emailFieldId, $nameFieldId, $email, $alice);
+        $matchB = $this->submit($form, $emailFieldId, $nameFieldId, $email, $bob);
+        $other = $this->submit($form, $emailFieldId, $nameFieldId, 'someone-else-' . uniqid() . '@example.test', $carol);
+
+        $ids = Plugin::getInstance()->getRetention()->findSubmissionIdsByEmail($email);
+        sort($ids);
+        $I->assertSame([$matchA, $matchB], $ids, 'the shared query matches exactly the two same-email submissions');
+
+        $path = (string) tempnam(sys_get_temp_dir(), 'sf-export');
+        $controller = new SubmissionsController('submissions', Plugin::getInstance());
+        $controller->email = $email;
+        $controller->out = $path;
+
+        $I->assertSame(ExitCode::OK, $controller->actionExportByEmail());
+        $csv = (string) file_get_contents($path);
+        @unlink($path);
+
+        $I->assertStringContainsString($alice, $csv, 'the export includes the first matching submission');
+        $I->assertStringContainsString($bob, $csv, 'the export includes the second matching submission');
+        $I->assertStringNotContainsString($carol, $csv, 'the export excludes the non-matching submission');
+        $I->assertStringNotContainsString((string) $other, explode("\n", $csv)[1] ?? '', 'the non-matching id is not the first data row');
+    }
+
+    public function testEraseByEmailDeletesOnlyMatchingAndDryRunIsNoOp(SmokeTester $I): void
+    {
+        $email = 'gdpr-' . uniqid() . '@example.test';
+        [$form, $emailFieldId, $nameFieldId] = $this->seedEmailForm();
+
+        $matchA = $this->submit($form, $emailFieldId, $nameFieldId, $email, 'A');
+        $matchB = $this->submit($form, $emailFieldId, $nameFieldId, $email, 'B');
+        $other = $this->submit($form, $emailFieldId, $nameFieldId, 'keep-' . uniqid() . '@example.test', 'C');
+
+        // Dry run: reports scope, mutates nothing.
+        $dry = new SubmissionsController('submissions', Plugin::getInstance());
+        $dry->email = $email;
+        $dry->dryRun = true;
+        $I->assertSame(ExitCode::OK, $dry->actionEraseByEmail());
+        $I->assertNotNull(Submission::find()->id($matchA)->one(), 'dry run leaves the first match');
+        $I->assertNotNull(Submission::find()->id($matchB)->one(), 'dry run leaves the second match');
+
+        // Real run: hard-deletes only the matches.
+        $run = new SubmissionsController('submissions', Plugin::getInstance());
+        $run->email = $email;
+        $I->assertSame(ExitCode::OK, $run->actionEraseByEmail());
+
+        $I->assertNull(Submission::find()->id($matchA)->trashed(null)->one(), 'the first match is deleted');
+        $I->assertNull(Submission::find()->id($matchB)->trashed(null)->one(), 'the second match is deleted');
+        $I->assertNotNull(Submission::find()->id($other)->one(), 'the non-matching submission survives');
+        $I->assertSame(
+            [],
+            Plugin::getInstance()->getRetention()->findSubmissionIdsByEmail($email),
+            'no rows remain for the erased email',
+        );
+    }
+
+    public function testEraseByEmailAnonymizeScrubsOnlyMatchingRows(SmokeTester $I): void
+    {
+        $email = 'gdpr-' . uniqid() . '@example.test';
+        [$form, $emailFieldId, $nameFieldId] = $this->seedEmailForm();
+
+        $match = $this->submit($form, $emailFieldId, $nameFieldId, $email, 'Scrub');
+        $other = $this->submit($form, $emailFieldId, $nameFieldId, 'keep-' . uniqid() . '@example.test', 'Keep');
+
+        $controller = new SubmissionsController('submissions', Plugin::getInstance());
+        $controller->email = $email;
+        $controller->anonymize = true;
+        $I->assertSame(ExitCode::OK, $controller->actionEraseByEmail());
+
+        $matchRow = (new Query())->from('{{%simpleform_submissions}}')->where(['id' => $match])->one();
+        $otherRow = (new Query())->from('{{%simpleform_submissions}}')->where(['id' => $other])->one();
+
+        $I->assertNotNull($matchRow, 'the anonymized row remains');
+        $I->assertNull($matchRow['data'], 'the matching submission data is scrubbed');
+        $I->assertNotNull($otherRow['data'], 'the non-matching submission data is untouched');
+    }
+
     // =========================================================================
     // PRIVATE METHODS
     // =========================================================================
+
+    /**
+     * A form with an Email field and a Text field, for the GDPR-by-email commands.
+     *
+     * @return array{0: Form, 1: int, 2: int}
+     */
+    private function seedEmailForm(): array
+    {
+        $form = $this->createForm('GDPR', 'gdpr' . uniqid());
+        $emailFieldId = $this->createField((int) $form->id, 'email', 'email', 'Email');
+        $nameFieldId = $this->createField((int) $form->id, 'text', 'name', 'Name');
+
+        return [$form, $emailFieldId, $nameFieldId];
+    }
+
+    private function submit(Form $form, int $emailFieldId, int $nameFieldId, string $email, string $name): int
+    {
+        return (int) $this->submitRequest($form->handle, [
+            'field_' . $emailFieldId => $email,
+            'field_' . $nameFieldId => $name,
+        ])['submission']->id;
+    }
 
     private function backdate(int $submissionId, int $days): void
     {
