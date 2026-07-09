@@ -125,6 +125,20 @@
 .simple-form-html :first-child { margin-top: 0; }
 .simple-form-html :last-child { margin-bottom: 0; }
 
+/* Callout — a toned guidance panel (info/success/warning/error) */
+.simple-form-callout {
+    display: flex; gap: .6em; align-items: flex-start;
+    padding: .75em 1em; border-left: 4px solid; border-radius: 4px;
+    font-size: .95em; line-height: 1.5;
+}
+.simple-form-callout__icon { flex: 0 0 auto; line-height: 1.5; }
+.simple-form-callout__body :first-child { margin-top: 0; }
+.simple-form-callout__body :last-child { margin-bottom: 0; }
+.simple-form-callout--info { background: #eef4fd; border-color: #3b82f6; color: #1e3a5f; }
+.simple-form-callout--success { background: #ecfdf3; border-color: #22c55e; color: #14532d; }
+.simple-form-callout--warning { background: #fef8ec; border-color: #f59e0b; color: #713f12; }
+.simple-form-callout--error { background: #fdeeee; border-color: #ef4444; color: #7f1d1d; }
+
 /* Rating (#128) — a native radio group styled into star/heart/number controls.
    The radios stay in the DOM (no-JS fallback + screen-reader semantics); only
    their visual box is replaced by the label's icon/pill. */

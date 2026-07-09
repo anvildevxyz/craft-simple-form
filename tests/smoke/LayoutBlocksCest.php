@@ -42,4 +42,9 @@ class LayoutBlocksCest
     {
         $I->markTestSkipped(self::SKIP_REASON);
     }
+
+    public function testCalloutBlockRendersAndStoresNoValue(SmokeTester $I): void
+    {
+        $I->markTestSkipped(self::SKIP_REASON);
+    }
 }

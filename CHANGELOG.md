@@ -11,6 +11,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 > Plugin Store changelog parser skips an "Unreleased" section (#278).
 
 ### Added
+- A **Callout** layout block: a presentational panel with a tone
+  (info/success/warning/error), an optional icon, and per-site translatable body
+  copy shown between fields. Like the heading/divider/text blocks it stores no
+  submission value and is skipped by validation, storage, and export (#322).
 - Two commercial editions, **Solo** and **Pro**. Solo is the "better contact
   form": unlimited forms, stored submissions, the 18 core field types, email
   notifications, honeypot/rate-limit/CAPTCHA spam protection, the webhook +

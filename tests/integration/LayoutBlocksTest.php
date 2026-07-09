@@ -34,6 +34,7 @@ class LayoutBlocksTest extends SimpleFormTestCase
         $emailId = $this->createField($form->id, 'email', 'email', 'Email');
         $this->createField($form->id, 'html', 'note', '', false, [], null, '<p>Hello</p>');
         $paraId = $this->createField($form->id, 'paragraph', 'intro', '', false, [], null, "Please read this.\nThanks.");
+        $calloutId = $this->createField($form->id, 'callout', 'tip', '', false, ['tone' => 'info'], null, 'Bring ID.');
 
         $service = Plugin::getInstance()->getSubmissionService();
         // Forge a posted value against every layout block too — it must be ignored.
@@ -41,6 +42,7 @@ class LayoutBlocksTest extends SimpleFormTestCase
             'field_' . $nameId => 'Ada',
             'field_' . $emailId => 'ada@example.test',
             'field_' . $paraId => 'forged',
+            'field_' . $calloutId => 'forged',
         ], ['skipCaptcha' => true]);
 
         $this->assertNull($result['errors']);
@@ -49,9 +51,9 @@ class LayoutBlocksTest extends SimpleFormTestCase
 
         $keys = array_keys($submission->data);
         $this->assertEqualsCanonicalizing(['field_' . $nameId, 'field_' . $emailId], $keys);
-        // No heading/divider/html/paragraph entry of any kind.
+        // No heading/divider/html/paragraph/callout entry of any kind.
         foreach ($submission->data as $entry) {
-            $this->assertNotContains($entry['type'], ['heading', 'divider', 'html', 'paragraph']);
+            $this->assertNotContains($entry['type'], ['heading', 'divider', 'html', 'paragraph', 'callout']);
         }
     }
 
@@ -216,6 +218,33 @@ class LayoutBlocksTest extends SimpleFormTestCase
 
         // No label / required marker for the block; it precedes the name input.
         $this->assertLessThan(strpos($html, 'name="field_' . $nameId . '"'), strpos($html, 'simple-form-layout--paragraph'));
+    }
+
+    public function testCalloutBlockRendersTonedPanelEscapedWithNoLabel(): void
+    {
+        $this->requireCraft();
+
+        $form = $this->createForm('Layout', 'layoutCallout', 'Layout');
+        // A warning callout with an icon and a body containing markup: it renders
+        // as a toned layout panel with the body escaped, never as a labelled field.
+        $body = "Heads up & <script>alert(1)</script>\nBring ID.";
+        $this->createField($form->id, 'callout', 'tip', '', false, ['tone' => 'warning', 'icon' => 'ℹ️'], null, $body);
+        $nameId = $this->createField($form->id, 'text', 'name', 'Full Name');
+
+        $html = (new TwigExtension())->renderForm('layoutCallout');
+
+        // Rendered as a layout block (displayMode = 'layout' → bare, no group).
+        $this->assertStringContainsString('simple-form-layout--callout', $html);
+        $this->assertStringContainsString('simple-form-callout simple-form-callout--warning', $html);
+        $this->assertStringContainsString('simple-form-callout__icon', $html);
+
+        // Escaped, not executed; line break preserved.
+        $this->assertStringNotContainsString('<script>alert(1)', $html);
+        $this->assertStringContainsString('&lt;script&gt;alert(1)&lt;/script&gt;', $html);
+        $this->assertStringContainsString('Heads up &amp;', $html);
+
+        // No label / required marker for the block; it precedes the name input.
+        $this->assertLessThan(strpos($html, 'name="field_' . $nameId . '"'), strpos($html, 'simple-form-layout--callout'));
     }
 
     // =========================================================================
