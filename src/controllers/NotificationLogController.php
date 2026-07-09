@@ -21,6 +21,10 @@ class NotificationLogController extends Controller
 
     protected const PERMISSION = SimpleFormPermissions::VIEW_SUBMISSIONS;
 
+    // =========================================================================
+    // PUBLIC METHODS
+    // =========================================================================
+
     public function actionIndex(): Response
     {
         /** @var \craft\web\Request $request */
@@ -43,5 +47,41 @@ class NotificationLogController extends Controller
             'hasAny' => $log->count() > 0,
             'hasFilters' => $formId !== null || $status !== null,
         ]);
+    }
+
+    /**
+     * Re-dispatch the notifications behind one log row (#318). Reuses the
+     * existing `SendNotifications` queue job and writes a fresh log row that
+     * references the original send, so the retry is auditable.
+     *
+     * @throws \yii\web\BadRequestHttpException if the request is not a POST
+     */
+    public function actionResend(): Response
+    {
+        $this->requirePostRequest();
+
+        /** @var \craft\web\Request $request */
+        $request = Craft::$app->getRequest();
+        $logId = (int) $request->getRequiredBodyParam('logId');
+
+        $resent = Plugin::getInstance()->getEmailService()->resendFromLog($logId);
+
+        if (!$resent) {
+            $message = Craft::t('simple-form', 'Could not resend — the original submission is no longer available.');
+            if ($request->getAcceptsJson()) {
+                return $this->asJsonError($message);
+            }
+            $this->setFailFlash($message);
+
+            return $this->redirectToPostedUrl();
+        }
+
+        $message = Craft::t('simple-form', 'Notification queued for resend.');
+        if ($request->getAcceptsJson()) {
+            return $this->asJsonSuccess(['message' => $message]);
+        }
+        $this->setSuccessFlash($message);
+
+        return $this->redirectToPostedUrl();
     }
 }

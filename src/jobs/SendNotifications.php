@@ -26,6 +26,12 @@ class SendNotifications extends BaseJob
 
     public ?int $submissionId = null;
 
+    /**
+     * When set, this run is a manual resend (#318): every notification log row
+     * it writes references the original send with this id.
+     */
+    public ?int $resentFromLogId = null;
+
     // =========================================================================
     // PUBLIC METHODS
     // =========================================================================
@@ -54,6 +60,7 @@ class SendNotifications extends BaseJob
             $form,
             $submission,
             is_array($submission->data) ? $submission->data : [],
+            $this->resentFromLogId,
         );
     }
 
