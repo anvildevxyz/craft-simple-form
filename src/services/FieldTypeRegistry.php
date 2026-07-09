@@ -32,6 +32,7 @@ use anvildev\simpleform\fields\SignatureFieldType;
 use anvildev\simpleform\fields\TagRelationFieldType;
 use anvildev\simpleform\fields\TextareaFieldType;
 use anvildev\simpleform\fields\TextFieldType;
+use anvildev\simpleform\fields\TimeFieldType;
 use anvildev\simpleform\fields\UserRelationFieldType;
 use anvildev\simpleform\Plugin;
 use yii\base\Component;
@@ -88,6 +89,7 @@ class FieldTypeRegistry extends Component
             CheckboxFieldType::class,
             RadioFieldType::class,
             DateFieldType::class,
+            TimeFieldType::class,
             NumberFieldType::class,
             PhoneFieldType::class,
             FileFieldType::class,

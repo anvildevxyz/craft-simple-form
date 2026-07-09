@@ -74,6 +74,29 @@ class FieldTypesSmokeCest extends BaseSmokeCest
         $I->assertSame(self::CONSENT_TEXT, $value['textVersion']);
     }
 
+    public function testTimeFieldNormalizesAndStores(SmokeTester $I): void
+    {
+        $form = $this->createForm('Meeting', 'meeting' . uniqid());
+        $fieldId = $this->createField((int) $form->id, 'time', 'startsAt', 'Starts At', true);
+
+        // A seconds-carrying value is normalized to the canonical HH:MM shape.
+        $result = $this->submitRequest($form->handle, ['field_' . $fieldId => '09:30:00']);
+
+        $I->assertNull($result['errors']);
+        $I->assertSame('09:30', $result['submission']->data['field_' . $fieldId]['value']);
+    }
+
+    public function testInvalidTimeIsRejected(SmokeTester $I): void
+    {
+        $form = $this->createForm('Meeting Reject', 'meetingReject' . uniqid());
+        $fieldId = $this->createField((int) $form->id, 'time', 'startsAt', 'Starts At', true);
+
+        $result = $this->submitRequest($form->handle, ['field_' . $fieldId => '25:99']);
+
+        $I->assertNull($result['submission']);
+        $I->assertArrayHasKey('field_' . $fieldId, $result['errors']);
+    }
+
     public function testPhoneFieldNormalizesToE164(SmokeTester $I): void
     {
         $form = $this->createForm('Phone', 'phone' . uniqid());

@@ -66,6 +66,7 @@ return [
     'Must be at least {min}.' => 'Moet minstens {min} zijn.',
     'Must be no more than {max}.' => 'Mag niet meer dan {max} zijn.',
     'Please enter a valid date.' => 'Voer een geldige datum in.',
+    'Please enter a valid time.' => 'Voer een geldige tijd in.',
     'Enter a valid phone number.' => 'Voer een geldig telefoonnummer in.',
     'Please select a valid country.' => 'Selecteer een geldig land.',
     'Manage forms (read & write form definitions and fields)' => 'Formulieren beheren (formulierdefinities en velden lezen en schrijven)',
