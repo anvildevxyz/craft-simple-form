@@ -73,6 +73,7 @@ return [
     'Must be no more than {max}.' => 'Darf höchstens {max} sein.',
     'Please enter a valid date.' => 'Bitte geben Sie ein gültiges Datum ein.',
     'Please enter a valid time.' => 'Bitte geben Sie eine gültige Uhrzeit ein.',
+    'Please enter a valid date and time.' => 'Bitte geben Sie ein gültiges Datum mit Uhrzeit ein.',
     'Enter a valid phone number.' => 'Geben Sie eine gültige Telefonnummer ein.',
     'Please select a valid country.' => 'Bitte wählen Sie ein gültiges Land aus.',
     'Manage forms (read & write form definitions and fields)' => 'Formulare verwalten (Definitionen und Felder lesen & schreiben)',

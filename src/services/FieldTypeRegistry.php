@@ -10,6 +10,7 @@ use anvildev\simpleform\fields\CategoryRelationFieldType;
 use anvildev\simpleform\fields\CheckboxFieldType;
 use anvildev\simpleform\fields\ConsentFieldType;
 use anvildev\simpleform\fields\DateFieldType;
+use anvildev\simpleform\fields\DateTimeFieldType;
 use anvildev\simpleform\fields\DividerFieldType;
 use anvildev\simpleform\fields\EmailFieldType;
 use anvildev\simpleform\fields\EntryRelationFieldType;
@@ -90,6 +91,7 @@ class FieldTypeRegistry extends Component
             RadioFieldType::class,
             DateFieldType::class,
             TimeFieldType::class,
+            DateTimeFieldType::class,
             NumberFieldType::class,
             PhoneFieldType::class,
             FileFieldType::class,
