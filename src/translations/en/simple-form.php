@@ -62,6 +62,7 @@ return [
     'Please select no more than {limit} options.' => 'Please select no more than {limit} options.',
     '(deleted #{id})' => '(deleted #{id})',
     'Please enter a valid email address.' => 'Please enter a valid email address.',
+    'Please enter a valid URL.' => 'Please enter a valid URL.',
     'Please enter a valid number.' => 'Please enter a valid number.',
     'Must be at least {min}.' => 'Must be at least {min}.',
     'Must be no more than {max}.' => 'Must be no more than {max}.',

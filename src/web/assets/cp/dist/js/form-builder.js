@@ -60,7 +60,7 @@
     var SF_SOURCES = JSON.parse(sfData.relationSources || '{}');
 
     var TYPE_LABELS = {
-        text: 'Text', email: 'Email', textarea: 'Textarea', select: 'Select',
+        text: 'Text', email: 'Email', url: 'URL', textarea: 'Textarea', select: 'Select',
         checkbox: 'Checkbox', radio: 'Radio', date: 'Date', number: 'Number',
         phone: 'Phone', file: 'File Upload',
         name: 'Name', address: 'Address',
