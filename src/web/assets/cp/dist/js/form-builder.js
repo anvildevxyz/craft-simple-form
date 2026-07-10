@@ -576,6 +576,8 @@
             errHint.appendChild(errHintP);
             errRow._input.appendChild(errHint);
             inspector.appendChild(errRow);
+
+            renderPrefillConfig(f);
         } else {
             var hiddenHint = document.createElement('div'); hiddenHint.className = 'instructions';
             var hiddenHintP = document.createElement('p');
@@ -616,6 +618,55 @@
         // Logic jumps (#245): branch to a later field's step based on this
         // field's answer (input fields only — a layout block has no answer).
         inspector.appendChild(jumpsSection(f));
+    }
+
+    // Query-string prefill (#316): opt this field into being pre-filled from a URL
+    // query param. A 3-state select — "Use form default" stores no flag (inherits
+    // the form-level default), On/Off store an explicit per-field override. The
+    // param name defaults to the field handle; only shown when prefill isn't Off.
+    function renderPrefillConfig(f) {
+        var c = f.config || (f.config = {});
+        var state = c.prefillFromQuery === true ? 'on' : (c.prefillFromQuery === false ? 'off' : 'default');
+
+        var pfRow = row('Prefill from query string');
+        pfRow._input.appendChild(selectEl(
+            [
+                { value: 'default', label: 'Use form default' },
+                { value: 'on', label: 'On' },
+                { value: 'off', label: 'Off' },
+            ],
+            state,
+            function(v) {
+                if (v === 'on') { c.prefillFromQuery = true; }
+                else if (v === 'off') { c.prefillFromQuery = false; }
+                else { delete c.prefillFromQuery; }
+                renderInspector();
+                serialize();
+            }
+        ));
+        var pfHint = document.createElement('div'); pfHint.className = 'instructions';
+        var pfHintP = document.createElement('p');
+        pfHintP.textContent = 'When enabled, this field is pre-filled from a URL query parameter. '
+            + 'Prefilled values are still validated on submit.';
+        pfHint.appendChild(pfHintP);
+        pfRow._input.appendChild(pfHint);
+        inspector.appendChild(pfRow);
+
+        if (state === 'off') { return; }
+
+        var ppRow = row('Query parameter');
+        var ppInput = textInput(c.prefillParam || '', function(v) {
+            if (v.trim() === '') { delete c.prefillParam; } else { c.prefillParam = v.trim(); }
+            serialize();
+        });
+        ppInput.placeholder = f.handle || 'field handle';
+        ppRow._input.appendChild(ppInput);
+        var ppHint = document.createElement('div'); ppHint.className = 'instructions';
+        var ppHintP = document.createElement('p');
+        ppHintP.textContent = 'The URL query parameter to read. Leave blank to use the field handle.';
+        ppHint.appendChild(ppHintP);
+        ppRow._input.appendChild(ppHint);
+        inspector.appendChild(ppRow);
     }
 
     // Tailored editor for the value-less layout blocks. The per-site

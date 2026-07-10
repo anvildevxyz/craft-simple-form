@@ -261,6 +261,25 @@ abstract class FieldType
     }
 
     /**
+     * Whether this type's stored value is genuinely a list (e.g. multi-checkbox,
+     * multi-select relation) — as opposed to a single scalar.
+     *
+     * Consulted before a query-string value ever reaches {@see self::renderInput()}
+     * (query-string prefill, #316): a scalar-only field type casts its `$value`
+     * argument straight to a string (e.g. `(string) $value` in
+     * {@see self::getInputAttributes()}), which is safe for a string/int/bool but
+     * throws "Array to string conversion" for an array — turning a public
+     * `?<handle>[]=x` query param into a fatal error on every visit. Defaulting to
+     * false means an array value is rejected (no prefill) for every type unless it
+     * explicitly opts in here, so a new field type is safe by default without
+     * having to know about this concern.
+     */
+    public function acceptsListValue(): bool
+    {
+        return false;
+    }
+
+    /**
      * Whether this type renders a visitor-facing control that belongs inside the
      * standard labelled field group (label + help text + wrapper).
      *

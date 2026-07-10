@@ -2,6 +2,7 @@
 
 namespace anvildev\simpleform\tests\smoke;
 
+use anvildev\simpleform\elements\Form;
 use anvildev\simpleform\elements\Submission;
 use anvildev\simpleform\helpers\SubmissionCsv;
 use Craft;
@@ -144,6 +145,104 @@ class FormSubmissionCest extends BaseSmokeCest
         $I->assertNull($result['errors']);
         $submission = Submission::find()->formId($this->formId)->one();
         $I->assertStringContainsString('1990', (string)$submission->data['field_' . $birthdateId]['value']);
+    }
+
+    /**
+     * Query-string prefill (#316): an opted-in field is pre-filled from its URL
+     * query param (default: the field handle), while a non-opted field ignores
+     * the query entirely — so an arbitrary param can never inject a value.
+     */
+    public function testQueryStringPrefillOnlyOptedInFields(SmokeTester $I): void
+    {
+        $nameId = $this->createField($this->formId, 'text', 'name', 'Name', true, [
+            'prefillFromQuery' => true,
+        ]);
+        $this->createField($this->formId, 'email', 'email', 'Email', true);
+
+        Craft::$app->getRequest()->setQueryParams([
+            'name' => 'Prefilled Name',
+            'email' => 'sneaky@example.com',
+        ]);
+
+        $html = $this->renderForm($this->formHandle);
+
+        // Opted-in field carries the query value on its own input.
+        $I->assertMatchesRegularExpression(
+            '/id="field_' . $nameId . '"[^>]*value="Prefilled Name"/',
+            $html,
+        );
+        // Non-opted field ignores the query param — its value never appears.
+        $I->assertStringNotContainsString('sneaky@example.com', $html);
+    }
+
+    /**
+     * Query-string prefill honors a custom param name and the form-level default,
+     * with a per-field Off override winning over that default.
+     */
+    public function testQueryStringPrefillCustomParamAndFormDefault(SmokeTester $I): void
+    {
+        $form = $this->getForm();
+        $form->prefillFromQuery = true;
+        Craft::$app->getElements()->saveElement($form);
+
+        // Inherits the form-level default (no explicit flag), custom param name.
+        $cityId = $this->createField($this->formId, 'text', 'city', 'City', false, [
+            'prefillParam' => 'loc',
+        ]);
+        // Explicit per-field Off overrides the form-level default.
+        $this->createField($this->formId, 'text', 'ref', 'Ref', false, [
+            'prefillFromQuery' => false,
+        ]);
+
+        Craft::$app->getRequest()->setQueryParams([
+            'loc' => 'Zurich',
+            'ref' => 'blocked',
+        ]);
+
+        $html = $this->renderForm($this->formHandle);
+
+        $I->assertMatchesRegularExpression(
+            '/id="field_' . $cityId . '"[^>]*value="Zurich"/',
+            $html,
+        );
+        $I->assertStringNotContainsString('blocked', $html);
+    }
+
+    /**
+     * An array query param targeting a scalar field must never crash the
+     * render (code-review fix for #316). Before the fix, `sanitizeValue()`
+     * coerced any array query param into a `list<string>` and handed it
+     * straight to the scalar field's renderer, which casts `(string) $value`
+     * and throws "Array to string conversion" — a visitor loading a plain
+     * `?<handle>[]=x` URL took the whole public form offline. The field must
+     * now render un-prefilled instead of crashing the page.
+     */
+    public function testQueryStringPrefillRejectsArrayForScalarField(SmokeTester $I): void
+    {
+        $nameId = $this->createField($this->formId, 'text', 'name', 'Name', true, [
+            'prefillFromQuery' => true,
+        ]);
+
+        Craft::$app->getRequest()->setQueryParams([
+            'name' => ['x', 'y'],
+        ]);
+
+        $html = $this->renderForm($this->formHandle);
+
+        $I->assertStringContainsString('id="field_' . $nameId . '"', $html);
+        $I->assertStringNotContainsString('Array', $html);
+        $I->assertDoesNotMatchRegularExpression(
+            '/id="field_' . $nameId . '"[^>]*value="/',
+            $html,
+        );
+    }
+
+    /**
+     * The form under test, freshly loaded through the element query.
+     */
+    private function getForm(): Form
+    {
+        return Form::find()->id($this->formId)->one();
     }
 
     /**
