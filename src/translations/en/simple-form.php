@@ -389,4 +389,26 @@ return [
     'Clear filters' => 'Clear filters',
     'Delete sent email logs after (days)' => 'Delete notification logs after (days)',
     'Notification send-log rows older than this are pruned. 0 = keep forever.' => 'Notification send-log rows older than this are pruned. 0 = keep forever.',
+
+    // Anonymized IP capture (#315)
+    'IP address capture' => 'IP address capture',
+    'How the visitor’s IP address is stored on each submission. “Anonymized” masks the host portion at capture time (last octet for IPv4, low 80 bits for IPv6), so a full IP is never written. “Off” stores nothing (GDPR data minimization). Rate limiting always works regardless (nothing is stored); IP-based duplicate detection is disabled when off.' => 'How the visitor’s IP address is stored on each submission. “Anonymized” masks the host portion at capture time (last octet for IPv4, low 80 bits for IPv6), so a full IP is never written. “Off” stores nothing (GDPR data minimization). Rate limiting always works regardless (nothing is stored); IP-based duplicate detection is disabled when off.',
+    'Full IP address' => 'Full IP address',
+    'Anonymized (masked) IP address' => 'Anonymized (masked) IP address',
+    'Off (do not store)' => 'Off (do not store)',
+
+    // Query-string prefill (#316)
+    'Query-string prefill' => 'Query-string prefill',
+    'Prefill fields from the URL by default' => 'Prefill fields from the URL by default',
+    'When on, every visible field is pre-filled from a matching URL query parameter (its handle, e.g. ?email=a@b.com) so campaign and “edit this” links land users on a partially completed form. Each field can override this in the builder. Prefilled values are ordinary defaults — they are still validated on submit, and only opted-in fields ever read the query string.' => 'When on, every visible field is pre-filled from a matching URL query parameter (its handle, e.g. ?email=a@b.com) so campaign and “edit this” links land users on a partially completed form. Each field can override this in the builder. Prefilled values are ordinary defaults — they are still validated on submit, and only opted-in fields ever read the query string.',
+
+    // CSV export column selection (#317)
+    'Export submissions' => 'Export submissions',
+    'Columns' => 'Columns',
+    'Choose the columns to include. All columns are exported by default.' => 'Choose the columns to include. All columns are exported by default.',
+    'No submissions match the current filters.' => 'No submissions match the current filters.',
+    'Export CSV' => 'Export CSV',
+
+    // Callout layout block (#322)
+    'Callout' => 'Callout',
 ];

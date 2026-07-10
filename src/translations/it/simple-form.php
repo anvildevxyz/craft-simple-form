@@ -393,4 +393,26 @@ return [
     'Clear filters' => 'Cancella i filtri',
     'Delete sent email logs after (days)' => 'Elimina i registri delle notifiche dopo (giorni)',
     'Notification send-log rows older than this are pruned. 0 = keep forever.' => 'Le righe del registro di invio delle notifiche più vecchie di questo valore vengono eliminate. 0 = conserva per sempre.',
+
+    // Anonymized IP capture (#315)
+    'IP address capture' => 'Acquisizione dell\'indirizzo IP',
+    'How the visitor’s IP address is stored on each submission. “Anonymized” masks the host portion at capture time (last octet for IPv4, low 80 bits for IPv6), so a full IP is never written. “Off” stores nothing (GDPR data minimization). Rate limiting always works regardless (nothing is stored); IP-based duplicate detection is disabled when off.' => 'Come viene memorizzato l\'indirizzo IP del visitatore a ogni invio. «Anonimizzato» maschera la parte host al momento dell\'acquisizione (ultimo ottetto per IPv4, 80 bit meno significativi per IPv6), così non viene mai scritto un IP completo. «Off» non memorizza nulla (minimizzazione dei dati GDPR). Il rate limiting funziona sempre comunque (non viene memorizzato nulla); il rilevamento dei duplicati basato sull\'IP è disattivato quando è su Off.',
+    'Full IP address' => 'Indirizzo IP completo',
+    'Anonymized (masked) IP address' => 'Indirizzo IP anonimizzato (mascherato)',
+    'Off (do not store)' => 'Off (non memorizzare)',
+
+    // Query-string prefill (#316)
+    'Query-string prefill' => 'Precompilazione da query string',
+    'Prefill fields from the URL by default' => 'Precompila i campi dall\'URL per impostazione predefinita',
+    'When on, every visible field is pre-filled from a matching URL query parameter (its handle, e.g. ?email=a@b.com) so campaign and “edit this” links land users on a partially completed form. Each field can override this in the builder. Prefilled values are ordinary defaults — they are still validated on submit, and only opted-in fields ever read the query string.' => 'Se attivo, ogni campo visibile viene precompilato da un parametro di query dell\'URL corrispondente (il suo handle, es. ?email=a@b.com), così i link di campagna o «modifica questo» portano gli utenti su un modulo parzialmente completato. Ogni campo può sovrascrivere questa impostazione nel builder. I valori precompilati sono normali valori predefiniti — vengono comunque validati all\'invio, e solo i campi che hanno attivato l\'opzione leggono la query string.',
+
+    // CSV export column selection (#317)
+    'Export submissions' => 'Esporta invii',
+    'Columns' => 'Colonne',
+    'Choose the columns to include. All columns are exported by default.' => 'Scegli le colonne da includere. Per impostazione predefinita vengono esportate tutte le colonne.',
+    'No submissions match the current filters.' => 'Nessun invio corrisponde ai filtri attuali.',
+    'Export CSV' => 'Esporta CSV',
+
+    // Callout layout block (#322)
+    'Callout' => 'Riquadro informativo',
 ];
