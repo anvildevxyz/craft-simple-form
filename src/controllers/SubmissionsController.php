@@ -212,8 +212,11 @@ class SubmissionsController extends Controller
         }
 
         $form = $submission->getForm();
-        // $submission->data is stored as a decoded array (json column).
-        $data = is_array($submission->data) ? $submission->data : [];
+        // Render from the submit-time field snapshot when present (#312): labels
+        // and row order come from how the form looked at submit time, so a later
+        // rename/reorder/delete never corrupts this view. Pre-snapshot rows fall
+        // back to the labels/order stored inline on `data`.
+        $data = $submission->getDisplayData();
 
         // Integration dispatch history for this submission, latest per integration.
         $integrationsService = Plugin::getInstance()->getIntegrations();
