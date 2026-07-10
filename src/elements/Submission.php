@@ -80,6 +80,17 @@ class Submission extends Element
     /** Absolute expiry of the edit token (UTC), or null when no token is active. */
     public ?string $editTokenExpires = null;
 
+    /**
+     * Memoized {@see self::getDisplayData()} result. Lazily populated on first
+     * call so a caller that reads it several times per submission (e.g. the CSV
+     * exporter, #323) doesn't repeat the relabel/reorder work. Reset via
+     * {@see self::resetDisplayDataCache()} whenever `$data`/`$fieldSnapshot` are
+     * reassigned after the first read (see {@see \anvildev\simpleform\services\SubmissionService::update()}).
+     *
+     * @var SubmissionData|null
+     */
+    private ?array $_displayData = null;
+
     public static function displayName(): string
     {
         return Craft::t('simple-form', 'Submission');
@@ -171,14 +182,22 @@ class Submission extends Element
      * `display`, …) is otherwise preserved so the detail view and exporter keep
      * rendering each field type exactly as before.
      *
+     * Memoized on the instance ({@see self::$_displayData}) since `data` and
+     * `fieldSnapshot` are immutable per load — a caller that reads this more than
+     * once per submission (e.g. the CSV exporter) doesn't repeat the work.
+     *
      * @return SubmissionData
      */
     public function getDisplayData(): array
     {
+        if ($this->_displayData !== null) {
+            return $this->_displayData;
+        }
+
         $data = is_array($this->data) ? $this->data : [];
         $snapshot = $this->fieldSnapshot;
         if ($snapshot === null || $snapshot === []) {
-            return $data;
+            return $this->_displayData = $data;
         }
 
         $ordered = [];
@@ -203,7 +222,19 @@ class Submission extends Element
             }
         }
 
-        return $ordered;
+        return $this->_displayData = $ordered;
+    }
+
+    /**
+     * Invalidate the {@see self::getDisplayData()} memo. Call after reassigning
+     * {@see self::$data} or {@see self::$fieldSnapshot} on an instance that may
+     * already have been read (e.g. {@see \anvildev\simpleform\services\SubmissionService::update()}
+     * rewriting an existing submission's content) so the next read reflects the
+     * new values instead of a stale cache.
+     */
+    public function resetDisplayDataCache(): void
+    {
+        $this->_displayData = null;
     }
 
     /**

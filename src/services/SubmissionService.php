@@ -445,6 +445,10 @@ class SubmissionService extends Component
         // content against the live definitions, so its snapshot follows (#312),
         // mirroring the re-score guarantee below.
         $submission->fieldSnapshot = $core['snapshot'] ?? $submission->fieldSnapshot;
+        // $submission may already have served a memoized getDisplayData() read
+        // (e.g. rendering the current values before this edit); the reassignment
+        // above would otherwise leave that memo stale (#323).
+        $submission->resetDisplayDataCache();
         if ($isSpam) {
             $submission->readStatus = SubmissionStatus::SPAM;
             $submission->spamReason = $spamReason;
