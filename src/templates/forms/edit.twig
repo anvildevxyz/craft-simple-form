@@ -614,6 +614,18 @@
 
     <hr>
 
+    <h2>{{ 'Query-string prefill'|t('simple-form') }}</h2>
+
+    {{ forms.lightswitchField({
+        label: 'Prefill fields from the URL by default'|t('simple-form'),
+        id: 'prefillFromQuery',
+        name: 'prefillFromQuery',
+        on: form.prefillFromQuery ?? false,
+        instructions: 'When on, every visible field is pre-filled from a matching URL query parameter (its handle, e.g. ?email=a@b.com) so campaign and “edit this” links land users on a partially completed form. Each field can override this in the builder. Prefilled values are ordinary defaults — they are still validated on submit, and only opted-in fields ever read the query string.'|t('simple-form'),
+    }) }}
+
+    <hr>
+
     <h2>{{ 'Display'|t('simple-form') }}</h2>
 
     {{ forms.selectField({
