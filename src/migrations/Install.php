@@ -120,6 +120,7 @@ class Install extends Migration
             'workflowStatus' => $this->string(64),
             'spamReason' => $this->string(64),
             'sourceIp' => $this->string(45),
+            'ipHash' => $this->char(64),
             'paymentStatus' => $this->string(20),
             'paymentAmount' => $this->decimal(14, 4),
             'orderId' => $this->integer(),

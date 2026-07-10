@@ -328,6 +328,7 @@ class SubmissionService extends Component
         $submission->readStatus = $isSpam ? SubmissionStatus::SPAM : SubmissionStatus::NEW;
         $submission->spamReason = $spamReason;
         $submission->sourceIp = $this->sourceIp();
+        $submission->ipHash = $this->ipFingerprint();
 
         // Approval workflow (#248): a genuine (non-spam) submission enters the
         // owner-defined pipeline at its initial stage. No-op when disabled.
@@ -1089,7 +1090,7 @@ class SubmissionService extends Component
             return false;
         }
 
-        $fingerprint = $this->dedupeFingerprint($form, $data, $this->sourceIp());
+        $fingerprint = $this->dedupeFingerprint($form, $data, $this->ipFingerprint());
         if ($fingerprint === null) {
             return false;
         }
@@ -1105,7 +1106,7 @@ class SubmissionService extends Component
 
         foreach ($query->all() as $existing) {
             $existingData = is_array($existing->data) ? $existing->data : [];
-            if ($this->dedupeFingerprint($form, $existingData, $existing->sourceIp) === $fingerprint) {
+            if ($this->dedupeFingerprint($form, $existingData, $existing->ipHash) === $fingerprint) {
                 return true;
             }
         }
@@ -1117,13 +1118,20 @@ class SubmissionService extends Component
      * The dedupe fingerprint for a submission under the form's key, or null when
      * it cannot be computed (so no false "duplicate" is reported).
      *
+     * The `ip` key takes `$ipFingerprint` — the SHA-256 hash of the submitter's
+     * *full* IP ({@see self::ipFingerprint()}), never the (possibly-masked)
+     * display `sourceIp` (#326, fixing #315). Masking policy therefore never
+     * changes matching behavior: two visitors sharing an IPv4 /24 or IPv6 /48
+     * mask to the same `sourceIp` but hash to different fingerprints, and the
+     * fingerprint stays stable if the display policy changes later.
+     *
      * @param array<string, mixed> $data
      */
-    private function dedupeFingerprint(Form $form, array $data, ?string $sourceIp): ?string
+    private function dedupeFingerprint(Form $form, array $data, ?string $ipFingerprint): ?string
     {
         return match ($form->duplicateKey) {
             Form::DUPLICATE_KEY_CONTENT => 'content:' . $this->contentHash($data),
-            Form::DUPLICATE_KEY_IP => ($sourceIp !== null && $sourceIp !== '') ? 'ip:' . $sourceIp : null,
+            Form::DUPLICATE_KEY_IP => ($ipFingerprint !== null && $ipFingerprint !== '') ? 'ip:' . $ipFingerprint : null,
             default => ($email = $this->firstEmail($data)) !== null ? 'email:' . strtolower($email) : null,
         };
     }
@@ -1146,7 +1154,10 @@ class SubmissionService extends Component
     }
 
     /**
-     * The submitter's source IP, or null on the console / when unresolvable.
+     * The submitter's source IP for *display* storage, or null on the console /
+     * when unresolvable. Subject to `ipCapturePolicy` masking (#315) — this is
+     * the human-readable value shown in the CP, not the dedupe fingerprint (see
+     * {@see self::ipFingerprint()}).
      */
     private function sourceIp(): ?string
     {
@@ -1159,6 +1170,47 @@ class SubmissionService extends Component
             return null;
         }
 
+        $ip = $this->requestIp();
+        if ($ip === null) {
+            return null;
+        }
+
+        // Mask at capture time so a full IP is never written to the database in
+        // anonymized mode.
+        return $policy === Settings::IP_CAPTURE_ANONYMIZED ? IpHelper::anonymize($ip) : $ip;
+    }
+
+    /**
+     * A stable, non-reversible fingerprint of the submitter's *full* IP for the
+     * `ip` duplicate-detection key (#326, fixing #315), independent of the
+     * `ipCapturePolicy` masking applied to the *stored* `sourceIp` display
+     * column. Always derived from {@see self::requestIp()} — the raw, pre-mask
+     * address — never from the (possibly-masked) `sourceIp`, so anonymized-mode
+     * masking can't collapse visitors sharing an IPv4 /24 or IPv6 /48 into a
+     * false-positive duplicate, and matching stays consistent even if the
+     * display policy changes between submissions. Honors `IP_CAPTURE_OFF`
+     * (returns null) so opting out of IP capture also opts out of IP-derived
+     * dedup, matching the storage policy's intent. Only the one-way hash is
+     * persisted — the raw IP itself never is.
+     */
+    private function ipFingerprint(): ?string
+    {
+        if (Plugin::getInstance()->getSettings()->ipCapturePolicy === Settings::IP_CAPTURE_OFF) {
+            return null;
+        }
+
+        $ip = $this->requestIp();
+
+        return $ip === null ? null : hash('sha256', $ip);
+    }
+
+    /**
+     * The request's raw, unmasked client IP, or null on the console / when
+     * unresolvable. Shared by {@see self::sourceIp()} (display, policy-masked)
+     * and {@see self::ipFingerprint()} (dedupe, always full).
+     */
+    private function requestIp(): ?string
+    {
         /** @var \craft\web\Request $request */
         $request = Craft::$app->getRequest();
         if ($request->getIsConsoleRequest()) {
@@ -1166,13 +1218,8 @@ class SubmissionService extends Component
         }
 
         $ip = $request->getUserIP();
-        if ($ip === null || $ip === '') {
-            return null;
-        }
 
-        // Mask at capture time so a full IP is never written to the database in
-        // anonymized mode.
-        return $policy === Settings::IP_CAPTURE_ANONYMIZED ? IpHelper::anonymize($ip) : $ip;
+        return ($ip === null || $ip === '') ? null : $ip;
     }
 
     /**
