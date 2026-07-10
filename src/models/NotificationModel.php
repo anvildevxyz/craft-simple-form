@@ -2,6 +2,7 @@
 
 namespace anvildev\simpleform\models;
 
+use anvildev\simpleform\helpers\AddressList;
 use anvildev\simpleform\Plugin;
 use Craft;
 use craft\base\Model;
@@ -84,7 +85,7 @@ class NotificationModel extends Model
         }
 
         $validator = new EmailValidator();
-        foreach (preg_split('/[\s,;]+/', $value, -1, PREG_SPLIT_NO_EMPTY) ?: [] as $address) {
+        foreach (AddressList::split($value) as $address) {
             if (!$validator->validate($address)) {
                 $this->addError($attribute, Craft::t(
                     'simple-form',

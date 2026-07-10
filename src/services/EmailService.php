@@ -6,6 +6,7 @@ use anvildev\simpleform\elements\Form;
 use anvildev\simpleform\elements\Submission;
 use anvildev\simpleform\events\BeforeSendNotificationEvent;
 use anvildev\simpleform\fields\FileFieldType;
+use anvildev\simpleform\helpers\AddressList;
 use anvildev\simpleform\jobs\SendNotifications;
 use anvildev\simpleform\models\FieldModel;
 use anvildev\simpleform\models\NotificationModel;
@@ -272,7 +273,7 @@ class EmailService extends Component
     }
 
     /**
-     * Parse a comma/semicolon/whitespace-separated address string into a
+     * Split a comma/semicolon/whitespace-separated address string into a
      * de-duplicated list of valid email addresses (#313). Validation already
      * rejects header-injection input at save time; this is a defensive filter so
      * only clean addresses ever reach the mailer.
@@ -281,13 +282,8 @@ class EmailService extends Component
      */
     private function parseAddressList(?string $value): array
     {
-        if ($value === null || trim($value) === '') {
-            return [];
-        }
-
-        $parts = preg_split('/[\s,;]+/', $value, -1, PREG_SPLIT_NO_EMPTY) ?: [];
         return array_values(array_unique(array_filter(
-            $parts,
+            AddressList::split($value),
             static fn(string $p): bool => (bool) filter_var($p, FILTER_VALIDATE_EMAIL),
         )));
     }
