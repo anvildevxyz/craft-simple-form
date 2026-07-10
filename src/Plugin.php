@@ -829,6 +829,7 @@ class Plugin extends BasePlugin
         $event->rules['simple-form/partials/delete'] = 'simple-form/partials/delete';
 
         $event->rules['simple-form/notifications'] = 'simple-form/notification-log/index';
+        $event->rules['simple-form/notifications/resend'] = 'simple-form/notification-log/resend';
         $event->rules['simple-form/submissions'] = 'simple-form/submissions/index';
         $event->rules['simple-form/submissions/analytics'] = 'simple-form/submissions/analytics';
         $event->rules['simple-form/submissions/export'] = 'simple-form/submissions/export';

@@ -2,11 +2,17 @@
 
 namespace anvildev\simpleform\tests\smoke;
 
+use anvildev\simpleform\controllers\NotificationLogController;
 use anvildev\simpleform\elements\Submission;
+use anvildev\simpleform\helpers\SimpleFormPermissions;
 use anvildev\simpleform\models\NotificationModel;
 use anvildev\simpleform\Plugin;
+use anvildev\simpleform\services\NotificationLogService;
 use Craft;
+use craft\elements\User;
+use craft\web\Response;
 use SmokeTester;
+use yii\web\ForbiddenHttpException;
 
 /**
  * Notification email smoke tests (functional).
@@ -131,6 +137,131 @@ class NotificationsSmokeCest extends BaseSmokeCest
         $I->assertCount(0, $sent);
     }
 
+    public function testManualResendReDeliversAndLogsReference(SmokeTester $I): void
+    {
+        $form = $this->createForm('Resend Notify', 'resendNotify' . uniqid());
+        $emailId = $this->createField((int) $form->id, 'email', 'email', 'Email', true);
+
+        $notification = new NotificationModel();
+        $notification->formId = (int) $form->id;
+        $notification->name = 'Resendable alert';
+        $notification->enabled = true;
+        $notification->recipientType = NotificationModel::RECIPIENT_FIXED;
+        $notification->recipient = 'ops@example.test';
+        $notification->subject = 'New lead';
+        $notification->body = 'Email: {{ email }}';
+        Plugin::getInstance()->getNotifications()->save($notification);
+
+        // Original submit → one delivery, one log row.
+        $result = null;
+        $firstSend = $this->captureSentMessages(function() use ($form, $emailId, &$result): void {
+            $result = $this->withSyncSideEffects(function() use ($form, $emailId) {
+                return $this->submitDirect($form, ['field_' . $emailId => 'lead@example.com']);
+            });
+        });
+
+        $I->assertCount(1, $firstSend);
+        $submission = $result['submission'];
+        $I->assertInstanceOf(Submission::class, $submission);
+
+        $log = Plugin::getInstance()->getNotificationLog();
+        $original = $log->getForSubmission((int) $submission->id);
+        $I->assertCount(1, $original);
+        $originalId = (int) $original[0]['id'];
+
+        // Manual resend → a second delivery.
+        $resendMessages = $this->captureSentMessages(function() use ($originalId): void {
+            $this->withSyncSideEffects(function() use ($originalId): void {
+                $resent = Plugin::getInstance()->getEmailService()->resendFromLog($originalId);
+                if (!$resent) {
+                    throw new \RuntimeException('resendFromLog returned false');
+                }
+            });
+        });
+
+        $I->assertCount(1, $resendMessages);
+        $I->assertArrayHasKey('ops@example.test', $resendMessages[0]->getTo());
+
+        // A fresh log row was written referencing the original send.
+        $rows = $log->getForSubmission((int) $submission->id);
+        $I->assertCount(2, $rows);
+
+        $resendRow = null;
+        foreach ($rows as $row) {
+            if ((int) ($row['resentFromId'] ?? 0) === $originalId) {
+                $resendRow = $row;
+                break;
+            }
+        }
+
+        $I->assertNotNull($resendRow, 'A new log row referencing the original send was written.');
+        $I->assertSame(NotificationLogService::STATUS_SUCCESS, $resendRow['status']);
+        $I->assertNotSame($originalId, (int) $resendRow['id']);
+    }
+
+    /**
+     * Security regression: the resend action re-dispatches outbound email, so
+     * it must require MANAGE_SUBMISSIONS on top of the VIEW_SUBMISSIONS gate
+     * shared by the rest of the log — a view-only user must be forbidden,
+     * while a manage-capable user succeeds.
+     */
+    public function testResendRequiresManageSubmissionsPermission(SmokeTester $I): void
+    {
+        $form = $this->createForm('Resend Permission', 'resendPermission' . uniqid());
+        $emailId = $this->createField((int) $form->id, 'email', 'email', 'Email', true);
+
+        $notification = new NotificationModel();
+        $notification->formId = (int) $form->id;
+        $notification->name = 'Resendable alert';
+        $notification->enabled = true;
+        $notification->recipientType = NotificationModel::RECIPIENT_FIXED;
+        $notification->recipient = 'ops@example.test';
+        $notification->subject = 'New lead';
+        $notification->body = 'Email: {{ email }}';
+        Plugin::getInstance()->getNotifications()->save($notification);
+
+        $result = $this->withSyncSideEffects(function() use ($form, $emailId) {
+            return $this->submitDirect($form, ['field_' . $emailId => 'lead@example.com']);
+        });
+        $submission = $result['submission'];
+        $I->assertInstanceOf(Submission::class, $submission);
+
+        $log = Plugin::getInstance()->getNotificationLog();
+        $original = $log->getForSubmission((int) $submission->id);
+        $I->assertCount(1, $original);
+        $originalId = (int) $original[0]['id'];
+
+        $viewerId = $this->seedUser('viewer-' . uniqid() . '@example.test', [
+            SimpleFormPermissions::VIEW_SUBMISSIONS,
+        ]);
+        $managerId = $this->seedUser('manager-' . uniqid() . '@example.test', [
+            SimpleFormPermissions::VIEW_SUBMISSIONS,
+            SimpleFormPermissions::MANAGE_SUBMISSIONS,
+        ]);
+
+        // A view-only user is forbidden from resending.
+        $forbidden = false;
+        $this->asUser($viewerId, function() use ($originalId, &$forbidden): void {
+            try {
+                $this->callResend($originalId);
+            } catch (ForbiddenHttpException) {
+                $forbidden = true;
+            }
+        });
+        $I->assertTrue($forbidden, 'A view-only user must be forbidden from resending notifications');
+        $I->assertCount(1, $log->getForSubmission((int) $submission->id), 'No resend row written for the rejected attempt');
+
+        // A manage-capable user can resend.
+        $data = null;
+        $this->asUser($managerId, function() use ($originalId, &$data): void {
+            $this->withSyncSideEffects(function() use ($originalId, &$data): void {
+                $data = $this->callResend($originalId);
+            });
+        });
+        $I->assertTrue($data['success'] ?? false, 'A manage-capable user can resend notifications');
+        $I->assertCount(2, $log->getForSubmission((int) $submission->id));
+    }
+
     public function testAutoresponderUsesSubmitterEmail(SmokeTester $I): void
     {
         $form = $this->createForm('Autoresponder', 'auto' . uniqid());
@@ -152,5 +283,67 @@ class NotificationsSmokeCest extends BaseSmokeCest
 
         $I->assertCount(1, $sent);
         $I->assertArrayHasKey('visitor@example.com', $sent[0]->getTo());
+    }
+
+    // =========================================================================
+    // PRIVATE METHODS
+    // =========================================================================
+
+    /**
+     * Call the CP resend action directly (through its full `beforeAction`
+     * lifecycle, so the permission gate under test actually runs) and return
+     * its decoded JSON payload.
+     *
+     * @return array<string, mixed>
+     * @throws ForbiddenHttpException if the active user lacks MANAGE_SUBMISSIONS
+     */
+    private function callResend(int $logId): array
+    {
+        $request = Craft::$app->getRequest();
+        $request->getHeaders()->set('Accept', 'application/json');
+        $request->setBodyParams(['logId' => $logId]);
+        $_SERVER['REQUEST_METHOD'] = 'POST';
+        Craft::$app->set('response', new Response());
+
+        $controller = new NotificationLogController('notification-log', Plugin::getInstance());
+        $controller->enableCsrfValidation = false;
+
+        /** @var array<string, mixed> $data */
+        $data = $controller->runAction('resend')->data;
+
+        return $data;
+    }
+
+    /**
+     * Seed a non-admin user with the given permissions and return its id.
+     *
+     * @param list<string> $permissions
+     */
+    private function seedUser(string $email, array $permissions): int
+    {
+        $user = new User();
+        $user->email = $email;
+        $user->username = $email;
+        Craft::$app->getElements()->saveElement($user);
+
+        Craft::$app->getUserPermissions()->saveUserPermissions((int) $user->id, $permissions);
+
+        return (int) $user->id;
+    }
+
+    /**
+     * Run a closure with the given user as the active identity, restoring the
+     * prior (guest) identity afterwards.
+     */
+    private function asUser(int $userId, callable $fn): void
+    {
+        $userSession = Craft::$app->getUser();
+        $previous = $userSession->getIdentity();
+        try {
+            $userSession->setIdentity(User::find()->id($userId)->one());
+            $fn();
+        } finally {
+            $userSession->setIdentity($previous);
+        }
     }
 }
