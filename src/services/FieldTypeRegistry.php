@@ -32,6 +32,7 @@ use anvildev\simpleform\fields\SignatureFieldType;
 use anvildev\simpleform\fields\TagRelationFieldType;
 use anvildev\simpleform\fields\TextareaFieldType;
 use anvildev\simpleform\fields\TextFieldType;
+use anvildev\simpleform\fields\UrlFieldType;
 use anvildev\simpleform\fields\UserRelationFieldType;
 use anvildev\simpleform\Plugin;
 use yii\base\Component;
@@ -83,6 +84,7 @@ class FieldTypeRegistry extends Component
         foreach ([
             TextFieldType::class,
             EmailFieldType::class,
+            UrlFieldType::class,
             TextareaFieldType::class,
             SelectFieldType::class,
             CheckboxFieldType::class,

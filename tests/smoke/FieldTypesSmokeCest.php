@@ -74,6 +74,29 @@ class FieldTypesSmokeCest extends BaseSmokeCest
         $I->assertSame(self::CONSENT_TEXT, $value['textVersion']);
     }
 
+    public function testUrlFieldNormalizesAndStores(SmokeTester $I): void
+    {
+        $form = $this->createForm('Website', 'website' . uniqid());
+        $fieldId = $this->createField((int) $form->id, 'url', 'website', 'Website', true);
+
+        $result = $this->submitRequest($form->handle, ['field_' . $fieldId => 'example.com']);
+
+        $I->assertNull($result['errors']);
+        // A scheme-less entry is normalized to https:// before storage.
+        $I->assertSame('https://example.com', $result['submission']->data['field_' . $fieldId]['value']);
+    }
+
+    public function testInvalidUrlIsRejected(SmokeTester $I): void
+    {
+        $form = $this->createForm('Website Reject', 'websiteReject' . uniqid());
+        $fieldId = $this->createField((int) $form->id, 'url', 'website', 'Website', true);
+
+        $result = $this->submitRequest($form->handle, ['field_' . $fieldId => 'not a url']);
+
+        $I->assertNull($result['submission']);
+        $I->assertArrayHasKey('field_' . $fieldId, $result['errors']);
+    }
+
     public function testPhoneFieldNormalizesToE164(SmokeTester $I): void
     {
         $form = $this->createForm('Phone', 'phone' . uniqid());
