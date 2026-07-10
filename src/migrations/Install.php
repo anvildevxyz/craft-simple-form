@@ -115,6 +115,7 @@ class Install extends Migration
             'formId' => $this->integer()->notNull(),
             'siteId' => $this->integer()->notNull(),
             'data' => $this->json(),
+            'fieldSnapshot' => $this->json(),
             'userId' => $this->integer(),
             'readStatus' => $this->enum('readStatus', ['new', 'read', 'archived', 'spam'])->defaultValue('new'),
             'workflowStatus' => $this->string(64),

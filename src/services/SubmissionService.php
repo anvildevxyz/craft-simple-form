@@ -322,6 +322,8 @@ class SubmissionService extends Component
         $submission->formId = (int) $form->id;
         $submission->siteId = (int) $siteId;
         $submission->data = $data;
+        // Immutable field snapshot captured at submit time (#312).
+        $submission->fieldSnapshot = $core['snapshot'] ?? null;
         // Always associate the submission with the logged-in user (#135).
         $submission->userId = isset($context['userId']) ? (int) $context['userId'] : null;
         $submission->readStatus = $isSpam ? SubmissionStatus::SPAM : SubmissionStatus::NEW;
@@ -439,6 +441,14 @@ class SubmissionService extends Component
         // Preserve id/dateCreated/siteId/userId — only the content + spam state
         // change. A spam verdict on edit flags the submission like a new one.
         $submission->data = $data;
+        // Re-snapshot against the current form: an edit rewrites this row's
+        // content against the live definitions, so its snapshot follows (#312),
+        // mirroring the re-score guarantee below.
+        $submission->fieldSnapshot = $core['snapshot'] ?? $submission->fieldSnapshot;
+        // $submission may already have served a memoized getDisplayData() read
+        // (e.g. rendering the current values before this edit); the reassignment
+        // above would otherwise leave that memo stale (#323).
+        $submission->resetDisplayDataCache();
         if ($isSpam) {
             $submission->readStatus = SubmissionStatus::SPAM;
             $submission->spamReason = $spamReason;
@@ -626,7 +636,7 @@ class SubmissionService extends Component
      *
      * @param array<int|string, mixed> $values
      * @param SubmissionContext $context
-     * @return array{result: array{submission: null, errors: array<string, mixed>|null}|null, data: array<string, mixed>, isSpam: bool, spamReason?: ?string}
+     * @return array{result: array{submission: null, errors: array<string, mixed>|null}|null, data: array<string, mixed>, isSpam: bool, spamReason?: ?string, snapshot?: array<string, array{handle: string, label: string, type: string, order: int, options?: array<string, string>}>}
      */
     private function processSubmission(Form $form, array $values, array $context): array
     {
@@ -693,6 +703,13 @@ class SubmissionService extends Component
         }
 
         $formModel = new FormModel($form);
+
+        // (2b) Field snapshot (#312): capture the form's input-field structure —
+        // handle, label, type, option labels, and display order — BEFORE the field
+        // loop below strips fields hidden by conditional logic. Persisted verbatim
+        // on the submission so the detail view and every export render from the
+        // form as it stood at submit time, immune to a later rename/reorder/delete.
+        $snapshot = $this->buildFieldSnapshot($formModel);
 
         // (3) Resolve every field's value up front, keyed by field handle, so
         // conditional rules can be evaluated against the complete submitted
@@ -886,7 +903,47 @@ class SubmissionService extends Component
         // (submit() / update()) to persist as a create or an edit. Routing both
         // through this one core guarantees identical validation, conditional-logic
         // visibility, denylist/duplicate and Akismet behavior on every transport.
-        return ['result' => null, 'data' => $data, 'isSpam' => $isSpam, 'spamReason' => $spamReason];
+        return ['result' => null, 'data' => $data, 'isSpam' => $isSpam, 'spamReason' => $spamReason, 'snapshot' => $snapshot];
+    }
+
+    /**
+     * Build the immutable field snapshot (#312) for a form: an ordered map keyed by
+     * `field_<id>` (aligned with the submission's `data` keys) recording each input
+     * field's handle, label, type, display order, and — for choice fields — its
+     * option value => label map. Presentational layout blocks (heading, divider,
+     * html) are skipped, exactly as they are excluded from `data`. Captures the
+     * live definitions so a later rename/reorder/delete cannot alter how an
+     * existing submission reads.
+     *
+     * @return array<string, array{handle: string, label: string, type: string, order: int, options?: array<string, string>}>
+     */
+    private function buildFieldSnapshot(FormModel $formModel): array
+    {
+        $registry = Plugin::getInstance()->getFieldTypeRegistry();
+
+        $snapshot = [];
+        $order = 0;
+        foreach ($formModel->getFields() as $fieldId => $field) {
+            if (!$field->isInputType()) {
+                continue;
+            }
+
+            $entry = [
+                'handle' => $field->getName(),
+                'label' => $field->getLabel() ?? $field->getName(),
+                'type' => $field->getType(),
+                'order' => $order++,
+            ];
+
+            $options = $registry->getFieldType($field->getType(), $field->getConfig())?->optionLabels() ?? [];
+            if ($options !== []) {
+                $entry['options'] = $options;
+            }
+
+            $snapshot['field_' . $fieldId] = $entry;
+        }
+
+        return $snapshot;
     }
 
     /**
