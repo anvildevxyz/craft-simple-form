@@ -208,6 +208,35 @@ class FormSubmissionCest extends BaseSmokeCest
     }
 
     /**
+     * An array query param targeting a scalar field must never crash the
+     * render (code-review fix for #316). Before the fix, `sanitizeValue()`
+     * coerced any array query param into a `list<string>` and handed it
+     * straight to the scalar field's renderer, which casts `(string) $value`
+     * and throws "Array to string conversion" — a visitor loading a plain
+     * `?<handle>[]=x` URL took the whole public form offline. The field must
+     * now render un-prefilled instead of crashing the page.
+     */
+    public function testQueryStringPrefillRejectsArrayForScalarField(SmokeTester $I): void
+    {
+        $nameId = $this->createField($this->formId, 'text', 'name', 'Name', true, [
+            'prefillFromQuery' => true,
+        ]);
+
+        Craft::$app->getRequest()->setQueryParams([
+            'name' => ['x', 'y'],
+        ]);
+
+        $html = $this->renderForm($this->formHandle);
+
+        $I->assertStringContainsString('id="field_' . $nameId . '"', $html);
+        $I->assertStringNotContainsString('Array', $html);
+        $I->assertDoesNotMatchRegularExpression(
+            '/id="field_' . $nameId . '"[^>]*value="/',
+            $html,
+        );
+    }
+
+    /**
      * The form under test, freshly loaded through the element query.
      */
     private function getForm(): Form

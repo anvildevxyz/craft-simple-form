@@ -20,7 +20,7 @@ namespace anvildev\simpleform\helpers;
  * (the field registry, the request query params) live in
  * {@see \anvildev\simpleform\services\FormRenderService}.
  *
- * @phpstan-type PrefillField array{key: string, handle: string, config: array<string, mixed>}
+ * @phpstan-type PrefillField array{key: string, handle: string, config: array<string, mixed>, acceptsList: bool}
  *
  * @author Fabian Haefliger
  * @since 1.0.0
@@ -66,7 +66,7 @@ class QueryPrefillResolver
                 continue;
             }
 
-            $value = self::sanitizeValue($queryParams[$param]);
+            $value = self::sanitizeValue($queryParams[$param], $field['acceptsList']);
             if ($value !== null) {
                 $prefill[$field['key']] = $value;
             }
@@ -106,16 +106,30 @@ class QueryPrefillResolver
 
     /**
      * Coerce a raw query value to a prefill-safe scalar or list of scalars. A
-     * scalar becomes a string; a (multi-value) array becomes a list of its scalar
-     * entries as strings; anything else (or an empty list) yields null so no
-     * entry is written. The value is a render-time default only — the input HTML
-     * escapes it and the submit path validates it as untrusted input.
+     * scalar becomes a string. An array is only ever coerced for a field that
+     * genuinely stores a list (`$acceptsList`, e.g. multi-checkbox) — anything
+     * else (a scalar field handed an array, an empty list, or a non-scalar item)
+     * yields null so no entry is written.
+     *
+     * An array reaching a scalar field's `renderInput()` is not merely wrong
+     * prefill data — every scalar field type casts its value straight to a
+     * string (`(string) $value`), which throws "Array to string conversion" for
+     * an array and 500s the public form. Rejecting the array here, before it
+     * ever reaches a renderer, is the only gate against a visitor-supplied
+     * `?<handle>[]=x` taking a prefill-enabled form offline.
+     *
+     * The value is a render-time default only — the input HTML escapes it and
+     * the submit path validates it as untrusted input.
      *
      * @return string|list<string>|null
      */
-    public static function sanitizeValue(mixed $value): string|array|null
+    public static function sanitizeValue(mixed $value, bool $acceptsList = false): string|array|null
     {
         if (is_array($value)) {
+            if (!$acceptsList) {
+                return null;
+            }
+
             $clean = [];
             foreach ($value as $item) {
                 if (is_scalar($item)) {

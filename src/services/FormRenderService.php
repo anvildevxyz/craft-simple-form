@@ -714,6 +714,7 @@ class FormRenderService extends Component
                 'key' => 'field_' . ($row['id'] ?? ''),
                 'handle' => (string) ($row['name'] ?? ''),
                 'config' => $config,
+                'acceptsList' => $fieldType->acceptsListValue(),
             ];
         }
 

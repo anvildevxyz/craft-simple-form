@@ -52,19 +52,28 @@ class QueryPrefillResolverTest extends TestCase
         $this->assertSame('42', QueryPrefillResolver::sanitizeValue(42));
     }
 
-    public function testArrayValueBecomesListOfStrings(): void
+    public function testArrayValueBecomesListOfStringsWhenFieldAcceptsAList(): void
     {
-        $this->assertSame(['a', 'b'], QueryPrefillResolver::sanitizeValue(['a', 'b']));
+        $this->assertSame(['a', 'b'], QueryPrefillResolver::sanitizeValue(['a', 'b'], true));
+    }
+
+    public function testArrayValueYieldsNullWhenFieldDoesNotAcceptAList(): void
+    {
+        // Code-review fix: a scalar field (e.g. text) casts its value straight
+        // to a string, so an array param must never reach it — the default
+        // (no $acceptsList arg) is the safe scalar-field behaviour.
+        $this->assertNull(QueryPrefillResolver::sanitizeValue(['a', 'b']));
+        $this->assertNull(QueryPrefillResolver::sanitizeValue(['a', 'b'], false));
     }
 
     public function testEmptyArrayYieldsNull(): void
     {
-        $this->assertNull(QueryPrefillResolver::sanitizeValue([]));
+        $this->assertNull(QueryPrefillResolver::sanitizeValue([], true));
     }
 
     public function testNestedArrayEntriesAreDropped(): void
     {
-        $this->assertSame(['ok'], QueryPrefillResolver::sanitizeValue(['ok', ['nested']]));
+        $this->assertSame(['ok'], QueryPrefillResolver::sanitizeValue(['ok', ['nested']], true));
     }
 
     // --- resolve ----------------------------------------------------------
@@ -72,8 +81,8 @@ class QueryPrefillResolverTest extends TestCase
     public function testOnlyOptedInFieldsAreResolved(): void
     {
         $fields = [
-            ['key' => 'field_1', 'handle' => 'name', 'config' => ['prefillFromQuery' => true]],
-            ['key' => 'field_2', 'handle' => 'email', 'config' => ['prefillFromQuery' => false]],
+            ['key' => 'field_1', 'handle' => 'name', 'config' => ['prefillFromQuery' => true], 'acceptsList' => false],
+            ['key' => 'field_2', 'handle' => 'email', 'config' => ['prefillFromQuery' => false], 'acceptsList' => false],
         ];
         $query = ['name' => 'Ada', 'email' => 'sneaky@example.com'];
 
@@ -83,8 +92,8 @@ class QueryPrefillResolverTest extends TestCase
     public function testFormDefaultOptsInUnflaggedFields(): void
     {
         $fields = [
-            ['key' => 'field_1', 'handle' => 'city', 'config' => ['prefillParam' => 'loc']],
-            ['key' => 'field_2', 'handle' => 'ref', 'config' => ['prefillFromQuery' => false]],
+            ['key' => 'field_1', 'handle' => 'city', 'config' => ['prefillParam' => 'loc'], 'acceptsList' => false],
+            ['key' => 'field_2', 'handle' => 'ref', 'config' => ['prefillFromQuery' => false], 'acceptsList' => false],
         ];
         $query = ['loc' => 'Zurich', 'ref' => 'blocked'];
 
@@ -94,9 +103,32 @@ class QueryPrefillResolverTest extends TestCase
     public function testAbsentParamContributesNoEntry(): void
     {
         $fields = [
-            ['key' => 'field_1', 'handle' => 'name', 'config' => ['prefillFromQuery' => true]],
+            ['key' => 'field_1', 'handle' => 'name', 'config' => ['prefillFromQuery' => true], 'acceptsList' => false],
         ];
 
         $this->assertSame([], QueryPrefillResolver::resolve($fields, [], false));
+    }
+
+    public function testArrayQueryParamIsRejectedForAScalarField(): void
+    {
+        // The DoS scenario (code review): a visitor loads `?name[]=x&name[]=y`
+        // against a scalar text field. Without `acceptsList`, the array must be
+        // dropped rather than handed to the field's renderer.
+        $fields = [
+            ['key' => 'field_1', 'handle' => 'name', 'config' => ['prefillFromQuery' => true], 'acceptsList' => false],
+        ];
+        $query = ['name' => ['x', 'y']];
+
+        $this->assertSame([], QueryPrefillResolver::resolve($fields, $query, false));
+    }
+
+    public function testArrayQueryParamIsAcceptedForAListField(): void
+    {
+        $fields = [
+            ['key' => 'field_1', 'handle' => 'interests', 'config' => ['prefillFromQuery' => true], 'acceptsList' => true],
+        ];
+        $query = ['interests' => ['sports', 'music']];
+
+        $this->assertSame(['field_1' => ['sports', 'music']], QueryPrefillResolver::resolve($fields, $query, false));
     }
 }
