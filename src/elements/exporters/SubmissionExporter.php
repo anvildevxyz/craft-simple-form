@@ -20,7 +20,8 @@ class SubmissionExporter extends ElementExporter
     // =========================================================================
 
     /**
-     * Header labels to restrict the export to. Empty = every column (#317).
+     * Stable column keys (see {@see SubmissionCsv::availableColumns()}) to
+     * restrict the export to. Empty = every column (#317).
      *
      * @var list<string>
      */

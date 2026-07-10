@@ -119,9 +119,11 @@ class SubmissionsController extends Controller
     }
 
     /**
-     * The operator-selected export columns from the request, or null when none is
-     * given so the export defaults to every column (#317). Only well-formed string
-     * labels are accepted.
+     * The operator-selected export column keys from the request (see
+     * {@see \anvildev\simpleform\helpers\SubmissionCsv::availableColumns()} for
+     * the stable-key scheme), or null when none is given so the export
+     * defaults to every column (#317). Only well-formed string keys are
+     * accepted.
      *
      * @return list<string>|null
      */
@@ -133,17 +135,17 @@ class SubmissionsController extends Controller
         }
 
         // The checkbox-select's "all" toggle posts `['*']`; honor it as the
-        // default (every column) rather than a literal column named `*`.
+        // default (every column) rather than a literal column keyed `*`.
         if (in_array('*', $columns, true)) {
             return null;
         }
 
-        $labels = array_values(array_filter(
+        $keys = array_values(array_filter(
             array_map(static fn($c): string => is_string($c) ? $c : '', $columns),
             static fn(string $c): bool => $c !== '',
         ));
 
-        return $labels === [] ? null : $labels;
+        return $keys === [] ? null : $keys;
     }
 
     /**
