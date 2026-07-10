@@ -103,6 +103,7 @@ class SubmissionQuery extends ElementQuery
         $this->query->select([
             'simpleform_submissions.formId',
             'simpleform_submissions.data',
+            'simpleform_submissions.fieldSnapshot',
             'simpleform_submissions.userId',
             'simpleform_submissions.readStatus',
             'simpleform_submissions.workflowStatus',
