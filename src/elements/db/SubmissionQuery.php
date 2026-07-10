@@ -109,6 +109,7 @@ class SubmissionQuery extends ElementQuery
             'simpleform_submissions.workflowStatus',
             'simpleform_submissions.spamReason',
             'simpleform_submissions.sourceIp',
+            'simpleform_submissions.ipHash',
             'simpleform_submissions.paymentStatus',
             'simpleform_submissions.paymentAmount',
             'simpleform_submissions.orderId',

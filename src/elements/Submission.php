@@ -46,8 +46,16 @@ class Submission extends Element
     public string $readStatus = SubmissionStatus::NEW;
     /** Why this submission is flagged spam: 'akismet', 'manual', a denylist reason, 'duplicate', or null. */
     public ?string $spamReason = null;
-    /** Submitter's source IP, captured at submit time for duplicate detection (#140). */
+    /** Submitter's source IP, captured at submit time and subject to `ipCapturePolicy` masking (#140, #315). */
     public ?string $sourceIp = null;
+    /**
+     * SHA-256 hash of the submitter's *full* IP, independent of `sourceIp`'s
+     * display masking (#326, fixing #315). Used exclusively for the `ip`
+     * duplicate-detection key so anonymized-mode masking can't collapse
+     * distinct visitors into false-positive duplicates. Never reversible to
+     * the original IP.
+     */
+    public ?string $ipHash = null;
     /** null = no payment; self::PAYMENT_PENDING = awaiting; self::PAYMENT_PAID = complete. */
     public ?string $paymentStatus = null;
     public ?string $paymentAmount = null;
@@ -288,6 +296,7 @@ class Submission extends Element
             'workflowStatus' => $this->workflowStatus,
             'spamReason' => $this->spamReason,
             'sourceIp' => $this->sourceIp,
+            'ipHash' => $this->ipHash,
             'paymentStatus' => $this->paymentStatus,
             'paymentAmount' => $this->paymentAmount,
             'orderId' => $this->orderId,

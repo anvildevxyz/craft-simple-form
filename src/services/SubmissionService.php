@@ -16,6 +16,7 @@ use anvildev\simpleform\fields\HiddenFieldType;
 use anvildev\simpleform\fields\RepeaterFieldType;
 use anvildev\simpleform\fields\SignatureFieldType;
 use anvildev\simpleform\helpers\ConditionalEvaluator;
+use anvildev\simpleform\helpers\IpHelper;
 use anvildev\simpleform\helpers\JumpResolver;
 use anvildev\simpleform\helpers\RateLimiter;
 use anvildev\simpleform\helpers\SafeUrl;
@@ -329,6 +330,7 @@ class SubmissionService extends Component
         $submission->readStatus = $isSpam ? SubmissionStatus::SPAM : SubmissionStatus::NEW;
         $submission->spamReason = $spamReason;
         $submission->sourceIp = $this->sourceIp();
+        $submission->ipHash = $this->ipFingerprint();
 
         // Approval workflow (#248): a genuine (non-spam) submission enters the
         // owner-defined pipeline at its initial stage. No-op when disabled.
@@ -1145,7 +1147,7 @@ class SubmissionService extends Component
             return false;
         }
 
-        $fingerprint = $this->dedupeFingerprint($form, $data, $this->sourceIp());
+        $fingerprint = $this->dedupeFingerprint($form, $data, $this->ipFingerprint());
         if ($fingerprint === null) {
             return false;
         }
@@ -1161,7 +1163,7 @@ class SubmissionService extends Component
 
         foreach ($query->all() as $existing) {
             $existingData = is_array($existing->data) ? $existing->data : [];
-            if ($this->dedupeFingerprint($form, $existingData, $existing->sourceIp) === $fingerprint) {
+            if ($this->dedupeFingerprint($form, $existingData, $existing->ipHash) === $fingerprint) {
                 return true;
             }
         }
@@ -1173,13 +1175,20 @@ class SubmissionService extends Component
      * The dedupe fingerprint for a submission under the form's key, or null when
      * it cannot be computed (so no false "duplicate" is reported).
      *
+     * The `ip` key takes `$ipFingerprint` — the SHA-256 hash of the submitter's
+     * *full* IP ({@see self::ipFingerprint()}), never the (possibly-masked)
+     * display `sourceIp` (#326, fixing #315). Masking policy therefore never
+     * changes matching behavior: two visitors sharing an IPv4 /24 or IPv6 /48
+     * mask to the same `sourceIp` but hash to different fingerprints, and the
+     * fingerprint stays stable if the display policy changes later.
+     *
      * @param array<string, mixed> $data
      */
-    private function dedupeFingerprint(Form $form, array $data, ?string $sourceIp): ?string
+    private function dedupeFingerprint(Form $form, array $data, ?string $ipFingerprint): ?string
     {
         return match ($form->duplicateKey) {
             Form::DUPLICATE_KEY_CONTENT => 'content:' . $this->contentHash($data),
-            Form::DUPLICATE_KEY_IP => ($sourceIp !== null && $sourceIp !== '') ? 'ip:' . $sourceIp : null,
+            Form::DUPLICATE_KEY_IP => ($ipFingerprint !== null && $ipFingerprint !== '') ? 'ip:' . $ipFingerprint : null,
             default => ($email = $this->firstEmail($data)) !== null ? 'email:' . strtolower($email) : null,
         };
     }
@@ -1202,23 +1211,71 @@ class SubmissionService extends Component
     }
 
     /**
-     * The submitter's source IP, or null on the console / when unresolvable.
+     * The submitter's source IP for *display* storage, or null on the console /
+     * when unresolvable. Subject to `ipCapturePolicy` masking (#315) — this is
+     * the human-readable value shown in the CP, not the dedupe fingerprint (see
+     * {@see self::ipFingerprint()}).
      */
     private function sourceIp(): ?string
     {
-        // GDPR data-minimization opt-out (#293): never read the IP for storage
-        // when collection is off. (The rate limiter reads the request IP
-        // directly and persists nothing, so it is unaffected.)
-        if (!Plugin::getInstance()->getSettings()->collectIpAddresses) {
+        // IP capture policy (#315, supersedes #293's boolean opt-out): store the
+        // full IP, an anonymized IP, or nothing. In `off` mode the IP is never
+        // read for storage. (The rate limiter reads the request IP directly and
+        // persists nothing, so it is unaffected by this policy.)
+        $policy = Plugin::getInstance()->getSettings()->ipCapturePolicy;
+        if ($policy === Settings::IP_CAPTURE_OFF) {
             return null;
         }
 
+        $ip = $this->requestIp();
+        if ($ip === null) {
+            return null;
+        }
+
+        // Mask at capture time so a full IP is never written to the database in
+        // anonymized mode.
+        return $policy === Settings::IP_CAPTURE_ANONYMIZED ? IpHelper::anonymize($ip) : $ip;
+    }
+
+    /**
+     * A stable, non-reversible fingerprint of the submitter's *full* IP for the
+     * `ip` duplicate-detection key (#326, fixing #315), independent of the
+     * `ipCapturePolicy` masking applied to the *stored* `sourceIp` display
+     * column. Always derived from {@see self::requestIp()} — the raw, pre-mask
+     * address — never from the (possibly-masked) `sourceIp`, so anonymized-mode
+     * masking can't collapse visitors sharing an IPv4 /24 or IPv6 /48 into a
+     * false-positive duplicate, and matching stays consistent even if the
+     * display policy changes between submissions. Honors `IP_CAPTURE_OFF`
+     * (returns null) so opting out of IP capture also opts out of IP-derived
+     * dedup, matching the storage policy's intent. Only the one-way hash is
+     * persisted — the raw IP itself never is.
+     */
+    private function ipFingerprint(): ?string
+    {
+        if (Plugin::getInstance()->getSettings()->ipCapturePolicy === Settings::IP_CAPTURE_OFF) {
+            return null;
+        }
+
+        $ip = $this->requestIp();
+
+        return $ip === null ? null : hash('sha256', $ip);
+    }
+
+    /**
+     * The request's raw, unmasked client IP, or null on the console / when
+     * unresolvable. Shared by {@see self::sourceIp()} (display, policy-masked)
+     * and {@see self::ipFingerprint()} (dedupe, always full).
+     */
+    private function requestIp(): ?string
+    {
         /** @var \craft\web\Request $request */
         $request = Craft::$app->getRequest();
         if ($request->getIsConsoleRequest()) {
             return null;
         }
+
         $ip = $request->getUserIP();
+
         return ($ip === null || $ip === '') ? null : $ip;
     }
 
