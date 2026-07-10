@@ -68,6 +68,7 @@ return [
     'Please select no more than {limit} options.' => 'Veuillez sélectionner au maximum {limit} options.',
     '(deleted #{id})' => '(supprimé #{id})',
     'Please enter a valid email address.' => 'Veuillez saisir une adresse e-mail valide.',
+    'Please enter a valid URL.' => 'Veuillez saisir une URL valide.',
     'Please enter a valid number.' => 'Veuillez saisir un nombre valide.',
     'Must be at least {min}.' => 'Doit être au moins {min}.',
     'Must be no more than {max}.' => 'Ne doit pas dépasser {max}.',

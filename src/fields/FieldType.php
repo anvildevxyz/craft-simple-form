@@ -173,6 +173,20 @@ abstract class FieldType
     }
 
     /**
+     * The field's option value => label map, for the choice field types (select,
+     * radio, checkbox). Empty for every other type. Public wrapper over
+     * {@see self::getOptions()} so the submission field-snapshot builder (#312)
+     * can record the option labels a submission was made against, decoupled from
+     * the mutable live field config.
+     *
+     * @return array<string, string>
+     */
+    public function optionLabels(): array
+    {
+        return $this->getOptions();
+    }
+
+    /**
      * Decode the stored options config (a JSON string or an array of
      * {value, label}) into a value => label map. Shared by the choice
      * field types (select, radio, checkbox).
@@ -242,6 +256,25 @@ abstract class FieldType
      * group's <label for> can point at. Overridden by the choice types.
      */
     public function isChoiceGroup(): bool
+    {
+        return false;
+    }
+
+    /**
+     * Whether this type's stored value is genuinely a list (e.g. multi-checkbox,
+     * multi-select relation) — as opposed to a single scalar.
+     *
+     * Consulted before a query-string value ever reaches {@see self::renderInput()}
+     * (query-string prefill, #316): a scalar-only field type casts its `$value`
+     * argument straight to a string (e.g. `(string) $value` in
+     * {@see self::getInputAttributes()}), which is safe for a string/int/bool but
+     * throws "Array to string conversion" for an array — turning a public
+     * `?<handle>[]=x` query param into a fatal error on every visit. Defaulting to
+     * false means an array value is rejected (no prefill) for every type unless it
+     * explicitly opts in here, so a new field type is safe by default without
+     * having to know about this concern.
+     */
+    public function acceptsListValue(): bool
     {
         return false;
     }
