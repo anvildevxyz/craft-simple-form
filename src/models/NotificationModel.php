@@ -2,9 +2,11 @@
 
 namespace anvildev\simpleform\models;
 
+use anvildev\simpleform\helpers\AddressList;
 use anvildev\simpleform\Plugin;
 use Craft;
 use craft\base\Model;
+use yii\validators\EmailValidator;
 
 /**
  * One email notification attached to a form (#112): an admin alert (fixed
@@ -31,6 +33,10 @@ class NotificationModel extends Model
     public string $recipient = '';
     public ?string $subject = null;
     public ?string $replyTo = null;
+    /** Comma-separated CC address list (#313). */
+    public ?string $cc = null;
+    /** Comma-separated BCC address list (#313). */
+    public ?string $bcc = null;
     public ?string $body = null;
     /** @var array<string, mixed>|null Conditional config ({enabled, match, action, rules}). */
     public ?array $conditional = null;
@@ -49,10 +55,14 @@ class NotificationModel extends Model
         return [
             [['formId', 'name', 'recipient'], 'required'],
             [['formId', 'sortOrder'], 'integer'],
-            [['name', 'recipient', 'subject', 'replyTo'], 'string', 'max' => 255],
+            [['name', 'recipient', 'subject', 'replyTo', 'cc', 'bcc'], 'string', 'max' => 255],
             // F11 (CWE-93): validate replyTo as an email so a CRLF/header-
             // injection value is rejected before it reaches the mailer.
             [['replyTo'], 'email', 'when' => fn(self $model): bool => $model->replyTo !== null && $model->replyTo !== ''],
+            // #313 (CWE-93): CC/BCC are comma-separated lists; validate each
+            // address as an email so a CRLF/header-injection part is rejected
+            // before it reaches the mailer.
+            [['cc', 'bcc'], 'validateAddressList'],
             [['enabled', 'attachPdf', 'attachUploads'], 'boolean'],
             [['recipientType'], 'in', 'range' => [self::RECIPIENT_FIXED, self::RECIPIENT_FIELD]],
             // #143: a PDF attachment cannot be enabled without a PDF engine; the
@@ -60,6 +70,31 @@ class NotificationModel extends Model
             // a crafted POST can't persist attachPdf=true with no way to render.
             [['attachPdf'], 'validatePdfAvailable'],
         ];
+    }
+
+    /**
+     * Reject a comma-separated address list when any part is not a valid email
+     * (#313, CWE-93). A header-injection payload such as a CRLF followed by a
+     * forged `Bcc:` header fails the email test and is rejected.
+     */
+    public function validateAddressList(string $attribute): void
+    {
+        $value = $this->$attribute;
+        if (!is_string($value) || trim($value) === '') {
+            return;
+        }
+
+        $validator = new EmailValidator();
+        foreach (AddressList::split($value) as $address) {
+            if (!$validator->validate($address)) {
+                $this->addError($attribute, Craft::t(
+                    'simple-form',
+                    '“{value}” is not a valid email address.',
+                    ['value' => $address],
+                ));
+                return;
+            }
+        }
     }
 
     /**
