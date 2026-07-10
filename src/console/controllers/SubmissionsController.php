@@ -111,7 +111,10 @@ class SubmissionsController extends Controller
         $csv = SubmissionCsv::fromSubmissions($submissions);
 
         if ($this->out !== null) {
-            file_put_contents($this->out, $csv);
+            if (file_put_contents($this->out, $csv) === false) {
+                $this->stderr("Failed to write {$this->out}.\n", Console::FG_RED);
+                return ExitCode::UNSPECIFIED_ERROR;
+            }
             $this->stdout("Wrote " . count($submissions) . " submission(s) for {$this->email} to {$this->out}\n", Console::FG_GREEN);
         } else {
             $this->stdout($csv);

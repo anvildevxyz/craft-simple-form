@@ -8,6 +8,7 @@ use Craft;
 use craft\db\Query;
 use craft\helpers\Db;
 use yii\base\Component;
+use yii\db\Expression;
 
 /**
  * Data-retention housekeeping (#107). Prunes submissions and integration dispatch
@@ -88,6 +89,10 @@ class RetentionService extends Component
      * email wherever it was captured. Scanning is done in PHP, not via a JSON
      * `LIKE`, to stay database-agnostic (MySQL + Postgres).
      *
+     * The submissions table is streamed in {@see self::BATCH}-sized chunks via
+     * `Query::batch()` rather than loaded with `all()`, so a large table never
+     * materializes every `data` blob in memory at once (#325).
+     *
      * @return list<int>
      */
     public function findSubmissionIdsByEmail(string $email): array
@@ -97,28 +102,28 @@ class RetentionService extends Component
             return [];
         }
 
-        $rows = (new Query())
-            ->select(['id', 'userId', 'data'])
-            ->from(self::SUBMISSIONS)
-            ->all();
-
-        $matchingUserIds = $this->userIdsForEmail($rows, $needle);
+        $matchingUserIds = $this->userIdsForEmail($needle);
 
         $ids = [];
-        foreach ($rows as $row) {
-            $id = (int) $row['id'];
-            if ($row['userId'] !== null && isset($matchingUserIds[(int) $row['userId']])) {
-                $ids[$id] = true;
-                continue;
-            }
+        $query = (new Query())
+            ->select(['id', 'userId', 'data'])
+            ->from(self::SUBMISSIONS);
+        foreach ($query->batch(self::BATCH) as $rows) {
+            foreach ($rows as $row) {
+                $id = (int) $row['id'];
+                if ($row['userId'] !== null && isset($matchingUserIds[(int) $row['userId']])) {
+                    $ids[] = $id;
+                    continue;
+                }
 
-            $data = is_array($row['data']) ? $row['data'] : json_decode((string) $row['data'], true);
-            if ($this->valueContainsEmail($data, $needle)) {
-                $ids[$id] = true;
+                $data = is_array($row['data']) ? $row['data'] : json_decode((string) $row['data'], true);
+                if ($this->valueContainsEmail($data, $needle)) {
+                    $ids[] = $id;
+                }
             }
         }
 
-        return array_map('intval', array_keys($ids));
+        return $ids;
     }
 
     /**
@@ -255,35 +260,25 @@ class RetentionService extends Component
     }
 
     /**
-     * The set (id => true) of the linked-user ids among $rows whose Craft user
-     * carries $needle as their (lowercased) email, resolved in one query so the
-     * email scan never issues a per-submission user lookup.
+     * The set (id => true) of Craft user ids whose (lowercased) email matches
+     * $needle. Queried directly against the (small, bounded) users table —
+     * independent of how many submissions exist — rather than by first scanning
+     * every submission row for a `userId`, so this never grows with submission
+     * volume. The comparison is done in SQL via `LOWER()`, which is portable
+     * across MySQL and Postgres.
      *
-     * @param array<int, array<string, mixed>> $rows
      * @return array<int, true>
      */
-    private function userIdsForEmail(array $rows, string $needle): array
+    private function userIdsForEmail(string $needle): array
     {
-        $userIds = [];
-        foreach ($rows as $row) {
-            if ($row['userId'] !== null) {
-                $userIds[(int) $row['userId']] = true;
-            }
-        }
-        if ($userIds === []) {
-            return [];
-        }
-
         $matching = [];
         $users = (new Query())
-            ->select(['id', 'email'])
+            ->select(['id'])
             ->from('{{%users}}')
-            ->where(['id' => array_keys($userIds)])
-            ->all();
-        foreach ($users as $user) {
-            if (mb_strtolower(trim((string) $user['email'])) === $needle) {
-                $matching[(int) $user['id']] = true;
-            }
+            ->where(new Expression('LOWER(TRIM([[email]])) = :needle', [':needle' => $needle]))
+            ->column();
+        foreach ($users as $id) {
+            $matching[(int) $id] = true;
         }
 
         return $matching;

@@ -22,6 +22,17 @@ use yii\console\ExitCode;
 class RetentionSmokeCest extends BaseSmokeCest
 {
     // =========================================================================
+    // CONST PROPERTIES
+    // =========================================================================
+
+    /**
+     * Filler-submission count for the batch-boundary test — comfortably past
+     * RetentionService::BATCH (500) so the streamed scan crosses at least one
+     * chunk boundary.
+     */
+    private const BATCH_BOUNDARY_FILLER_COUNT = 520;
+
+    // =========================================================================
     // PUBLIC METHODS
     // =========================================================================
 
@@ -89,7 +100,33 @@ class RetentionSmokeCest extends BaseSmokeCest
         $I->assertStringContainsString($alice, $csv, 'the export includes the first matching submission');
         $I->assertStringContainsString($bob, $csv, 'the export includes the second matching submission');
         $I->assertStringNotContainsString($carol, $csv, 'the export excludes the non-matching submission');
-        $I->assertStringNotContainsString((string) $other, explode("\n", $csv)[1] ?? '', 'the non-matching id is not the first data row');
+        $firstDataRow = explode("\n", $csv)[1] ?? '';
+        // Anchored to the row's id column (not a bare substring match) so this
+        // never collides with the non-matching id's digits incidentally
+        // appearing inside another column, e.g. today's date.
+        $I->assertFalse(str_starts_with($firstDataRow, $other . ','), 'the non-matching id is not the first data row');
+    }
+
+    /**
+     * findSubmissionIdsByEmail() streams the submissions table in bounded
+     * batches (#325) rather than loading every row via `all()`. Seed enough
+     * filler rows to cross at least one batch boundary and confirm the result
+     * is still exactly the matching ids — streaming must not drop or duplicate
+     * rows at the chunk edges.
+     */
+    public function testFindSubmissionIdsByEmailStreamsAcrossBatchBoundary(SmokeTester $I): void
+    {
+        $email = 'gdpr-batch-' . uniqid() . '@example.test';
+        [$form, $emailFieldId, $nameFieldId] = $this->seedEmailForm();
+
+        $match = $this->submit($form, $emailFieldId, $nameFieldId, $email, 'BatchMatch');
+        $this->seedFillerSubmissions($form, self::BATCH_BOUNDARY_FILLER_COUNT);
+        $other = $this->submit($form, $emailFieldId, $nameFieldId, 'someone-else-' . uniqid() . '@example.test', 'Other');
+
+        $ids = Plugin::getInstance()->getRetention()->findSubmissionIdsByEmail($email);
+
+        $I->assertSame([$match], $ids, 'only the matching submission is returned despite the filler rows');
+        $I->assertNotContains($other, $ids, 'the non-matching submission is excluded');
     }
 
     public function testEraseByEmailDeletesOnlyMatchingAndDryRunIsNoOp(SmokeTester $I): void
@@ -169,6 +206,23 @@ class RetentionSmokeCest extends BaseSmokeCest
             'field_' . $emailFieldId => $email,
             'field_' . $nameFieldId => $name,
         ])['submission']->id;
+    }
+
+    /**
+     * Save $count bare, non-matching submissions directly via saveElement() —
+     * skipping the request/notification pipeline — purely to build table volume
+     * for the batch-boundary streaming test.
+     */
+    private function seedFillerSubmissions(Form $form, int $count): void
+    {
+        for ($i = 0; $i < $count; $i++) {
+            $submission = new Submission();
+            $submission->formId = (int) $form->id;
+            $submission->siteId = $form->siteId;
+            $submission->data = ['name' => ['label' => 'Name', 'type' => 'text', 'value' => 'Filler ' . $i]];
+
+            Craft::$app->getElements()->saveElement($submission, false);
+        }
     }
 
     private function backdate(int $submissionId, int $days): void
