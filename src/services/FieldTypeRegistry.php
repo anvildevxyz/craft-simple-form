@@ -6,6 +6,7 @@ use anvildev\simpleform\events\RegisterFieldTypesEvent;
 use anvildev\simpleform\fields\AddressFieldType;
 use anvildev\simpleform\fields\AssetRelationFieldType;
 use anvildev\simpleform\fields\CalculationFieldType;
+use anvildev\simpleform\fields\CalloutFieldType;
 use anvildev\simpleform\fields\CategoryRelationFieldType;
 use anvildev\simpleform\fields\CheckboxFieldType;
 use anvildev\simpleform\fields\ConsentFieldType;
@@ -117,6 +118,7 @@ class FieldTypeRegistry extends Component
             DividerFieldType::class,
             HtmlFieldType::class,
             ParagraphFieldType::class,
+            CalloutFieldType::class,
         ] as $class) {
             $this->registerFieldType($class);
         }
@@ -139,7 +141,7 @@ class FieldTypeRegistry extends Component
 
     /**
      * The registered non-input (presentational/layout) field-type handles —
-     * heading, divider, html, paragraph. Skipped by validation, storage, and export.
+     * heading, divider, html, paragraph, callout. Skipped by validation, storage, and export.
      *
      * @return list<string>
      */

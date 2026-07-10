@@ -70,7 +70,7 @@
         user: 'Users', asset: 'Assets', calculation: 'Calculation',
         repeater: 'Repeater',
         heading: 'Heading', divider: 'Section Divider', html: 'HTML Block',
-        paragraph: 'Text'
+        paragraph: 'Text', callout: 'Callout'
     };
     var OPTION_TYPES = ['select', 'checkbox', 'radio'];
     // Non-visible types: the visitor never sees them, so the inspector suppresses
@@ -78,7 +78,7 @@
     var HIDDEN_TYPES = ['hidden'];
     // Presentational/layout blocks: value-less, so the inspector omits
     // Required / validation / conditions and the submit guard skips them.
-    var LAYOUT_TYPES = ['heading', 'divider', 'html', 'paragraph'];
+    var LAYOUT_TYPES = ['heading', 'divider', 'html', 'paragraph', 'callout'];
     function isLayout(type) { return LAYOUT_TYPES.indexOf(type) !== -1; }
     var RELATION_TYPES = ['entry', 'category', 'tag', 'user', 'asset'];
     // Inner field types a repeater may contain (mirrors
@@ -345,6 +345,11 @@
             var body = (f.helpText || '').trim().replace(/\s+/g, ' ');
             if (!body) { return '(text)'; }
             return body.length > 60 ? body.slice(0, 60) + '…' : body;
+        }
+        if (f.type === 'callout') {
+            var cbody = (f.helpText || '').trim().replace(/\s+/g, ' ');
+            if (!cbody) { return '(callout)'; }
+            return cbody.length > 60 ? cbody.slice(0, 60) + '…' : cbody;
         }
         return f.label || '(untitled)';
     }
@@ -720,6 +725,42 @@
                 + 'line breaks are preserved and any markup is escaped (use the HTML Block for real formatting).';
             pHint.appendChild(pHintP); textRow2._input.appendChild(pHint);
             inspector.appendChild(textRow2);
+        } else if (f.type === 'callout') {
+            var toneRow = row('Tone');
+            toneRow._input.appendChild(selectEl(
+                [
+                    { value: 'info', label: 'Info' },
+                    { value: 'success', label: 'Success' },
+                    { value: 'warning', label: 'Warning' },
+                    { value: 'error', label: 'Error' }
+                ],
+                c.tone || 'info',
+                function(v) { c.tone = v; serialize(); }
+            ));
+            inspector.appendChild(toneRow);
+
+            var iconRow = row('Icon (optional)');
+            iconRow._input.appendChild(textInput(c.icon || '', function(v) {
+                if (v && v.trim()) { c.icon = v.trim(); } else { delete c.icon; }
+                serialize();
+            }));
+            var iconHint = document.createElement('div'); iconHint.className = 'instructions';
+            var iconHintP = document.createElement('p');
+            iconHintP.textContent = 'An optional glyph or emoji shown before the text (e.g. ℹ️, ⚠️). Leave blank for none.';
+            iconHint.appendChild(iconHintP); iconRow._input.appendChild(iconHint);
+            inspector.appendChild(iconRow);
+
+            var calloutRow = row('Text');
+            var cta = document.createElement('textarea'); cta.className = 'text fullwidth'; cta.rows = 4;
+            cta.value = f.helpText || '';
+            cta.addEventListener('input', function() { f.helpText = cta.value; commit(); });
+            calloutRow._input.appendChild(cta);
+            var cHint = document.createElement('div'); cHint.className = 'instructions';
+            var cHintP = document.createElement('p');
+            cHintP.textContent = 'Guidance copy shown in a toned panel between fields. Plain text only — '
+                + 'line breaks are preserved and any markup is escaped (use the HTML Block for real formatting).';
+            cHint.appendChild(cHintP); calloutRow._input.appendChild(cHint);
+            inspector.appendChild(calloutRow);
         }
 
         inspector.appendChild(numberRow('Step / Page', (f.config && f.config.page) || '', function(v) {

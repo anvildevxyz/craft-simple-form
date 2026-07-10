@@ -630,7 +630,7 @@ class FormRenderService extends Component
     }
 
     /**
-     * Render a presentational/layout block (heading, divider, html, paragraph) bare — no
+     * Render a presentational/layout block (heading, divider, html, paragraph, callout) bare — no
      * label, required marker or input wrapper. Its per-site translatable content
      * lives in the label/helpText columns, threaded into the config keys the
      * layout field types read. Returns '' when the block renders nothing.
@@ -657,6 +657,10 @@ class FormRenderService extends Component
             // Static "Text" copy: the plain-text body lives in the per-site
             // helpText column and renders escaped + line-break-preserved.
             $config['text'] = $helpText;
+        } elseif ($type === 'callout') {
+            // Callout guidance copy: the plain-text body lives in the per-site
+            // helpText column; the tone/icon ride on the field config.
+            $config['body'] = $helpText;
         }
 
         $fieldType = Plugin::getInstance()->getFieldTypeRegistry()->getFieldType($type, $config);

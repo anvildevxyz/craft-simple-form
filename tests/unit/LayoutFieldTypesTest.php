@@ -2,6 +2,7 @@
 
 namespace anvildev\simpleform\tests\unit;
 
+use anvildev\simpleform\fields\CalloutFieldType;
 use anvildev\simpleform\fields\DividerFieldType;
 use anvildev\simpleform\fields\HeadingFieldType;
 use anvildev\simpleform\fields\HtmlFieldType;
@@ -33,6 +34,7 @@ class LayoutFieldTypesTest extends TestCase
         $this->assertFalse((new DividerFieldType())->isInput());
         $this->assertFalse((new HtmlFieldType())->isInput());
         $this->assertFalse((new ParagraphFieldType())->isInput());
+        $this->assertFalse((new CalloutFieldType())->isInput());
     }
 
     public function testLayoutBlocksNeverValidate(): void
@@ -42,6 +44,7 @@ class LayoutFieldTypesTest extends TestCase
         $this->assertSame([], (new DividerFieldType(['required' => true]))->validate(null));
         $this->assertSame([], (new HtmlFieldType(['required' => true]))->validate(''));
         $this->assertSame([], (new ParagraphFieldType(['required' => true]))->validate(''));
+        $this->assertSame([], (new CalloutFieldType(['required' => true]))->validate(''));
     }
 
     // =========================================================================
@@ -58,6 +61,7 @@ class LayoutFieldTypesTest extends TestCase
         $this->assertContains('divider', $layout);
         $this->assertContains('html', $layout);
         $this->assertContains('paragraph', $layout);
+        $this->assertContains('callout', $layout);
 
         // A value-collecting input is never a layout handle.
         $this->assertNotContains('text', $layout);
@@ -151,6 +155,58 @@ class LayoutFieldTypesTest extends TestCase
     {
         $this->assertSame('', (new ParagraphFieldType(['text' => '   ']))->renderInput('field_1'));
         $this->assertSame('', (new ParagraphFieldType([]))->renderInput('field_1'));
+    }
+
+    // =========================================================================
+    // Callout
+    // =========================================================================
+
+    public function testCalloutType(): void
+    {
+        $this->assertSame('callout', CalloutFieldType::getType());
+        $this->assertSame('Callout', CalloutFieldType::getLabel());
+    }
+
+    public function testCalloutRendersTonedPanelWithEscapedLineBreakBody(): void
+    {
+        $html = (new CalloutFieldType([
+            'tone' => 'warning',
+            'body' => "Heads up\n<b>read</b> this & that",
+        ]))->renderInput('field_1');
+
+        $this->assertStringContainsString('<div class="simple-form-callout simple-form-callout--warning" role="note">', $html);
+        $this->assertStringContainsString('<div class="simple-form-callout__body">', $html);
+        // Escaped, not executed; line break preserved as <br>.
+        $this->assertStringNotContainsString('<b>read</b>', $html);
+        $this->assertStringContainsString('&lt;b&gt;read&lt;/b&gt;', $html);
+        $this->assertStringContainsString('&amp;', $html);
+        $this->assertMatchesRegularExpression('/Heads up<br\s*\/?>\s*\n?/', $html);
+    }
+
+    public function testCalloutClampsForgedToneToDefault(): void
+    {
+        $this->assertSame('info', (new CalloutFieldType(['tone' => 'nope']))->tone());
+        $this->assertSame('info', (new CalloutFieldType([]))->tone());
+        $this->assertSame('error', (new CalloutFieldType(['tone' => 'error']))->tone());
+
+        // A forged tone never reaches the class attribute.
+        $html = (new CalloutFieldType(['tone' => '"><script>', 'body' => 'x']))->renderInput('field_1');
+        $this->assertStringContainsString('simple-form-callout--info', $html);
+        $this->assertStringNotContainsString('<script>', $html);
+    }
+
+    public function testCalloutRendersEscapedIcon(): void
+    {
+        $html = (new CalloutFieldType(['icon' => 'ℹ️<b>', 'body' => 'Hi']))->renderInput('field_1');
+        $this->assertStringContainsString('<span class="simple-form-callout__icon" aria-hidden="true">', $html);
+        $this->assertStringContainsString('ℹ️&lt;b&gt;', $html);
+        $this->assertStringNotContainsString('<b>', $html);
+    }
+
+    public function testCalloutWithNoBodyOrIconRendersNothing(): void
+    {
+        $this->assertSame('', (new CalloutFieldType(['tone' => 'info', 'body' => '   ']))->renderInput('field_1'));
+        $this->assertSame('', (new CalloutFieldType([]))->renderInput('field_1'));
     }
 
     // =========================================================================
