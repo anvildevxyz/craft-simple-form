@@ -61,7 +61,7 @@
 
     var TYPE_LABELS = {
         text: 'Text', email: 'Email', url: 'URL', textarea: 'Textarea', select: 'Select',
-        checkbox: 'Checkbox', radio: 'Radio', date: 'Date', time: 'Time', number: 'Number',
+        checkbox: 'Checkbox', radio: 'Radio', date: 'Date', time: 'Time', datetime: 'Date & Time', number: 'Number',
         phone: 'Phone', file: 'File Upload',
         name: 'Name', address: 'Address',
         payment: 'Payment', hidden: 'Hidden', consent: 'Agree / Consent',
@@ -1553,7 +1553,7 @@
                 }));
                 valueCell = selectEl(opts, rule.value != null ? rule.value : '', function(v) { rule.value = v; onChange(false); });
             } else {
-                var inputType = (target && target.type === 'number') ? 'number' : (target && target.type === 'date' ? 'date' : (target && target.type === 'time' ? 'time' : 'text'));
+                var inputType = (target && target.type === 'number') ? 'number' : (target && target.type === 'date' ? 'date' : (target && target.type === 'time' ? 'time' : (target && target.type === 'datetime' ? 'datetime-local' : 'text')));
                 valueCell = textInput(rule.value != null ? rule.value : '', function(v) { rule.value = v; onChange(false); }, inputType);
                 valueCell.classList.add('sf-cond-value');
             }
@@ -1686,7 +1686,7 @@
             }));
             return selectEl(opts, jump.value != null ? jump.value : '', function(v) { jump.value = v; serialize(); });
         }
-        var inputType = self.type === 'number' ? 'number' : (self.type === 'date' ? 'date' : (self.type === 'time' ? 'time' : 'text'));
+        var inputType = self.type === 'number' ? 'number' : (self.type === 'date' ? 'date' : (self.type === 'time' ? 'time' : (self.type === 'datetime' ? 'datetime-local' : 'text')));
         var cell = textInput(jump.value != null ? jump.value : '', function(v) { jump.value = v; serialize(); }, inputType);
         cell.classList.add('sf-cond-value');
         return cell;

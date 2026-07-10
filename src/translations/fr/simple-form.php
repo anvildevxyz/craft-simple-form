@@ -74,6 +74,7 @@ return [
     'Must be no more than {max}.' => 'Ne doit pas dépasser {max}.',
     'Please enter a valid date.' => 'Veuillez saisir une date valide.',
     'Please enter a valid time.' => 'Veuillez saisir une heure valide.',
+    'Please enter a valid date and time.' => 'Veuillez saisir une date et une heure valides.',
     'Enter a valid phone number.' => 'Saisissez un numéro de téléphone valide.',
     'Please select a valid country.' => 'Veuillez sélectionner un pays valide.',
     'Manage forms (read & write form definitions and fields)' => 'Gérer les formulaires (lire et écrire les définitions et les champs)',

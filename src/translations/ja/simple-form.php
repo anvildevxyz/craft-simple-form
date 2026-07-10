@@ -68,6 +68,7 @@ return [
     'Must be no more than {max}.' => '{max} 以下である必要があります。',
     'Please enter a valid date.' => '有効な日付を入力してください。',
     'Please enter a valid time.' => '有効な時刻を入力してください。',
+    'Please enter a valid date and time.' => '有効な日付と時刻を入力してください。',
     'Enter a valid phone number.' => '有効な電話番号を入力してください。',
     'Please select a valid country.' => '有効な国を選択してください。',
     'Manage forms (read & write form definitions and fields)' => 'フォームの管理（フォーム定義とフィールドの読み書き）',

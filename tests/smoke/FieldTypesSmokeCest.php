@@ -97,6 +97,30 @@ class FieldTypesSmokeCest extends BaseSmokeCest
         $I->assertArrayHasKey('field_' . $fieldId, $result['errors']);
     }
 
+    public function testDateTimeFieldNormalizesAndStores(SmokeTester $I): void
+    {
+        $form = $this->createForm('Appointment', 'appointment' . uniqid());
+        $fieldId = $this->createField((int) $form->id, 'datetime', 'meetsAt', 'Meets At', true);
+
+        // A seconds-carrying combined value keeps the date half and normalizes
+        // the time half to the canonical HH:MM shape.
+        $result = $this->submitRequest($form->handle, ['field_' . $fieldId => '2026-07-09T09:30:00']);
+
+        $I->assertNull($result['errors']);
+        $I->assertSame('2026-07-09T09:30', $result['submission']->data['field_' . $fieldId]['value']);
+    }
+
+    public function testInvalidDateTimeIsRejected(SmokeTester $I): void
+    {
+        $form = $this->createForm('Appointment Reject', 'appointmentReject' . uniqid());
+        $fieldId = $this->createField((int) $form->id, 'datetime', 'meetsAt', 'Meets At', true);
+
+        $result = $this->submitRequest($form->handle, ['field_' . $fieldId => '2026-07-09T25:99']);
+
+        $I->assertNull($result['submission']);
+        $I->assertArrayHasKey('field_' . $fieldId, $result['errors']);
+    }
+
     public function testUrlFieldNormalizesAndStores(SmokeTester $I): void
     {
         $form = $this->createForm('Website', 'website' . uniqid());
