@@ -4,6 +4,7 @@ namespace anvildev\simpleform\tests\smoke;
 
 use anvildev\simpleform\elements\Form;
 use anvildev\simpleform\elements\Submission;
+use anvildev\simpleform\helpers\SubmissionCsv;
 use Craft;
 use SmokeTester;
 
@@ -242,5 +243,116 @@ class FormSubmissionCest extends BaseSmokeCest
     private function getForm(): Form
     {
         return Form::find()->id($this->formId)->one();
+    }
+
+    /**
+     * Field snapshots (#312): a submission records the form's field structure at
+     * submit time, so renaming AND deleting fields afterward does not corrupt the
+     * snapshot itself — handles, labels, option labels, and display order stay put.
+     */
+    public function testSnapshotCapturedAtSubmitTime(SmokeTester $I): void
+    {
+        $nameId = $this->createField($this->formId, 'text', 'name', 'Full Name', true);
+        $topicId = $this->createField($this->formId, 'select', 'topic', 'Topic', false, [
+            'options' => [
+                ['label' => 'Sales', 'value' => 'sales'],
+                ['label' => 'Support', 'value' => 'support'],
+            ],
+        ]);
+        $messageId = $this->createField($this->formId, 'textarea', 'message', 'Message');
+
+        $result = $this->submitRequest($this->formHandle, [
+            'field_' . $nameId => 'Ada Lovelace',
+            'field_' . $topicId => 'sales',
+            'field_' . $messageId => 'Hello there',
+        ]);
+        $I->assertNull($result['errors']);
+
+        // Rename one field and delete another AFTER the submission is stored.
+        $this->renameField($nameId, 'Renamed Name');
+        $this->deleteField($messageId);
+
+        $submission = Submission::find()->formId($this->formId)->id($result['submission']->id)->one();
+        $snapshot = $submission->fieldSnapshot;
+
+        $I->assertIsArray($snapshot);
+        // Handles + original labels + option labels are preserved.
+        $I->assertSame('name', $snapshot['field_' . $nameId]['handle']);
+        $I->assertSame('Full Name', $snapshot['field_' . $nameId]['label']);
+        $I->assertSame('Message', $snapshot['field_' . $messageId]['label']);
+        $I->assertSame('Sales', $snapshot['field_' . $topicId]['options']['sales']);
+        // Display order is captured in field order.
+        $I->assertSame(0, $snapshot['field_' . $nameId]['order']);
+        $I->assertSame(1, $snapshot['field_' . $topicId]['order']);
+        $I->assertSame(2, $snapshot['field_' . $messageId]['order']);
+    }
+
+    /**
+     * Field snapshots (#312): the detail view (via {@see Submission::getDisplayData()})
+     * and the CSV export both render the ORIGINAL labels and order after a live
+     * field is renamed and another deleted.
+     */
+    public function testDetailAndExportUseSnapshotAfterFormChanges(SmokeTester $I): void
+    {
+        $nameId = $this->createField($this->formId, 'text', 'name', 'Full Name', true);
+        $topicId = $this->createField($this->formId, 'text', 'topic', 'Topic');
+        $messageId = $this->createField($this->formId, 'textarea', 'message', 'Message');
+
+        $result = $this->submitRequest($this->formHandle, [
+            'field_' . $nameId => 'Ada Lovelace',
+            'field_' . $topicId => 'Billing',
+            'field_' . $messageId => 'Hello there',
+        ]);
+        $I->assertNull($result['errors']);
+
+        // Rename the first field and delete the last one.
+        $this->renameField($nameId, 'Renamed Name');
+        $this->deleteField($messageId);
+
+        $submission = Submission::find()->formId($this->formId)->id($result['submission']->id)->one();
+
+        // Detail view source: labels are the originals, in the original order.
+        $display = $submission->getDisplayData();
+        $I->assertSame(
+            ['Full Name', 'Topic', 'Message'],
+            array_values(array_map(static fn(array $e): string => $e['label'], $display)),
+        );
+
+        // CSV export: original headers present, renamed header absent.
+        $csv = SubmissionCsv::fromSubmissions([$submission]);
+        $I->assertStringContainsString('Full Name', $csv);
+        $I->assertStringContainsString('Message', $csv);
+        $I->assertStringNotContainsString('Renamed Name', $csv);
+        // Column order follows the snapshot (Full Name before Message).
+        $I->assertLessThan(strpos($csv, 'Message'), strpos($csv, 'Full Name'));
+        // Values survive too.
+        $I->assertStringContainsString('Ada Lovelace', $csv);
+        $I->assertStringContainsString('Hello there', $csv);
+    }
+
+    // =========================================================================
+    // PRIVATE METHODS
+    // =========================================================================
+
+    /**
+     * Rename a field's per-site label, simulating an editor renaming it in the
+     * builder after a submission already exists.
+     */
+    private function renameField(int $fieldId, string $label): void
+    {
+        Craft::$app->getDb()->createCommand()
+            ->update('{{%simpleform_fields_sites}}', ['label' => $label], ['fieldId' => $fieldId])
+            ->execute();
+    }
+
+    /**
+     * Delete a field outright (structural row + per-site rows), simulating an
+     * editor removing it after a submission already exists.
+     */
+    private function deleteField(int $fieldId): void
+    {
+        $db = Craft::$app->getDb();
+        $db->createCommand()->delete('{{%simpleform_fields_sites}}', ['fieldId' => $fieldId])->execute();
+        $db->createCommand()->delete('{{%simpleform_fields}}', ['id' => $fieldId])->execute();
     }
 }

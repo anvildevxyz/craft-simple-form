@@ -161,7 +161,7 @@ class Plugin extends BasePlugin
     /** The full-featured edition. */
     public const EDITION_PRO = Editions::PRO;
 
-    public string $schemaVersion = '2.13.9';
+    public string $schemaVersion = '2.14.0';
     public bool $hasCpSection = true;
     public bool $hasCpSettings = false;
     public bool $hasCpPermissions = true;
@@ -832,6 +832,7 @@ class Plugin extends BasePlugin
         $event->rules['simple-form/submissions'] = 'simple-form/submissions/index';
         $event->rules['simple-form/submissions/analytics'] = 'simple-form/submissions/analytics';
         $event->rules['simple-form/submissions/export'] = 'simple-form/submissions/export';
+        $event->rules['simple-form/submissions/export-options'] = 'simple-form/submissions/export-options';
         $event->rules['simple-form/submissions/<submissionId:\d+>/pdf'] = 'simple-form/submissions/pdf';
         $event->rules['simple-form/submissions/<submissionId:\d+>'] = 'simple-form/submissions/view';
         $event->rules['simple-form/submissions/toggle-status'] = 'simple-form/submissions/toggle-status';

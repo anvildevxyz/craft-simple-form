@@ -173,6 +173,20 @@ abstract class FieldType
     }
 
     /**
+     * The field's option value => label map, for the choice field types (select,
+     * radio, checkbox). Empty for every other type. Public wrapper over
+     * {@see self::getOptions()} so the submission field-snapshot builder (#312)
+     * can record the option labels a submission was made against, decoupled from
+     * the mutable live field config.
+     *
+     * @return array<string, string>
+     */
+    public function optionLabels(): array
+    {
+        return $this->getOptions();
+    }
+
+    /**
      * Decode the stored options config (a JSON string or an array of
      * {value, label}) into a value => label map. Shared by the choice
      * field types (select, radio, checkbox).

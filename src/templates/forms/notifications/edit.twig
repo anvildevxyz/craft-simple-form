@@ -68,6 +68,18 @@
         id: 'replyTo', name: 'replyTo', value: notification.replyTo,
     }) }}
 
+    {{ forms.textField({
+        label: 'CC'|t('simple-form'),
+        instructions: 'One or more email addresses (comma separated) to copy on this notification.'|t('simple-form'),
+        id: 'cc', name: 'cc', value: notification.cc,
+    }) }}
+
+    {{ forms.textField({
+        label: 'BCC'|t('simple-form'),
+        instructions: 'One or more email addresses (comma separated) to blind-copy on this notification.'|t('simple-form'),
+        id: 'bcc', name: 'bcc', value: notification.bcc,
+    }) }}
+
     {{ forms.textareaField({
         label: 'Body'|t('simple-form'),
         instructions: 'Optional Twig template (form, submission, data available). Leave blank for the default layout.'|t('simple-form'),
