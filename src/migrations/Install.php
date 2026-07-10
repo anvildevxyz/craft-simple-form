@@ -31,6 +31,7 @@ class Install extends Migration
             'autoCaptureAttribution' => $this->boolean()->notNull()->defaultValue(false),
             'capturePartials' => $this->boolean()->notNull()->defaultValue(false),
             'renderMode' => $this->string(20)->notNull()->defaultValue('standard'),
+            'prefillFromQuery' => $this->boolean()->notNull()->defaultValue(false),
             'preventDuplicates' => $this->boolean()->notNull()->defaultValue(false),
             'duplicateWindowMinutes' => $this->integer()->notNull()->defaultValue(0),
             'duplicateKey' => $this->string(16)->notNull()->defaultValue('email'),
@@ -115,11 +116,13 @@ class Install extends Migration
             'formId' => $this->integer()->notNull(),
             'siteId' => $this->integer()->notNull(),
             'data' => $this->json(),
+            'fieldSnapshot' => $this->json(),
             'userId' => $this->integer(),
             'readStatus' => $this->enum('readStatus', ['new', 'read', 'archived', 'spam'])->defaultValue('new'),
             'workflowStatus' => $this->string(64),
             'spamReason' => $this->string(64),
             'sourceIp' => $this->string(45),
+            'ipHash' => $this->char(64),
             'paymentStatus' => $this->string(20),
             'paymentAmount' => $this->decimal(14, 4),
             'orderId' => $this->integer(),
@@ -202,6 +205,8 @@ class Install extends Migration
             'recipient' => $this->string(255)->notNull()->defaultValue(''),
             'subject' => $this->string(255),
             'replyTo' => $this->string(255),
+            'cc' => $this->string(255),
+            'bcc' => $this->string(255),
             'body' => $this->text(),
             'attachPdf' => $this->boolean()->notNull()->defaultValue(false),
             'attachUploads' => $this->boolean()->notNull()->defaultValue(false),
@@ -221,6 +226,7 @@ class Install extends Migration
             'submissionId' => $this->integer(),
             'notificationId' => $this->integer(),
             'notificationName' => $this->string(255),
+            'resentFromId' => $this->integer(),
             'status' => $this->enum('status', ['success', 'failed'])->notNull()->defaultValue('success'),
             'recipients' => $this->text(),
             'subject' => $this->string(255),
@@ -235,6 +241,8 @@ class Install extends Migration
         $this->addForeignKey(null, '{{%simpleform_notification_logs}}', ['formId'], '{{%simpleform_forms}}', ['id'], 'CASCADE', 'CASCADE');
         $this->addForeignKey(null, '{{%simpleform_notification_logs}}', ['submissionId'], '{{%simpleform_submissions}}', ['id'], 'SET NULL', 'CASCADE');
         $this->addForeignKey(null, '{{%simpleform_notification_logs}}', ['notificationId'], '{{%simpleform_notifications}}', ['id'], 'SET NULL', 'CASCADE');
+        $this->createIndex(null, '{{%simpleform_notification_logs}}', ['resentFromId']);
+        $this->addForeignKey(null, '{{%simpleform_notification_logs}}', ['resentFromId'], '{{%simpleform_notification_logs}}', ['id'], 'SET NULL', 'CASCADE');
 
         // Conditional submit messages (#265) — an ordered, condition-gated list of
         // confirmation messages per form. The rule/priority is shared/structural;

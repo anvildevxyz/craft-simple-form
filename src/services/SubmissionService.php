@@ -16,6 +16,7 @@ use anvildev\simpleform\fields\HiddenFieldType;
 use anvildev\simpleform\fields\RepeaterFieldType;
 use anvildev\simpleform\fields\SignatureFieldType;
 use anvildev\simpleform\helpers\ConditionalEvaluator;
+use anvildev\simpleform\helpers\IpHelper;
 use anvildev\simpleform\helpers\JumpResolver;
 use anvildev\simpleform\helpers\RateLimiter;
 use anvildev\simpleform\helpers\SafeUrl;
@@ -322,11 +323,14 @@ class SubmissionService extends Component
         $submission->formId = (int) $form->id;
         $submission->siteId = (int) $siteId;
         $submission->data = $data;
+        // Immutable field snapshot captured at submit time (#312).
+        $submission->fieldSnapshot = $core['snapshot'] ?? null;
         // Always associate the submission with the logged-in user (#135).
         $submission->userId = isset($context['userId']) ? (int) $context['userId'] : null;
         $submission->readStatus = $isSpam ? SubmissionStatus::SPAM : SubmissionStatus::NEW;
         $submission->spamReason = $spamReason;
         $submission->sourceIp = $this->sourceIp();
+        $submission->ipHash = $this->ipFingerprint();
 
         // Approval workflow (#248): a genuine (non-spam) submission enters the
         // owner-defined pipeline at its initial stage. No-op when disabled.
@@ -439,6 +443,14 @@ class SubmissionService extends Component
         // Preserve id/dateCreated/siteId/userId — only the content + spam state
         // change. A spam verdict on edit flags the submission like a new one.
         $submission->data = $data;
+        // Re-snapshot against the current form: an edit rewrites this row's
+        // content against the live definitions, so its snapshot follows (#312),
+        // mirroring the re-score guarantee below.
+        $submission->fieldSnapshot = $core['snapshot'] ?? $submission->fieldSnapshot;
+        // $submission may already have served a memoized getDisplayData() read
+        // (e.g. rendering the current values before this edit); the reassignment
+        // above would otherwise leave that memo stale (#323).
+        $submission->resetDisplayDataCache();
         if ($isSpam) {
             $submission->readStatus = SubmissionStatus::SPAM;
             $submission->spamReason = $spamReason;
@@ -626,7 +638,7 @@ class SubmissionService extends Component
      *
      * @param array<int|string, mixed> $values
      * @param SubmissionContext $context
-     * @return array{result: array{submission: null, errors: array<string, mixed>|null}|null, data: array<string, mixed>, isSpam: bool, spamReason?: ?string}
+     * @return array{result: array{submission: null, errors: array<string, mixed>|null}|null, data: array<string, mixed>, isSpam: bool, spamReason?: ?string, snapshot?: array<string, array{handle: string, label: string, type: string, order: int, options?: array<string, string>}>}
      */
     private function processSubmission(Form $form, array $values, array $context): array
     {
@@ -693,6 +705,13 @@ class SubmissionService extends Component
         }
 
         $formModel = new FormModel($form);
+
+        // (2b) Field snapshot (#312): capture the form's input-field structure —
+        // handle, label, type, option labels, and display order — BEFORE the field
+        // loop below strips fields hidden by conditional logic. Persisted verbatim
+        // on the submission so the detail view and every export render from the
+        // form as it stood at submit time, immune to a later rename/reorder/delete.
+        $snapshot = $this->buildFieldSnapshot($formModel);
 
         // (3) Resolve every field's value up front, keyed by field handle, so
         // conditional rules can be evaluated against the complete submitted
@@ -886,7 +905,47 @@ class SubmissionService extends Component
         // (submit() / update()) to persist as a create or an edit. Routing both
         // through this one core guarantees identical validation, conditional-logic
         // visibility, denylist/duplicate and Akismet behavior on every transport.
-        return ['result' => null, 'data' => $data, 'isSpam' => $isSpam, 'spamReason' => $spamReason];
+        return ['result' => null, 'data' => $data, 'isSpam' => $isSpam, 'spamReason' => $spamReason, 'snapshot' => $snapshot];
+    }
+
+    /**
+     * Build the immutable field snapshot (#312) for a form: an ordered map keyed by
+     * `field_<id>` (aligned with the submission's `data` keys) recording each input
+     * field's handle, label, type, display order, and — for choice fields — its
+     * option value => label map. Presentational layout blocks (heading, divider,
+     * html) are skipped, exactly as they are excluded from `data`. Captures the
+     * live definitions so a later rename/reorder/delete cannot alter how an
+     * existing submission reads.
+     *
+     * @return array<string, array{handle: string, label: string, type: string, order: int, options?: array<string, string>}>
+     */
+    private function buildFieldSnapshot(FormModel $formModel): array
+    {
+        $registry = Plugin::getInstance()->getFieldTypeRegistry();
+
+        $snapshot = [];
+        $order = 0;
+        foreach ($formModel->getFields() as $fieldId => $field) {
+            if (!$field->isInputType()) {
+                continue;
+            }
+
+            $entry = [
+                'handle' => $field->getName(),
+                'label' => $field->getLabel() ?? $field->getName(),
+                'type' => $field->getType(),
+                'order' => $order++,
+            ];
+
+            $options = $registry->getFieldType($field->getType(), $field->getConfig())?->optionLabels() ?? [];
+            if ($options !== []) {
+                $entry['options'] = $options;
+            }
+
+            $snapshot['field_' . $fieldId] = $entry;
+        }
+
+        return $snapshot;
     }
 
     /**
@@ -1088,7 +1147,7 @@ class SubmissionService extends Component
             return false;
         }
 
-        $fingerprint = $this->dedupeFingerprint($form, $data, $this->sourceIp());
+        $fingerprint = $this->dedupeFingerprint($form, $data, $this->ipFingerprint());
         if ($fingerprint === null) {
             return false;
         }
@@ -1104,7 +1163,7 @@ class SubmissionService extends Component
 
         foreach ($query->all() as $existing) {
             $existingData = is_array($existing->data) ? $existing->data : [];
-            if ($this->dedupeFingerprint($form, $existingData, $existing->sourceIp) === $fingerprint) {
+            if ($this->dedupeFingerprint($form, $existingData, $existing->ipHash) === $fingerprint) {
                 return true;
             }
         }
@@ -1116,13 +1175,20 @@ class SubmissionService extends Component
      * The dedupe fingerprint for a submission under the form's key, or null when
      * it cannot be computed (so no false "duplicate" is reported).
      *
+     * The `ip` key takes `$ipFingerprint` — the SHA-256 hash of the submitter's
+     * *full* IP ({@see self::ipFingerprint()}), never the (possibly-masked)
+     * display `sourceIp` (#326, fixing #315). Masking policy therefore never
+     * changes matching behavior: two visitors sharing an IPv4 /24 or IPv6 /48
+     * mask to the same `sourceIp` but hash to different fingerprints, and the
+     * fingerprint stays stable if the display policy changes later.
+     *
      * @param array<string, mixed> $data
      */
-    private function dedupeFingerprint(Form $form, array $data, ?string $sourceIp): ?string
+    private function dedupeFingerprint(Form $form, array $data, ?string $ipFingerprint): ?string
     {
         return match ($form->duplicateKey) {
             Form::DUPLICATE_KEY_CONTENT => 'content:' . $this->contentHash($data),
-            Form::DUPLICATE_KEY_IP => ($sourceIp !== null && $sourceIp !== '') ? 'ip:' . $sourceIp : null,
+            Form::DUPLICATE_KEY_IP => ($ipFingerprint !== null && $ipFingerprint !== '') ? 'ip:' . $ipFingerprint : null,
             default => ($email = $this->firstEmail($data)) !== null ? 'email:' . strtolower($email) : null,
         };
     }
@@ -1145,23 +1211,71 @@ class SubmissionService extends Component
     }
 
     /**
-     * The submitter's source IP, or null on the console / when unresolvable.
+     * The submitter's source IP for *display* storage, or null on the console /
+     * when unresolvable. Subject to `ipCapturePolicy` masking (#315) — this is
+     * the human-readable value shown in the CP, not the dedupe fingerprint (see
+     * {@see self::ipFingerprint()}).
      */
     private function sourceIp(): ?string
     {
-        // GDPR data-minimization opt-out (#293): never read the IP for storage
-        // when collection is off. (The rate limiter reads the request IP
-        // directly and persists nothing, so it is unaffected.)
-        if (!Plugin::getInstance()->getSettings()->collectIpAddresses) {
+        // IP capture policy (#315, supersedes #293's boolean opt-out): store the
+        // full IP, an anonymized IP, or nothing. In `off` mode the IP is never
+        // read for storage. (The rate limiter reads the request IP directly and
+        // persists nothing, so it is unaffected by this policy.)
+        $policy = Plugin::getInstance()->getSettings()->ipCapturePolicy;
+        if ($policy === Settings::IP_CAPTURE_OFF) {
             return null;
         }
 
+        $ip = $this->requestIp();
+        if ($ip === null) {
+            return null;
+        }
+
+        // Mask at capture time so a full IP is never written to the database in
+        // anonymized mode.
+        return $policy === Settings::IP_CAPTURE_ANONYMIZED ? IpHelper::anonymize($ip) : $ip;
+    }
+
+    /**
+     * A stable, non-reversible fingerprint of the submitter's *full* IP for the
+     * `ip` duplicate-detection key (#326, fixing #315), independent of the
+     * `ipCapturePolicy` masking applied to the *stored* `sourceIp` display
+     * column. Always derived from {@see self::requestIp()} — the raw, pre-mask
+     * address — never from the (possibly-masked) `sourceIp`, so anonymized-mode
+     * masking can't collapse visitors sharing an IPv4 /24 or IPv6 /48 into a
+     * false-positive duplicate, and matching stays consistent even if the
+     * display policy changes between submissions. Honors `IP_CAPTURE_OFF`
+     * (returns null) so opting out of IP capture also opts out of IP-derived
+     * dedup, matching the storage policy's intent. Only the one-way hash is
+     * persisted — the raw IP itself never is.
+     */
+    private function ipFingerprint(): ?string
+    {
+        if (Plugin::getInstance()->getSettings()->ipCapturePolicy === Settings::IP_CAPTURE_OFF) {
+            return null;
+        }
+
+        $ip = $this->requestIp();
+
+        return $ip === null ? null : hash('sha256', $ip);
+    }
+
+    /**
+     * The request's raw, unmasked client IP, or null on the console / when
+     * unresolvable. Shared by {@see self::sourceIp()} (display, policy-masked)
+     * and {@see self::ipFingerprint()} (dedupe, always full).
+     */
+    private function requestIp(): ?string
+    {
         /** @var \craft\web\Request $request */
         $request = Craft::$app->getRequest();
         if ($request->getIsConsoleRequest()) {
             return null;
         }
+
         $ip = $request->getUserIP();
+
         return ($ip === null || $ip === '') ? null : $ip;
     }
 

@@ -116,6 +116,7 @@ class FormPortabilityService extends Component
                 'quizGradeBands' => $form->quizGradeBands,
                 'autoCaptureAttribution' => $form->autoCaptureAttribution,
                 'capturePartials' => $form->capturePartials,
+                'prefillFromQuery' => $form->prefillFromQuery,
                 'content' => $this->exportFormContent($formId, $supportedSiteIds),
             ],
             'fields' => $this->exportFields($formId, $supportedSiteIds),
@@ -832,6 +833,9 @@ class FormPortabilityService extends Component
         }
         if (array_key_exists('capturePartials', $node)) {
             $form->capturePartials = (bool)$node['capturePartials'];
+        }
+        if (array_key_exists('prefillFromQuery', $node)) {
+            $form->prefillFromQuery = (bool)$node['prefillFromQuery'];
         }
 
         // A "redirect to entry" action with no resolvable target would fail

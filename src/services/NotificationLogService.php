@@ -25,7 +25,8 @@ class NotificationLogService extends Component
     private const TABLE = '{{%simpleform_notification_logs}}';
 
     /**
-     * Record one send attempt.
+     * Record one send attempt. Pass `$resentFromId` to mark this row as the
+     * audit trail of a manual resend of an earlier log row (#318).
      *
      * @param list<string> $recipients
      */
@@ -38,6 +39,7 @@ class NotificationLogService extends Component
         array $recipients,
         string $subject,
         string $message = '',
+        ?int $resentFromId = null,
     ): void {
         try {
             $now = Db::prepareDateForDb(new \DateTime());
@@ -46,6 +48,7 @@ class NotificationLogService extends Component
                 'submissionId' => $submissionId,
                 'notificationId' => $notificationId,
                 'notificationName' => StringHelper::safeTruncate($notificationName ?? '', 255) ?: null,
+                'resentFromId' => $resentFromId,
                 'status' => $success ? self::STATUS_SUCCESS : self::STATUS_FAILED,
                 'recipients' => Json::encode(array_values($recipients)),
                 'subject' => StringHelper::safeTruncate($subject, 255),
@@ -172,6 +175,21 @@ class NotificationLogService extends Component
                 'dateDisplay' => $dateDisplay,
             ];
         }, $rows);
+    }
+
+    /**
+     * A single send-log row by id, or null when it no longer exists.
+     *
+     * @return array<string, mixed>|null
+     */
+    public function getById(int $id): ?array
+    {
+        $row = (new Query())
+            ->from(self::TABLE)
+            ->where(['id' => $id])
+            ->one();
+
+        return is_array($row) ? $row : null;
     }
 
     /**

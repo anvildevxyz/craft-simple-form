@@ -98,6 +98,17 @@ abstract class ElementRelationFieldType extends FieldType
     }
 
     /**
+     * A multi-select relation stores an id list; single-select still stores a
+     * one-element list internally, but {@see self::renderInput()} takes a bare
+     * scalar id there, so only the multi case accepts a list value from the
+     * query string (#316's array-DoS fix).
+     */
+    public function acceptsListValue(): bool
+    {
+        return $this->isMultiple();
+    }
+
+    /**
      * Build the element query constrained to the configured allowed sources,
      * scoped to live/enabled elements only so the public option list never leaks
      * elements a visitor shouldn't see.

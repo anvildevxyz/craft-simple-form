@@ -10,6 +10,7 @@ use anvildev\simpleform\helpers\FormRows;
 use anvildev\simpleform\helpers\FormScreens;
 use anvildev\simpleform\helpers\FormSteps;
 use anvildev\simpleform\helpers\JumpResolver;
+use anvildev\simpleform\helpers\QueryPrefillResolver;
 use anvildev\simpleform\integrations\support\SubmissionValues;
 use anvildev\simpleform\models\Settings;
 use anvildev\simpleform\Plugin;
@@ -273,6 +274,14 @@ class FormRenderService extends Component
         if ($prefillValues !== null) {
             $prefill['values'] = $prefillValues;
         }
+
+        // Query-string prefill (#316): visible fields that opt in (per field, with
+        // the form-level default) seed their control from the URL query string.
+        // It's the lowest-precedence default, so a resume/edit value always wins;
+        // resolving it into the same prefill map means it composes with conditional
+        // logic and multi-step, and the value is still validated on submit.
+        $prefill['values'] += $this->_queryStringPrefill($form, $fields);
+
         $resolvedFields = array_map(fn(array $row): array => $this->_resolveFieldRow($row, $prefill['values']), $fields);
         $steps = FormSteps::group($resolvedFields);
         $resume = $this->_buildResume($form, $steps, $prefill);
@@ -672,6 +681,48 @@ class FormRenderService extends Component
 
         return '<div class="simple-form-layout simple-form-layout--' . htmlspecialchars($type, ENT_QUOTES) . '"'
             . $groupAttrs . '>' . $inner . '</div>';
+    }
+
+    /**
+     * The query-string prefill map (field_<id> => value) for this render, or an
+     * empty set (#316). Delegates the opt-in decision and value coercion to
+     * {@see QueryPrefillResolver}; here we just gather the prefillable input
+     * fields (never the Hidden field — it reads the query via its own source —
+     * nor presentational layout blocks) and the live request query params.
+     *
+     * @param array<int, array<string, mixed>> $fields the raw field rows for the form
+     * @return array<string, string|list<string>>
+     */
+    private function _queryStringPrefill(Form $form, array $fields): array
+    {
+        $request = Craft::$app->getRequest();
+        if (!$request instanceof \craft\web\Request) {
+            return [];
+        }
+
+        $registry = Plugin::getInstance()->getFieldTypeRegistry();
+        $prefillable = [];
+        foreach ($fields as $row) {
+            $type = (string) ($row['type'] ?? '');
+            if ($type === 'hidden') {
+                continue;
+            }
+
+            $config = is_array($row['config'] ?? null) ? $row['config'] : [];
+            $fieldType = $registry->getFieldType($type, $config);
+            if ($fieldType === null || !$fieldType->isInput()) {
+                continue;
+            }
+
+            $prefillable[] = [
+                'key' => 'field_' . ($row['id'] ?? ''),
+                'handle' => (string) ($row['name'] ?? ''),
+                'config' => $config,
+                'acceptsList' => $fieldType->acceptsListValue(),
+            ];
+        }
+
+        return QueryPrefillResolver::resolve($prefillable, $request->getQueryParams(), $form->prefillFromQuery);
     }
 
     /**

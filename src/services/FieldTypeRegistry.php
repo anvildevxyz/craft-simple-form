@@ -11,6 +11,7 @@ use anvildev\simpleform\fields\CategoryRelationFieldType;
 use anvildev\simpleform\fields\CheckboxFieldType;
 use anvildev\simpleform\fields\ConsentFieldType;
 use anvildev\simpleform\fields\DateFieldType;
+use anvildev\simpleform\fields\DateTimeFieldType;
 use anvildev\simpleform\fields\DividerFieldType;
 use anvildev\simpleform\fields\EmailFieldType;
 use anvildev\simpleform\fields\EntryRelationFieldType;
@@ -33,6 +34,8 @@ use anvildev\simpleform\fields\SignatureFieldType;
 use anvildev\simpleform\fields\TagRelationFieldType;
 use anvildev\simpleform\fields\TextareaFieldType;
 use anvildev\simpleform\fields\TextFieldType;
+use anvildev\simpleform\fields\TimeFieldType;
+use anvildev\simpleform\fields\UrlFieldType;
 use anvildev\simpleform\fields\UserRelationFieldType;
 use anvildev\simpleform\Plugin;
 use yii\base\Component;
@@ -84,11 +87,14 @@ class FieldTypeRegistry extends Component
         foreach ([
             TextFieldType::class,
             EmailFieldType::class,
+            UrlFieldType::class,
             TextareaFieldType::class,
             SelectFieldType::class,
             CheckboxFieldType::class,
             RadioFieldType::class,
             DateFieldType::class,
+            TimeFieldType::class,
+            DateTimeFieldType::class,
             NumberFieldType::class,
             PhoneFieldType::class,
             FileFieldType::class,

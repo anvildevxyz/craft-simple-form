@@ -200,6 +200,55 @@ class DuplicatePreventionTest extends SimpleFormTestCase
         );
     }
 
+    /**
+     * Force the request's resolved IP (memoized private field) so the `ip`
+     * dedupe key can be exercised deterministically.
+     */
+    private function setRequestIp(?string $ip): void
+    {
+        $request = \Craft::$app->getRequest();
+        $property = new \ReflectionProperty($request, '_ipAddress');
+        $property->setValue($request, $ip ?? false);
+    }
+
+    public function testAnonymizedIpDedupeIgnoresDisplayMaskingButCatchesTrueRepeats(): void
+    {
+        $this->requireCraft();
+
+        $this->withSettings(
+            ['ipCapturePolicy' => Settings::IP_CAPTURE_ANONYMIZED, 'duplicateMode' => Settings::DUPLICATE_BLOCK],
+            function(): void {
+                $form = $this->dupForm('dup_ip_anon', Form::DUPLICATE_KEY_IP);
+                $fieldId = $this->createField((int) $form->id, 'text', 'name', 'Name');
+                $service = Plugin::getInstance()->getSubmissionService();
+
+                try {
+                    // Two visitors sharing an IPv4 /24 mask to the same `sourceIp`
+                    // ("203.0.113.0") but must NOT be treated as duplicates (#326,
+                    // fixing #315's false-positive collision).
+                    $this->setRequestIp('203.0.113.10');
+                    $first = $service->submit($form, ['field_' . $fieldId => 'a'], ['skipCaptcha' => true]);
+                    $this->assertSame(SubmissionStatus::NEW, $first['submission']->readStatus, 'the first visitor on the /24 is accepted');
+                    $this->assertSame('203.0.113.0', $first['submission']->sourceIp, 'sourceIp is masked for display');
+
+                    $this->setRequestIp('203.0.113.99');
+                    $second = $service->submit($form, ['field_' . $fieldId => 'b'], ['skipCaptcha' => true]);
+                    $this->assertNotSame($first['submission']->ipHash, $second['submission']->ipHash);
+                    $this->assertSame(SubmissionStatus::NEW, $second['submission']->readStatus, 'a different visitor sharing the masked /24 is NOT a false-positive duplicate, even in block mode');
+
+                    // A genuine repeat from the exact same full IP IS a duplicate
+                    // and gets blocked (dropped, not just flagged).
+                    $this->setRequestIp('203.0.113.10');
+                    $third = $service->submit($form, ['field_' . $fieldId => 'c'], ['skipCaptcha' => true]);
+                    $this->assertNull($third['submission'], 'a true repeat from the same full IP is blocked as a duplicate');
+                    $this->assertNull($third['errors']);
+                } finally {
+                    $this->setRequestIp(null);
+                }
+            },
+        );
+    }
+
     public function testDuplicateScopeIsPerForm(): void
     {
         $this->requireCraft();
