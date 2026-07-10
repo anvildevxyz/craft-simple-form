@@ -5,6 +5,7 @@ namespace anvildev\simpleform\controllers;
 use anvildev\simpleform\Editions;
 use anvildev\simpleform\helpers\SimpleFormPermissions;
 use anvildev\simpleform\mcp\Scopes;
+use anvildev\simpleform\models\Settings;
 use anvildev\simpleform\Plugin;
 use Craft;
 use craft\helpers\StringHelper;
@@ -48,7 +49,7 @@ class SettingsController extends Controller
             'submitRateLimitPerMinute',
             'allowGraphqlCaptchaBypass',
         ],
-        'privacy' => ['collectIpAddresses', 'retainSubmissionsDays', 'retainIntegrationLogsDays', 'retainNotificationLogsDays', 'retainAuditLogDays', 'anonymizeInsteadOfDelete', 'partialRetentionDays'],
+        'privacy' => ['ipCapturePolicy', 'retainSubmissionsDays', 'retainIntegrationLogsDays', 'retainNotificationLogsDays', 'retainAuditLogDays', 'anonymizeInsteadOfDelete', 'partialRetentionDays'],
         // The MCP tab persists only the enable toggle through the generic save;
         // tokens are created/revoked via dedicated actions (one-time secret).
         'mcp' => ['enableMcp'],
@@ -121,6 +122,14 @@ class SettingsController extends Controller
             }
 
             $values[$field] = $new;
+        }
+
+        // Keep the legacy boolean in lockstep with the three-state IP policy so
+        // pre-#315 readers of collectIpAddresses stay correct (#315). init()
+        // does the same on load, but savePluginSettings() writes the raw values
+        // array, so the derivation has to happen here on the save path too.
+        if ($tab === 'privacy' && isset($values['ipCapturePolicy'])) {
+            $values['collectIpAddresses'] = $values['ipCapturePolicy'] !== Settings::IP_CAPTURE_OFF;
         }
 
         if (!Craft::$app->getPlugins()->savePluginSettings($plugin, $values)) {

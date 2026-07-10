@@ -62,6 +62,8 @@ class NotificationsService extends Component
             'recipient' => $notification->recipient,
             'subject' => $notification->subject,
             'replyTo' => $notification->replyTo,
+            'cc' => $notification->cc,
+            'bcc' => $notification->bcc,
             'body' => $notification->body,
             'attachPdf' => $notification->attachPdf,
             'attachUploads' => $notification->attachUploads,
@@ -210,6 +212,8 @@ class NotificationsService extends Component
         $model->recipient = (string) $row['recipient'];
         $model->subject = isset($row['subject']) ? (string) $row['subject'] : null;
         $model->replyTo = isset($row['replyTo']) ? (string) $row['replyTo'] : null;
+        $model->cc = isset($row['cc']) ? (string) $row['cc'] : null;
+        $model->bcc = isset($row['bcc']) ? (string) $row['bcc'] : null;
         $model->body = isset($row['body']) ? (string) $row['body'] : null;
         $model->attachPdf = (bool) ($row['attachPdf'] ?? false);
         $model->attachUploads = (bool) ($row['attachUploads'] ?? false);

@@ -48,6 +48,11 @@ class CheckboxFieldType extends FieldType
         return true;
     }
 
+    public function acceptsListValue(): bool
+    {
+        return true;
+    }
+
     public function renderInput(string $name, mixed $value = null): string
     {
         $options = $this->getOptions();

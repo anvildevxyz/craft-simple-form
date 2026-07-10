@@ -2,12 +2,18 @@
 
 <h2>{{ 'Data Collection'|t('simple-form') }}</h2>
 
-{{ forms.lightswitchField({
-    label: 'Collect IP addresses'|t('simple-form'),
-    instructions: 'Store the visitor’s IP address on each submission. Turn off for GDPR data minimization — rate limiting still works (nothing is stored), but IP-based duplicate detection is disabled.'|t('simple-form'),
-    id: 'collectIpAddresses',
-    name: 'collectIpAddresses',
-    on: settings.collectIpAddresses,
+{{ forms.selectField({
+    label: 'IP address capture'|t('simple-form'),
+    instructions: 'How the visitor’s IP address is stored on each submission. “Anonymized” masks the host portion at capture time (last octet for IPv4, low 80 bits for IPv6), so a full IP is never written. “Off” stores nothing (GDPR data minimization). Rate limiting always works regardless (nothing is stored); IP-based duplicate detection is disabled when off.'|t('simple-form'),
+    id: 'ipCapturePolicy',
+    name: 'ipCapturePolicy',
+    options: {
+        'full': 'Full IP address'|t('simple-form'),
+        'anonymized': 'Anonymized (masked) IP address'|t('simple-form'),
+        'off': 'Off (do not store)'|t('simple-form'),
+    },
+    value: settings.ipCapturePolicy,
+    errors: settings.getErrors('ipCapturePolicy') ?? [],
 }) }}
 
 <h2>{{ 'Data Retention'|t('simple-form') }}</h2>

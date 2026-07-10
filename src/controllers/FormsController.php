@@ -242,6 +242,9 @@ class FormsController extends Controller
         $renderMode = (string) $request->getBodyParam('renderMode', 'standard');
         $form->renderMode = in_array($renderMode, ['standard', 'conversational'], true) ? $renderMode : 'standard';
 
+        // Query-string prefill default (#316).
+        $form->prefillFromQuery = (bool) $request->getBodyParam('prefillFromQuery');
+
         $form->propagationMethod = PropagationMethod::tryFrom(
             (string)$request->getBodyParam('propagationMethod', 'none')
         ) ?? PropagationMethod::None;

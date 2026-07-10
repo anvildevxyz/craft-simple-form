@@ -8,6 +8,7 @@ use Craft;
 use craft\db\Query;
 use craft\helpers\Db;
 use yii\base\Component;
+use yii\db\Expression;
 
 /**
  * Data-retention housekeeping (#107). Prunes submissions and integration dispatch
@@ -76,6 +77,71 @@ class RetentionService extends Component
         if ($ids === []) {
             return 0;
         }
+
+        return $anonymize ? $this->anonymize($ids) : $this->hardDelete($ids);
+    }
+
+    /**
+     * Every submission id tied to an email address, for GDPR subject-access /
+     * right-to-erasure (#314). Matching scans both the linked Craft user's email
+     * and the submitted JSON `data` blob (any field value — Email, Text, or a
+     * composite/repeater sub-value — equal to the address), so it catches the
+     * email wherever it was captured. Scanning is done in PHP, not via a JSON
+     * `LIKE`, to stay database-agnostic (MySQL + Postgres).
+     *
+     * The submissions table is streamed in {@see self::BATCH}-sized chunks via
+     * `Query::batch()` rather than loaded with `all()`, so a large table never
+     * materializes every `data` blob in memory at once (#325).
+     *
+     * @return list<int>
+     */
+    public function findSubmissionIdsByEmail(string $email): array
+    {
+        $needle = mb_strtolower(trim($email));
+        if ($needle === '') {
+            return [];
+        }
+
+        $matchingUserIds = $this->userIdsForEmail($needle);
+
+        $ids = [];
+        $query = (new Query())
+            ->select(['id', 'userId', 'data'])
+            ->from(self::SUBMISSIONS);
+        foreach ($query->batch(self::BATCH) as $rows) {
+            foreach ($rows as $row) {
+                $id = (int) $row['id'];
+                if ($row['userId'] !== null && isset($matchingUserIds[(int) $row['userId']])) {
+                    $ids[] = $id;
+                    continue;
+                }
+
+                $data = is_array($row['data']) ? $row['data'] : json_decode((string) $row['data'], true);
+                if ($this->valueContainsEmail($data, $needle)) {
+                    $ids[] = $id;
+                }
+            }
+        }
+
+        return $ids;
+    }
+
+    /**
+     * Erase (delete or anonymize) the given submissions, honoring the existing
+     * `anonymizeInsteadOfDelete` setting unless `$anonymize` overrides it (#314).
+     * Reuses the same asset-scrubbing delete/anonymize path as the retention
+     * sweep. Returns the number of submissions affected.
+     *
+     * @param list<int> $ids
+     */
+    public function eraseSubmissions(array $ids, ?bool $anonymize = null): int
+    {
+        $ids = array_values(array_unique(array_map('intval', $ids)));
+        if ($ids === []) {
+            return 0;
+        }
+
+        $anonymize ??= Plugin::getInstance()->getSettings()->anonymizeInsteadOfDelete;
 
         return $anonymize ? $this->anonymize($ids) : $this->hardDelete($ids);
     }
@@ -191,6 +257,52 @@ class RetentionService extends Component
         if ($assetIds !== []) {
             Plugin::getInstance()->getAssetUploadService()->deleteAssets(...array_keys($assetIds));
         }
+    }
+
+    /**
+     * The set (id => true) of Craft user ids whose (lowercased) email matches
+     * $needle. Queried directly against the (small, bounded) users table —
+     * independent of how many submissions exist — rather than by first scanning
+     * every submission row for a `userId`, so this never grows with submission
+     * volume. The comparison is done in SQL via `LOWER()`, which is portable
+     * across MySQL and Postgres.
+     *
+     * @return array<int, true>
+     */
+    private function userIdsForEmail(string $needle): array
+    {
+        $matching = [];
+        $users = (new Query())
+            ->select(['id'])
+            ->from('{{%users}}')
+            ->where(new Expression('LOWER(TRIM([[email]])) = :needle', [':needle' => $needle]))
+            ->column();
+        foreach ($users as $id) {
+            $matching[(int) $id] = true;
+        }
+
+        return $matching;
+    }
+
+    /**
+     * Whether $value (a submitted `data` blob, an entry, or a scalar) contains
+     * $needle as an email address anywhere in its structure. Recurses arrays so a
+     * match inside a composite (Name/Address) sub-value or a repeater row still
+     * counts. $needle must already be lowercased/trimmed.
+     */
+    private function valueContainsEmail(mixed $value, string $needle): bool
+    {
+        if (is_array($value)) {
+            foreach ($value as $child) {
+                if ($this->valueContainsEmail($child, $needle)) {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        return is_scalar($value) && mb_strtolower(trim((string) $value)) === $needle;
     }
 
     private function cutoff(int $days): \DateTime

@@ -6,6 +6,7 @@ use anvildev\simpleform\elements\Form;
 use anvildev\simpleform\elements\Submission;
 use anvildev\simpleform\events\BeforeSendNotificationEvent;
 use anvildev\simpleform\fields\FileFieldType;
+use anvildev\simpleform\helpers\AddressList;
 use anvildev\simpleform\jobs\SendNotifications;
 use anvildev\simpleform\models\FieldModel;
 use anvildev\simpleform\models\NotificationModel;
@@ -70,6 +71,8 @@ class EmailService extends Component
                 $this->renderBodyFor($notification->body, $form, $submission, $data),
                 $notification->replyTo,
                 $this->attachmentsFor($notification, $form, $submission, $data),
+                $this->parseAddressList($notification->cc),
+                $this->parseAddressList($notification->bcc),
             );
             $this->_logSend(
                 $form,
@@ -319,13 +322,38 @@ class EmailService extends Component
     }
 
     /**
+     * Split a comma/semicolon/whitespace-separated address string into a
+     * de-duplicated list of valid email addresses (#313). Validation already
+     * rejects header-injection input at save time; this is a defensive filter so
+     * only clean addresses ever reach the mailer.
+     *
+     * @return list<string>
+     */
+    private function parseAddressList(?string $value): array
+    {
+        return array_values(array_unique(array_filter(
+            AddressList::split($value),
+            static fn(string $p): bool => (bool) filter_var($p, FILTER_VALIDATE_EMAIL),
+        )));
+    }
+
+    /**
      * Compose + send one email.
      *
      * @param list<string>|string $to
      * @param list<EmailAttachment> $attachments
+     * @param list<string> $cc
+     * @param list<string> $bcc
      */
-    private function send(array|string $to, string $subject, string $body, ?string $replyTo, array $attachments = []): bool
-    {
+    private function send(
+        array|string $to,
+        string $subject,
+        string $body,
+        ?string $replyTo,
+        array $attachments = [],
+        array $cc = [],
+        array $bcc = [],
+    ): bool {
         if ($to === [] || $to === '') {
             return false;
         }
@@ -336,6 +364,13 @@ class EmailService extends Component
                 ->setTo($to)
                 ->setSubject($subject)
                 ->setHtmlBody($body);
+
+            if ($cc !== []) {
+                $mail->setCc($cc);
+            }
+            if ($bcc !== []) {
+                $mail->setBcc($bcc);
+            }
 
             foreach ($attachments as $attachment) {
                 $mail->attachContent($attachment['content'], [

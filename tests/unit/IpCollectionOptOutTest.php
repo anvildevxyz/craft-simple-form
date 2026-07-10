@@ -17,6 +17,26 @@ class IpCollectionOptOutTest extends TestCase
         $this->assertTrue((new Settings())->collectIpAddresses);
     }
 
+    public function testPolicyDefaultsToFullFromLegacyOn(): void
+    {
+        $this->assertSame(Settings::IP_CAPTURE_FULL, (new Settings())->ipCapturePolicy);
+    }
+
+    public function testPolicyDefaultsToOffFromLegacyOff(): void
+    {
+        $settings = new Settings(['collectIpAddresses' => false]);
+        $this->assertSame(Settings::IP_CAPTURE_OFF, $settings->ipCapturePolicy);
+    }
+
+    public function testExplicitPolicyKeepsLegacyBooleanInLockstep(): void
+    {
+        $anonymized = new Settings(['ipCapturePolicy' => Settings::IP_CAPTURE_ANONYMIZED]);
+        $this->assertTrue($anonymized->collectIpAddresses);
+
+        $off = new Settings(['ipCapturePolicy' => Settings::IP_CAPTURE_OFF]);
+        $this->assertFalse($off->collectIpAddresses);
+    }
+
     public function testSettingIsBooleanValidated(): void
     {
         $settings = new Settings();
@@ -36,18 +56,20 @@ class IpCollectionOptOutTest extends TestCase
 
     public function testCaptureIsGatedAndEditableOnThePrivacyTab(): void
     {
+        // #315 supersedes the boolean with a three-state policy; the gate now
+        // lives on ipCapturePolicy but collectIpAddresses stays in lockstep.
         $service = (string) file_get_contents(__DIR__ . '/../../src/services/SubmissionService.php');
         // The gate sits inside sourceIp() so every storage path is covered.
         $this->assertMatchesRegularExpression(
-            '/function sourceIp\(\): \?string\s*\{[^}]*collectIpAddresses/s',
+            '/function sourceIp\(\): \?string\s*\{[^}]*ipCapturePolicy/s',
             $service,
         );
 
         $controller = (string) file_get_contents(__DIR__ . '/../../src/controllers/SettingsController.php');
-        $this->assertMatchesRegularExpression("/'privacy' => \['collectIpAddresses',/", $controller);
-        $this->assertStringContainsString("'collectIpAddresses'];", $controller);
+        $this->assertMatchesRegularExpression("/'privacy' => \['ipCapturePolicy',/", $controller);
+        $this->assertStringContainsString('$values[\'collectIpAddresses\'] = ', $controller);
 
         $tab = (string) file_get_contents(__DIR__ . '/../../src/templates/settings/_tabs/privacy.twig');
-        $this->assertStringContainsString("name: 'collectIpAddresses'", $tab);
+        $this->assertStringContainsString("name: 'ipCapturePolicy'", $tab);
     }
 }
