@@ -81,6 +81,8 @@ class NotificationsController extends Controller
         $notification->recipient = trim((string) $request->getBodyParam('recipient', ''));
         $notification->subject = $this->nullableString($request->getBodyParam('subject'));
         $notification->replyTo = $this->nullableString($request->getBodyParam('replyTo'));
+        $notification->cc = $this->nullableString($request->getBodyParam('cc'));
+        $notification->bcc = $this->nullableString($request->getBodyParam('bcc'));
         $notification->body = $this->nullableString($request->getBodyParam('body'));
         $notification->attachPdf = (bool) $request->getBodyParam('attachPdf', false);
         $notification->attachUploads = (bool) $request->getBodyParam('attachUploads', false);

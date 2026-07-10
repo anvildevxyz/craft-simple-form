@@ -50,6 +50,7 @@
                 <th>{{ 'Subject'|t('simple-form') }}</th>
                 <th>{{ 'Status'|t('simple-form') }}</th>
                 <th>{{ 'Message'|t('simple-form') }}</th>
+                <th></th>
             </tr>
         </thead>
         <tbody>
@@ -72,7 +73,23 @@
                             <span class="status red"></span> {{ 'Failed'|t('simple-form') }}
                         {% endif %}
                     </td>
-                    <td class="sf-log-message{{ entry.status == 'failed' ? ' is-error' : '' }}">{{ entry.message ?: '—' }}</td>
+                    <td class="sf-log-message{{ entry.status == 'failed' ? ' is-error' : '' }}">
+                        {{ entry.message ?: '—' }}
+                        {% if entry.resentFromId %}
+                            <span class="light">{{ 'Resend of #{id}'|t('simple-form', { id: entry.resentFromId }) }}</span>
+                        {% endif %}
+                    </td>
+                    <td class="thin">
+                        {% if entry.submissionId %}
+                            <form method="post" accept-charset="UTF-8">
+                                {{ csrfInput() }}
+                                {{ actionInput('simple-form/notification-log/resend') }}
+                                {{ redirectInput('simple-form/notifications' ~ (formId ? '?formId=' ~ formId : '')) }}
+                                <input type="hidden" name="logId" value="{{ entry.id }}">
+                                <button type="submit" class="btn small">{{ 'Resend'|t('simple-form') }}</button>
+                            </form>
+                        {% endif %}
+                    </td>
                 </tr>
             {% endfor %}
         </tbody>

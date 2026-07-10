@@ -62,6 +62,7 @@ return [
     'Please select no more than {limit} options.' => 'Selecteer niet meer dan {limit} opties.',
     '(deleted #{id})' => '(verwijderd #{id})',
     'Please enter a valid email address.' => 'Voer een geldig e-mailadres in.',
+    'Please enter a valid URL.' => 'Voer een geldige URL in.',
     'Please enter a valid number.' => 'Voer een geldig getal in.',
     'Must be at least {min}.' => 'Moet minstens {min} zijn.',
     'Must be no more than {max}.' => 'Mag niet meer dan {max} zijn.',

@@ -6,6 +6,7 @@ use anvildev\simpleform\elements\Form;
 use anvildev\simpleform\elements\Submission;
 use anvildev\simpleform\events\BeforeSendNotificationEvent;
 use anvildev\simpleform\fields\FileFieldType;
+use anvildev\simpleform\helpers\AddressList;
 use anvildev\simpleform\jobs\SendNotifications;
 use anvildev\simpleform\models\FieldModel;
 use anvildev\simpleform\models\NotificationModel;
@@ -26,14 +27,17 @@ class EmailService extends Component
      * no notification rows, fall back to its legacy email columns so existing
      * forms keep working unchanged.
      *
+     * When `$resentFromLogId` is set, every log row written by this pass points
+     * back at that original send so a manual resend stays auditable (#318).
+     *
      * @param SubmissionData $data
      */
-    public function sendSubmissionEmail(Form $form, Submission $submission, array $data): bool
+    public function sendSubmissionEmail(Form $form, Submission $submission, array $data, ?int $resentFromLogId = null): bool
     {
         $resolved = Plugin::getInstance()->getNotifications()->resolveForSubmission($form, $submission, $data);
 
         if ($resolved === []) {
-            return $this->sendLegacy($form, $submission, $data);
+            return $this->sendLegacy($form, $submission, $data, $resentFromLogId);
         }
 
         $plugin = Plugin::getInstance();
@@ -67,6 +71,8 @@ class EmailService extends Component
                 $this->renderBodyFor($notification->body, $form, $submission, $data),
                 $notification->replyTo,
                 $this->attachmentsFor($notification, $form, $submission, $data),
+                $this->parseAddressList($notification->cc),
+                $this->parseAddressList($notification->bcc),
             );
             $this->_logSend(
                 $form,
@@ -76,6 +82,7 @@ class EmailService extends Component
                 $recipients,
                 $subject,
                 $sent,
+                $resentFromLogId,
             );
             $allSent = $sent && $allSent;
         }
@@ -190,11 +197,53 @@ class EmailService extends Component
     }
 
     /**
+     * Re-dispatch the notifications for the submission behind an existing log row
+     * (#318). Reuses the same {@see SendNotifications} queue job as an automatic
+     * send — honoring the `dispatchIntegrationsSynchronously` escape hatch — and
+     * threads `$logId` through so the fresh log rows reference the original send.
+     * Returns false when the original send can no longer be resolved to a live
+     * submission (e.g. it was pruned).
+     */
+    public function resendFromLog(int $logId): bool
+    {
+        $row = Plugin::getInstance()->getNotificationLog()->getById($logId);
+        $submissionId = isset($row['submissionId']) ? (int) $row['submissionId'] : 0;
+        if ($submissionId === 0) {
+            return false;
+        }
+
+        // Worker/primary-site context: resolve across all sites.
+        $submission = Submission::find()->siteId('*')->id($submissionId)->one();
+        if ($submission === null) {
+            return false;
+        }
+
+        $form = $submission->getForm();
+        if ($form === null) {
+            return false;
+        }
+
+        $data = is_array($submission->data) ? $submission->data : [];
+
+        if ($this->getSettings()->dispatchIntegrationsSynchronously) {
+            $this->sendSubmissionEmail($form, $submission, $data, $logId);
+            return true;
+        }
+
+        Craft::$app->getQueue()->push(new SendNotifications([
+            'submissionId' => $submissionId,
+            'resentFromLogId' => $logId,
+        ]));
+
+        return true;
+    }
+
+    /**
      * Legacy single-notification path driven by the form's own email columns.
      *
      * @param SubmissionData $data
      */
-    private function sendLegacy(Form $form, Submission $submission, array $data): bool
+    private function sendLegacy(Form $form, Submission $submission, array $data, ?int $resentFromLogId = null): bool
     {
         if (!$form->emailTo) {
             return false;
@@ -235,6 +284,7 @@ class EmailService extends Component
             $recipients,
             $subject,
             $sent,
+            $resentFromLogId,
         );
 
         return $sent;
@@ -251,6 +301,7 @@ class EmailService extends Component
         array|string $recipients,
         string $subject,
         bool $sent,
+        ?int $resentFromLogId = null,
     ): void {
         if ($form->id === null) {
             return;
@@ -266,7 +317,24 @@ class EmailService extends Component
             array_values($recipientList),
             $subject,
             $sent ? '' : Craft::t('simple-form', 'Failed to send email.'),
+            $resentFromLogId,
         );
+    }
+
+    /**
+     * Split a comma/semicolon/whitespace-separated address string into a
+     * de-duplicated list of valid email addresses (#313). Validation already
+     * rejects header-injection input at save time; this is a defensive filter so
+     * only clean addresses ever reach the mailer.
+     *
+     * @return list<string>
+     */
+    private function parseAddressList(?string $value): array
+    {
+        return array_values(array_unique(array_filter(
+            AddressList::split($value),
+            static fn(string $p): bool => (bool) filter_var($p, FILTER_VALIDATE_EMAIL),
+        )));
     }
 
     /**
@@ -274,9 +342,18 @@ class EmailService extends Component
      *
      * @param list<string>|string $to
      * @param list<EmailAttachment> $attachments
+     * @param list<string> $cc
+     * @param list<string> $bcc
      */
-    private function send(array|string $to, string $subject, string $body, ?string $replyTo, array $attachments = []): bool
-    {
+    private function send(
+        array|string $to,
+        string $subject,
+        string $body,
+        ?string $replyTo,
+        array $attachments = [],
+        array $cc = [],
+        array $bcc = [],
+    ): bool {
         if ($to === [] || $to === '') {
             return false;
         }
@@ -287,6 +364,13 @@ class EmailService extends Component
                 ->setTo($to)
                 ->setSubject($subject)
                 ->setHtmlBody($body);
+
+            if ($cc !== []) {
+                $mail->setCc($cc);
+            }
+            if ($bcc !== []) {
+                $mail->setBcc($bcc);
+            }
 
             foreach ($attachments as $attachment) {
                 $mail->attachContent($attachment['content'], [

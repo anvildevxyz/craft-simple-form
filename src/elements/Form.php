@@ -147,6 +147,13 @@ class Form extends Element
     public bool $capturePartials = false;
     /** Front-end render mode (#239): 'standard' (default) or 'conversational' (one question per screen). */
     public string $renderMode = 'standard';
+    /**
+     * Form-level default for query-string prefill (#316; shared, not translatable).
+     * When on, every visible input field opts into query-string prefill unless it
+     * explicitly overrides via its own `prefillFromQuery` config flag. Off keeps
+     * existing forms unaffected — no field reads the query string.
+     */
+    public bool $prefillFromQuery = false;
 
     // Per-site (translatable). title is stored in elements_sites via hasTitles().
     public ?string $title = null;
@@ -506,6 +513,9 @@ class Form extends Element
         // Conversational render mode (#239).
         $rules[] = [['renderMode'], 'in', 'range' => ['standard', 'conversational']];
 
+        // Query-string prefill default (#316).
+        $rules[] = [['prefillFromQuery'], 'boolean'];
+
         // handle is shared across sites, so it must be globally unique
         $rules[] = [['handle'], 'validateHandleUnique'];
 
@@ -595,6 +605,7 @@ class Form extends Element
             'autoCaptureAttribution' => $this->autoCaptureAttribution,
             'capturePartials' => $this->capturePartials,
             'renderMode' => $this->renderMode,
+            'prefillFromQuery' => $this->prefillFromQuery,
             'dateUpdated' => $now,
         ];
 

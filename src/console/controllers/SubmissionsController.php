@@ -23,6 +23,10 @@ class SubmissionsController extends Controller
     public bool $anonymize = false;
     /** Write export CSV to this path instead of stdout. */
     public ?string $out = null;
+    /** Email address to match for the GDPR export/erase commands (#314). */
+    public ?string $email = null;
+    /** Report the scope without mutating anything (erase-by-email preview). */
+    public bool $dryRun = false;
 
     /**
      * @param string $actionID
@@ -33,6 +37,8 @@ class SubmissionsController extends Controller
         return match ($actionID) {
             'purge' => ['days', 'form', 'anonymize'],
             'export' => ['form', 'out'],
+            'export-by-email' => ['email', 'out'],
+            'erase-by-email' => ['email', 'anonymize', 'dryRun'],
             default => [],
         };
     }
@@ -87,6 +93,62 @@ class SubmissionsController extends Controller
     }
 
     /**
+     * GDPR subject-access: export every submission tied to --email as CSV to
+     * stdout or --out=<path>. Matching scans the linked user's email and the
+     * submitted JSON data (#314).
+     */
+    public function actionExportByEmail(): int
+    {
+        $ids = $this->resolveEmailMatches();
+        if ($ids === false) {
+            return ExitCode::USAGE;
+        }
+
+        $submissions = $ids === []
+            ? []
+            : Submission::find()->siteId('*')->id($ids)->all();
+
+        $csv = SubmissionCsv::fromSubmissions($submissions);
+
+        if ($this->out !== null) {
+            if (file_put_contents($this->out, $csv) === false) {
+                $this->stderr("Failed to write {$this->out}.\n", Console::FG_RED);
+                return ExitCode::UNSPECIFIED_ERROR;
+            }
+            $this->stdout("Wrote " . count($submissions) . " submission(s) for {$this->email} to {$this->out}\n", Console::FG_GREEN);
+        } else {
+            $this->stdout($csv);
+        }
+
+        return ExitCode::OK;
+    }
+
+    /**
+     * GDPR right-to-erasure: delete (or anonymize, per the
+     * `anonymizeInsteadOfDelete` setting or --anonymize) every submission tied to
+     * --email. Pass --dry-run to report the scope without mutating anything (#314).
+     */
+    public function actionEraseByEmail(): int
+    {
+        $ids = $this->resolveEmailMatches();
+        if ($ids === false) {
+            return ExitCode::USAGE;
+        }
+
+        if ($this->dryRun) {
+            $this->stdout('Would erase ' . count($ids) . " submission(s) for {$this->email} (dry run, nothing changed).\n", Console::FG_YELLOW);
+            return ExitCode::OK;
+        }
+
+        // --anonymize forces scrub-in-place; without it, honor the plugin setting.
+        $count = Plugin::getInstance()->getRetention()->eraseSubmissions($ids, $this->anonymize ? true : null);
+        $verb = ($this->anonymize || Plugin::getInstance()->getSettings()->anonymizeInsteadOfDelete) ? 'Anonymized' : 'Deleted';
+        $this->stdout("$verb $count submission(s) for {$this->email}.\n", Console::FG_GREEN);
+
+        return ExitCode::OK;
+    }
+
+    /**
      * Cancel submissions whose payment has stayed pending past the configured
      * TTL (paymentPendingTtlMinutes) — abandoned offsite/redirect checkouts
      * (#116). Mirrors the automatic garbage-collection sweep, for ops/cron use.
@@ -97,6 +159,24 @@ class SubmissionsController extends Controller
         $this->stdout("Canceled {$count} expired pending payment(s).\n", Console::FG_GREEN);
 
         return ExitCode::OK;
+    }
+
+    /**
+     * Resolve the submission ids matching --email via the shared retention query,
+     * or false (with a usage error printed) when --email is missing. Returned by
+     * both GDPR commands so they match identically (#314).
+     *
+     * @return list<int>|false
+     */
+    private function resolveEmailMatches(): array|false
+    {
+        $email = $this->email !== null ? trim($this->email) : '';
+        if ($email === '') {
+            $this->stderr("--email=<address> is required.\n", Console::FG_RED);
+            return false;
+        }
+
+        return Plugin::getInstance()->getRetention()->findSubmissionIdsByEmail($email);
     }
 
     /**

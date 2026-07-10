@@ -62,6 +62,7 @@ return [
     'Please select no more than {limit} options.' => '{limit}個以下を選択してください。',
     '(deleted #{id})' => '(削除済み #{id})',
     'Please enter a valid email address.' => '有効なメールアドレスを入力してください。',
+    'Please enter a valid URL.' => '有効なURLを入力してください。',
     'Please enter a valid number.' => '有効な数値を入力してください。',
     'Must be at least {min}.' => '{min} 以上である必要があります。',
     'Must be no more than {max}.' => '{max} 以下である必要があります。',
