@@ -36,6 +36,10 @@ class m260709_000001_add_notification_log_resent_from extends Migration
         $table = '{{%simpleform_notification_logs}}';
 
         if ($this->db->columnExists($table, 'resentFromId')) {
+            // The FK/index must go before the column — MySQL refuses to drop
+            // a column that a foreign key still references.
+            $this->dropForeignKeyIfExists($table, ['resentFromId']);
+            $this->dropIndexIfExists($table, ['resentFromId']);
             $this->dropColumn($table, 'resentFromId');
         }
 

@@ -25,6 +25,27 @@ class NotificationLogController extends Controller
     // PUBLIC METHODS
     // =========================================================================
 
+    /**
+     * Resending is a mutating action — it re-dispatches outbound email — so
+     * it additionally requires MANAGE_SUBMISSIONS on top of the class-level
+     * VIEW_SUBMISSIONS gate, matching {@see SubmissionsController}.
+     *
+     * @param \yii\base\Action $action
+     * @throws \yii\web\ForbiddenHttpException if the user lacks the required permission
+     */
+    public function beforeAction($action): bool
+    {
+        if (!parent::beforeAction($action)) {
+            return false;
+        }
+
+        if ($action->id === 'resend') {
+            $this->requirePermission(SimpleFormPermissions::MANAGE_SUBMISSIONS);
+        }
+
+        return true;
+    }
+
     public function actionIndex(): Response
     {
         /** @var \craft\web\Request $request */
