@@ -6,6 +6,7 @@ use anvildev\simpleform\elements\Form;
 use anvildev\simpleform\elements\Submission;
 use anvildev\simpleform\elements\SubmissionStatus;
 use anvildev\simpleform\helpers\SimpleFormPermissions;
+use anvildev\simpleform\helpers\SubmissionCsv;
 use anvildev\simpleform\Plugin;
 use Craft;
 use craft\web\Controller;
@@ -79,11 +80,72 @@ class SubmissionsController extends Controller
         $request = Craft::$app->getRequest();
         $siteId = Craft::$app->getSites()->getCurrentSite()->id;
 
-        $csv = \anvildev\simpleform\helpers\SubmissionCsv::fromSubmissions(
-            $this->buildFilteredQuery($request, $siteId)->all()
+        $csv = SubmissionCsv::fromSubmissions(
+            $this->buildFilteredQuery($request, $siteId)->all(),
+            self::selectedColumns($request),
         );
 
         return $this->response->sendContentAsFile($csv, 'submissions.csv', ['mimeType' => 'text/csv']);
+    }
+
+    /**
+     * Column-selection screen for the CSV export (#317): lists every column the
+     * current filter set would emit, letting the operator export a focused subset
+     * (default remains all columns). The picker posts back through
+     * {@see self::actionExport()} carrying the current filters.
+     */
+    public function actionExportOptions(): Response
+    {
+        /** @var \craft\web\Request $request */
+        $request = Craft::$app->getRequest();
+        $siteId = Craft::$app->getSites()->getCurrentSite()->id;
+
+        $columns = SubmissionCsv::availableColumns(
+            $this->buildFilteredQuery($request, $siteId)->all()
+        );
+
+        return $this->renderTemplate('simple-form/submissions/export', [
+            'title' => Craft::t('simple-form', 'Export submissions'),
+            'columns' => $columns,
+            'filters' => array_filter([
+                'formId' => $request->getQueryParam('formId'),
+                'status' => $request->getQueryParam('status'),
+                'search' => $request->getQueryParam('search'),
+                'workflow' => $request->getQueryParam('workflow'),
+                'dateFrom' => $request->getQueryParam('dateFrom'),
+                'dateTo' => $request->getQueryParam('dateTo'),
+            ], static fn($v): bool => $v !== null && $v !== ''),
+        ]);
+    }
+
+    /**
+     * The operator-selected export column keys from the request (see
+     * {@see \anvildev\simpleform\helpers\SubmissionCsv::availableColumns()} for
+     * the stable-key scheme), or null when none is given so the export
+     * defaults to every column (#317). Only well-formed string keys are
+     * accepted.
+     *
+     * @return list<string>|null
+     */
+    private static function selectedColumns(\craft\web\Request $request): ?array
+    {
+        $columns = $request->getParam('columns');
+        if (!is_array($columns) || $columns === []) {
+            return null;
+        }
+
+        // The checkbox-select's "all" toggle posts `['*']`; honor it as the
+        // default (every column) rather than a literal column keyed `*`.
+        if (in_array('*', $columns, true)) {
+            return null;
+        }
+
+        $keys = array_values(array_filter(
+            array_map(static fn($c): string => is_string($c) ? $c : '', $columns),
+            static fn(string $c): bool => $c !== '',
+        ));
+
+        return $keys === [] ? null : $keys;
     }
 
     /**

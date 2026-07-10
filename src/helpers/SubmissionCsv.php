@@ -26,6 +26,7 @@ use craft\elements\Asset;
  * per stored sub-field, header `"<field label> — <sub-field label>"`.
  *
  * @phpstan-type CsvColumn array{key: string, sub: ?string, label: string}
+ * @phpstan-type CsvColumnDescriptor array{key: string, label: string}
  */
 final class SubmissionCsv
 {
@@ -40,6 +41,25 @@ final class SubmissionCsv
      * @var list<string>
      */
     private const ASSET_TYPES = FieldTypeRegistry::ASSET_TYPES;
+
+    /**
+     * The four base metadata column headers, in emission order. Shared by
+     * {@see self::columnDescriptors()} so the header text can't drift from the
+     * emitted values (#317).
+     *
+     * @var list<string>
+     */
+    private const METADATA_HEADERS = ['ID', 'Form', 'Status', 'Submitted'];
+
+    /**
+     * The stable column keys for the metadata columns, aligned by index with
+     * {@see self::METADATA_HEADERS}. A stable key — not the display label — is
+     * what {@see self::columnMask()} matches against, so a field labeled the
+     * same as a metadata header (e.g. "Status") never collides with it (#317).
+     *
+     * @var list<string>
+     */
+    private const METADATA_KEYS = ['meta:id', 'meta:form', 'meta:status', 'meta:submitted'];
 
     /**
      * Per-export id => resolved asset reference (public URL, or `Asset #id` when
@@ -62,12 +82,22 @@ final class SubmissionCsv
     private static array $fieldTypeMemo = [];
 
     /**
+     * Render the result set to a CSV string.
+     *
+     * When $onlyColumns is a non-empty list of stable column keys (see
+     * {@see self::availableColumns()}), only those columns are emitted (metadata
+     * + field columns alike), preserving natural order; null or an empty list
+     * keeps the default behaviour of every column (#317). Formula neutralization
+     * still applies to every emitted cell.
+     *
      * @param array<int, Submission> $submissions
+     * @param list<string>|null $onlyColumns stable column keys to keep, or null for all
      */
-    public static function fromSubmissions(array $submissions): string
+    public static function fromSubmissions(array $submissions, ?array $onlyColumns = null): string
     {
         self::warmAssetCache($submissions);
         $columns = self::discoverColumns($submissions);
+        $descriptors = self::columnDescriptors($submissions);
         $includeQuiz = self::includesQuiz($submissions);
         $includeAttribution = self::includesAttribution($submissions);
 
@@ -76,14 +106,8 @@ final class SubmissionCsv
             return '';
         }
 
-        $header = ['ID', 'Form', 'Status', 'Submitted'];
-        if ($includeQuiz) {
-            $header = [...$header, ...self::quizHeaders()];
-        }
-        if ($includeAttribution) {
-            $header = [...$header, ...self::attributionHeaders()];
-        }
-        fputcsv($handle, [...$header, ...array_column($columns, 'label')]);
+        $mask = self::columnMask($descriptors, $onlyColumns);
+        fputcsv($handle, self::applyMask(array_column($descriptors, 'label'), $mask));
 
         foreach ($submissions as $submission) {
             $form = $submission->getForm();
@@ -99,7 +123,7 @@ final class SubmissionCsv
             if ($includeAttribution) {
                 $meta = [...$meta, ...self::attributionValues($submission)];
             }
-            fputcsv($handle, [...$meta, ...self::rowValues($submission, $columns)]);
+            fputcsv($handle, self::applyMask([...$meta, ...self::rowValues($submission, $columns)], $mask));
         }
 
         rewind($handle);
@@ -110,42 +134,80 @@ final class SubmissionCsv
     }
 
     /**
+     * The ordered list of every column descriptor (stable key + display label)
+     * the export would emit for the result set (metadata + field/sub-field
+     * columns), used to populate the export UI's column picker so the offered
+     * columns exactly match what the emitter can produce (#317). The picker
+     * submits the key — immune to two columns sharing a label (e.g. two fields
+     * both "Comments", or a field labeled the same as a metadata header) — and
+     * shows the label to the operator.
+     *
+     * @param array<int, Submission> $submissions
+     * @return list<CsvColumnDescriptor>
+     */
+    public static function availableColumns(array $submissions): array
+    {
+        return self::columnDescriptors($submissions);
+    }
+
+    /**
      * The same data as {@see fromSubmissions()} but as associative rows (metadata
      * keys + one key per field/sub-field label), for Craft's element-exporter
      * framework which formats the array to CSV/JSON/XML. Every row carries the
      * union of columns so they align.
      *
+     * When $onlyColumns is a non-empty list of stable column keys (see
+     * {@see self::availableColumns()}), each row is reduced to those columns
+     * (natural order preserved); null or an empty list keeps every column
+     * (#317). Formula neutralization still applies to every cell.
+     *
      * @param array<int, Submission> $submissions
+     * @param list<string>|null $onlyColumns stable column keys to keep, or null for all
      * @return list<array<string, string>>
      */
-    public static function toRows(array $submissions): array
+    public static function toRows(array $submissions, ?array $onlyColumns = null): array
     {
         self::warmAssetCache($submissions);
         $columns = self::discoverColumns($submissions);
+        $descriptors = self::columnDescriptors($submissions);
         $includeQuiz = self::includesQuiz($submissions);
         $includeAttribution = self::includesAttribution($submissions);
+        $keep = ($onlyColumns === null || $onlyColumns === []) ? null : array_flip($onlyColumns);
 
         $rows = [];
         foreach ($submissions as $submission) {
             $form = $submission->getForm();
-            $row = [
-                'ID' => (string) $submission->id,
-                'Form' => (string) ($form->title ?? $form->name ?? $submission->formId),
-                'Status' => (string) $submission->readStatus,
-                'Submitted' => $submission->dateCreated?->format('Y-m-d H:i:s') ?? '',
+
+            /** @var array<string, string> $values keyed by stable column key */
+            $values = [
+                'meta:id' => (string) $submission->id,
+                'meta:form' => (string) ($form->title ?? $form->name ?? $submission->formId),
+                'meta:status' => (string) $submission->readStatus,
+                'meta:submitted' => $submission->dateCreated?->format('Y-m-d H:i:s') ?? '',
             ];
 
             if ($includeQuiz) {
-                $row += array_combine(self::quizHeaders(), self::quizValues($submission));
+                $values += array_combine(self::quizKeys(), self::quizValues($submission));
             }
 
             if ($includeAttribution) {
-                $row += array_combine(self::attributionHeaders(), self::attributionValues($submission));
+                $attributionValues = self::attributionValues($submission);
+                foreach (self::attributionKeys() as $i => $attrKey) {
+                    $values['attribution:' . $attrKey] = $attributionValues[$i];
+                }
             }
 
-            $values = self::rowValues($submission, $columns);
+            $fieldValues = self::rowValues($submission, $columns);
             foreach ($columns as $i => $col) {
-                $row[$col['label']] = $values[$i];
+                $values[self::fieldColumnKey($col)] = $fieldValues[$i];
+            }
+
+            $row = [];
+            foreach ($descriptors as $descriptor) {
+                if ($keep !== null && !isset($keep[$descriptor['key']])) {
+                    continue;
+                }
+                $row[$descriptor['label']] = $values[$descriptor['key']] ?? '';
             }
             $rows[] = $row;
         }
@@ -438,6 +500,114 @@ final class SubmissionCsv
     // =========================================================================
 
     /**
+     * Build the ordered list of column descriptors (stable key + display label)
+     * the export would emit for the result set: the four metadata columns,
+     * followed by the quiz columns when any submission carries a score (#241),
+     * the attribution columns when any submission carries capture (#249), and
+     * finally one entry per discovered field/sub-field column. Shared by
+     * {@see self::availableColumns()}, {@see self::fromSubmissions()}, and
+     * {@see self::toRows()} so the header assembly, the emitted output, and the
+     * column-picker's keys can never drift from each other (#317).
+     *
+     * Keys are stable identifiers distinct from the (possibly colliding)
+     * display label — two fields sharing a label, or a field labeled the same
+     * as a metadata header, still resolve to distinct columns.
+     *
+     * @param array<int, Submission> $submissions
+     * @return list<CsvColumnDescriptor>
+     */
+    private static function columnDescriptors(array $submissions): array
+    {
+        $descriptors = [];
+        foreach (self::METADATA_KEYS as $i => $key) {
+            $descriptors[] = ['key' => $key, 'label' => self::METADATA_HEADERS[$i]];
+        }
+
+        if (self::includesQuiz($submissions)) {
+            $quizHeaders = self::quizHeaders();
+            foreach (self::quizKeys() as $i => $key) {
+                $descriptors[] = ['key' => $key, 'label' => $quizHeaders[$i]];
+            }
+        }
+
+        if (self::includesAttribution($submissions)) {
+            $attributionHeaders = self::attributionHeaders();
+            foreach (self::attributionKeys() as $i => $attrKey) {
+                $descriptors[] = ['key' => 'attribution:' . $attrKey, 'label' => $attributionHeaders[$i]];
+            }
+        }
+
+        foreach (self::discoverColumns($submissions) as $col) {
+            $descriptors[] = ['key' => self::fieldColumnKey($col), 'label' => $col['label']];
+        }
+
+        return $descriptors;
+    }
+
+    /**
+     * The stable column key for a discovered field/sub-field column: the
+     * field's data key, plus the composite sub-key when present. Distinct from
+     * the (possibly colliding) display label (#317).
+     *
+     * @param CsvColumn $col
+     */
+    private static function fieldColumnKey(array $col): string
+    {
+        return $col['sub'] !== null ? 'field:' . $col['key'] . '::' . $col['sub'] : 'field:' . $col['key'];
+    }
+
+    /**
+     * The ordered list of column indices to keep for the flat-CSV path, given
+     * the full ordered descriptor list and an optional selection of stable
+     * column keys (not labels — two columns can share a label, e.g. two fields
+     * both "Comments", so matching by key keeps selection unambiguous, #317).
+     * Returns null (keep every column) when the selection is null or empty, so
+     * the default export is byte-for-byte unchanged.
+     *
+     * @param list<CsvColumnDescriptor> $descriptors
+     * @param list<string>|null $onlyColumns stable column keys to keep, or null for all
+     * @return list<int>|null
+     */
+    private static function columnMask(array $descriptors, ?array $onlyColumns): ?array
+    {
+        if ($onlyColumns === null || $onlyColumns === []) {
+            return null;
+        }
+
+        $keep = array_flip($onlyColumns);
+        $mask = [];
+        foreach ($descriptors as $i => $descriptor) {
+            if (isset($keep[$descriptor['key']])) {
+                $mask[] = $i;
+            }
+        }
+
+        return $mask;
+    }
+
+    /**
+     * Reduce a flat row to the masked column indices (natural order), or return it
+     * unchanged when the mask is null (no selection).
+     *
+     * @param list<string> $row
+     * @param list<int>|null $mask
+     * @return list<string>
+     */
+    private static function applyMask(array $row, ?array $mask): array
+    {
+        if ($mask === null) {
+            return $row;
+        }
+
+        $out = [];
+        foreach ($mask as $i) {
+            $out[] = $row[$i] ?? '';
+        }
+
+        return $out;
+    }
+
+    /**
      * Whether any submission in the set carries a quiz score, gating the quiz
      * columns so a plain (non-quiz) export stays byte-for-byte as before (#241).
      *
@@ -462,6 +632,17 @@ final class SubmissionCsv
     private static function quizHeaders(): array
     {
         return ['Score', 'Max score', 'Percentage', 'Grade'];
+    }
+
+    /**
+     * The stable column keys for the quiz columns, aligned by index with
+     * {@see self::quizHeaders()} (#317).
+     *
+     * @return list<string>
+     */
+    private static function quizKeys(): array
+    {
+        return ['quiz:score', 'quiz:maxScore', 'quiz:percentage', 'quiz:grade'];
     }
 
     /**
