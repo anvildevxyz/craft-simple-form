@@ -387,4 +387,26 @@ return [
     'Clear filters' => 'Filters wissen',
     'Delete sent email logs after (days)' => 'Meldingslogboeken verwijderen na (dagen)',
     'Notification send-log rows older than this are pruned. 0 = keep forever.' => 'Regels in het verzendlogboek van meldingen die ouder zijn dan dit worden opgeschoond. 0 = voor altijd bewaren.',
+
+    // Anonymized IP capture (#315)
+    'IP address capture' => 'IP-adres vastleggen',
+    'How the visitor’s IP address is stored on each submission. “Anonymized” masks the host portion at capture time (last octet for IPv4, low 80 bits for IPv6), so a full IP is never written. “Off” stores nothing (GDPR data minimization). Rate limiting always works regardless (nothing is stored); IP-based duplicate detection is disabled when off.' => 'Hoe het IP-adres van de bezoeker bij elke inzending wordt opgeslagen. “Geanonimiseerd” maskeert het hostgedeelte al bij het vastleggen (laatste octet bij IPv4, laagste 80 bits bij IPv6), zodat er nooit een volledig IP-adres wordt weggeschreven. “Uit” slaat niets op (AVG-dataminimalisatie). Rate limiting werkt hoe dan ook altijd (er wordt niets opgeslagen); IP-gebaseerde duplicaatdetectie is uitgeschakeld wanneer dit uit staat.',
+    'Full IP address' => 'Volledig IP-adres',
+    'Anonymized (masked) IP address' => 'Geanonimiseerd (gemaskeerd) IP-adres',
+    'Off (do not store)' => 'Uit (niet opslaan)',
+
+    // Query-string prefill (#316)
+    'Query-string prefill' => 'Vooraf invullen via query-string',
+    'Prefill fields from the URL by default' => 'Velden standaard vooraf invullen vanuit de URL',
+    'When on, every visible field is pre-filled from a matching URL query parameter (its handle, e.g. ?email=a@b.com) so campaign and “edit this” links land users on a partially completed form. Each field can override this in the builder. Prefilled values are ordinary defaults — they are still validated on submit, and only opted-in fields ever read the query string.' => 'Indien ingeschakeld wordt elk zichtbaar veld vooraf ingevuld vanuit een bijpassende URL-queryparameter (de handle ervan, bijv. ?email=a@b.com), zodat campagne- en “dit bewerken”-links gebruikers op een gedeeltelijk ingevuld formulier laten landen. Elk veld kan dit in de builder overschrijven. Vooraf ingevulde waarden zijn gewone standaardwaarden — ze worden bij het versturen nog steeds gevalideerd, en alleen velden die dit expliciet aan hebben staan lezen de query-string.',
+
+    // CSV export column selection (#317)
+    'Export submissions' => 'Inzendingen exporteren',
+    'Columns' => 'Kolommen',
+    'Choose the columns to include. All columns are exported by default.' => 'Kies de kolommen die je wilt opnemen. Standaard worden alle kolommen geëxporteerd.',
+    'No submissions match the current filters.' => 'Geen inzendingen komen overeen met de huidige filters.',
+    'Export CSV' => 'CSV exporteren',
+
+    // Callout layout block (#322)
+    'Callout' => 'Aandachtsblok',
 ];

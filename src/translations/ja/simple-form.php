@@ -387,4 +387,26 @@ return [
     'Clear filters' => 'フィルターをクリア',
     'Delete sent email logs after (days)' => '通知ログを削除するまでの日数',
     'Notification send-log rows older than this are pruned. 0 = keep forever.' => 'これより古い通知の送信ログ行は削除されます。0 は無期限に保持します。',
+
+    // Anonymized IP capture (#315)
+    'IP address capture' => 'IPアドレスの取得',
+    'How the visitor’s IP address is stored on each submission. “Anonymized” masks the host portion at capture time (last octet for IPv4, low 80 bits for IPv6), so a full IP is never written. “Off” stores nothing (GDPR data minimization). Rate limiting always works regardless (nothing is stored); IP-based duplicate detection is disabled when off.' => '訪問者のIPアドレスを各送信でどのように保存するか。「匿名化」は取得時にホスト部分をマスクします（IPv4は末尾オクテット、IPv6は下位80ビット）。これにより完全なIPが書き込まれることはありません。「オフ」は何も保存しません（GDPRのデータ最小化）。レート制限はいずれの場合も常に機能します（何も保存されないため）。IPアドレスによる重複検出はオフのときは無効になります。',
+    'Full IP address' => '完全なIPアドレス',
+    'Anonymized (masked) IP address' => '匿名化（マスク）されたIPアドレス',
+    'Off (do not store)' => 'オフ（保存しない）',
+
+    // Query-string prefill (#316)
+    'Query-string prefill' => 'クエリ文字列からの事前入力',
+    'Prefill fields from the URL by default' => 'デフォルトでURLからフィールドを事前入力する',
+    'When on, every visible field is pre-filled from a matching URL query parameter (its handle, e.g. ?email=a@b.com) so campaign and “edit this” links land users on a partially completed form. Each field can override this in the builder. Prefilled values are ordinary defaults — they are still validated on submit, and only opted-in fields ever read the query string.' => 'オンにすると、表示されているすべてのフィールドが、対応するURLクエリパラメータ（そのフィールドのハンドル、例：?email=a@b.com）から事前入力されます。これにより、キャンペーンリンクや「編集」リンクから、部分的に入力済みのフォームにユーザーを誘導できます。各フィールドはビルダーでこの設定を上書きできます。事前入力された値は通常のデフォルト値であり、送信時に検証されます。クエリ文字列を読み取るのは、この設定を有効にしたフィールドのみです。',
+
+    // CSV export column selection (#317)
+    'Export submissions' => '送信データをエクスポート',
+    'Columns' => '列',
+    'Choose the columns to include. All columns are exported by default.' => '含める列を選択してください。デフォルトではすべての列がエクスポートされます。',
+    'No submissions match the current filters.' => '現在のフィルターに一致する送信データはありません。',
+    'Export CSV' => 'CSVをエクスポート',
+
+    // Callout layout block (#322)
+    'Callout' => 'コールアウト',
 ];
