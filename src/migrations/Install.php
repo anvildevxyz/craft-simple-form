@@ -203,6 +203,8 @@ class Install extends Migration
             'recipient' => $this->string(255)->notNull()->defaultValue(''),
             'subject' => $this->string(255),
             'replyTo' => $this->string(255),
+            'cc' => $this->string(255),
+            'bcc' => $this->string(255),
             'body' => $this->text(),
             'attachPdf' => $this->boolean()->notNull()->defaultValue(false),
             'attachUploads' => $this->boolean()->notNull()->defaultValue(false),
