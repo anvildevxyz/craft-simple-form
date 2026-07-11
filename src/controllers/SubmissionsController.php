@@ -80,8 +80,11 @@ class SubmissionsController extends Controller
         $request = Craft::$app->getRequest();
         $siteId = Craft::$app->getSites()->getCurrentSite()->id;
 
-        $csv = SubmissionCsv::fromSubmissions(
-            $this->buildFilteredQuery($request, $siteId)->all(),
+        // Stream the filtered query in bounded batches into a php://temp buffer
+        // (spills to disk past its threshold) rather than loading every matching
+        // submission — with its full JSON data blob — into memory at once (#340).
+        $csv = SubmissionCsv::streamQueryToString(
+            $this->buildFilteredQuery($request, $siteId),
             self::selectedColumns($request),
         );
 
@@ -100,8 +103,10 @@ class SubmissionsController extends Controller
         $request = Craft::$app->getRequest();
         $siteId = Craft::$app->getSites()->getCurrentSite()->id;
 
-        $columns = SubmissionCsv::availableColumns(
-            $this->buildFilteredQuery($request, $siteId)->all()
+        // Discover the picker's columns from a bounded batched cursor rather than
+        // materializing every matching submission just to read its shape (#340).
+        $columns = SubmissionCsv::availableColumnsForQuery(
+            $this->buildFilteredQuery($request, $siteId)
         );
 
         return $this->renderTemplate('simple-form/submissions/export', [

@@ -2,7 +2,6 @@
 
 namespace anvildev\simpleform\elements\exporters;
 
-use anvildev\simpleform\elements\Submission;
 use anvildev\simpleform\helpers\SubmissionCsv;
 use Craft;
 use craft\base\ElementExporter;
@@ -37,15 +36,14 @@ class SubmissionExporter extends ElementExporter
     }
 
     /**
+     * Hydrate the filtered submissions in bounded batches rather than materializing
+     * the whole result set (#340); {@see SubmissionCsv::toRowsFromQuery()} keeps the
+     * output byte-for-byte identical to the former `$query->all()` path.
+     *
      * @return array<int, array<string, string>>
      */
     public function export(ElementQueryInterface $query): mixed
     {
-        $submissions = array_values(array_filter(
-            $query->all(),
-            static fn($element): bool => $element instanceof Submission,
-        ));
-
-        return SubmissionCsv::toRows($submissions, $this->columns ?: null);
+        return SubmissionCsv::toRowsFromQuery($query, $this->columns ?: null);
     }
 }

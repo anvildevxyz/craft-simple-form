@@ -10,6 +10,7 @@ use anvildev\simpleform\Plugin;
 use anvildev\simpleform\services\FieldTypeRegistry;
 use Craft;
 use craft\elements\Asset;
+use craft\elements\db\ElementQueryInterface;
 
 /**
  * Renders submissions to a human-friendly CSV for the Control Panel export:
@@ -95,35 +96,79 @@ final class SubmissionCsv
      */
     public static function fromSubmissions(array $submissions, ?array $onlyColumns = null): string
     {
-        self::warmAssetCache($submissions);
-        $columns = self::discoverColumns($submissions);
-        $descriptors = self::columnDescriptors($submissions);
-        $includeQuiz = self::includesQuiz($submissions);
-        $includeAttribution = self::includesAttribution($submissions);
-
         $handle = fopen('php://temp', 'r+');
         if ($handle === false) {
             return '';
         }
 
+        self::warmAssetCache($submissions);
+        $columns = self::discoverColumns($submissions);
+        $includeQuiz = self::includesQuiz($submissions);
+        $includeAttribution = self::includesAttribution($submissions);
+        $descriptors = self::buildDescriptors($columns, $includeQuiz, $includeAttribution);
         $mask = self::columnMask($descriptors, $onlyColumns);
+
+        fputcsv($handle, self::applyMask(array_column($descriptors, 'label'), $mask));
+        foreach ($submissions as $submission) {
+            fputcsv($handle, self::applyMask(
+                self::flatRow($submission, $columns, $includeQuiz, $includeAttribution),
+                $mask,
+            ));
+        }
+
+        rewind($handle);
+        $csv = (string) stream_get_contents($handle);
+        fclose($handle);
+
+        return $csv;
+    }
+
+    /**
+     * Render a submission query to a CSV string, hydrating in bounded batches
+     * instead of materializing the whole result set into memory (#340). The
+     * output is byte-for-byte identical to {@see self::fromSubmissions()} run
+     * over the same query's {@see \craft\elements\db\ElementQuery::all()}: a
+     * first pass over a batched cursor accumulates the exact same column union
+     * and quiz/attribution gates, then a second pass emits the same header and
+     * per-row {@see fputcsv} output. The CSV is assembled in a `php://temp`
+     * stream (which spills to disk past its memory threshold), so peak memory
+     * stays bounded even for very large exports.
+     *
+     * @param ElementQueryInterface $query a re-traversable submission query
+     * @param list<string>|null $onlyColumns stable column keys to keep, or null for all
+     * @param int $batchSize submissions hydrated per batch
+     */
+    public static function streamQueryToString(
+        ElementQueryInterface $query,
+        ?array $onlyColumns = null,
+        int $batchSize = 500,
+    ): string {
+        $handle = fopen('php://temp', 'r+');
+        if ($handle === false) {
+            return '';
+        }
+
+        // Pass 1: the column union + gates, from a bounded cursor.
+        $discovery = self::discoverFromQuery($query, $batchSize);
+        $columns = $discovery['columns'];
+        $includeQuiz = $discovery['includeQuiz'];
+        $includeAttribution = $discovery['includeAttribution'];
+        $descriptors = self::buildDescriptors($columns, $includeQuiz, $includeAttribution);
+        $mask = self::columnMask($descriptors, $onlyColumns);
+
         fputcsv($handle, self::applyMask(array_column($descriptors, 'label'), $mask));
 
-        foreach ($submissions as $submission) {
-            $form = $submission->getForm();
-            $meta = [
-                (string) $submission->id,
-                (string) ($form?->title ?? $form?->name ?? $submission->formId),
-                (string) $submission->readStatus,
-                $submission->dateCreated?->format('Y-m-d H:i:s') ?? '',
-            ];
-            if ($includeQuiz) {
-                $meta = [...$meta, ...self::quizValues($submission)];
+        // Pass 2: warm the asset cache per batch (merged) and emit each row
+        // through the same path {@see self::fromSubmissions()} uses.
+        foreach ($query->batch($batchSize) as $batch) {
+            $submissions = self::onlySubmissions($batch);
+            self::warmAssetCache($submissions, true);
+            foreach ($submissions as $submission) {
+                fputcsv($handle, self::applyMask(
+                    self::flatRow($submission, $columns, $includeQuiz, $includeAttribution),
+                    $mask,
+                ));
             }
-            if ($includeAttribution) {
-                $meta = [...$meta, ...self::attributionValues($submission)];
-            }
-            fputcsv($handle, self::applyMask([...$meta, ...self::rowValues($submission, $columns)], $mask));
         }
 
         rewind($handle);
@@ -151,6 +196,29 @@ final class SubmissionCsv
     }
 
     /**
+     * The available column descriptors for the export UI's column picker (#317),
+     * discovered from a bounded batched cursor rather than materializing the
+     * whole filtered result set (#340). This runs the same full pass-1 discovery
+     * the streamed export uses — not a bounded sample — so the offered columns
+     * still exactly match the emitted output and a column that only a later row
+     * would introduce is never missed.
+     *
+     * @param ElementQueryInterface $query a submission query
+     * @param int $batchSize submissions hydrated per batch
+     * @return list<CsvColumnDescriptor>
+     */
+    public static function availableColumnsForQuery(ElementQueryInterface $query, int $batchSize = 500): array
+    {
+        $discovery = self::discoverFromQuery($query, $batchSize);
+
+        return self::buildDescriptors(
+            $discovery['columns'],
+            $discovery['includeQuiz'],
+            $discovery['includeAttribution'],
+        );
+    }
+
+    /**
      * The same data as {@see fromSubmissions()} but as associative rows (metadata
      * keys + one key per field/sub-field label), for Craft's element-exporter
      * framework which formats the array to CSV/JSON/XML. Every row carries the
@@ -169,47 +237,54 @@ final class SubmissionCsv
     {
         self::warmAssetCache($submissions);
         $columns = self::discoverColumns($submissions);
-        $descriptors = self::columnDescriptors($submissions);
         $includeQuiz = self::includesQuiz($submissions);
         $includeAttribution = self::includesAttribution($submissions);
+        $descriptors = self::buildDescriptors($columns, $includeQuiz, $includeAttribution);
         $keep = ($onlyColumns === null || $onlyColumns === []) ? null : array_flip($onlyColumns);
 
         $rows = [];
         foreach ($submissions as $submission) {
-            $form = $submission->getForm();
+            $rows[] = self::assocRow($submission, $columns, $descriptors, $includeQuiz, $includeAttribution, $keep);
+        }
 
-            /** @var array<string, string> $values keyed by stable column key */
-            $values = [
-                'meta:id' => (string) $submission->id,
-                'meta:form' => (string) ($form->title ?? $form->name ?? $submission->formId),
-                'meta:status' => (string) $submission->readStatus,
-                'meta:submitted' => $submission->dateCreated?->format('Y-m-d H:i:s') ?? '',
-            ];
+        return $rows;
+    }
 
-            if ($includeQuiz) {
-                $values += array_combine(self::quizKeys(), self::quizValues($submission));
+    /**
+     * The same associative rows as {@see self::toRows()} but sourced from a
+     * submission query hydrated in bounded batches instead of a materialized
+     * array (#340), for Craft's element-exporter framework. Byte-for-byte
+     * identical to {@see self::toRows()} run over the query's
+     * {@see \craft\elements\db\ElementQuery::all()}: the same column union is
+     * accumulated across a batched cursor (pass 1), then the same per-row
+     * assembly emits each row (pass 2, with the asset cache warmed and merged
+     * per batch). Only one batch of elements is hydrated at a time, so peak
+     * memory stays bounded.
+     *
+     * @param ElementQueryInterface $query a re-traversable submission query
+     * @param list<string>|null $onlyColumns stable column keys to keep, or null for all
+     * @param int $batchSize submissions hydrated per batch
+     * @return list<array<string, string>>
+     */
+    public static function toRowsFromQuery(
+        ElementQueryInterface $query,
+        ?array $onlyColumns = null,
+        int $batchSize = 500,
+    ): array {
+        $discovery = self::discoverFromQuery($query, $batchSize);
+        $columns = $discovery['columns'];
+        $includeQuiz = $discovery['includeQuiz'];
+        $includeAttribution = $discovery['includeAttribution'];
+        $descriptors = self::buildDescriptors($columns, $includeQuiz, $includeAttribution);
+        $keep = ($onlyColumns === null || $onlyColumns === []) ? null : array_flip($onlyColumns);
+
+        $rows = [];
+        foreach ($query->batch($batchSize) as $batch) {
+            $submissions = self::onlySubmissions($batch);
+            self::warmAssetCache($submissions, true);
+            foreach ($submissions as $submission) {
+                $rows[] = self::assocRow($submission, $columns, $descriptors, $includeQuiz, $includeAttribution, $keep);
             }
-
-            if ($includeAttribution) {
-                $attributionValues = self::attributionValues($submission);
-                foreach (self::attributionKeys() as $i => $attrKey) {
-                    $values['attribution:' . $attrKey] = $attributionValues[$i];
-                }
-            }
-
-            $fieldValues = self::rowValues($submission, $columns);
-            foreach ($columns as $i => $col) {
-                $values[self::fieldColumnKey($col)] = $fieldValues[$i];
-            }
-
-            $row = [];
-            foreach ($descriptors as $descriptor) {
-                if ($keep !== null && !isset($keep[$descriptor['key']])) {
-                    continue;
-                }
-                $row[$descriptor['label']] = $values[$descriptor['key']] ?? '';
-            }
-            $rows[] = $row;
         }
 
         return $rows;
@@ -295,14 +370,20 @@ final class SubmissionCsv
     }
 
     /**
-     * Pre-resolve every asset referenced by the result set in one query, so the
-     * per-cell {@see self::assetReference()} reads a map instead of issuing a
-     * lookup per id (was an N+1 across the whole export). Re-seeded each call so a
-     * batched element-exporter run scopes the cache to its current chunk.
+     * Pre-resolve every asset referenced by the given submissions in one query,
+     * so the per-cell {@see self::assetReference()} reads a map instead of
+     * issuing a lookup per id (was an N+1 across the whole export).
+     *
+     * With $merge false (the materialized-array paths) the cache is re-seeded from
+     * scratch, scoping it to the passed chunk. With $merge true (the streamed
+     * paths, #340) each batch's resolved id => url strings are overlaid onto the
+     * running cache: only one batch's Asset elements are loaded at a time, yet the
+     * lightweight string map still resolves ids seen in earlier batches — so peak
+     * memory stays bounded without changing any resolved cell.
      *
      * @param array<int, Submission> $submissions
      */
-    private static function warmAssetCache(array $submissions): void
+    private static function warmAssetCache(array $submissions, bool $merge = false): void
     {
         /** @var array<int, true> $ids */
         $ids = [];
@@ -313,7 +394,7 @@ final class SubmissionCsv
         }
 
         /** @var array<int, string> $cache */
-        $cache = [];
+        $cache = $merge && self::$assetUrlCache !== null ? self::$assetUrlCache : [];
         if ($ids !== []) {
             /** @var array<int, Asset> $assets */
             $assets = Asset::find()->id(array_keys($ids))->indexBy('id')->all();
@@ -518,30 +599,104 @@ final class SubmissionCsv
      */
     private static function columnDescriptors(array $submissions): array
     {
+        return self::buildDescriptors(
+            self::discoverColumns($submissions),
+            self::includesQuiz($submissions),
+            self::includesAttribution($submissions),
+        );
+    }
+
+    /**
+     * Assemble the ordered column-descriptor list from an already-computed column
+     * union and quiz/attribution gates: the four metadata columns, the quiz
+     * columns when $includeQuiz, the attribution columns when $includeAttribution,
+     * then one entry per discovered field/sub-field column. Shared by the
+     * materialized-array paths ({@see self::columnDescriptors()}) and the streamed
+     * paths (#340) so the header assembly, emitted output, and column-picker keys
+     * can never drift from each other (#317).
+     *
+     * @param list<CsvColumn> $columns
+     * @return list<CsvColumnDescriptor>
+     */
+    private static function buildDescriptors(array $columns, bool $includeQuiz, bool $includeAttribution): array
+    {
         $descriptors = [];
         foreach (self::METADATA_KEYS as $i => $key) {
             $descriptors[] = ['key' => $key, 'label' => self::METADATA_HEADERS[$i]];
         }
 
-        if (self::includesQuiz($submissions)) {
+        if ($includeQuiz) {
             $quizHeaders = self::quizHeaders();
             foreach (self::quizKeys() as $i => $key) {
                 $descriptors[] = ['key' => $key, 'label' => $quizHeaders[$i]];
             }
         }
 
-        if (self::includesAttribution($submissions)) {
+        if ($includeAttribution) {
             $attributionHeaders = self::attributionHeaders();
             foreach (self::attributionKeys() as $i => $attrKey) {
                 $descriptors[] = ['key' => 'attribution:' . $attrKey, 'label' => $attributionHeaders[$i]];
             }
         }
 
-        foreach (self::discoverColumns($submissions) as $col) {
+        foreach ($columns as $col) {
             $descriptors[] = ['key' => self::fieldColumnKey($col), 'label' => $col['label']];
         }
 
         return $descriptors;
+    }
+
+    /**
+     * Run pass-1 discovery over a bounded batched cursor: the first-seen column
+     * union plus the quiz/attribution gates, with each batch's elements discarded
+     * before the next is hydrated so memory stays bounded (#340). Shared by every
+     * streamed path so their column sets stay identical.
+     *
+     * @param ElementQueryInterface $query a re-traversable submission query
+     * @param int $batchSize submissions hydrated per batch
+     * @return array{columns: list<CsvColumn>, includeQuiz: bool, includeAttribution: bool}
+     */
+    private static function discoverFromQuery(ElementQueryInterface $query, int $batchSize): array
+    {
+        /** @var list<CsvColumn> $columns */
+        $columns = [];
+        /** @var array<string, true> $seen */
+        $seen = [];
+        $includeQuiz = false;
+        $includeAttribution = false;
+
+        foreach ($query->batch($batchSize) as $batch) {
+            foreach (self::onlySubmissions($batch) as $submission) {
+                self::discoverColumnsInto($submission, $columns, $seen);
+                $includeQuiz = $includeQuiz || $submission->quizScore !== null;
+                $includeAttribution = $includeAttribution || $submission->attribution !== null;
+            }
+        }
+
+        return [
+            'columns' => $columns,
+            'includeQuiz' => $includeQuiz,
+            'includeAttribution' => $includeAttribution,
+        ];
+    }
+
+    /**
+     * Narrow one batch of an element query's results to the Submission instances
+     * (defensive: an element query is typed to the interface, not Submission).
+     *
+     * @param iterable<mixed> $batch
+     * @return list<Submission>
+     */
+    private static function onlySubmissions(iterable $batch): array
+    {
+        $submissions = [];
+        foreach ($batch as $element) {
+            if ($element instanceof Submission) {
+                $submissions[] = $element;
+            }
+        }
+
+        return $submissions;
     }
 
     /**
@@ -732,43 +887,60 @@ final class SubmissionCsv
      */
     private static function discoverColumns(array $submissions): array
     {
+        /** @var list<CsvColumn> $columns */
         $columns = [];
+        /** @var array<string, true> $seen */
         $seen = [];
 
         foreach ($submissions as $submission) {
-            foreach ($submission->getDisplayData() as $key => $entry) {
-                $key = (string) $key;
-
-                if (self::isComposite($entry)) {
-                    $fieldLabel = self::entryLabel($entry, $key);
-                    foreach (self::compositeSubLabels($entry) as $sub => $subLabel) {
-                        $colId = $key . '::' . $sub;
-                        if (isset($seen[$colId])) {
-                            continue;
-                        }
-                        $seen[$colId] = true;
-                        $columns[] = [
-                            'key' => $key,
-                            'sub' => $sub,
-                            'label' => $fieldLabel . ' — ' . $subLabel,
-                        ];
-                    }
-                    continue;
-                }
-
-                if (isset($seen[$key])) {
-                    continue;
-                }
-                $seen[$key] = true;
-                $columns[] = [
-                    'key' => $key,
-                    'sub' => null,
-                    'label' => self::entryLabel($entry, $key),
-                ];
-            }
+            self::discoverColumnsInto($submission, $columns, $seen);
         }
 
         return $columns;
+    }
+
+    /**
+     * Fold one submission's field/sub-field columns into the running first-seen
+     * union ($columns) using $seen as the de-dupe set. Extracted from
+     * {@see self::discoverColumns()} so the same accumulation drives both the
+     * materialized-array and the batched-cursor (#340) discovery, keeping their
+     * column order and set identical.
+     *
+     * @param list<CsvColumn> $columns
+     * @param array<string, true> $seen
+     */
+    private static function discoverColumnsInto(Submission $submission, array &$columns, array &$seen): void
+    {
+        foreach ($submission->getDisplayData() as $key => $entry) {
+            $key = (string) $key;
+
+            if (self::isComposite($entry)) {
+                $fieldLabel = self::entryLabel($entry, $key);
+                foreach (self::compositeSubLabels($entry) as $sub => $subLabel) {
+                    $colId = $key . '::' . $sub;
+                    if (isset($seen[$colId])) {
+                        continue;
+                    }
+                    $seen[$colId] = true;
+                    $columns[] = [
+                        'key' => $key,
+                        'sub' => $sub,
+                        'label' => $fieldLabel . ' — ' . $subLabel,
+                    ];
+                }
+                continue;
+            }
+
+            if (isset($seen[$key])) {
+                continue;
+            }
+            $seen[$key] = true;
+            $columns[] = [
+                'key' => $key,
+                'sub' => null,
+                'label' => self::entryLabel($entry, $key),
+            ];
+        }
     }
 
     /**
@@ -799,6 +971,93 @@ final class SubmissionCsv
         }
 
         return $values;
+    }
+
+    /**
+     * One submission's full ordered flat row (metadata, then the gated quiz and
+     * attribution cells, then the discovered field/sub-field cells), before any
+     * column mask is applied. Shared by {@see self::fromSubmissions()} and the
+     * streamed CSV path so both emit byte-identical rows (#340).
+     *
+     * @param list<CsvColumn> $columns
+     * @return list<string>
+     */
+    private static function flatRow(
+        Submission $submission,
+        array $columns,
+        bool $includeQuiz,
+        bool $includeAttribution,
+    ): array {
+        $form = $submission->getForm();
+        $meta = [
+            (string) $submission->id,
+            (string) ($form?->title ?? $form?->name ?? $submission->formId),
+            (string) $submission->readStatus,
+            $submission->dateCreated?->format('Y-m-d H:i:s') ?? '',
+        ];
+        if ($includeQuiz) {
+            $meta = [...$meta, ...self::quizValues($submission)];
+        }
+        if ($includeAttribution) {
+            $meta = [...$meta, ...self::attributionValues($submission)];
+        }
+
+        return [...$meta, ...self::rowValues($submission, $columns)];
+    }
+
+    /**
+     * One submission's associative row (label => cell) reduced to the kept
+     * columns, for the element-exporter framework. Shared by {@see self::toRows()}
+     * and {@see self::toRowsFromQuery()} so both emit byte-identical rows (#340).
+     *
+     * @param list<CsvColumn> $columns
+     * @param list<CsvColumnDescriptor> $descriptors
+     * @param array<string, int>|null $keep keep-set of stable column keys, or null for all
+     * @return array<string, string>
+     */
+    private static function assocRow(
+        Submission $submission,
+        array $columns,
+        array $descriptors,
+        bool $includeQuiz,
+        bool $includeAttribution,
+        ?array $keep,
+    ): array {
+        $form = $submission->getForm();
+
+        /** @var array<string, string> $values keyed by stable column key */
+        $values = [
+            'meta:id' => (string) $submission->id,
+            'meta:form' => (string) ($form->title ?? $form->name ?? $submission->formId),
+            'meta:status' => (string) $submission->readStatus,
+            'meta:submitted' => $submission->dateCreated?->format('Y-m-d H:i:s') ?? '',
+        ];
+
+        if ($includeQuiz) {
+            $values += array_combine(self::quizKeys(), self::quizValues($submission));
+        }
+
+        if ($includeAttribution) {
+            $attributionValues = self::attributionValues($submission);
+            foreach (self::attributionKeys() as $i => $attrKey) {
+                $values['attribution:' . $attrKey] = $attributionValues[$i];
+            }
+        }
+
+        $fieldValues = self::rowValues($submission, $columns);
+        foreach ($columns as $i => $col) {
+            $values[self::fieldColumnKey($col)] = $fieldValues[$i];
+        }
+
+        $row = [];
+        foreach ($descriptors as $descriptor) {
+            if ($keep !== null && !isset($keep[$descriptor['key']])) {
+                continue;
+            }
+            $row[$descriptor['label']] = $values[$descriptor['key']] ?? '';
+        }
+
+        return $row;
     }
 
     /**

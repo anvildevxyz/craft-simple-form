@@ -80,7 +80,9 @@ class SubmissionsController extends Controller
             $query->formId($formId);
         }
 
-        $csv = SubmissionCsv::fromSubmissions($query->all());
+        // Hydrate in bounded batches (#340) instead of loading every submission —
+        // with its full JSON data blob — into memory at once.
+        $csv = SubmissionCsv::streamQueryToString($query);
 
         if ($this->out !== null) {
             file_put_contents($this->out, $csv);
@@ -104,18 +106,18 @@ class SubmissionsController extends Controller
             return ExitCode::USAGE;
         }
 
-        $submissions = $ids === []
-            ? []
-            : Submission::find()->siteId('*')->id($ids)->all();
-
-        $csv = SubmissionCsv::fromSubmissions($submissions);
+        // The matched set is one subject's submissions (small), but still hydrate
+        // it in bounded batches for consistency with the other export paths (#340).
+        $csv = $ids === []
+            ? SubmissionCsv::fromSubmissions([])
+            : SubmissionCsv::streamQueryToString(Submission::find()->siteId('*')->id($ids));
 
         if ($this->out !== null) {
             if (file_put_contents($this->out, $csv) === false) {
                 $this->stderr("Failed to write {$this->out}.\n", Console::FG_RED);
                 return ExitCode::UNSPECIFIED_ERROR;
             }
-            $this->stdout("Wrote " . count($submissions) . " submission(s) for {$this->email} to {$this->out}\n", Console::FG_GREEN);
+            $this->stdout("Wrote " . count($ids) . " submission(s) for {$this->email} to {$this->out}\n", Console::FG_GREEN);
         } else {
             $this->stdout($csv);
         }
