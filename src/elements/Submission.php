@@ -56,6 +56,24 @@ class Submission extends Element
      * the original IP.
      */
     public ?string $ipHash = null;
+    /**
+     * SHA-256 of this submission's dedupe fingerprint (#341), recomputed on save
+     * from the form's `duplicateKey`. Lets duplicate detection be an indexed
+     * `(formId, dedupeHash)` lookup instead of rehydrating the form's history.
+     * Null when no fingerprint is derivable (e.g. email key with no email value).
+     *
+     * Known limitation: the hash is frozen under the `duplicateKey` in effect
+     * when the row was saved. Changing a form's `duplicateKey` after submissions
+     * exist re-keys detection for *new* rows only; existing rows keep their
+     * original-key hash and are not retroactively re-hashed.
+     */
+    public ?string $dedupeHash = null;
+    /**
+     * SHA-256 of the normalized first-email-field value (#341), recomputed on
+     * save. Lets the per-guest email cap be an indexed `(formId, guestEmailHash)`
+     * count instead of a JSON `LIKE`. Null when the submission has no email value.
+     */
+    public ?string $guestEmailHash = null;
     /** null = no payment; self::PAYMENT_PENDING = awaiting; self::PAYMENT_PAID = complete. */
     public ?string $paymentStatus = null;
     public ?string $paymentAmount = null;
@@ -285,6 +303,17 @@ class Submission extends Element
         $db = Craft::$app->getDb();
         $now = Db::prepareDateForDb(new \DateTime());
 
+        // Recompute the indexed dedupe/guest-email hashes from the current data on
+        // every save, so an edited submission re-keys correctly (#341).
+        $submissions = Plugin::getInstance()->getSubmissionService();
+        $form = $this->getForm();
+        $this->dedupeHash = $form !== null
+            ? $submissions->computeDedupeHash($form, $this->data ?? [], $this->ipHash)
+            : null;
+        $this->guestEmailHash = $form !== null
+            ? $submissions->computeGuestEmailHash($form, $this->data ?? [])
+            : null;
+
         $row = [
             'formId' => $this->formId,
             'siteId' => $this->siteId,
@@ -297,6 +326,8 @@ class Submission extends Element
             'spamReason' => $this->spamReason,
             'sourceIp' => $this->sourceIp,
             'ipHash' => $this->ipHash,
+            'dedupeHash' => $this->dedupeHash,
+            'guestEmailHash' => $this->guestEmailHash,
             'paymentStatus' => $this->paymentStatus,
             'paymentAmount' => $this->paymentAmount,
             'orderId' => $this->orderId,
