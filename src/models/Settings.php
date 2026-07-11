@@ -212,6 +212,17 @@ class Settings extends Model
     public ?string $ipCapturePolicy = null;
 
     public int $retainSubmissionsDays = 0;
+
+    /**
+     * How long flagged spam submissions (`readStatus = 'spam'`) are kept before
+     * garbage collection prunes them (#338). Unlike {@see $retainSubmissionsDays}
+     * this defaults to a non-zero window so a spam-flag pile can't grow unbounded
+     * out of the box — spam filters default to *flag* (persist), not *block*, so
+     * without this a busy form's spam rows accumulate forever. 0 = keep spam
+     * forever (opt out). Legitimate submissions are never touched by this sweep.
+     */
+    public int $retainSpamDays = 30;
+
     public int $retainIntegrationLogsDays = 90;
     public int $retainNotificationLogsDays = 90;
     public int $retainAuditLogDays = 365;
@@ -389,7 +400,7 @@ class Settings extends Model
             // resolve at runtime.
             [['defaultEmailSender'], 'email', 'when' => fn(): bool => !str_starts_with((string) $this->defaultEmailSender, '$')],
             [['enableHoneypot', 'enableCaptcha', 'cacheFormStructure', 'inlineFormAssets', 'enableMcp', 'dispatchIntegrationsSynchronously', 'enableAkismet', 'anonymizeInsteadOfDelete', 'allowGraphqlCaptchaBypass', 'enableDenylists', 'collectIpAddresses'], 'boolean'],
-            [['retainSubmissionsDays', 'retainIntegrationLogsDays', 'retainNotificationLogsDays', 'retainAuditLogDays', 'submitRateLimitPerMinute', 'maxAttachmentSizeMb'], 'integer', 'min' => 0],
+            [['retainSubmissionsDays', 'retainSpamDays', 'retainIntegrationLogsDays', 'retainNotificationLogsDays', 'retainAuditLogDays', 'submitRateLimitPerMinute', 'maxAttachmentSizeMb'], 'integer', 'min' => 0],
             [['pdfStorageVolume'], 'string'],
             [['draftRetentionDays', 'partialRetentionDays'], 'integer', 'min' => 1],
             [['akismetMode'], 'in', 'range' => [self::AKISMET_FLAG, self::AKISMET_BLOCK]],

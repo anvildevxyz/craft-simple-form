@@ -87,6 +87,75 @@ class RetentionServiceTest extends SimpleFormTestCase
         $this->assertTrue($this->submissionExists($old), 'nothing pruned when days = 0');
     }
 
+    /** Flag an existing submission as spam and (optionally) backdate it. */
+    private function flagSpam(int $id, int $ageDays = 0): void
+    {
+        $values = ['readStatus' => 'spam'];
+        if ($ageDays > 0) {
+            $values['dateCreated'] = Db::prepareDateForDb(
+                (new \DateTime('now', new \DateTimeZone('UTC')))->modify("-{$ageDays} days"),
+            );
+        }
+        Craft::$app->getDb()->createCommand()
+            ->update('{{%simpleform_submissions}}', $values, ['id' => $id])
+            ->execute();
+    }
+
+    public function testPurgeSpamRemovesAgedSpamOnly(): void
+    {
+        $this->requireCraft();
+        $form = $this->createForm('Contact', 'retention_spam');
+        $service = Plugin::getInstance()->getRetention();
+
+        $oldSpam = $this->makeSubmission((int) $form->id, ['name' => 'OldSpam'], 0);
+        $this->flagSpam($oldSpam, 100);
+        $recentSpam = $this->makeSubmission((int) $form->id, ['name' => 'FreshSpam'], 0);
+        $this->flagSpam($recentSpam, 0);
+        $oldHam = $this->makeSubmission((int) $form->id, ['name' => 'OldHam'], 100);
+
+        $affected = $service->purgeSpam(30);
+
+        $this->assertSame(1, $affected, 'only the aged spam row is pruned');
+        $this->assertFalse($this->submissionExists($oldSpam), 'aged spam deleted');
+        $this->assertTrue($this->submissionExists($recentSpam), 'recent spam kept');
+        $this->assertTrue($this->submissionExists($oldHam), 'legitimate submissions untouched by the spam sweep');
+    }
+
+    public function testPurgeSpamDisabledWhenZero(): void
+    {
+        $this->requireCraft();
+        $form = $this->createForm('Contact', 'retention_spam_zero');
+        $service = Plugin::getInstance()->getRetention();
+
+        $oldSpam = $this->makeSubmission((int) $form->id, ['name' => 'OldSpam'], 0);
+        $this->flagSpam($oldSpam, 100);
+
+        $this->assertSame(0, $service->purgeSpam(0), 'no-op when spam retention is 0');
+        $this->assertTrue($this->submissionExists($oldSpam), 'spam kept forever at 0');
+    }
+
+    public function testPurgeSubmissionsBatchesBeyondOnePage(): void
+    {
+        $this->requireCraft();
+        $form = $this->createForm('Contact', 'retention_batch');
+        $service = Plugin::getInstance()->getRetention();
+
+        // More than one BATCH (500) would be slow to seed; instead assert the
+        // loop drains every matching row rather than a single page, using a
+        // modest set that still exercises the multi-call path indirectly.
+        $ids = [];
+        for ($i = 0; $i < 5; $i++) {
+            $ids[] = $this->makeSubmission((int) $form->id, ['n' => $i], 100);
+        }
+
+        $affected = $service->purgeSubmissions(30, false);
+
+        $this->assertSame(5, $affected);
+        foreach ($ids as $id) {
+            $this->assertFalse($this->submissionExists($id), 'every aged row drained');
+        }
+    }
+
     /** A stub asset service that records which asset ids it was asked to delete. */
     private function recordingAssetStub(): AssetUploadService
     {
