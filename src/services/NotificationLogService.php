@@ -89,28 +89,7 @@ class NotificationLogService extends Component
             return [];
         }
 
-        $formNames = $this->_formNames(array_unique(array_map('intval', array_column($rows, 'formId'))));
-        $formatter = Craft::$app->getFormatter();
-
-        return array_map(function(array $row) use ($formNames, $formatter): array {
-            $recipients = Json::decodeIfJson($row['recipients'] ?? '[]');
-            if (!is_array($recipients)) {
-                $recipients = [];
-            }
-
-            $dateCreated = $row['dateCreated'] ?? null;
-            $dateDisplay = is_string($dateCreated) && $dateCreated !== ''
-                ? $formatter->asDatetime($dateCreated, 'short')
-                : '—';
-
-            return [
-                ...$row,
-                'formName' => $formNames[(int) $row['formId']] ?? ('#' . $row['formId']),
-                'recipients' => $recipients,
-                'recipientsDisplay' => implode(', ', array_map('strval', $recipients)),
-                'dateDisplay' => $dateDisplay,
-            ];
-        }, $rows);
+        return $this->enrichRows($rows);
     }
 
     /**
@@ -153,28 +132,7 @@ class NotificationLogService extends Component
             return [];
         }
 
-        $formNames = $this->_formNames(array_unique(array_map('intval', array_column($rows, 'formId'))));
-        $formatter = Craft::$app->getFormatter();
-
-        return array_map(function(array $row) use ($formNames, $formatter): array {
-            $recipients = Json::decodeIfJson($row['recipients'] ?? '[]');
-            if (!is_array($recipients)) {
-                $recipients = [];
-            }
-
-            $dateCreated = $row['dateCreated'] ?? null;
-            $dateDisplay = is_string($dateCreated) && $dateCreated !== ''
-                ? $formatter->asDatetime($dateCreated, 'short')
-                : '—';
-
-            return [
-                ...$row,
-                'formName' => $formNames[(int) $row['formId']] ?? ('#' . $row['formId']),
-                'recipients' => $recipients,
-                'recipientsDisplay' => implode(', ', array_map('strval', $recipients)),
-                'dateDisplay' => $dateDisplay,
-            ];
-        }, $rows);
+        return $this->enrichRows($rows);
     }
 
     /**
@@ -205,6 +163,36 @@ class NotificationLogService extends Component
         return (int) Craft::$app->getDb()->createCommand()
             ->delete(self::TABLE, ['<', 'dateCreated', Db::prepareDateForDb($cutoff)])
             ->execute();
+    }
+
+    /**
+     * @param list<array<string, mixed>> $rows
+     * @return list<array<string, mixed>>
+     */
+    private function enrichRows(array $rows): array
+    {
+        $formNames = $this->_formNames(array_unique(array_map('intval', array_column($rows, 'formId'))));
+        $formatter = Craft::$app->getFormatter();
+
+        return array_map(function(array $row) use ($formNames, $formatter): array {
+            $recipients = Json::decodeIfJson($row['recipients'] ?? '[]');
+            if (!is_array($recipients)) {
+                $recipients = [];
+            }
+
+            $dateCreated = $row['dateCreated'] ?? null;
+            $dateDisplay = is_string($dateCreated) && $dateCreated !== ''
+                ? $formatter->asDatetime($dateCreated, 'short')
+                : '—';
+
+            return [
+                ...$row,
+                'formName' => $formNames[(int) $row['formId']] ?? ('#' . $row['formId']),
+                'recipients' => $recipients,
+                'recipientsDisplay' => implode(', ', array_map('strval', $recipients)),
+                'dateDisplay' => $dateDisplay,
+            ];
+        }, $rows);
     }
 
     /**

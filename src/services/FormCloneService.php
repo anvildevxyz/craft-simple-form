@@ -462,15 +462,18 @@ class FormCloneService extends Component
 
         $db = Craft::$app->getDb();
         $now = Db::prepareDateForDb(new \DateTime());
-        foreach ($integrationIds as $integrationId) {
-            $db->createCommand()->insert(self::PIVOT_TABLE, [
-                'formId' => $newFormId,
-                'integrationId' => $integrationId,
-                'dateCreated' => $now,
-                'dateUpdated' => $now,
-                'uid' => StringHelper::UUID(),
-            ])->execute();
-        }
+
+        $rows = array_map(static fn(int $integrationId): array => [
+            $newFormId,
+            $integrationId,
+            $now,
+            $now,
+            StringHelper::UUID(),
+        ], $integrationIds);
+
+        $db->createCommand()->batchInsert(self::PIVOT_TABLE, [
+            'formId', 'integrationId', 'dateCreated', 'dateUpdated', 'uid',
+        ], $rows)->execute();
     }
 
     /**

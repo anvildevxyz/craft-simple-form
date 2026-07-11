@@ -471,6 +471,7 @@ class FieldSyncService extends Component
 
         $existingIds = array_map('intval', (new Query())
             ->select(['id'])->from('{{%simpleform_fields}}')->where(['formId' => $formId])->column());
+        $existingIdSet = array_flip($existingIds);
 
         $keptIds = [];
         $transaction = $db->beginTransaction();
@@ -497,7 +498,7 @@ class FieldSyncService extends Component
                 $rawId = $item['id'] ?? null;
                 $id = is_numeric($rawId) ? (int)$rawId : null;
 
-                if ($id !== null && in_array($id, $existingIds, true)) {
+                if ($id !== null && isset($existingIdSet[$id])) {
                     // Update structural columns (type is immutable once created) + order.
                     $db->createCommand()->update('{{%simpleform_fields}}', [
                         'name' => $handle,

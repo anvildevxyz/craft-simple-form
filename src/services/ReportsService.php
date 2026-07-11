@@ -150,10 +150,7 @@ class ReportsService extends Component
                 $query->andWhere(['formId' => $formId]);
             }
 
-            $counts = [];
-            foreach ($query->all() as $row) {
-                $counts[(string) $row['d']] = (int) $row['c'];
-            }
+            $counts = array_map('intval', array_column($query->all(), 'c', 'd'));
 
             $series = [];
             for ($i = $days - 1; $i >= 0; $i--) {

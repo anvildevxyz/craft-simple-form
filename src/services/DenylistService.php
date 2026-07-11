@@ -267,14 +267,9 @@ class DenylistService extends Component
             return [];
         }
 
-        $lines = [];
-        foreach (preg_split('/\R/', $list) ?: [] as $line) {
-            $line = trim((string) $line);
-            if ($line !== '') {
-                $lines[] = $line;
-            }
-        }
-
-        return $lines;
+        return array_values(array_filter(
+            array_map(static fn($line): string => trim((string) $line), preg_split('/\R/', $list) ?: []),
+            static fn(string $line): bool => $line !== '',
+        ));
     }
 }

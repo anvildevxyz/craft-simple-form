@@ -120,6 +120,9 @@ class AkismetService extends Component
             } elseif ($name === null && ($entry['type'] ?? '') === TextFieldType::getType()) {
                 $name = $value;
             }
+            if ($name !== null && $email !== null) {
+                break;
+            }
         }
         return ['name' => $name, 'email' => $email];
     }
