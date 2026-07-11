@@ -141,14 +141,15 @@ class CraftElementIntegration implements IntegrationTypeInterface
             return IntegrationResult::failure(null, Craft::t('simple-form', 'The configured section no longer exists.'));
         }
 
+        $entryTypes = $section->getEntryTypes();
         $entryType = null;
-        foreach ($section->getEntryTypes() as $candidate) {
+        foreach ($entryTypes as $candidate) {
             if ($candidate->uid === $entryTypeUid) {
                 $entryType = $candidate;
                 break;
             }
         }
-        $entryType ??= $section->getEntryTypes()[0] ?? null;
+        $entryType ??= $entryTypes[0] ?? null;
         if ($entryType === null) {
             return IntegrationResult::failure(null, Craft::t('simple-form', 'The configured section has no entry types.'));
         }
@@ -399,10 +400,9 @@ class CraftElementIntegration implements IntegrationTypeInterface
      */
     private function statusOptions(array $statuses): array
     {
-        $out = [];
-        foreach ($statuses as $status) {
-            $out[] = ['label' => Craft::t('simple-form', ucfirst($status)), 'value' => $status];
-        }
-        return $out;
+        return array_map(
+            static fn(string $status): array => ['label' => Craft::t('simple-form', ucfirst($status)), 'value' => $status],
+            $statuses,
+        );
     }
 }

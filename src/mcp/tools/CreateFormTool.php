@@ -72,14 +72,14 @@ class CreateFormTool implements ToolInterface
     public function call(array $arguments): array
     {
         $form = new Form();
-        $form->name = isset($arguments['name']) ? (string)$arguments['name'] : null;
-        $form->handle = isset($arguments['handle']) ? (string)$arguments['handle'] : null;
-        $form->title = isset($arguments['title']) ? (string)$arguments['title'] : ($form->name ?? null);
-        $form->description = isset($arguments['description']) ? (string)$arguments['description'] : null;
-        $form->emailTo = isset($arguments['emailTo']) ? (string)$arguments['emailTo'] : null;
-        $form->emailSubject = isset($arguments['emailSubject']) ? (string)$arguments['emailSubject'] : null;
-        $form->emailBody = isset($arguments['emailBody']) ? (string)$arguments['emailBody'] : null;
-        $form->emailReplyTo = isset($arguments['emailReplyTo']) ? (string)$arguments['emailReplyTo'] : null;
+        $form->name = self::strOrNull($arguments, 'name');
+        $form->handle = self::strOrNull($arguments, 'handle');
+        $form->title = self::strOrNull($arguments, 'title') ?? ($form->name ?? null);
+        $form->description = self::strOrNull($arguments, 'description');
+        $form->emailTo = self::strOrNull($arguments, 'emailTo');
+        $form->emailSubject = self::strOrNull($arguments, 'emailSubject');
+        $form->emailBody = self::strOrNull($arguments, 'emailBody');
+        $form->emailReplyTo = self::strOrNull($arguments, 'emailReplyTo');
 
         if (isset($arguments['propagationMethod']) && is_string($arguments['propagationMethod'])) {
             $form->propagationMethod = PropagationMethod::tryFrom($arguments['propagationMethod']) ?? PropagationMethod::None;
@@ -94,5 +94,15 @@ class CreateFormTool implements ToolInterface
         }
 
         return ['form' => FormPresenter::form($form)];
+    }
+
+    /**
+     * Cast an argument to a string if present, else null.
+     *
+     * @param array<string, mixed> $arguments
+     */
+    private static function strOrNull(array $arguments, string $key): ?string
+    {
+        return isset($arguments[$key]) ? (string) $arguments[$key] : null;
     }
 }

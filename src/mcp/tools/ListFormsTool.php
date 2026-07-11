@@ -63,16 +63,11 @@ class ListFormsTool implements ToolInterface
             Form::eagerLoadFields($forms);
         }
 
-        $result = [];
-        foreach ($forms as $form) {
-            $result[] = [
-                'id' => (int)$form->id,
-                'handle' => $form->handle,
-                'name' => $form->name,
-                'fieldCount' => count($form->getFields()),
-            ];
-        }
-
-        return ['forms' => $result];
+        return ['forms' => array_map(static fn(Form $form): array => [
+            'id' => (int)$form->id,
+            'handle' => $form->handle,
+            'name' => $form->name,
+            'fieldCount' => count($form->getFields()),
+        ], $forms)];
     }
 }
