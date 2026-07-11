@@ -33,15 +33,14 @@ class DuplicateForm extends ElementAction
     public function performAction(ElementQueryInterface $query): bool
     {
         $service = Plugin::getInstance()->getFormClone();
-        $count = 0;
 
-        /** @var Form $form */
-        foreach ($query->all() as $form) {
+        /** @var Form[] $forms */
+        $forms = $query->all();
+        foreach ($forms as $form) {
             $service->duplicate($form);
-            $count++;
         }
 
-        $this->setMessage(Craft::t('simple-form', '{count} form(s) duplicated.', ['count' => $count]));
+        $this->setMessage(Craft::t('simple-form', '{count} form(s) duplicated.', ['count' => count($forms)]));
         return true;
     }
 }

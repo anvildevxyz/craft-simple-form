@@ -58,13 +58,12 @@ class SubmissionCountWidget extends Widget
 
         $count = $this->count();
 
-        $labels = [
+        $label = match ($this->range) {
             'today' => Craft::t('simple-form', 'today'),
             '7d' => Craft::t('simple-form', 'in the last 7 days'),
-            '30d' => Craft::t('simple-form', 'in the last 30 days'),
             'all' => Craft::t('simple-form', 'all time'),
-        ];
-        $label = $labels[$this->range] ?? $labels['30d'];
+            default => Craft::t('simple-form', 'in the last 30 days'),
+        };
 
         return '<div style="text-align:center;padding:10px 0;">'
             . '<div style="font-size:42px;font-weight:bold;line-height:1;">' . (int) $count . '</div>'

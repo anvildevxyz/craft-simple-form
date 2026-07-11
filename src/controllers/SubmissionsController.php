@@ -303,7 +303,9 @@ class SubmissionsController extends Controller
         // Approval workflow (#248): the submission's current stage + the moves
         // the current user may make from it. Empty/null when the workflow is off.
         $workflow = Plugin::getInstance()->getWorkflow();
-        $canManageSubmissions = Craft::$app->getUser()->checkPermission(SimpleFormPermissions::MANAGE_SUBMISSIONS);
+        $user = Craft::$app->getUser();
+        $canManageSubmissions = $user->checkPermission(SimpleFormPermissions::MANAGE_SUBMISSIONS);
+        $workflowEnabled = $workflow->isEnabled();
 
         return $this->renderTemplate('simple-form/submissions/view', [
             'submission' => $submission,
@@ -312,12 +314,12 @@ class SubmissionsController extends Controller
             'integrationLogs' => $logs,
             'integrationNames' => $integrationNames,
             'elementLinks' => $elementLinks,
-            'canManageIntegrations' => Craft::$app->getUser()->checkPermission(SimpleFormPermissions::MANAGE_INTEGRATIONS),
+            'canManageIntegrations' => $user->checkPermission(SimpleFormPermissions::MANAGE_INTEGRATIONS),
             'pdfAvailable' => Plugin::getInstance()->getPdf()->isAvailable(),
-            'workflowEnabled' => $workflow->isEnabled(),
-            'workflowStatus' => $workflow->isEnabled() ? $workflow->getStatus((string) $submission->workflowStatus) : null,
-            'workflowTransitions' => ($workflow->isEnabled() && $canManageSubmissions)
-                ? $workflow->allowedTransitions($submission->workflowStatus, Craft::$app->getUser()->getIdentity())
+            'workflowEnabled' => $workflowEnabled,
+            'workflowStatus' => $workflowEnabled ? $workflow->getStatus((string) $submission->workflowStatus) : null,
+            'workflowTransitions' => ($workflowEnabled && $canManageSubmissions)
+                ? $workflow->allowedTransitions($submission->workflowStatus, $user->getIdentity())
                 : [],
         ]);
     }

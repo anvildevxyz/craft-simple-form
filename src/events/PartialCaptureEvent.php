@@ -18,22 +18,17 @@ use yii\base\Event;
  */
 class PartialCaptureEvent extends Event
 {
-    public Form $form;
-    /** @var array<string, mixed> */
-    public array $values;
-    public int $siteId;
-    public string $token;
-
     /**
      * @param array<string, mixed> $values
      * @param array<string, mixed> $config
      */
-    public function __construct(Form $form, array $values, int $siteId, string $token, array $config = [])
-    {
+    public function __construct(
+        public Form $form,
+        public array $values,
+        public int $siteId,
+        public string $token,
+        array $config = [],
+    ) {
         parent::__construct($config);
-        $this->form = $form;
-        $this->values = $values;
-        $this->siteId = $siteId;
-        $this->token = $token;
     }
 }

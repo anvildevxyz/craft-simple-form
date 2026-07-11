@@ -279,7 +279,8 @@ class SubmitController extends Controller
         // Fixed amounts resolve server-side; a field-based price isn't known here,
         // so the field posts its current amount as a preview hint (re-validated at
         // submit, so a tampered hint can't cheat the real charge).
-        $amount = $plugin->getPayments()->resolveAmount($form, []);
+        $payments = $plugin->getPayments();
+        $amount = $payments->resolveAmount($form, []);
         if ($amount === null) {
             $posted = $request->getBodyParam('amount');
             $amount = is_numeric($posted) ? round((float) $posted, 2) : null;
@@ -294,7 +295,7 @@ class SubmitController extends Controller
         }
 
         $formatter = Craft::$app->getFormatter();
-        $currency = $plugin->getPayments()->primaryCurrencyIso();
+        $currency = $payments->primaryCurrencyIso();
         $money = fn(float $v): string => $currency !== null ? $formatter->asCurrency($v, $currency) : $formatter->asDecimal($v, 2);
 
         return $this->asJson([

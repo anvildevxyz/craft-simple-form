@@ -21,8 +21,8 @@ class CacheController extends Controller
         $service = Plugin::getInstance()->getFormStructure();
         $forms = 0;
         $sets = 0;
-        foreach (Form::find()->siteId('*')->all() as $form) {
-            $sets += $service->warm((int) $form->id);
+        foreach (Form::find()->siteId('*')->ids() as $formId) {
+            $sets += $service->warm((int) $formId);
             $forms++;
         }
 
@@ -37,8 +37,8 @@ class CacheController extends Controller
     {
         $service = Plugin::getInstance()->getFormStructure();
         $forms = 0;
-        foreach (Form::find()->siteId('*')->all() as $form) {
-            $service->invalidate((int) $form->id);
+        foreach (Form::find()->siteId('*')->ids() as $formId) {
+            $service->invalidate((int) $formId);
             $forms++;
         }
 

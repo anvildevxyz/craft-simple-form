@@ -470,11 +470,10 @@ class Submission extends Element
             return Html::tag('span', '—', ['class' => 'light']);
         }
 
-        foreach (Plugin::getInstance()->getWorkflow()->getStatuses() as $stage) {
-            if ($stage['handle'] === $this->workflowStatus) {
-                return Html::tag('span', '', ['class' => 'status ' . $stage['color']])
-                    . Html::tag('span', Html::encode($stage['label']));
-            }
+        $stage = Plugin::getInstance()->getWorkflow()->getStatus($this->workflowStatus);
+        if ($stage !== null) {
+            return Html::tag('span', '', ['class' => 'status ' . $stage['color']])
+                . Html::tag('span', Html::encode($stage['label']));
         }
 
         return Html::tag('span', Html::encode($this->workflowStatus));

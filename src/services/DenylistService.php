@@ -107,14 +107,15 @@ class DenylistService extends Component
             return null;
         }
 
+        // Lowercase each entry once, not on every submitted email.
+        $lowerEntries = array_map('strtolower', $entries);
+
         foreach ($this->extractEmails($data) as $email) {
             $lower = strtolower($email);
             $at = strpos($lower, '@');
             $domain = $at === false ? $lower : substr($lower, $at + 1);
 
-            foreach ($entries as $entry) {
-                $entry = strtolower($entry);
-
+            foreach ($lowerEntries as $entry) {
                 // Exact address.
                 if (str_contains($entry, '@') && !str_starts_with($entry, '@') && $entry === $lower) {
                     return $email;

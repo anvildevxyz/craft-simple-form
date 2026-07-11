@@ -139,9 +139,7 @@ class SimpleFormVariable
      */
     public function editForm(Submission|int $submission, array $options = []): Markup
     {
-        $element = $submission instanceof Submission
-            ? $submission
-            : Submission::find()->id($submission)->one();
+        $element = $this->resolveSubmission($submission);
 
         if (!$element instanceof Submission) {
             return Template::raw('<!-- Submission not found -->');
@@ -162,9 +160,7 @@ class SimpleFormVariable
      */
     public function editUrl(Submission|int $submission, ?string $path = null): ?string
     {
-        $element = $submission instanceof Submission
-            ? $submission
-            : Submission::find()->id($submission)->one();
+        $element = $this->resolveSubmission($submission);
 
         if (!$element instanceof Submission) {
             return null;
@@ -202,5 +198,17 @@ class SimpleFormVariable
 
         /** @var SubmissionQuery $query */
         return $query;
+    }
+
+    /**
+     * Resolve a `Submission|int` argument to a submission element, or null when
+     * an id doesn't resolve. Shared by {@see self::editForm()} and
+     * {@see self::editUrl()}.
+     */
+    private function resolveSubmission(Submission|int $submission): ?Submission
+    {
+        return $submission instanceof Submission
+            ? $submission
+            : Submission::find()->id($submission)->one();
     }
 }
