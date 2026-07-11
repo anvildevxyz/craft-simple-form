@@ -49,8 +49,19 @@ class m260711_000001_add_scaling_indexes extends Migration
     {
         // Leave the pre-existing baseline indexes (formId, siteId, orderId,
         // workflowStatus) in place; only drop the ones this migration adds.
+        //
+        // Drops are best-effort per index: the single-column `userId` index this
+        // migration adds is, on MySQL, the same index InnoDB uses to back the
+        // userId foreign key, so dropping it errors with SQLSTATE 1553 ("needed in
+        // a foreign key constraint"). On Postgres the FK has no such requirement
+        // and the drop succeeds. Guarding each drop keeps rollback from aborting
+        // mid-way on MySQL while still dropping every index that CAN be dropped.
         foreach ($this->matchingIndexNames() as $name) {
-            $this->dropIndex($name, self::TABLE);
+            try {
+                $this->dropIndex($name, self::TABLE);
+            } catch (\Throwable $e) {
+                echo "    > skipped dropping index {$name} (still in use, e.g. backing a foreign key): {$e->getMessage()}\n";
+            }
         }
 
         return true;
