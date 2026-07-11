@@ -143,6 +143,17 @@ class Install extends Migration
         $this->createIndex(null, '{{%simpleform_submissions}}', ['siteId']);
         $this->createIndex(null, '{{%simpleform_submissions}}', ['orderId']);
         $this->createIndex(null, '{{%simpleform_submissions}}', ['workflowStatus']);
+        // Scaling indexes (#337): cover the hot query shapes so status views,
+        // stats aggregates, retention sweeps and per-user filters stop scanning
+        // the full table once submissions reach the millions.
+        $this->createIndex(null, '{{%simpleform_submissions}}', ['formId', 'readStatus', 'dateCreated']);
+        $this->createIndex(null, '{{%simpleform_submissions}}', ['siteId', 'readStatus']);
+        $this->createIndex(null, '{{%simpleform_submissions}}', ['dateCreated']);
+        $this->createIndex(null, '{{%simpleform_submissions}}', ['ipHash']);
+        // userId/paymentStatus are filter/sort targets; MySQL auto-indexes the
+        // userId FK but Postgres does not, so index both explicitly.
+        $this->createIndex(null, '{{%simpleform_submissions}}', ['userId']);
+        $this->createIndex(null, '{{%simpleform_submissions}}', ['paymentStatus']);
         $this->addForeignKey(null, '{{%simpleform_submissions}}', ['id'], '{{%elements}}', ['id'], 'CASCADE', 'CASCADE');
         $this->addForeignKey(null, '{{%simpleform_submissions}}', ['formId'], '{{%simpleform_forms}}', ['id'], 'CASCADE', 'CASCADE');
         $this->addForeignKey(null, '{{%simpleform_submissions}}', ['siteId'], '{{%sites}}', ['id'], 'CASCADE', 'CASCADE');
