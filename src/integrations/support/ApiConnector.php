@@ -18,6 +18,9 @@ use Psr\Http\Message\ResponseInterface;
  */
 trait ApiConnector
 {
+    /** Reused across a dispatch — the client is built from constant options. */
+    private ?Client $_httpClient = null;
+
     /**
      * Resolve the submitter's email: the configured `emailField` handle if it
      * holds a valid address, otherwise the first valid email among the values.
@@ -128,6 +131,10 @@ trait ApiConnector
 
     protected function httpClient(): Client
     {
+        if ($this->_httpClient !== null) {
+            return $this->_httpClient;
+        }
+
         $config = [
             'timeout' => 10,
             'connect_timeout' => 5,
@@ -147,6 +154,6 @@ trait ApiConnector
             $config['handler'] = HandlerStack::create(new CurlHandler());
         }
 
-        return Craft::createGuzzleClient($config);
+        return $this->_httpClient = Craft::createGuzzleClient($config);
     }
 }

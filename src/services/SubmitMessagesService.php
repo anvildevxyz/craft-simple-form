@@ -58,11 +58,41 @@ class SubmitMessagesService extends Component
             ->all();
 
         $models = array_map($this->rowToModel(...), $rows);
+        $byId = $this->messagesForMany(array_map(static fn(SubmitMessageModel $m): int => (int) $m->id, $models));
         foreach ($models as $model) {
-            $model->messages = $this->messagesFor((int) $model->id);
+            $model->messages = $byId[(int) $model->id] ?? [];
         }
 
         return $models;
+    }
+
+    /**
+     * Batch version of {@see self::messagesFor()}: one query for every submit
+     * message's per-site rows instead of one query per row, grouped by
+     * submitMessageId. An id with no site rows is absent from the result, so
+     * callers fall back to an empty array — matching messagesFor()'s behaviour.
+     *
+     * @param list<int> $submitMessageIds
+     * @return array<int, array<int, string>>
+     */
+    private function messagesForMany(array $submitMessageIds): array
+    {
+        if ($submitMessageIds === []) {
+            return [];
+        }
+
+        $rows = (new Query())
+            ->select(['submitMessageId', 'siteId', 'message'])
+            ->from(self::SITES_TABLE)
+            ->where(['submitMessageId' => $submitMessageIds])
+            ->all();
+
+        $grouped = [];
+        foreach ($rows as $row) {
+            $grouped[(int) $row['submitMessageId']][(int) $row['siteId']] = (string) ($row['message'] ?? '');
+        }
+
+        return $grouped;
     }
 
     /**
