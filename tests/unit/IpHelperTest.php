@@ -33,4 +33,19 @@ class IpHelperTest extends TestCase
         $this->assertSame('', IpHelper::anonymize(''));
         $this->assertSame('not-an-ip', IpHelper::anonymize('not-an-ip'));
     }
+
+    public function testIsValidIpEntryAcceptsIpsAndCidrRanges(): void
+    {
+        $this->assertTrue(IpHelper::isValidIpEntry('203.0.113.5'));
+        $this->assertTrue(IpHelper::isValidIpEntry('203.0.113.0/24'));
+        $this->assertTrue(IpHelper::isValidIpEntry('2001:db8::/32'));
+    }
+
+    public function testIsValidIpEntryRejectsMalformedEntries(): void
+    {
+        $this->assertFalse(IpHelper::isValidIpEntry('999.0.0.1'));
+        $this->assertFalse(IpHelper::isValidIpEntry('203.0.113.0/99'));
+        $this->assertFalse(IpHelper::isValidIpEntry('not-an-ip'));
+        $this->assertFalse(IpHelper::isValidIpEntry(''));
+    }
 }

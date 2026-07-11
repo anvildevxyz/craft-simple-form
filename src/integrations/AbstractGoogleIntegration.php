@@ -19,6 +19,8 @@ use GuzzleHttp\Exception\GuzzleException;
  * `google/apiclient`, keeping the dependency footprint small (the "simple" in
  * Simple Form). All secrets stay out of every exception/log message — the
  * dispatch layer scrubs them, and this base never echoes a key or token.
+ *
+ * @phpstan-type ServiceAccountKey array{client_email: string, private_key: string, token_uri?: string}
  */
 abstract class AbstractGoogleIntegration implements IntegrationTypeInterface
 {
@@ -105,7 +107,7 @@ abstract class AbstractGoogleIntegration implements IntegrationTypeInterface
      * structure or null when the JSON is malformed or missing required members
      * (`client_email`, `private_key`).
      *
-     * @return array{client_email: string, private_key: string, token_uri?: string}|null
+     * @return ServiceAccountKey|null
      */
     protected function parseServiceAccountKey(string $json): ?array
     {
@@ -137,7 +139,7 @@ abstract class AbstractGoogleIntegration implements IntegrationTypeInterface
      * exchange. Exposed (internal) so the assembly can be exercised in tests
      * without a live exchange.
      *
-     * @param array{client_email: string, private_key: string, token_uri?: string} $key
+     * @param ServiceAccountKey $key
      * @param int|null $now override the clock (tests); defaults to time()
      * @throws GoogleAuthException when the private key can't sign
      * @internal

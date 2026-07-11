@@ -48,4 +48,31 @@ final class IpHelper
 
         return $masked === false ? $ip : $masked;
     }
+
+    /**
+     * Whether $entry is a valid single IP or CIDR range (e.g. `203.0.113.5`,
+     * `203.0.113.0/24`, `2001:db8::/32`), used to validate the denylist's
+     * blocked-IP entries. Rejects a prefix length wider than the address family
+     * allows (32 for IPv4, 128 for IPv6).
+     */
+    public static function isValidIpEntry(string $entry): bool
+    {
+        $entry = trim($entry);
+        if ($entry === '') {
+            return false;
+        }
+
+        if (!str_contains($entry, '/')) {
+            return filter_var($entry, FILTER_VALIDATE_IP) !== false;
+        }
+
+        [$subnet, $bits] = explode('/', $entry, 2);
+        if (filter_var($subnet, FILTER_VALIDATE_IP) === false || !ctype_digit($bits)) {
+            return false;
+        }
+
+        $max = filter_var($subnet, FILTER_VALIDATE_IP, FILTER_FLAG_IPV6) !== false ? 128 : 32;
+
+        return (int) $bits <= $max;
+    }
 }

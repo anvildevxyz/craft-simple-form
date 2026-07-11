@@ -86,12 +86,9 @@ class SubmitController extends Controller
             ]);
         }
 
-        $form = Form::find()
-            ->handle($formHandle)
-            ->siteId(Craft::$app->getSites()->getCurrentSite()->id)
-            ->one();
+        $form = $this->resolveForm($formHandle, Craft::$app->getSites()->getCurrentSite()->id);
 
-        if (!$form) {
+        if ($form === null) {
             if (!$wantsJson) {
                 throw new NotFoundHttpException('Form not found');
             }
@@ -166,6 +163,33 @@ class SubmitController extends Controller
     // =========================================================================
     // Private Methods
     // =========================================================================
+
+    /**
+     * Look up a form by handle on a specific site, normalized to a concrete
+     * {@see Form} (null when there's no match) so callers get a precise type
+     * without repeating the instanceof narrowing.
+     */
+    private function resolveForm(string $handle, int $siteId): ?Form
+    {
+        $form = Form::find()->handle($handle)->siteId($siteId)->one();
+
+        return $form instanceof Form ? $form : null;
+    }
+
+    /**
+     * The `field_*` subset of the posted body — the submitted field values only,
+     * excluding framework params (formHandle, CSRF, honeypot, …).
+     *
+     * @return array<string, mixed>
+     */
+    private function fieldValuesFromBody(\craft\web\Request $request): array
+    {
+        return array_filter(
+            $request->getBodyParams(),
+            static fn($key) => is_string($key) && str_starts_with($key, 'field_'),
+            ARRAY_FILTER_USE_KEY,
+        );
+    }
 
     /**
      * No-JS success: flash the resolved message under a per-form key (so two
@@ -244,11 +268,11 @@ class SubmitController extends Controller
             return $this->asJson(['success' => false, 'error' => Craft::t('simple-form', 'Too many attempts. Please wait a moment and try again.')]);
         }
 
-        $form = Form::find()
-            ->handle((string) $request->getBodyParam('formHandle', ''))
-            ->siteId(Craft::$app->getSites()->getCurrentSite()->id)
-            ->one();
-        if (!$form instanceof Form) {
+        $form = $this->resolveForm(
+            (string) $request->getBodyParam('formHandle', ''),
+            Craft::$app->getSites()->getCurrentSite()->id,
+        );
+        if ($form === null) {
             return $this->asJson(['success' => false, 'error' => Craft::t('simple-form', 'Form not found')]);
         }
 
@@ -298,12 +322,9 @@ class SubmitController extends Controller
         $request = Craft::$app->getRequest();
         $siteId = Craft::$app->getSites()->getCurrentSite()->id;
 
-        $form = Form::find()
-            ->handle((string) $request->getBodyParam('formHandle', ''))
-            ->siteId($siteId)
-            ->one();
+        $form = $this->resolveForm((string) $request->getBodyParam('formHandle', ''), $siteId);
 
-        if (!$form instanceof Form || !$form->allowSaveResume) {
+        if ($form === null || !$form->allowSaveResume) {
             return $this->asJson(['success' => false]);
         }
 
@@ -314,11 +335,7 @@ class SubmitController extends Controller
             return $this->asJson(['success' => false]);
         }
 
-        $values = array_filter(
-            $request->getBodyParams(),
-            static fn($key) => is_string($key) && str_starts_with($key, 'field_'),
-            ARRAY_FILTER_USE_KEY,
-        );
+        $values = $this->fieldValuesFromBody($request);
 
         $existingToken = (string) $request->getBodyParam('sfresume', '');
         $token = $plugin->getDrafts()->save(
@@ -349,12 +366,9 @@ class SubmitController extends Controller
         try {
             $siteId = Craft::$app->getSites()->getCurrentSite()->id;
 
-            $form = Form::find()
-                ->handle((string) $request->getBodyParam('formHandle', ''))
-                ->siteId($siteId)
-                ->one();
+            $form = $this->resolveForm((string) $request->getBodyParam('formHandle', ''), $siteId);
 
-            if (!$form instanceof Form || !$form->capturePartials) {
+            if ($form === null || !$form->capturePartials) {
                 return $this->asJson(['success' => false]);
             }
 
@@ -363,11 +377,7 @@ class SubmitController extends Controller
                 return $this->asJson(['success' => false]);
             }
 
-            $values = array_filter(
-                $request->getBodyParams(),
-                static fn($key) => is_string($key) && str_starts_with($key, 'field_'),
-                ARRAY_FILTER_USE_KEY,
-            );
+            $values = $this->fieldValuesFromBody($request);
             if ($values === []) {
                 return $this->asJson(['success' => false]);
             }

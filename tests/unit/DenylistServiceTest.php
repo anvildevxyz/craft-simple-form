@@ -105,14 +105,4 @@ class DenylistServiceTest extends TestCase
         $this->assertFalse($this->call('ipInCidr', '2001:db9::1', '2001:db8::/32'));
     }
 
-    public function testIsValidIpEntry(): void
-    {
-        $this->assertTrue(DenylistService::isValidIpEntry('203.0.113.5'));
-        $this->assertTrue(DenylistService::isValidIpEntry('203.0.113.0/24'));
-        $this->assertTrue(DenylistService::isValidIpEntry('2001:db8::/32'));
-        $this->assertFalse(DenylistService::isValidIpEntry('999.0.0.1'));
-        $this->assertFalse(DenylistService::isValidIpEntry('203.0.113.0/99'));
-        $this->assertFalse(DenylistService::isValidIpEntry('not-an-ip'));
-        $this->assertFalse(DenylistService::isValidIpEntry(''));
-    }
 }

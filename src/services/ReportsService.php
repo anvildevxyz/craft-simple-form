@@ -19,6 +19,8 @@ use yii\caching\TagDependency;
  * Aggregate read-only stats for the Submissions analytics dashboard (#111).
  * Counts go through the Submission element query so they agree with the index
  * listing (raw siteId-column counts can diverge from the element's site).
+ *
+ * @phpstan-type DailyCount array{date: string, count: int}
  */
 class ReportsService extends Component
 {
@@ -124,7 +126,7 @@ class ReportsService extends Component
     /**
      * Zero-filled daily submission counts for the last N days (ascending).
      *
-     * @return list<array{date: string, count: int}>
+     * @return list<DailyCount>
      */
     public function submissionsPerDay(int $siteId, int $days = 30, ?int $formId = null): array
     {

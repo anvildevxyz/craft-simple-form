@@ -34,6 +34,8 @@ use craft\web\UploadedFile;
 use yii\base\Component;
 
 /**
+ * @phpstan-import-type FieldSnapshot from Submission
+ *
  * @phpstan-type SubmissionResult array{submission: Submission|null, errors: array<string, mixed>|null, data?: array<string, mixed>, paymentRedirectUrl?: string}
  * @phpstan-type SubmissionContext array{honeypot?: string, captchaToken?: ?string, skipCaptcha?: bool, userId?: ?int, siteId?: ?int, payment?: array<string, mixed>, couponCode?: string, actor?: string, _isEdit?: bool, attribution?: array<string, string>|null, partialToken?: string}
  */
@@ -638,7 +640,7 @@ class SubmissionService extends Component
      *
      * @param array<int|string, mixed> $values
      * @param SubmissionContext $context
-     * @return array{result: array{submission: null, errors: array<string, mixed>|null}|null, data: array<string, mixed>, isSpam: bool, spamReason?: ?string, snapshot?: array<string, array{handle: string, label: string, type: string, order: int, options?: array<string, string>}>}
+     * @return array{result: array{submission: null, errors: array<string, mixed>|null}|null, data: array<string, mixed>, isSpam: bool, spamReason?: ?string, snapshot?: FieldSnapshot}
      */
     private function processSubmission(Form $form, array $values, array $context): array
     {
@@ -917,7 +919,7 @@ class SubmissionService extends Component
      * live definitions so a later rename/reorder/delete cannot alter how an
      * existing submission reads.
      *
-     * @return array<string, array{handle: string, label: string, type: string, order: int, options?: array<string, string>}>
+     * @return FieldSnapshot
      */
     private function buildFieldSnapshot(FormModel $formModel): array
     {

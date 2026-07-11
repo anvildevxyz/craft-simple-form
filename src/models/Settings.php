@@ -2,7 +2,7 @@
 
 namespace anvildev\simpleform\models;
 
-use anvildev\simpleform\services\DenylistService;
+use anvildev\simpleform\helpers\IpHelper;
 use Craft;
 use craft\base\Model;
 use craft\behaviors\EnvAttributeParserBehavior;
@@ -494,7 +494,7 @@ class Settings extends Model
 
         foreach (preg_split('/\R/', $value) ?: [] as $line) {
             $entry = trim((string) $line);
-            if ($entry !== '' && !DenylistService::isValidIpEntry($entry)) {
+            if ($entry !== '' && !IpHelper::isValidIpEntry($entry)) {
                 $this->addError($attribute, Craft::t('simple-form', 'Invalid IP or CIDR range: {entry}', ['entry' => $entry]));
             }
         }

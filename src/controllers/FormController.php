@@ -59,14 +59,20 @@ class FormController extends Controller
      */
     public function actionEmbedScript(): Response
     {
-        $js = @file_get_contents(FormAsset::distPath('js/embed.js'));
+        // A missing embed.js means a broken/incomplete build. Log it (mirroring
+        // FormRenderService's inline-asset handling) so the failure is traceable
+        // rather than serving an empty 200 that silently disables every embed.
+        $path = FormAsset::distPath('js/embed.js');
+        if (!is_file($path)) {
+            Craft::warning('Embed loader script missing (build artifact not found): ' . $path, 'simple-form');
+        }
 
         $response = $this->response;
         $response->format = Response::FORMAT_RAW;
         $response->getHeaders()
             ->set('Content-Type', 'application/javascript; charset=UTF-8')
             ->set('Cache-Control', 'public, max-age=3600');
-        $response->content = $js !== false ? $js : '';
+        $response->content = is_file($path) ? (file_get_contents($path) ?: '') : '';
 
         return $response;
     }

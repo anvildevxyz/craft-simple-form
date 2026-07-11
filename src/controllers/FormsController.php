@@ -24,6 +24,9 @@ use yii\base\InvalidArgumentException;
 use yii\web\NotFoundHttpException;
 use yii\web\Response;
 
+/**
+ * @phpstan-type VolumeOption array{handle: string, name: string}
+ */
 class FormsController extends Controller
 {
     use SimpleFormControllerTrait;
@@ -610,7 +613,7 @@ class FormsController extends Controller
                 ->one();
         }
 
-        /** @var list<array{handle: string, name: string}> $volumes */
+        /** @var list<VolumeOption> $volumes */
         $volumes = array_values(array_map(
             static fn($v): array => ['handle' => (string) $v->handle, 'name' => (string) $v->name],
             Craft::$app->getVolumes()->getAllVolumes(),
@@ -722,8 +725,8 @@ class FormsController extends Controller
      * field builder can render a source picker scoped to the chosen element type.
      * Volumes are reused from the file-field volume list already gathered.
      *
-     * @param list<array{handle: string, name: string}> $volumes
-     * @return array<string, list<array{handle: string, name: string}>>
+     * @param list<VolumeOption> $volumes
+     * @return array<string, list<VolumeOption>>
      */
     private function relationSources(array $volumes): array
     {

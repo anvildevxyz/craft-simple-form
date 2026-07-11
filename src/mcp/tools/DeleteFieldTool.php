@@ -3,6 +3,7 @@
 namespace anvildev\simpleform\mcp\tools;
 
 use anvildev\simpleform\mcp\Scopes;
+use anvildev\simpleform\mcp\tools\support\ConfirmGate;
 use anvildev\simpleform\mcp\tools\support\FieldOps;
 
 /**
@@ -34,11 +35,7 @@ class DeleteFieldTool implements ToolInterface
             'type' => 'object',
             'properties' => [
                 'fieldId' => ['type' => 'integer', 'description' => 'The field id to delete. Required.'],
-                'confirm' => [
-                    'type' => 'boolean',
-                    'description' => 'Must be true to actually delete. The call is refused without it.',
-                ],
-            ],
+            ] + ConfirmGate::schemaProperty(),
             'required' => ['fieldId', 'confirm'],
             'additionalProperties' => false,
         ];
@@ -55,11 +52,8 @@ class DeleteFieldTool implements ToolInterface
      */
     public function call(array $arguments): array
     {
-        if (($arguments['confirm'] ?? false) !== true) {
-            return [
-                'isError' => true,
-                'error' => 'Refused: deleting a field is destructive. Pass "confirm": true to proceed.',
-            ];
+        if (($refusal = ConfirmGate::refusalUnlessConfirmed($arguments, 'a field')) !== null) {
+            return $refusal;
         }
 
         $fieldId = isset($arguments['fieldId']) ? (int)$arguments['fieldId'] : 0;

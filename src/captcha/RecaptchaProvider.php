@@ -8,10 +8,9 @@ use craft\helpers\App;
 use GuzzleHttp\Exception\GuzzleException;
 
 /**
- * Google reCAPTCHA provider (v2 checkbox + v3 invisible). This is the default
- * provider; its behaviour is the plugin's original reCAPTCHA implementation,
- * lifted verbatim out of CaptchaService/TwigExtension so the abstraction is a
- * pure refactor.
+ * Google reCAPTCHA provider (v2 checkbox + v3 invisible) — the plugin's default.
+ * Implements {@see CaptchaProviderInterface} (siteverify with a per-type score
+ * threshold for v3), keeping verification behaviour identical across providers.
  */
 class RecaptchaProvider implements CaptchaProviderInterface
 {

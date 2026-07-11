@@ -20,6 +20,8 @@ use yii\web\Response;
  * No hard PERMISSION const: the dashboard is the section root, so a user who
  * can't view submissions is forwarded to the first screen they *can* reach
  * rather than hitting a 403.
+ *
+ * @phpstan-import-type DailyCount from \anvildev\simpleform\services\ReportsService
  */
 class DashboardController extends Controller
 {
@@ -88,7 +90,7 @@ class DashboardController extends Controller
      * already-loaded `perDay` data — no extra query, and DB-agnostic (no
      * weekday SQL function that would differ across MySQL/Postgres).
      *
-     * @param list<array{date: string, count: int}> $perDay
+     * @param list<DailyCount> $perDay
      * @return list<int> seven counts, index 0 = Monday … 6 = Sunday
      */
     private function byWeekday(array $perDay): array

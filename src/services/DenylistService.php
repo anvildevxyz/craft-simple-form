@@ -68,32 +68,6 @@ class DenylistService extends Component
         return null;
     }
 
-    /**
-     * Whether a single denylist line is a valid IPv4/IPv6 address or CIDR range.
-     * Shared with {@see \anvildev\simpleform\models\Settings::validateBlockedIps()}
-     * so the save-time validation and the runtime matcher agree on what is parseable.
-     */
-    public static function isValidIpEntry(string $entry): bool
-    {
-        $entry = trim($entry);
-        if ($entry === '') {
-            return false;
-        }
-
-        if (!str_contains($entry, '/')) {
-            return filter_var($entry, FILTER_VALIDATE_IP) !== false;
-        }
-
-        [$subnet, $bits] = explode('/', $entry, 2);
-        if (filter_var($subnet, FILTER_VALIDATE_IP) === false || !ctype_digit($bits)) {
-            return false;
-        }
-
-        $max = filter_var($subnet, FILTER_VALIDATE_IP, FILTER_FLAG_IPV6) !== false ? 128 : 32;
-
-        return (int) $bits <= $max;
-    }
-
     // =========================================================================
     // Private Methods
     // =========================================================================

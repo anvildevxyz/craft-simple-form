@@ -3,6 +3,7 @@
 namespace anvildev\simpleform\mcp\tools;
 
 use anvildev\simpleform\mcp\Scopes;
+use anvildev\simpleform\mcp\tools\support\ConfirmGate;
 use anvildev\simpleform\mcp\tools\support\FormPresenter;
 use Craft;
 
@@ -34,12 +35,7 @@ class DeleteFormTool implements ToolInterface
     {
         return [
             'type' => 'object',
-            'properties' => FormPresenter::idOrHandleProperties() + [
-                'confirm' => [
-                    'type' => 'boolean',
-                    'description' => 'Must be true to actually delete. The call is refused without it.',
-                ],
-            ],
+            'properties' => FormPresenter::idOrHandleProperties() + ConfirmGate::schemaProperty(),
             'required' => ['confirm'],
             'additionalProperties' => false,
         ];
@@ -56,11 +52,8 @@ class DeleteFormTool implements ToolInterface
      */
     public function call(array $arguments): array
     {
-        if (($arguments['confirm'] ?? false) !== true) {
-            return [
-                'isError' => true,
-                'error' => 'Refused: deleting a form is destructive. Pass "confirm": true to proceed.',
-            ];
+        if (($refusal = ConfirmGate::refusalUnlessConfirmed($arguments, 'a form')) !== null) {
+            return $refusal;
         }
 
         $form = FormPresenter::resolveByIdOrHandle($arguments);

@@ -9,7 +9,7 @@ use craft\queue\BaseJob;
 
 /**
  * Sends a submission's notification emails off the queue (#143). Composing the
- * email can now render a submission PDF and read uploaded files for attachment —
+ * email may render a submission PDF and read uploaded files for attachment —
  * potentially slow work that must never block the visitor's submit request. The
  * email body/recipients are resolved on the worker via the same
  * {@see \anvildev\simpleform\services\EmailService::sendSubmissionEmail()} path

@@ -536,7 +536,11 @@ final class SubmissionCsv
         if (!empty($record['consentedAt']) && is_string($record['consentedAt'])) {
             try {
                 $at = ' (' . (new \DateTimeImmutable($record['consentedAt']))->format('Y-m-d H:i') . ')';
-            } catch (\Exception) {
+            } catch (\Exception $e) {
+                // consentedAt is server-stamped, so an unparseable value signals
+                // real data corruption — log it rather than silently dropping the
+                // timestamp from the export.
+                Craft::warning('Unparseable consentedAt in submission export: ' . $e->getMessage(), 'simple-form');
             }
         }
 
