@@ -131,7 +131,8 @@ class FormMutations extends BaseMutation
         // be used to sidestep the per-IP limit (audit follow-up).
         /** @var \craft\web\Request $request */
         $request = Craft::$app->getRequest();
-        if (Plugin::getInstance()->getSubmissionService()->isRateLimited($request->getUserIP())) {
+        $submissionService = Plugin::getInstance()->getSubmissionService();
+        if ($submissionService->isRateLimited($request->getUserIP())) {
             return self::errorPayload([['key' => 'form', 'messages' => ['Too many submissions. Please wait a moment and try again.']]]);
         }
 
@@ -146,7 +147,7 @@ class FormMutations extends BaseMutation
         $captchaToken = isset($args['captchaToken']) ? (string) $args['captchaToken'] : null;
         $skipCaptcha = Plugin::getInstance()->getSettings()->allowGraphqlCaptchaBypass;
 
-        $result = Plugin::getInstance()->getSubmissionService()->submit($form, $values, [
+        $result = $submissionService->submit($form, $values, [
             'honeypot' => (string) ($args['honeypot'] ?? ''),
             'captchaToken' => $captchaToken,
             'skipCaptcha' => $skipCaptcha,
@@ -172,7 +173,7 @@ class FormMutations extends BaseMutation
 
         // Resolve the per-form post-submit behavior so headless clients receive
         // the same templated redirect the front-end JS would follow.
-        $post = Plugin::getInstance()->getSubmissionService()->resolvePostSubmit(
+        $post = $submissionService->resolvePostSubmit(
             $form,
             $result['submission'],
             $result['data'] ?? [],
@@ -221,7 +222,8 @@ class FormMutations extends BaseMutation
         // Shared per-IP abuse throttle (also guards the create path).
         /** @var \craft\web\Request $request */
         $request = Craft::$app->getRequest();
-        if (Plugin::getInstance()->getSubmissionService()->isRateLimited($request->getUserIP())) {
+        $submissionService = Plugin::getInstance()->getSubmissionService();
+        if ($submissionService->isRateLimited($request->getUserIP())) {
             return self::errorPayload([['key' => 'form', 'messages' => ['Too many submissions. Please wait a moment and try again.']]]);
         }
 
@@ -229,7 +231,7 @@ class FormMutations extends BaseMutation
         // and the edit window, all enforced server-side.
         $token = isset($args['token']) ? (string) $args['token'] : null;
         $userId = Craft::$app->getUser()->getId();
-        $actor = Plugin::getInstance()->getSubmissionService()->authorizeEdit(
+        $actor = $submissionService->authorizeEdit(
             $submission,
             $token,
             $userId !== null ? (int) $userId : null,
@@ -243,7 +245,7 @@ class FormMutations extends BaseMutation
         $captchaToken = isset($args['captchaToken']) ? (string) $args['captchaToken'] : null;
         $skipCaptcha = Plugin::getInstance()->getSettings()->allowGraphqlCaptchaBypass;
 
-        $result = Plugin::getInstance()->getSubmissionService()->update($submission, $values, [
+        $result = $submissionService->update($submission, $values, [
             'honeypot' => (string) ($args['honeypot'] ?? ''),
             'captchaToken' => $captchaToken,
             'skipCaptcha' => $skipCaptcha,

@@ -66,9 +66,11 @@ class CouponsController extends Controller
         /** @var \craft\web\Request $request */
         $request = Craft::$app->getRequest();
 
+        $service = $this->service();
+
         $couponId = $request->getBodyParam('couponId');
         $coupon = null;
-        if ($couponId && ($coupon = $this->service()->getById((int) $couponId)) === null) {
+        if ($couponId && ($coupon = $service->getById((int) $couponId)) === null) {
             throw new NotFoundHttpException('Coupon not found');
         }
         $coupon ??= new CouponModel();
@@ -82,7 +84,7 @@ class CouponsController extends Controller
         $expiry = $request->getBodyParam('expiryDate');
         $coupon->expiryDate = !empty($expiry) ? DateTimeHelper::toDateTime($expiry) ?: null : null;
 
-        if (!$this->service()->save($coupon)) {
+        if (!$service->save($coupon)) {
             Craft::$app->getSession()->setError(Craft::t('simple-form', 'Couldn’t save coupon.'));
             Craft::$app->getUrlManager()->setRouteParams(['coupon' => $coupon]);
             return $this->renderTemplate('simple-form/settings/coupons/edit', [
@@ -118,13 +120,14 @@ class CouponsController extends Controller
         /** @var \craft\web\Request $request */
         $request = Craft::$app->getRequest();
 
-        $coupon = $this->service()->getById((int) $request->getRequiredBodyParam('couponId'));
+        $service = $this->service();
+        $coupon = $service->getById((int) $request->getRequiredBodyParam('couponId'));
         if ($coupon === null) {
             return $this->asJsonError(Craft::t('simple-form', 'Couldn’t complete that action.'));
         }
 
         $coupon->enabled = !$coupon->enabled;
-        $this->service()->save($coupon);
+        $service->save($coupon);
 
         return $this->asJsonSuccess(['enabled' => $coupon->enabled]);
     }

@@ -67,6 +67,26 @@ class IntegrationsController extends Controller
     }
 
     /**
+     * Re-render the integration edit screen with the given errors, shared by
+     * {@see self::actionSave()}'s failure branches.
+     *
+     * @param array<string, mixed> $errors
+     */
+    private function renderIntegrationEdit(
+        ?IntegrationModel $integration,
+        ?\anvildev\simpleform\integrations\IntegrationTypeInterface $type,
+        \anvildev\simpleform\services\IntegrationTypeRegistry $registry,
+        array $errors,
+    ): Response {
+        return $this->renderTemplate('simple-form/settings/integrations/edit', [
+            'integration' => $integration,
+            'type' => $type,
+            'availableTypes' => $this->availableTypesFor($registry),
+            'errors' => $errors,
+        ]);
+    }
+
+    /**
      * Per-form screen: every global integration with a toggle controlling
      * whether it is attached to (dispatched for) this form.
      */
@@ -170,23 +190,13 @@ class IntegrationsController extends Controller
         // it already had (e.g. after a downgrade) stays allowed.
         if ($integration->type !== $storedType && !Editions::integrationAllowed($integration->type)) {
             Craft::$app->getSession()->setError($this->proIntegrationMessage($type));
-            return $this->renderTemplate('simple-form/settings/integrations/edit', [
-                'integration' => $integration,
-                'type' => $type,
-                'availableTypes' => $this->availableTypesFor($registry),
-                'errors' => [],
-            ]);
+            return $this->renderIntegrationEdit($integration, $type, $registry, []);
         }
 
         $errors = $service->validateSettings($type, $integration->settings);
         if ($errors !== [] || !$service->saveIntegration($integration)) {
             Craft::$app->getSession()->setError(Craft::t('simple-form', 'Couldn’t save integration.'));
-            return $this->renderTemplate('simple-form/settings/integrations/edit', [
-                'integration' => $integration,
-                'type' => $type,
-                'availableTypes' => $this->availableTypesFor($registry),
-                'errors' => $errors,
-            ]);
+            return $this->renderIntegrationEdit($integration, $type, $registry, $errors);
         }
 
         Craft::$app->getSession()->setNotice(Craft::t('simple-form', 'Integration saved.'));

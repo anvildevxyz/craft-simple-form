@@ -50,15 +50,14 @@ final class FormGqlResolver
      */
     private static function mapIntegrations(int $formId): array
     {
-        $result = [];
-        foreach (Plugin::getInstance()->getIntegrations()->getIntegrationsForForm($formId) as $integration) {
-            $result[] = [
+        return array_map(
+            static fn($integration): array => [
                 'name' => $integration->name,
                 'type' => $integration->type,
                 'enabled' => $integration->enabled,
-            ];
-        }
-        return $result;
+            ],
+            Plugin::getInstance()->getIntegrations()->getIntegrationsForForm($formId)
+        );
     }
 
     /**

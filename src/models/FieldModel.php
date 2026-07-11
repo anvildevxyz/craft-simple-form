@@ -2,6 +2,7 @@
 
 namespace anvildev\simpleform\models;
 
+use anvildev\simpleform\fields\FieldType;
 use anvildev\simpleform\helpers\ConditionalEvaluator;
 use anvildev\simpleform\Plugin;
 use Craft;
@@ -65,7 +66,7 @@ class FieldModel extends Model
      */
     public function isInputType(): bool
     {
-        $fieldType = Plugin::getInstance()->getFieldTypeRegistry()->getFieldType($this->type, $this->config);
+        $fieldType = $this->resolveFieldType();
         return $fieldType?->isInput() ?? true;
     }
 
@@ -145,7 +146,7 @@ class FieldModel extends Model
      */
     public function persistValue(mixed $value, array $context = []): mixed
     {
-        $fieldType = Plugin::getInstance()->getFieldTypeRegistry()->getFieldType($this->type, $this->config);
+        $fieldType = $this->resolveFieldType();
         return $fieldType ? $fieldType->persistValue($value, $context) : $value;
     }
 
@@ -157,7 +158,7 @@ class FieldModel extends Model
     public function normalizeValue(mixed $value): mixed
     {
         try {
-            $fieldType = Plugin::getInstance()->getFieldTypeRegistry()->getFieldType($this->type, $this->config);
+            $fieldType = $this->resolveFieldType();
             return $fieldType !== null ? $fieldType->normalizeValue($value) : $value;
         } catch (\Throwable $e) {
             Craft::warning(sprintf('Field normalize error: %s', $e->getMessage()), 'simple-form');
@@ -180,5 +181,15 @@ class FieldModel extends Model
     {
         $override = trim($override ?? '');
         return ($errors === [] || $override === '') ? $errors : [$override];
+    }
+
+    /**
+     * Resolve this field's type instance from the registry, or null when the
+     * type is unknown. Shared by {@see self::isInputType()},
+     * {@see self::persistValue()} and {@see self::normalizeValue()}.
+     */
+    private function resolveFieldType(): ?FieldType
+    {
+        return Plugin::getInstance()->getFieldTypeRegistry()->getFieldType($this->type, $this->config);
     }
 }
