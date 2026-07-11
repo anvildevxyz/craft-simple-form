@@ -98,15 +98,17 @@ class RatingFieldType extends FieldType
             htmlspecialchars($iconStyle)
         );
 
+        $escapedName = htmlspecialchars($name);
+        $maxValue = $this->max();
         foreach ($this->allowedValues() as $i => $optValue) {
-            $id = htmlspecialchars($name) . '-' . $i;
+            $id = $escapedName . '-' . $i;
             $checked = $selected === $optValue ? ' checked' : '';
             $req = $required ? ' required' : '';
             // The accessible name describes the rating (e.g. "4 stars"); the
             // visual glyph is decorative and supplied by the asset bundle.
             $accessibleName = $iconStyle === 'number'
                 ? (string) $optValue
-                : $this->t('{n} of {max}', ['n' => $optValue, 'max' => $this->max()]);
+                : $this->t('{n} of {max}', ['n' => $optValue, 'max' => $maxValue]);
 
             $html .= sprintf(
                 '<input type="radio" class="sf-rating-input" id="%s" name="%s" value="%d"%s%s>'
@@ -114,7 +116,7 @@ class RatingFieldType extends FieldType
                 . '<span class="sf-rating-icon" aria-hidden="true"></span>'
                 . '<span class="sf-rating-text">%s</span></label>',
                 $id,
-                htmlspecialchars($name),
+                $escapedName,
                 $optValue,
                 $checked,
                 $req,

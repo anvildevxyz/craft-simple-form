@@ -103,7 +103,8 @@ class CalculationFieldType extends FieldType
 
         // The displayed value is cosmetic and server-authoritative; on first
         // paint show a formatted zero (the JS recomputes once inputs are read).
-        $display = $this->format(is_numeric($value) ? (float) $value : 0.0);
+        $numericValue = is_numeric($value) ? (float) $value : 0.0;
+        $display = $this->format($numericValue);
 
         return sprintf(
             '<output class="simple-form-calculation" name="%1$s-display"'
@@ -120,7 +121,7 @@ class CalculationFieldType extends FieldType
             htmlspecialchars($this->suffix(), ENT_QUOTES),
             $this->missingAsZero() ? '1' : '0',
             htmlspecialchars($display, ENT_QUOTES),
-            htmlspecialchars(is_numeric($value) ? (string) (float) $value : '0', ENT_QUOTES),
+            htmlspecialchars((string) $numericValue, ENT_QUOTES),
         );
     }
 

@@ -165,15 +165,16 @@ class FileFieldType extends FieldType
     {
         // id is always the bare field name so the group's <label for> targets it;
         // the [] for multiple only affects the posted name.
+        $multiple = $this->isMultiple();
         $attrs = sprintf(
             'id="%s" name="%s"',
             htmlspecialchars($name),
-            htmlspecialchars($this->isMultiple() ? $name . '[]' : $name),
+            htmlspecialchars($multiple ? $name . '[]' : $name),
         );
         if ($this->config['required'] ?? false) {
             $attrs .= ' required';
         }
-        if ($this->isMultiple()) {
+        if ($multiple) {
             $attrs .= ' multiple';
         }
         $allowed = $this->allowedExtensions();

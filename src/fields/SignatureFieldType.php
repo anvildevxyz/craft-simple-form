@@ -121,6 +121,10 @@ HTML;
     private function presentational(string $key, string $default): string
     {
         $value = $this->config[$key] ?? null;
-        return (is_string($value) && trim($value) !== '') ? trim($value) : $default;
+        if (!is_string($value)) {
+            return $default;
+        }
+        $trimmed = trim($value);
+        return $trimmed !== '' ? $trimmed : $default;
     }
 }

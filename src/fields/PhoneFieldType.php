@@ -228,13 +228,14 @@ class PhoneFieldType extends FieldType
 
         $options = '';
         foreach (DialCodes::allowed($this->allowedCountries()) as $iso => $meta) {
+            $dial = htmlspecialchars($meta['dial']);
             $options .= sprintf(
                 '<option value="%s" data-dial="%s"%s>%s (%s)</option>',
                 htmlspecialchars($iso),
-                htmlspecialchars($meta['dial']),
+                $dial,
                 $iso === $country ? ' selected' : '',
                 htmlspecialchars(DialCodes::label($iso)),
-                htmlspecialchars($meta['dial']),
+                $dial,
             );
         }
 

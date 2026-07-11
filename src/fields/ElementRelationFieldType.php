@@ -144,7 +144,7 @@ abstract class ElementRelationFieldType extends FieldType
     {
         /** @var list<int> $ids */
         $ids = $this->allowedElementQuery(true)->ids();
-        return array_values(array_map('intval', $ids));
+        return array_map('intval', $ids);
     }
 
     /**
@@ -164,12 +164,13 @@ abstract class ElementRelationFieldType extends FieldType
             return $errors;
         }
 
-        if (!$this->isMultiple() && count($ids) > 1) {
+        $multiple = $this->isMultiple();
+        if (!$multiple && count($ids) > 1) {
             $errors[] = Craft::t('simple-form', 'Only one option may be selected.');
         }
 
         $limit = $this->limit();
-        if ($this->isMultiple() && $limit !== null && count($ids) > $limit) {
+        if ($multiple && $limit !== null && count($ids) > $limit) {
             $errors[] = Craft::t('simple-form', 'Please select no more than {limit} options.', ['limit' => $limit]);
         }
 
@@ -332,16 +333,17 @@ abstract class ElementRelationFieldType extends FieldType
     private function renderCheckboxes(string $name, array $options, array $selected): string
     {
         $html = '<div class="checkbox-group">';
+        $escapedName = htmlspecialchars($name);
         $i = 0;
         foreach ($options as $id => $label) {
             // Unique id per option + explicit <label for> (a11y); the group is
             // labelled via the field group's aria-labelledby.
-            $optId = htmlspecialchars($name) . '-' . $i;
+            $optId = $escapedName . '-' . $i;
             $checked = isset($selected[$id]) ? ' checked' : '';
             $html .= sprintf(
                 '<input type="checkbox" id="%s" name="%s[]" value="%d"%s> <label for="%s">%s</label><br>',
                 $optId,
-                htmlspecialchars($name),
+                $escapedName,
                 $id,
                 $checked,
                 $optId,

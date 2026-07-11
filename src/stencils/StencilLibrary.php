@@ -45,9 +45,7 @@ class StencilLibrary extends Component
 
         $event = new RegisterStencilsEvent();
         Plugin::getInstance()->trigger(Plugin::EVENT_REGISTER_STENCILS, $event);
-        foreach ($event->stencils as $stencil) {
-            $stencils[] = $stencil;
-        }
+        array_push($stencils, ...$event->stencils);
 
         $byHandle = [];
         foreach ($stencils as $stencil) {

@@ -59,16 +59,17 @@ class CheckboxFieldType extends FieldType
         $values = is_array($value) ? $value : ($value ? [$value] : []);
 
         $html = '<div class="checkbox-group">';
+        $escapedName = htmlspecialchars($name);
         $i = 0;
         foreach ($options as $optValue => $optLabel) {
             // Unique id per option + explicit <label for> (a11y, #105). The
             // group itself is labelled via the field group's aria-labelledby.
-            $id = htmlspecialchars($name) . '-' . $i;
+            $id = $escapedName . '-' . $i;
             $checked = in_array($optValue, $values) ? ' checked' : '';
             $html .= sprintf(
                 '<input type="checkbox" id="%s" name="%s[]" value="%s"%s> <label for="%s">%s</label><br>',
                 $id,
-                htmlspecialchars($name),
+                $escapedName,
                 htmlspecialchars($optValue),
                 $checked,
                 $id,

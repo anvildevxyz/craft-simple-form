@@ -29,6 +29,8 @@ class CouponModel extends Model
     public bool $enabled = true;
     public ?string $uid = null;
 
+    private static ?\DateTimeZone $utc = null;
+
     /**
      * @return array<int, array<int|string, mixed>>
      */
@@ -59,7 +61,7 @@ class CouponModel extends Model
 
     public function isExpired(): bool
     {
-        return $this->expiryDate !== null && $this->expiryDate < new DateTime('now', new \DateTimeZone('UTC'));
+        return $this->expiryDate !== null && $this->expiryDate < new DateTime('now', self::$utc ??= new \DateTimeZone('UTC'));
     }
 
     public function isUsedUp(): bool

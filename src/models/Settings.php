@@ -456,7 +456,7 @@ class Settings extends Model
      */
     public function getActiveSiteKey(): ?string
     {
-        return $this->captchaType === self::CAPTCHA_V2
+        return $this->isRecaptchaV2()
             ? $this->recaptchaV2SiteKey
             : $this->recaptchaV3SiteKey;
     }
@@ -466,9 +466,17 @@ class Settings extends Model
      */
     public function getActiveSecretKey(): ?string
     {
-        return $this->captchaType === self::CAPTCHA_V2
+        return $this->isRecaptchaV2()
             ? $this->recaptchaV2SecretKey
             : $this->recaptchaV3SecretKey;
+    }
+
+    /**
+     * Whether the active captcha type is reCAPTCHA v2 (as opposed to v3).
+     */
+    private function isRecaptchaV2(): bool
+    {
+        return $this->captchaType === self::CAPTCHA_V2;
     }
 
     /**

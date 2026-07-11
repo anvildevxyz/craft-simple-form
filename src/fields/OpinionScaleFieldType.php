@@ -99,15 +99,16 @@ class OpinionScaleFieldType extends FieldType
         }
 
         $html .= '<div class="sf-opinion-scale">';
+        $escapedName = htmlspecialchars($name);
         foreach ($this->allowedValues() as $i => $optValue) {
-            $id = htmlspecialchars($name) . '-' . $i;
+            $id = $escapedName . '-' . $i;
             $checked = $selected === $optValue ? ' checked' : '';
             $req = $required ? ' required' : '';
             $html .= sprintf(
                 '<input type="radio" class="sf-opinion-input" id="%s" name="%s" value="%d"%s%s>'
                 . '<label class="sf-opinion-label" for="%s">%d</label>',
                 $id,
-                htmlspecialchars($name),
+                $escapedName,
                 $optValue,
                 $checked,
                 $req,

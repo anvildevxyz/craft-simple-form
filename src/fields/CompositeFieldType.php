@@ -164,9 +164,11 @@ abstract class CompositeFieldType extends FieldType
         // #250). The base composite has none.
         $html .= $this->beforeSubFields($name);
 
+        $escapedName = htmlspecialchars($name);
         foreach ($this->enabledSubFields() as $key => $sub) {
-            $id = htmlspecialchars($name) . '-' . htmlspecialchars($key);
-            $inputName = sprintf('%s[%s]', htmlspecialchars($name), htmlspecialchars($key));
+            $escapedKey = htmlspecialchars($key);
+            $id = $escapedName . '-' . $escapedKey;
+            $inputName = sprintf('%s[%s]', $escapedName, $escapedKey);
             $subValue = is_scalar($values[$key] ?? null) ? (string) $values[$key] : '';
             $required = $sub['required'] ? ' required' : '';
 
