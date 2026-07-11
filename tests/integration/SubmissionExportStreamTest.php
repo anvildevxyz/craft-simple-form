@@ -149,4 +149,33 @@ class SubmissionExportStreamTest extends SimpleFormTestCase
             SubmissionCsv::availableColumnsForQuery($this->query($ids), 2),
         );
     }
+
+    /**
+     * The GDPR export-by-email count must reflect rows actually written, not the
+     * raw id scan: the id scan (findSubmissionIdsByEmail) can include trashed rows
+     * that the exporting element query excludes. Reporting the raw count would
+     * overstate a subject-access response.
+     */
+    public function testExportCountExcludesTrashedRows(): void
+    {
+        $this->requireCraft();
+        $ids = $this->seed();
+
+        // A raw id scan would still return all four; trash one so the element
+        // query and the CSV drop it.
+        Craft::$app->getElements()->deleteElementById($ids[0], Submission::class);
+
+        $query = Submission::find()->siteId('*')->id($ids);
+        $exported = (int) $query->count();
+
+        $this->assertSame(count($ids) - 1, $exported, 'trashed match is excluded from the exported count');
+        $this->assertNotSame(count($ids), $exported, 'raw id count would overstate the export');
+
+        // Stream from the SAME query (the controller pattern) and confirm the file
+        // holds exactly `$exported` data rows (header + N lines; fixture cells have
+        // no embedded newlines).
+        $csv = SubmissionCsv::streamQueryToString($query);
+        $dataRows = substr_count(rtrim($csv, "\n"), "\n");
+        $this->assertSame($exported, $dataRows, 'rows written must equal the reported count');
+    }
 }
