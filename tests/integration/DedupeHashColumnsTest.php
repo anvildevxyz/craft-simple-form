@@ -3,6 +3,7 @@
 namespace anvildev\simpleform\tests\integration;
 
 use anvildev\simpleform\elements\Form;
+use anvildev\simpleform\migrations\m260711_000002_add_dedupe_hashes;
 use anvildev\simpleform\Plugin;
 use craft\db\Query;
 
@@ -64,6 +65,35 @@ class DedupeHashColumnsTest extends SimpleFormTestCase
         // guest-email hash stays null.
         $this->assertNotNull($row['dedupeHash']);
         $this->assertNull($row['guestEmailHash']);
+    }
+
+    public function testMigrationBackfillsNullHashes(): void
+    {
+        $this->requireCraft();
+        $form = $this->createForm('Hash Backfill', 'hash_backfill');
+        $form->duplicateKey = Form::DUPLICATE_KEY_EMAIL;
+        $this->assertTrue(\Craft::$app->getElements()->saveElement($form));
+        $emailField = $this->createField((int) $form->id, 'email', 'email', 'Email');
+        $service = Plugin::getInstance()->getSubmissionService();
+
+        $result = $service->submit($form, ['field_' . $emailField => 'legacy@example.com'], ['skipCaptcha' => true]);
+        $id = (int) $result['submission']->id;
+
+        // Simulate a pre-migration row: null out the hashes the migration backfills.
+        \Craft::$app->getDb()->createCommand()
+            ->update('{{%simpleform_submissions}}', ['dedupeHash' => null, 'guestEmailHash' => null], ['id' => $id])
+            ->execute();
+        $this->assertNull($this->hashRow($id)['dedupeHash']);
+
+        // Run the migration's backfill (columns/indexes already exist → guarded no-ops).
+        $migration = new m260711_000002_add_dedupe_hashes();
+        $migration->db = \Craft::$app->getDb();
+        $migration->compact = true;
+        $this->assertTrue($migration->safeUp());
+
+        $row = $this->hashRow($id);
+        $this->assertSame(hash('sha256', 'email:legacy@example.com'), $row['dedupeHash'], 'backfill restores the dedupe hash');
+        $this->assertSame(hash('sha256', 'legacy@example.com'), $row['guestEmailHash'], 'backfill restores the guest-email hash');
     }
 
     public function testEditRecomputesHash(): void

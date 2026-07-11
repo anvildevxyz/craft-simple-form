@@ -61,6 +61,11 @@ class Submission extends Element
      * from the form's `duplicateKey`. Lets duplicate detection be an indexed
      * `(formId, dedupeHash)` lookup instead of rehydrating the form's history.
      * Null when no fingerprint is derivable (e.g. email key with no email value).
+     *
+     * Known limitation: the hash is frozen under the `duplicateKey` in effect
+     * when the row was saved. Changing a form's `duplicateKey` after submissions
+     * exist re-keys detection for *new* rows only; existing rows keep their
+     * original-key hash and are not retroactively re-hashed.
      */
     public ?string $dedupeHash = null;
     /**
@@ -305,7 +310,9 @@ class Submission extends Element
         $this->dedupeHash = $form !== null
             ? $submissions->computeDedupeHash($form, $this->data ?? [], $this->ipHash)
             : null;
-        $this->guestEmailHash = $submissions->computeGuestEmailHash($this->data ?? []);
+        $this->guestEmailHash = $form !== null
+            ? $submissions->computeGuestEmailHash($form, $this->data ?? [])
+            : null;
 
         $row = [
             'formId' => $this->formId,

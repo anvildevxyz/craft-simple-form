@@ -1186,18 +1186,48 @@ class SubmissionService extends Component
     }
 
     /**
-     * SHA-256 of the submission's normalized (lowercased, trimmed) first email
-     * value, stored denormalized on each row so the per-guest email cap is an
-     * indexed lookup rather than a JSON `LIKE` (#341). Null when the data has no
-     * email value.
+     * SHA-256 of the submission's normalized (lowercased, trimmed) guest-limit
+     * email, stored denormalized on each row so the per-guest email cap is an
+     * indexed lookup rather than a JSON `LIKE` (#341). The email is selected the
+     * same way the cap query selects it ({@see self::guestEmailValue()} — the
+     * form's first email field, by layout order), so the stored hash and the
+     * lookup hash can't diverge on a multi-email-field form. Null when the form
+     * has no email field or the stored value is empty.
+     *
+     * @param array<string, mixed> $data submission data keyed by `field_<id>`
+     */
+    public function computeGuestEmailHash(Form $form, array $data): ?string
+    {
+        $email = $this->guestEmailFromData($form, $data);
+
+        return $email === null ? null : hash('sha256', mb_strtolower(trim($email)));
+    }
+
+    /**
+     * The value of the form's first email field (layout order) read from a stored
+     * `data` payload — the storage-side mirror of {@see self::guestEmailValue()},
+     * which reads the same field from posted values. Keeping the two in lockstep
+     * guarantees the stored `guestEmailHash` matches the hash the cap query looks
+     * up. Null when there is no email field or the stored value is empty.
      *
      * @param array<string, mixed> $data
      */
-    public function computeGuestEmailHash(array $data): ?string
+    private function guestEmailFromData(Form $form, array $data): ?string
     {
-        $email = $this->firstEmail($data);
+        $formModel = new FormModel($form);
 
-        return $email === null ? null : hash('sha256', mb_strtolower(trim($email)));
+        foreach ($formModel->getFields() as $fieldId => $field) {
+            if ($field->getType() !== EmailFieldType::getType()) {
+                continue;
+            }
+
+            $entry = $data['field_' . $fieldId] ?? null;
+            $value = is_array($entry) ? ($entry['value'] ?? null) : $entry;
+
+            return (is_string($value) && trim($value) !== '') ? trim($value) : null;
+        }
+
+        return null;
     }
 
     /**

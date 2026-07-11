@@ -2,7 +2,11 @@
 
 namespace anvildev\simpleform\migrations;
 
+use anvildev\simpleform\elements\Form;
+use anvildev\simpleform\Plugin;
+use Craft;
 use craft\db\Migration;
+use craft\db\Query;
 
 /**
  * Indexed duplicate-detection + guest-email limiting (#341). Adds two
@@ -17,11 +21,16 @@ use craft\db\Migration;
  *    the per-guest email cap becomes an indexed `(formId, guestEmailHash)`
  *    count instead of a `LIKE` over the JSON `data` blob.
  *
- * Historical rows are not backfilled (the raw values needed to hash them the
- * same way aren't recoverable cheaply); dedup/limit correctness is guaranteed
- * for submissions created from this migration forward.
+ * Existing rows ARE backfilled in bounded batches from their stored `data`,
+ * `formId` and `ipHash`, so duplicate detection and the guest-email cap keep
+ * matching pre-migration submissions (they'd otherwise carry NULL hashes and
+ * become invisible to both lookups). Rows whose form was deleted, or for which
+ * no fingerprint/email is derivable, keep NULL — the same result the live
+ * computation would produce.
  *
- * Idempotent (column/index-existence guarded).
+ * Idempotent (column/index-existence guarded; the backfill only touches rows
+ * that don't yet have the columns' values because it runs right after the
+ * columns are added).
  *
  * @author Fabian Haefliger
  * @since 1.0.0
@@ -46,7 +55,58 @@ class m260711_000002_add_dedupe_hashes extends Migration
             }
         }
 
+        $this->backfillHashes();
+
         return true;
+    }
+
+    /**
+     * Populate `dedupeHash`/`guestEmailHash` for pre-existing rows, in bounded
+     * `id`-paginated batches (forward `->all()` pages, updates issued after each
+     * page so no unbuffered cursor is open across an UPDATE). Forms are memoized
+     * per id. `id`-pagination — not a "hash IS NULL" predicate — drains the table
+     * because NULL is also a legitimate final value for rows with no
+     * fingerprint/email.
+     */
+    private function backfillHashes(): void
+    {
+        $service = Plugin::getInstance()->getSubmissionService();
+        $db = Craft::$app->getDb();
+
+        /** @var array<int, Form|null> $forms */
+        $forms = [];
+        $lastId = 0;
+        do {
+            $rows = (new Query())
+                ->select(['id', 'formId', 'data', 'ipHash'])
+                ->from(self::TABLE)
+                ->where(['>', 'id', $lastId])
+                ->orderBy(['id' => SORT_ASC])
+                ->limit(500)
+                ->all();
+
+            foreach ($rows as $row) {
+                $lastId = (int) $row['id'];
+                $formId = (int) $row['formId'];
+                if (!array_key_exists($formId, $forms)) {
+                    $forms[$formId] = Form::find()->id($formId)->status(null)->one();
+                }
+                $form = $forms[$formId];
+                if ($form === null) {
+                    continue;
+                }
+
+                $data = is_array($row['data']) ? $row['data'] : (json_decode((string) $row['data'], true) ?: []);
+                if (!is_array($data)) {
+                    $data = [];
+                }
+
+                $db->createCommand()->update(self::TABLE, [
+                    'dedupeHash' => $service->computeDedupeHash($form, $data, $row['ipHash']),
+                    'guestEmailHash' => $service->computeGuestEmailHash($form, $data),
+                ], ['id' => $row['id']])->execute();
+            }
+        } while (count($rows) === 500);
     }
 
     public function safeDown(): bool
