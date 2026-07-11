@@ -32,7 +32,7 @@ trait HasPropagation
                 array_filter($sites->getAllSites(), fn($s) => $s->language === $currentSite()->language),
                 'id'
             ),
-            default => [$this->siteId ?? Craft::$app->getSites()->getPrimarySite()->id],
+            default => [$this->siteId ?? $sites->getPrimarySite()->id],
         };
     }
 

@@ -16,8 +16,9 @@ class FormModel extends Model
         parent::__construct();
         // Use the form's own site so labels/help text match the loaded form's language.
         foreach (FieldQueryHelper::fieldsForForm((int)$form->id, $form->siteId) as $rawField) {
-            $this->fields[$rawField['id']] = new FieldModel(
-                (int) $rawField['id'],
+            $id = (int) $rawField['id'];
+            $this->fields[$id] = new FieldModel(
+                $id,
                 $rawField['type'],
                 $rawField['name'],
                 $rawField['label'],

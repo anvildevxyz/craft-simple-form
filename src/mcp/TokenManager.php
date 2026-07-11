@@ -159,6 +159,7 @@ class TokenManager
             foreach ($tokens as $t) {
                 if ($t->id === $token->id) {
                     $t->lastUsed = (new \DateTime())->format(\DateTime::ATOM);
+                    break;
                 }
             }
             $this->persist($tokens);

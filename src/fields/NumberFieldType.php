@@ -28,15 +28,11 @@ class NumberFieldType extends FieldType
                 $errors[] = Craft::t('simple-form', 'Please enter a valid number.');
             } else {
                 $numValue = (float) $value;
-                if ($min = $this->config['min'] ?? null) {
-                    if ($numValue < $min) {
-                        $errors[] = Craft::t('simple-form', 'Must be at least {min}.', ['min' => $min]);
-                    }
+                if (($min = $this->config['min'] ?? null) && $numValue < $min) {
+                    $errors[] = Craft::t('simple-form', 'Must be at least {min}.', ['min' => $min]);
                 }
-                if ($max = $this->config['max'] ?? null) {
-                    if ($numValue > $max) {
-                        $errors[] = Craft::t('simple-form', 'Must be no more than {max}.', ['max' => $max]);
-                    }
+                if (($max = $this->config['max'] ?? null) && $numValue > $max) {
+                    $errors[] = Craft::t('simple-form', 'Must be no more than {max}.', ['max' => $max]);
                 }
             }
         }

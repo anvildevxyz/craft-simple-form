@@ -91,10 +91,12 @@ class HiddenFieldType extends FieldType
             ? HiddenValueResolver::sanitize($value, $this->config)
             : $this->resolveForRender();
 
+        $escapedName = htmlspecialchars($name, ENT_QUOTES);
+
         return sprintf(
             '<input type="hidden" id="%s" name="%s" value="%s">',
-            htmlspecialchars($name, ENT_QUOTES),
-            htmlspecialchars($name, ENT_QUOTES),
+            $escapedName,
+            $escapedName,
             htmlspecialchars($resolved, ENT_QUOTES),
         );
     }
