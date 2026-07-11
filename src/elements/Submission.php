@@ -174,6 +174,10 @@ class Submission extends Element
         return $this->id !== null ? UrlHelper::cpUrl('simple-form/submissions/' . $this->id) : null;
     }
 
+    /** Memoized {@see self::getForm()} result, re-fetched only if formId changes. */
+    private ?Form $_form = null;
+    private ?int $_formCacheKey = null;
+
     public function getForm(): ?Form
     {
         if ($this->formId === null || $this->formId <= 0) {
@@ -187,11 +191,19 @@ class Submission extends Element
             return $eager instanceof Form ? $eager : null;
         }
 
+        // Memoized per formId: getForm() is a pure lookup, but it is called
+        // repeatedly for the same submission (e.g. update() then afterSave(),
+        // and once per row in integration-log listings).
+        if ($this->_formCacheKey === $this->formId) {
+            return $this->_form;
+        }
+
         // An absent form already yields null from `->one()` without throwing, so
         // there is no try/catch here: a genuine query/infrastructure failure is
         // left to propagate as a clear DB error instead of being masked as a
         // confusing "form not found" state.
-        return Form::find()->id($this->formId)->one();
+        $this->_formCacheKey = $this->formId;
+        return $this->_form = Form::find()->id($this->formId)->one();
     }
 
     /**

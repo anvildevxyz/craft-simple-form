@@ -148,29 +148,41 @@ class EmailService extends Component
      */
     private function uploadAttachments(array $data): array
     {
-        $attachments = [];
+        $ids = [];
         foreach ($data as $fieldData) {
             if (!is_array($fieldData) || ($fieldData['type'] ?? null) !== FileFieldType::getType()) {
                 continue;
             }
-            $ids = is_array($fieldData['value'] ?? null) ? $fieldData['value'] : [];
-            foreach ($ids as $id) {
-                $asset = \craft\elements\Asset::find()->id((int) $id)->one();
-                if (!$asset instanceof \craft\elements\Asset) {
-                    continue;
-                }
-                try {
-                    $contents = $asset->getContents();
-                } catch (\Throwable $e) {
-                    Craft::warning('Failed to read upload for attachment: ' . $e->getMessage(), 'simple-form');
-                    continue;
-                }
-                $attachments[] = [
-                    'content' => $contents,
-                    'fileName' => (string) $asset->getFilename(),
-                    'contentType' => $asset->getMimeType() ?? 'application/octet-stream',
-                ];
+            foreach (is_array($fieldData['value'] ?? null) ? $fieldData['value'] : [] as $id) {
+                $ids[] = (int) $id;
             }
+        }
+
+        if ($ids === []) {
+            return [];
+        }
+
+        // Batch-load every referenced asset in one query instead of one per id.
+        // Iterating $ids (not $assets) preserves the original order and repeats.
+        $assets = \craft\elements\Asset::find()->id($ids)->indexBy('id')->all();
+
+        $attachments = [];
+        foreach ($ids as $id) {
+            $asset = $assets[$id] ?? null;
+            if (!$asset instanceof \craft\elements\Asset) {
+                continue;
+            }
+            try {
+                $contents = $asset->getContents();
+            } catch (\Throwable $e) {
+                Craft::warning('Failed to read upload for attachment: ' . $e->getMessage(), 'simple-form');
+                continue;
+            }
+            $attachments[] = [
+                'content' => $contents,
+                'fileName' => (string) $asset->getFilename(),
+                'contentType' => $asset->getMimeType() ?? 'application/octet-stream',
+            ];
         }
 
         return $attachments;

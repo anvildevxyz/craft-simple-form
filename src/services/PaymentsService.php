@@ -104,10 +104,19 @@ class PaymentsService extends Component
     public function resolveAmount(Form $form, array $data): ?float
     {
         $config = $this->paymentFieldConfig($form);
-        if ($config === null) {
-            return null;
-        }
+        return $config === null ? null : $this->resolveAmountFromConfig($config, $form, $data);
+    }
 
+    /**
+     * The amount-resolution logic, given an already-resolved Payment field config
+     * so {@see authorizeForSubmit()} can resolve the config once and thread it
+     * through instead of re-querying it per public method.
+     *
+     * @param array<string, mixed> $config
+     * @param SubmissionData $data
+     */
+    private function resolveAmountFromConfig(array $config, Form $form, array $data): ?float
+    {
         if (($config['amountType'] ?? PaymentFieldType::AMOUNT_TYPE_FIXED) === PaymentFieldType::AMOUNT_TYPE_FIELD) {
             $handle = (string) ($config['amountField'] ?? '');
             $amount = $handle !== '' ? ($this->valuesByHandle($form, $data)[$handle] ?? null) : null;
@@ -146,17 +155,25 @@ class PaymentsService extends Component
      */
     public function authorizeForSubmit(Form $form, array $data, array $paymentParams = [], ?string $couponCode = null): ?array
     {
-        if (!$this->requiresPayment($form)) {
+        // Resolve the Payment field config once and thread it through, instead of
+        // re-querying it via requiresPayment()/resolveAmount()/amountOutOfBounds()
+        // (three FormStructure lookups — real DB queries when its cache is off).
+        // Guard order matches the old requiresPayment() short-circuit exactly.
+        if (!$this->commerceAvailable()) {
+            return null;
+        }
+        $config = $this->paymentFieldConfig($form);
+        if ($config === null) {
             return null;
         }
 
-        $amount = $this->resolveAmount($form, $data);
+        $amount = $this->resolveAmountFromConfig($config, $form, $data);
         if ($amount === null) {
             // A Payment field with no positive amount due — nothing to charge.
             return null;
         }
 
-        if (($boundsError = $this->amountOutOfBoundsMessage($form, $amount)) !== null) {
+        if (($boundsError = $this->boundsErrorFromConfig($config, $amount)) !== null) {
             return $this->result('', 0, $amount, null, $boundsError);
         }
 
@@ -250,10 +267,16 @@ class PaymentsService extends Component
     public function amountOutOfBoundsMessage(Form $form, float $amount): ?string
     {
         $config = $this->paymentFieldConfig($form);
-        if ($config === null) {
-            return null;
-        }
+        return $config === null ? null : $this->boundsErrorFromConfig($config, $amount);
+    }
 
+    /**
+     * Bounds check against an already-resolved Payment field config.
+     *
+     * @param array<string, mixed> $config
+     */
+    private function boundsErrorFromConfig(array $config, float $amount): ?string
+    {
         $min = isset($config['minAmount']) && is_numeric($config['minAmount']) ? (float) $config['minAmount'] : null;
         $max = isset($config['maxAmount']) && is_numeric($config['maxAmount']) ? (float) $config['maxAmount'] : null;
 
