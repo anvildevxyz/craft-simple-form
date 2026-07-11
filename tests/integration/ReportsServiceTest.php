@@ -125,6 +125,39 @@ class ReportsServiceTest extends SimpleFormTestCase
         });
     }
 
+    public function testFormRenameInvalidatesCache(): void
+    {
+        $this->requireCraft();
+        $this->siteId = Craft::$app->getSites()->getCurrentSite()->id;
+
+        $form = $this->createForm('Original Name', 'reports_form_rename');
+        $formId = (int) $form->id;
+
+        $nameFor = function(array $totals) use ($formId): ?string {
+            foreach ($totals as $row) {
+                if ($row['formId'] === $formId) {
+                    return $row['name'];
+                }
+            }
+            return null;
+        };
+
+        $this->withActiveCache(function(ReportsService $reports) use ($form, $nameFor): void {
+            // Warm the per-form list, then rename via an element save (which fires
+            // Form::afterSave, not Submission::afterSave).
+            $this->assertSame('Original Name', $nameFor($reports->perFormTotals($this->siteId)));
+
+            $form->title = 'Renamed';
+            $this->assertTrue(Craft::$app->getElements()->saveElement($form));
+
+            $this->assertSame(
+                'Renamed',
+                $nameFor($reports->perFormTotals($this->siteId)),
+                'renaming a form must invalidate the cached per-form list',
+            );
+        });
+    }
+
     public function testElementSaveInvalidatesCache(): void
     {
         $this->requireCraft();

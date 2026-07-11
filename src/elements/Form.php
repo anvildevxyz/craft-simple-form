@@ -674,6 +674,11 @@ class Form extends Element
             Plugin::getInstance()->getFormStructure()->invalidate((int)$this->id);
         }
 
+        // A rename/create changes the cached per-form stats list (#339), which is
+        // keyed only by site and otherwise invalidated on submission writes; a
+        // form-element save fires neither, so drop the reports cache here too.
+        Plugin::getInstance()->getReports()->invalidateCache();
+
         parent::afterSave($isNew);
     }
 
@@ -685,6 +690,9 @@ class Form extends Element
         if ($this->id) {
             Plugin::getInstance()->getFormStructure()->invalidate((int)$this->id);
         }
+
+        // Deleting a form drops it from the cached per-form stats list (#339).
+        Plugin::getInstance()->getReports()->invalidateCache();
 
         parent::afterDelete();
     }
