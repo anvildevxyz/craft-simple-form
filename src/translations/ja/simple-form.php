@@ -409,4 +409,9 @@ return [
 
     // Callout layout block (#322)
     'Callout' => 'コールアウト',
+
+    // Security hardening (audit 2026-07-11)
+    'This value is too long.' => 'この値は長すぎます。',
+    'Rate limiting and CAPTCHA are both off. Public forms are then protected only by the honeypot, which scripted spam can bypass — leaving the submit endpoint open to flooding. Set a per-minute limit (e.g. 10) or enable CAPTCHA.' => 'レート制限と CAPTCHA の両方が無効です。公開フォームはハニーポットだけで保護されますが、スクリプト化されたスパムはこれを簡単に回避するため、送信エンドポイントが大量送信にさらされます。1 分あたりの上限（例: 10）を設定するか、CAPTCHA を有効にしてください。',
+    'Settings saved. Tip: store CAPTCHA/Akismet secrets as environment references (e.g. $RECAPTCHA_SECRET) so the literal value is kept out of the database and project config.' => '設定を保存しました。ヒント: CAPTCHA/Akismet のシークレットは環境参照（例: $RECAPTCHA_SECRET）として保存し、平文の値がデータベースやプロジェクト設定に残らないようにしてください。',
 ];

@@ -3,6 +3,7 @@
 namespace anvildev\simpleform\tests\integration;
 
 use anvildev\simpleform\elements\Form;
+use anvildev\simpleform\Plugin;
 use Craft;
 use craft\helpers\StringHelper;
 use craft\test\TestCase;
@@ -18,6 +19,22 @@ use craft\test\TestCase;
  */
 abstract class SimpleFormTestCase extends TestCase
 {
+    protected function _before(): void
+    {
+        parent::_before();
+
+        // Submit rate limiting now defaults on (submitRateLimitPerMinute = 10) as
+        // production hardening, but its cache counter isn't covered by the per-test
+        // DB transaction and would otherwise accumulate across tests that share a
+        // visitor IP, causing cross-test interference. Reset to a clean,
+        // throttle-off baseline each test; the throttle tests opt in by setting
+        // their own limit and start from the empty counter flushed here.
+        if (class_exists(\Craft::class) && Craft::$app !== null) {
+            Plugin::getInstance()->getSettings()->submitRateLimitPerMinute = 0;
+            Craft::$app->getCache()->flush();
+        }
+    }
+
     protected function requireCraft(): void
     {
         if (!class_exists(\Craft::class) || Craft::$app === null) {

@@ -280,10 +280,18 @@ class CraftElementIntegration implements IntegrationTypeInterface
         }
 
         try {
-            $rendered = Craft::$app->getView()->renderString($template, [
-                'values' => $values,
-                'submission' => $submission,
-            ] + $values);
+            // Route through the forced-sandbox seam ({@see SafeRenderService}) —
+            // never the raw View::renderString(), which would expose `craft.app`,
+            // the database and the filesystem to an editor holding only the
+            // (non-admin) `manageIntegrations` permission.
+            $rendered = Plugin::getInstance()->getSafeRender()->render(
+                $template,
+                [
+                    'values' => $values,
+                    'submission' => $submission,
+                ] + $values,
+                [Submission::class],
+            );
         } catch (\Throwable $e) {
             Craft::warning('Failed to render element title template: ' . $e->getMessage(), 'simple-form');
             return null;

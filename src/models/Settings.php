@@ -101,10 +101,16 @@ class Settings extends Model
      * Max public form submissions accepted per visitor IP per minute, an abuse
      * throttle shared by the front-end submit endpoint and the GraphQL submit
      * mutation. The limit is per IP across all forms (not per form). 0 disables
-     * it. Default 0 so existing installs are unchanged; a small value (e.g. 10)
-     * is recommended for public forms.
+     * it entirely.
+     *
+     * Defaults to 10 so the endpoint is throttled out of the box (CWE-770): with
+     * no limit and captcha off by default, the only stock defense was the
+     * honeypot, which a scripted attacker simply omits — leaving an
+     * unauthenticated flood that amplifies into DB rows, queued emails, outbound
+     * integration calls and Akismet lookups. 10/min/IP is well above real human
+     * use. An operator can still set 0 to opt out.
      */
-    public int $submitRateLimitPerMinute = 0;
+    public int $submitRateLimitPerMinute = 10;
 
     /** Content spam scoring via Akismet (complements captcha). */
     public bool $enableAkismet = false;

@@ -56,7 +56,30 @@ abstract class FieldType
             }
         }
 
+        // Absolute server-side ceiling: reject an oversized string even when the
+        // field defines no maxLength, so a scripted POST can't inflate the
+        // submission `data` column (and the dedupe/Akismet text extraction that
+        // concatenates it) with an arbitrarily large blob (CWE-770). Applies to
+        // every text-bearing type that chains to parent::validate(); types with
+        // a bespoke large payload and their own size check (e.g. Signature)
+        // don't chain here and are unaffected.
+        $max = $this->maxValueLength();
+        if ($max !== null && is_string($value) && strlen($value) > $max) {
+            $errors[] = $this->t('This value is too long.');
+        }
+
         return $errors;
+    }
+
+    /**
+     * Absolute maximum length (bytes) of a single string value, enforced by
+     * {@see self::validate()} independently of any editor-configured maxLength.
+     * 64 KB is far above any legitimate single-field text entry; a type that
+     * legitimately stores more returns null to opt out.
+     */
+    protected function maxValueLength(): ?int
+    {
+        return 65535;
     }
 
     protected function hasValue(mixed $value): bool

@@ -127,6 +127,43 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - The `submitForm` GraphQL mutation now returns the resolved (per-form,
   per-site, conditional) message instead of the global default (#263).
 
+### Security
+- **Critical** — the Craft Element integration's entry-title template was
+  rendered with the unsandboxed Twig environment, so an editor holding only the
+  (non-admin) *Manage form integrations* permission could reach `craft.app`, the
+  database, and secrets on the next submission (SSTI → site takeover, CWE-94). It
+  now renders through the same forced-sandbox seam as every other editor
+  template.
+- **MCP tokens are admin-only.** Creating or revoking an MCP access token now
+  requires an admin with an elevated session. Previously *Manage plugin
+  settings* alone could mint a `submissions:export` token and read/export every
+  submission, bypassing the separate *View submissions* permission (privilege
+  escalation, CWE-269).
+- **Privacy hashes are keyed.** The denormalized `ipHash`, `guestEmailHash`, and
+  `dedupeHash` fingerprints were unsalted SHA-256 digests, reversible from a
+  DB-only leak by precomputation — which defeated the IP-anonymization guarantee
+  (CWE-759/916). They are now HMAC-keyed with the site security key. A migration
+  re-keys the email/dedupe hashes from stored data and purges the now-reversible
+  historical `ipHash` values (IP-based duplicate detection rebuilds from new
+  submissions). Note: privacy hashes don't survive a `securityKey` rotation.
+- **Submit rate limiting is on by default** (`submitRateLimitPerMinute` now
+  defaults to **10**/visitor-IP/minute) so a fresh install isn't an open flood
+  target; set `0` to disable (CWE-770). The Spam Protection tab warns when both
+  rate limiting and CAPTCHA are off.
+- **Elevated session for spam secrets.** Saving the Spam Protection tab (which
+  holds the CAPTCHA/Akismet secret keys) now requires a re-verified password
+  (CWE-306), and a save-time tip steers operators toward environment references
+  so secrets stay out of the database and project config (CWE-312).
+- **Field-length ceiling.** Text-bearing fields reject values over 64 KB even
+  when no `maxLength` is configured, so an oversized POST can't inflate the
+  submission store (CWE-770).
+- **Rate limiter hardening.** The abuse throttle now initializes its window
+  atomically and logs a warning when the app cache is a `DummyCache` (under which
+  it can't accumulate), instead of silently disappearing (CWE-703).
+- **SSRF DNS-pin hardening.** Integration dispatch is pinned to Guzzle's cURL
+  handler so the DNS-rebinding guard's `CURLOPT_RESOLVE` can't be silently
+  dropped by a stream-handler fallback (CWE-918).
+
 ## [1.0.0] - 2026-06-24
 
 ### Fixed

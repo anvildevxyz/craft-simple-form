@@ -1,5 +1,11 @@
 {% import "_includes/forms.twig" as forms %}
 
+{# This tab persists the captcha/Akismet secret keys, so saving it requires an
+   elevated session (server-enforced in SettingsController::actionSave). The
+   marker tells cp.js to prompt for the password before the shared #main-form
+   POST, which it can't annotate directly from this include. #}
+<span data-sf-elevate-main-form hidden></span>
+
 <h2>{{ 'Spam Protection'|t('simple-form') }}</h2>
 <p class="light">{{ 'These defenses stack — enable any combination of the honeypot, CAPTCHA, and Akismet below.'|t('simple-form') }}</p>
 
@@ -260,11 +266,17 @@
 <h3>{{ 'Rate limiting'|t('simple-form') }}</h3>
 <p class="light">{{ 'Throttle how often a single visitor can submit, independent of CAPTCHA/honeypot.'|t('simple-form') }}</p>
 
+{% if (settings.submitRateLimitPerMinute ?? 0) == 0 and not (settings.enableCaptcha ?? false) %}
+    <p class="warning with-icon">
+        {{ 'Rate limiting and CAPTCHA are both off. Public forms are then protected only by the honeypot, which scripted spam can bypass — leaving the submit endpoint open to flooding. Set a per-minute limit (e.g. 10) or enable CAPTCHA.'|t('simple-form') }}
+    </p>
+{% endif %}
+
 {{ forms.textField({
     label: 'Submissions per minute'|t('simple-form'),
     name: 'submitRateLimitPerMinute',
     type: 'number',
-    value: settings.submitRateLimitPerMinute ?? 0,
+    value: settings.submitRateLimitPerMinute ?? 10,
     min: 0,
     step: 1,
     instructions: 'Max front-end submissions allowed per visitor IP per minute. 0 disables the limit; 10 is a sensible starting point for public forms.'|t('simple-form'),

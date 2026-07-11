@@ -411,4 +411,9 @@ return [
 
     // Callout layout block (#322)
     'Callout' => 'Callout',
+
+    // Security hardening (audit 2026-07-11)
+    'This value is too long.' => 'This value is too long.',
+    'Rate limiting and CAPTCHA are both off. Public forms are then protected only by the honeypot, which scripted spam can bypass — leaving the submit endpoint open to flooding. Set a per-minute limit (e.g. 10) or enable CAPTCHA.' => 'Rate limiting and CAPTCHA are both off. Public forms are then protected only by the honeypot, which scripted spam can bypass — leaving the submit endpoint open to flooding. Set a per-minute limit (e.g. 10) or enable CAPTCHA.',
+    'Settings saved. Tip: store CAPTCHA/Akismet secrets as environment references (e.g. $RECAPTCHA_SECRET) so the literal value is kept out of the database and project config.' => 'Settings saved. Tip: store CAPTCHA/Akismet secrets as environment references (e.g. $RECAPTCHA_SECRET) so the literal value is kept out of the database and project config.',
 ];

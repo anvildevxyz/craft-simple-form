@@ -343,4 +343,23 @@
         syncDenylistSettingsVisibility();
         enableDenylists.addEventListener('change', syncDenylistSettingsVisibility);
     }
+
+    // Elevated-session guard for sensitive settings forms: minting an MCP token
+    // and saving the Spam Protection secrets require a re-verified password
+    // (server-enforced in SettingsController). Craft.ElevatedSessionForm
+    // intercepts the submit and shows the password modal, so the full-page POST
+    // isn't rejected with a 403. Any form flagged `data-sf-elevated` is wired;
+    // the shared settings full-page form is flagged indirectly via a marker
+    // (it renders `#main-form`, which the tab include can't annotate directly).
+    if (window.Craft && Craft.ElevatedSessionForm) {
+        document.querySelectorAll('form[data-sf-elevated]').forEach(function (form) {
+            new Craft.ElevatedSessionForm(form);
+        });
+        if (document.querySelector('[data-sf-elevate-main-form]')) {
+            var mainForm = document.getElementById('main-form');
+            if (mainForm) {
+                new Craft.ElevatedSessionForm(mainForm);
+            }
+        }
+    }
 })();

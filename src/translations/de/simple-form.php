@@ -415,4 +415,9 @@ return [
 
     // Callout layout block (#322)
     'Callout' => 'Hinweisbox',
+
+    // Security hardening (audit 2026-07-11)
+    'This value is too long.' => 'Dieser Wert ist zu lang.',
+    'Rate limiting and CAPTCHA are both off. Public forms are then protected only by the honeypot, which scripted spam can bypass — leaving the submit endpoint open to flooding. Set a per-minute limit (e.g. 10) or enable CAPTCHA.' => 'Ratenbegrenzung und CAPTCHA sind beide deaktiviert. Öffentliche Formulare sind dann nur durch den Honeypot geschützt, den automatisierter Spam einfach umgeht — der Absende-Endpunkt bleibt für Fluten offen. Legen Sie ein Limit pro Minute fest (z. B. 10) oder aktivieren Sie CAPTCHA.',
+    'Settings saved. Tip: store CAPTCHA/Akismet secrets as environment references (e.g. $RECAPTCHA_SECRET) so the literal value is kept out of the database and project config.' => 'Einstellungen gespeichert. Tipp: Speichern Sie CAPTCHA-/Akismet-Geheimnisse als Umgebungsreferenzen (z. B. $RECAPTCHA_SECRET), damit der Klartextwert nicht in der Datenbank und der Projektkonfiguration landet.',
 ];

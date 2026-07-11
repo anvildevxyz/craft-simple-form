@@ -7,6 +7,8 @@ use anvildev\simpleform\helpers\SafeUrl;
 use anvildev\simpleform\integrations\IntegrationResult;
 use Craft;
 use GuzzleHttp\Client;
+use GuzzleHttp\Handler\CurlHandler;
+use GuzzleHttp\HandlerStack;
 use Psr\Http\Message\ResponseInterface;
 
 /**
@@ -126,12 +128,25 @@ trait ApiConnector
 
     protected function httpClient(): Client
     {
-        return Craft::createGuzzleClient([
+        $config = [
             'timeout' => 10,
             'connect_timeout' => 5,
             // Don't follow redirects (F3): prevents a public API URL from
             // 30x-bouncing the request (and its auth header) to an internal host.
             'allow_redirects' => false,
-        ]);
+        ];
+
+        // Pin dispatch to the cURL handler so the DNS-rebinding guard's
+        // CURLOPT_RESOLVE ({@see SafeUrl::guzzlePinDnsOptions()}) is actually
+        // honored: under Guzzle's stream handler that option is silently ignored,
+        // reopening the rebinding window between the SSRF check and connect.
+        // cURL is effectively always present in a Craft runtime; when it isn't,
+        // the pin can't be enforced and only the (still-applied) public-URL check
+        // guards the request.
+        if (extension_loaded('curl') && class_exists(CurlHandler::class)) {
+            $config['handler'] = HandlerStack::create(new CurlHandler());
+        }
+
+        return Craft::createGuzzleClient($config);
     }
 }

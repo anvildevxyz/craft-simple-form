@@ -1182,7 +1182,7 @@ class SubmissionService extends Component
     {
         $fingerprint = $this->dedupeFingerprint($form, $data, $ipHash);
 
-        return $fingerprint === null ? null : hash('sha256', $fingerprint);
+        return $fingerprint === null ? null : $this->keyedHash($fingerprint);
     }
 
     /**
@@ -1200,7 +1200,7 @@ class SubmissionService extends Component
     {
         $email = $this->guestEmailFromData($form, $data);
 
-        return $email === null ? null : hash('sha256', mb_strtolower(trim($email)));
+        return $email === null ? null : $this->keyedHash(mb_strtolower(trim($email)));
     }
 
     /**
@@ -1306,8 +1306,9 @@ class SubmissionService extends Component
      * false-positive duplicate, and matching stays consistent even if the
      * display policy changes between submissions. Honors `IP_CAPTURE_OFF`
      * (returns null) so opting out of IP capture also opts out of IP-derived
-     * dedup, matching the storage policy's intent. Only the one-way hash is
-     * persisted — the raw IP itself never is.
+     * dedup, matching the storage policy's intent. Only a keyed one-way hash is
+     * persisted ({@see self::keyedHash()}) — the raw IP itself never is, and the
+     * keying keeps it non-reversible even against a full-IPv4 precomputation.
      */
     private function ipFingerprint(): ?string
     {
@@ -1317,7 +1318,33 @@ class SubmissionService extends Component
 
         $ip = $this->requestIp();
 
-        return $ip === null ? null : hash('sha256', $ip);
+        return $ip === null ? null : $this->keyedHash($ip);
+    }
+
+    /**
+     * Keyed (HMAC-SHA256) hash of $value under the site security key, used for
+     * the denormalized privacy/dedupe fingerprints (`ipHash`, `guestEmailHash`,
+     * `dedupeHash`).
+     *
+     * A plain SHA-256 of a low-entropy value — a full IPv4 address (~4.3B
+     * possibilities) or a known/guessable email — is trivially reversible by
+     * precomputation, so an unsalted hash would let anyone with DB-only read
+     * access (a leaked backup, a read replica, or SQLi elsewhere) recover the
+     * raw IP/email and defeat the `ipCapturePolicy` anonymization guarantee
+     * (CWE-759 / CWE-916). Keying with a server-only secret removes that: the
+     * hash can't be reversed without the key, which never leaves the app.
+     * Mirrors {@see \anvildev\simpleform\mcp\TokenManager::hashSecret()}.
+     *
+     * These are dedupe/limit fingerprints, so — unlike the MCP token path — an
+     * empty security key degrades to an unkeyed digest rather than throwing, to
+     * never hard-fail a public submission. Craft requires a security key in any
+     * real install, so that degraded path is not reached in practice.
+     */
+    private function keyedHash(string $value): string
+    {
+        $key = (string) Craft::$app->getConfig()->getGeneral()->securityKey;
+
+        return hash_hmac('sha256', $value, $key);
     }
 
     /**
@@ -1410,7 +1437,9 @@ class SubmissionService extends Component
             // Best-effort guest dedup: count prior guest submissions whose stored
             // email matches, via the indexed `guestEmailHash` column (#341) instead
             // of a JSON `LIKE` scan. Documented as advisory, not a security control.
-            $hash = hash('sha256', mb_strtolower(trim($email)));
+            // Must use the same keyed hash as computeGuestEmailHash() so the stored
+            // value and this lookup can't diverge.
+            $hash = $this->keyedHash(mb_strtolower(trim($email)));
 
             return (int) $query
                 ->andWhere(Db::parseParam('simpleform_submissions.userId', ':empty:'))

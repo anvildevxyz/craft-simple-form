@@ -55,6 +55,9 @@ class SettingsController extends Controller
         'mcp' => ['enableMcp'],
     ];
 
+    /** Secret settings that should be env references, not literals (CWE-312). */
+    private const SECRET_FIELDS = ['recaptchaV3SecretKey', 'recaptchaV2SecretKey', 'turnstileSecretKey', 'hcaptchaSecretKey', 'akismetApiKey'];
+
     private const BOOL_FIELDS = ['enableHoneypot', 'enableCaptcha', 'enableMcp', 'enableAkismet', 'enableDenylists', 'anonymizeInsteadOfDelete', 'allowGraphqlCaptchaBypass', 'enableWorkflow', 'collectIpAddresses'];
     private const FLOAT_FIELDS = ['recaptchaV3MinScore'];
     private const INT_FIELDS = ['retainSubmissionsDays', 'retainIntegrationLogsDays', 'retainNotificationLogsDays', 'retainAuditLogDays', 'partialRetentionDays', 'submitRateLimitPerMinute', 'maxAttachmentSizeMb'];
@@ -78,6 +81,15 @@ class SettingsController extends Controller
         $settings = $plugin->getSettings();
 
         $tab = $this->normalizeTab($request->getBodyParam('tab'));
+
+        // The Spam Protection tab persists third-party secret keys (captcha
+        // provider secrets, the Akismet API key). Re-verify the password so a
+        // hijacked-but-authenticated CP session can't silently rewrite them and
+        // disable spam protection (CWE-306). Elevation lasts for Craft's
+        // elevated-session window, so this doesn't re-prompt on every tweak.
+        if ($tab === 'spam') {
+            $this->requireElevatedSession();
+        }
 
         // Start from the existing values so saving one tab never wipes another
         // tab's fields (e.g. the required defaultEmailSender on the Email tab).
@@ -156,6 +168,14 @@ class SettingsController extends Controller
                 'Settings saved. These are Pro-only, so the changes that would enable or expand them were left unchanged: {features}',
                 ['features' => implode(', ', $labels)],
             ));
+        } elseif ($tab === 'spam' && $this->hasLiteralSecret($values)) {
+            // Non-blocking nudge: a literal secret is stored plaintext in the DB
+            // and (commonly git-committed) project config. Env references keep it
+            // out of both (CWE-312). Save still succeeds.
+            Craft::$app->getSession()->setNotice(Craft::t(
+                'simple-form',
+                'Settings saved. Tip: store CAPTCHA/Akismet secrets as environment references (e.g. $RECAPTCHA_SECRET) so the literal value is kept out of the database and project config.',
+            ));
         } else {
             Craft::$app->getSession()->setNotice(Craft::t('simple-form', 'Settings saved.'));
         }
@@ -163,13 +183,44 @@ class SettingsController extends Controller
     }
 
     /**
+     * Whether any secret setting in the saved values holds a literal (non-empty,
+     * non-env-reference) value — i.e. a raw secret that will sit plaintext in the
+     * DB and project config rather than being resolved from the environment.
+     *
+     * @param array<string, mixed> $values
+     */
+    private function hasLiteralSecret(array $values): bool
+    {
+        foreach (self::SECRET_FIELDS as $field) {
+            $value = trim((string) ($values[$field] ?? ''));
+            if ($value !== '' && !str_starts_with($value, '$')) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
      * Create a new MCP token. The plaintext secret is generated, the hash
      * persisted, and the secret flashed back to the operator exactly once via a
      * session notice — it is never stored or shown again.
+     *
+     * Restricted to admins with an elevated session: an MCP token grants
+     * out-of-band API access to submission data whose scopes are enforced
+     * independently of the minter's CP permissions, so a non-admin holding only
+     * `manageSettings` must not be able to mint one and read/export submissions
+     * they lack `viewSubmissions` for (CWE-269). Mirrors Craft's admin-only
+     * treatment of GraphQL tokens.
+     *
+     * @throws \yii\web\ForbiddenHttpException if the user is not an admin or the
+     *   session is not elevated
      */
     public function actionCreateMcpToken(): Response
     {
         $this->requirePostRequest();
+        $this->requireAdmin(false);
+        $this->requireElevatedSession();
         /** @var \craft\web\Request $request */
         $request = Craft::$app->getRequest();
 
@@ -196,11 +247,14 @@ class SettingsController extends Controller
     }
 
     /**
-     * Revoke (delete) an MCP token by id.
+     * Revoke (delete) an MCP token by id. Admin-only, matching token creation.
+     *
+     * @throws \yii\web\ForbiddenHttpException if the user is not an admin
      */
     public function actionRevokeMcpToken(): Response
     {
         $this->requirePostRequest();
+        $this->requireAdmin(false);
         /** @var \craft\web\Request $request */
         $request = Craft::$app->getRequest();
         $id = (string) $request->getBodyParam('id', '');

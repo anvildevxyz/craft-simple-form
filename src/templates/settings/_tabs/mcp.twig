@@ -104,9 +104,10 @@
 
 <hr>
 
-{# 3. Create token. #}
+{# 3. Create token. Admin + elevated session required (server-enforced); the
+   `data-sf-elevated` hook makes cp.js prompt for the password before submit. #}
 <h4>{{ 'Create a token'|t('simple-form') }}</h4>
-<form method="post" accept-charset="UTF-8">
+<form method="post" accept-charset="UTF-8" data-sf-elevated>
     {{ csrfInput() }}
     <input type="hidden" name="action" value="simple-form/settings/create-mcp-token">
     {{ redirectInput('simple-form/settings/mcp') }}
