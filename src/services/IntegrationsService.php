@@ -586,11 +586,7 @@ class IntegrationsService extends Component
      */
     public function getFailedDispatches(int $limit = 200): array
     {
-        // The latest log id per (integrationId, submissionId).
-        $latestIds = (new \craft\db\Query())
-            ->select(['mid' => 'MAX(id)'])
-            ->from(self::LOG_TABLE)
-            ->groupBy(['integrationId', 'submissionId']);
+        $latestIds = $this->latestLogIdsQuery();
 
         $rows = (new \craft\db\Query())
             ->from(['l' => self::LOG_TABLE])
@@ -652,16 +648,26 @@ class IntegrationsService extends Component
      */
     public function countFailedDispatches(): int
     {
-        $latestIds = (new \craft\db\Query())
-            ->select(['mid' => 'MAX(id)'])
-            ->from(self::LOG_TABLE)
-            ->groupBy(['integrationId', 'submissionId']);
+        $latestIds = $this->latestLogIdsQuery();
 
         return (int) (new \craft\db\Query())
             ->from(['l' => self::LOG_TABLE])
             ->where(['l.id' => $latestIds])
             ->andWhere(['l.status' => DispatchStatus::FAILED])
             ->count();
+    }
+
+    /**
+     * The latest log id per (integrationId, submissionId).
+     *
+     * @return \craft\db\Query<int, array<string, mixed>>
+     */
+    private function latestLogIdsQuery(): \craft\db\Query
+    {
+        return (new \craft\db\Query())
+            ->select(['mid' => 'MAX(id)'])
+            ->from(self::LOG_TABLE)
+            ->groupBy(['integrationId', 'submissionId']);
     }
 
     /**

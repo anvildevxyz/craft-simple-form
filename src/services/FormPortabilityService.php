@@ -363,14 +363,7 @@ class FormPortabilityService extends Component
         unset($config['required']); // exposed as its own column
 
         $optionLabels = is_array($row['optionLabels'] ?? null) ? $row['optionLabels'] : [];
-        if ($optionLabels !== [] && isset($config['options']) && is_array($config['options'])) {
-            foreach ($config['options'] as &$opt) {
-                if (is_array($opt) && isset($opt['value'])) {
-                    $opt['siteLabel'] = (string)($optionLabels[(string)$opt['value']] ?? '');
-                }
-            }
-            unset($opt);
-        }
+        $config = $this->foldOptionLabelsIntoConfig($config, $optionLabels);
 
         return [
             'id' => (int)$row['id'],
@@ -385,6 +378,29 @@ class FormPortabilityService extends Component
     }
 
     /**
+     * Fold per-site option labels back onto each option as `siteLabel` so
+     * FieldSyncService splits them into this site's override map. Returns
+     * $config unchanged when there are no labels or options to fold.
+     *
+     * @param array<string, mixed> $config
+     * @param array<string, mixed> $optionLabels
+     * @return array<string, mixed>
+     */
+    private function foldOptionLabelsIntoConfig(array $config, array $optionLabels): array
+    {
+        if ($optionLabels !== [] && isset($config['options']) && is_array($config['options'])) {
+            foreach ($config['options'] as &$opt) {
+                if (is_array($opt) && isset($opt['value'])) {
+                    $opt['siteLabel'] = (string)($optionLabels[(string)$opt['value']] ?? '');
+                }
+            }
+            unset($opt);
+        }
+
+        return $config;
+    }
+
+    /**
      * Field ids that appear in at least one of the form's stored submissions
      * (data is keyed by `field_<id>`). Used so a prune never silently drops a
      * field that still holds answers.
@@ -394,13 +410,13 @@ class FormPortabilityService extends Component
     private function fieldIdsWithSubmissionData(int $formId): array
     {
         $ids = [];
-        $rows = (new Query())
+        $query = (new Query())
             ->select(['data'])
             ->from('{{%simpleform_submissions}}')
-            ->where(['formId' => $formId])
-            ->column();
+            ->where(['formId' => $formId]);
 
-        foreach ($rows as $json) {
+        foreach ($query->each() as $row) {
+            $json = $row['data'];
             $data = is_string($json) ? json_decode($json, true) : (is_array($json) ? $json : null);
             if (!is_array($data)) {
                 continue;
@@ -1016,14 +1032,7 @@ class FormPortabilityService extends Component
             // Fold per-site option labels back onto each option as `siteLabel` so
             // FieldSyncService splits them into this site's override map.
             $optionLabels = is_array($content['optionLabels'] ?? null) ? $content['optionLabels'] : [];
-            if ($optionLabels !== [] && isset($config['options']) && is_array($config['options'])) {
-                foreach ($config['options'] as &$opt) {
-                    if (is_array($opt) && isset($opt['value'])) {
-                        $opt['siteLabel'] = (string)($optionLabels[(string)$opt['value']] ?? '');
-                    }
-                }
-                unset($opt);
-            }
+            $config = $this->foldOptionLabelsIntoConfig($config, $optionLabels);
 
             $items[] = [
                 'type' => (string)($field['type'] ?? ''),

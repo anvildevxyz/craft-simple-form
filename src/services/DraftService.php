@@ -187,12 +187,10 @@ class DraftService extends Component
             $data = is_array($row['data']) ? $row['data'] : Json::decodeIfJson((string) $row['data']);
             $data = is_array($data) ? $data : [];
             // Count only fields with a non-empty value as "captured".
-            $fieldCount = 0;
-            foreach ($data as $value) {
-                if ($value !== null && $value !== '' && $value !== []) {
-                    $fieldCount++;
-                }
-            }
+            $fieldCount = count(array_filter(
+                $data,
+                static fn($value): bool => $value !== null && $value !== '' && $value !== [],
+            ));
             $partials[] = [
                 'id' => (int) $row['id'],
                 'data' => $data,

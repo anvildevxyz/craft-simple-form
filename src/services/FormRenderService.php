@@ -16,6 +16,7 @@ use anvildev\simpleform\models\Settings;
 use anvildev\simpleform\Plugin;
 use anvildev\simpleform\web\assets\form\FormAsset;
 use Craft;
+use craft\helpers\ArrayHelper;
 use craft\helpers\Template;
 use craft\helpers\UrlHelper;
 use craft\web\View;
@@ -162,13 +163,7 @@ class FormRenderService extends Component
 
         $context = $this->buildContext($form, $options);
 
-        $field = null;
-        foreach ($context['fields'] as $row) {
-            if (($row['name'] ?? null) === $fieldHandle) {
-                $field = $row;
-                break;
-            }
-        }
+        $field = ArrayHelper::firstWhere($context['fields'], 'name', $fieldHandle, true);
         if ($field === null) {
             Craft::warning(sprintf('Field "%s" not found on form "%s"', $fieldHandle, $handle), 'simple-form');
             return Template::raw('');
@@ -786,13 +781,7 @@ class FormRenderService extends Component
      */
     private function _hasFileField(array $fields): bool
     {
-        foreach ($fields as $field) {
-            if (($field['type'] ?? null) === FileFieldType::getType()) {
-                return true;
-            }
-        }
-
-        return false;
+        return ArrayHelper::contains($fields, 'type', FileFieldType::getType(), true);
     }
 
     /**
@@ -811,12 +800,11 @@ class FormRenderService extends Component
         }
 
         $keys = ['utm_source', 'utm_medium', 'utm_campaign', 'utm_term', 'utm_content', 'referrer', 'landing_page'];
-        $html = '';
-        foreach ($keys as $key) {
-            $html .= sprintf('<input type="hidden" name="__sf_attr[%s]" value="" data-sf-attr="%s" autocomplete="off">', $key, $key);
-        }
 
-        return $html;
+        return implode('', array_map(
+            static fn(string $key): string => sprintf('<input type="hidden" name="__sf_attr[%s]" value="" data-sf-attr="%s" autocomplete="off">', $key, $key),
+            $keys,
+        ));
     }
 
     private function _assets(Settings $settings): string

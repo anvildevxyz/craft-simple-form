@@ -29,7 +29,7 @@ class CouponsService extends Component
     public function getAll(): array
     {
         return array_map(
-            fn(array $row): CouponModel => $this->rowToModel($row),
+            $this->rowToModel(...),
             (new Query())->from(self::TABLE)->orderBy(['code' => SORT_ASC])->all(),
         );
     }

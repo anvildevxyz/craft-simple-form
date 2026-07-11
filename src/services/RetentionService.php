@@ -333,17 +333,13 @@ class RetentionService extends Component
      */
     private function userIdsForEmail(string $needle): array
     {
-        $matching = [];
         $users = (new Query())
             ->select(['id'])
             ->from('{{%users}}')
             ->where(new Expression('LOWER(TRIM([[email]])) = :needle', [':needle' => $needle]))
             ->column();
-        foreach ($users as $id) {
-            $matching[(int) $id] = true;
-        }
 
-        return $matching;
+        return array_fill_keys(array_map('intval', $users), true);
     }
 
     /**
