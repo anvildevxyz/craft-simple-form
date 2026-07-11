@@ -3,6 +3,7 @@
 namespace anvildev\simpleform\services;
 
 use anvildev\simpleform\elements\Submission;
+use anvildev\simpleform\elements\SubmissionStatus;
 use anvildev\simpleform\Plugin;
 use Craft;
 use craft\db\Query;
@@ -31,12 +32,13 @@ class RetentionService extends Component
     /**
      * Run all retention sweeps. Returns counts for logging/telemetry.
      *
-     * @return array{submissions: int, integrationLogs: int, notificationLogs: int, auditLog: int, drafts: int}
+     * @return array{submissions: int, spam: int, integrationLogs: int, notificationLogs: int, auditLog: int, drafts: int}
      */
     public function runGarbageCollection(): array
     {
         return [
             'submissions' => $this->purgeSubmissions(),
+            'spam' => $this->purgeSpam(),
             'integrationLogs' => $this->pruneIntegrationLogs(),
             'notificationLogs' => $this->pruneNotificationLogs(),
             'auditLog' => Plugin::getInstance()->getAudit()->prune(
@@ -66,19 +68,79 @@ class RetentionService extends Component
         }
 
         $cutoff = Db::prepareDateForDb($this->cutoff($days));
-        $query = (new Query())
-            ->select(['id'])
-            ->from(self::SUBMISSIONS)
-            ->where(['<', 'dateCreated', $cutoff]);
-        if ($formId !== null) {
-            $query->andWhere(['formId' => $formId]);
-        }
-        $ids = array_map('intval', $query->column());
-        if ($ids === []) {
+        $filter = static function() use ($cutoff, $formId, $anonymize): Query {
+            $query = (new Query())
+                ->select(['id'])
+                ->from(self::SUBMISSIONS)
+                ->where(['<', 'dateCreated', $cutoff])
+                ->limit(self::BATCH);
+            if ($formId !== null) {
+                $query->andWhere(['formId' => $formId]);
+            }
+            // Anonymizing keeps the row (only nulls `data`), so an already-scrubbed
+            // row still matches the date cutoff — exclude it or the batch loop never
+            // drains. Hard-deleted rows are gone, so they self-exclude.
+            if ($anonymize) {
+                $query->andWhere(['not', ['data' => null]]);
+            }
+
+            return $query;
+        };
+
+        return $this->purgeInBatches($filter, $anonymize);
+    }
+
+    /**
+     * Prune flagged spam submissions (`readStatus = 'spam'`) older than
+     * `retainSpamDays` (#338). Spam is always hard-deleted regardless of the
+     * `anonymizeInsteadOfDelete` policy — the whole point is to reclaim rows a
+     * flag-mode filter would otherwise let accumulate forever. Legitimate
+     * submissions are untouched. Returns the number of spam rows removed; no-op
+     * when the setting is 0 (keep spam forever).
+     */
+    public function purgeSpam(?int $days = null): int
+    {
+        $days ??= Plugin::getInstance()->getSettings()->retainSpamDays;
+        if ($days <= 0) {
             return 0;
         }
 
-        return $anonymize ? $this->anonymize($ids) : $this->hardDelete($ids);
+        $cutoff = Db::prepareDateForDb($this->cutoff($days));
+        $filter = static fn(): Query => (new Query())
+            ->select(['id'])
+            ->from(self::SUBMISSIONS)
+            ->where(['readStatus' => SubmissionStatus::SPAM])
+            ->andWhere(['<', 'dateCreated', $cutoff])
+            ->limit(self::BATCH);
+
+        return $this->purgeInBatches($filter, false);
+    }
+
+    /**
+     * Drain a set of expiring submissions in bounded batches so a multi-million
+     * row backlog never materializes its full id list at once (#338). `$filter`
+     * returns a fresh id-selecting query (already `LIMIT`-ed to {@see self::BATCH})
+     * each call; the loop stops once a page comes back short or empty.
+     *
+     * @param callable(): Query<int, array<string, mixed>> $filter
+     */
+    private function purgeInBatches(callable $filter, bool $anonymize): int
+    {
+        $affected = 0;
+        while (true) {
+            $ids = array_map('intval', $filter()->column());
+            if ($ids === []) {
+                break;
+            }
+
+            $affected += $anonymize ? $this->anonymize($ids) : $this->hardDelete($ids);
+
+            if (count($ids) < self::BATCH) {
+                break;
+            }
+        }
+
+        return $affected;
     }
 
     /**
