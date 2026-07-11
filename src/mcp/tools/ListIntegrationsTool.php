@@ -55,16 +55,13 @@ class ListIntegrationsTool implements ToolInterface
         }
 
         $service = Plugin::getInstance()->getIntegrations();
-        $integrations = [];
-        foreach ($service->getIntegrationsForForm((int) $form->id) as $integration) {
-            $integrations[] = [
-                // Deliberately no 'settings' — secrets must never cross the MCP boundary.
-                'name' => $integration->name,
-                'type' => $integration->type,
-                'enabled' => $integration->enabled,
-                'health' => $service->getDispatchHealth((int) $integration->id),
-            ];
-        }
+        $integrations = array_map(static fn($integration): array => [
+            // Deliberately no 'settings' — secrets must never cross the MCP boundary.
+            'name' => $integration->name,
+            'type' => $integration->type,
+            'enabled' => $integration->enabled,
+            'health' => $service->getDispatchHealth((int) $integration->id),
+        ], $service->getIntegrationsForForm((int) $form->id));
 
         return [
             'form' => ['id' => (int) $form->id, 'handle' => (string) $form->handle],

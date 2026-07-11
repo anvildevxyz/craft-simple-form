@@ -24,16 +24,15 @@ final class ElementMapping
      */
     public static function sectionOptions(): array
     {
-        $out = [];
-        foreach (Craft::$app->getEntries()->getAllSections() as $section) {
-            // Single sections already hold their one entry; create-from-submission
-            // only makes sense for channels/structures.
-            if ($section->type === 'single') {
-                continue;
-            }
-            $out[] = ['label' => (string) $section->name, 'value' => (string) $section->uid];
-        }
-        return $out;
+        // Single sections already hold their one entry; create-from-submission
+        // only makes sense for channels/structures.
+        return array_values(array_map(
+            static fn($section) => ['label' => (string) $section->name, 'value' => (string) $section->uid],
+            array_filter(
+                Craft::$app->getEntries()->getAllSections(),
+                static fn($section) => $section->type !== 'single',
+            ),
+        ));
     }
 
     /**
@@ -67,11 +66,10 @@ final class ElementMapping
      */
     public static function userGroupOptions(): array
     {
-        $out = [];
-        foreach (Craft::$app->getUserGroups()->getAllGroups() as $group) {
-            $out[] = ['label' => (string) $group->name, 'value' => (string) $group->uid];
-        }
-        return $out;
+        return array_map(
+            static fn($group) => ['label' => (string) $group->name, 'value' => (string) $group->uid],
+            Craft::$app->getUserGroups()->getAllGroups(),
+        );
     }
 
     /**
@@ -84,8 +82,8 @@ final class ElementMapping
     {
         $parts = [];
         foreach ($errors as $attribute => $messages) {
+            $label = StringHelper::titleize((string) $attribute);
             foreach ((array) $messages as $message) {
-                $label = StringHelper::titleize((string) $attribute);
                 $parts[] = $label . ': ' . (string) $message;
             }
         }

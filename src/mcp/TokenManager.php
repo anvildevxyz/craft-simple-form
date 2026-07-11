@@ -175,15 +175,13 @@ class TokenManager
      */
     public function allTokens(): array
     {
-        $raw = $this->settings()->mcpTokens;
-        $tokens = [];
-        foreach ($raw as $entry) {
-            if (is_array($entry)) {
-                /** @var TokenArray $entry */
-                $tokens[] = McpToken::fromArray($entry);
-            }
-        }
-        return $tokens;
+        /** @var list<TokenArray> $entries */
+        $entries = array_filter($this->settings()->mcpTokens, 'is_array');
+
+        return array_values(array_map(
+            static fn(array $entry): McpToken => McpToken::fromArray($entry),
+            $entries,
+        ));
     }
 
     /**

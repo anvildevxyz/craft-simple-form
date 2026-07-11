@@ -23,6 +23,13 @@ use craft\db\Query;
 final class FieldOps
 {
     /**
+     * Memoized {@see formFieldItems()} results, keyed on `"{formId}:{excludeFieldId}"`.
+     *
+     * @var array<string, array<int, array{handle:string,label:string,config:array<string,mixed>}>>
+     */
+    private static array $formFieldItemsCache = [];
+
+    /**
      * The set of valid field type handles, sourced from the field-type registry
      * so the tool surface stays in sync with the registered types.
      *
@@ -95,6 +102,11 @@ final class FieldOps
      */
     private static function formFieldItems(int $formId, ?int $excludeFieldId): array
     {
+        $key = $formId . ':' . ($excludeFieldId ?? '');
+        if (isset(self::$formFieldItemsCache[$key])) {
+            return self::$formFieldItemsCache[$key];
+        }
+
         $query = (new Query())
             ->select(['id', 'name', 'config'])
             ->from('{{%simpleform_fields}}')
@@ -117,7 +129,7 @@ final class FieldOps
             ];
         }
 
-        return $items;
+        return self::$formFieldItemsCache[$key] = $items;
     }
 
     /**

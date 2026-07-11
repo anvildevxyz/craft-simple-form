@@ -22,6 +22,16 @@ trait ApiConnector
     private ?Client $_httpClient = null;
 
     /**
+     * Memoized {@see submissionValues()} result.
+     *
+     * @var array<string, mixed>|null
+     */
+    private ?array $_valuesCache = null;
+
+    /** The `spl_object_id()` of the submission {@see $_valuesCache} was built for. */
+    private ?int $_valuesCacheKey = null;
+
+    /**
      * Resolve the submitter's email: the configured `emailField` handle if it
      * holds a valid address, otherwise the first valid email among the values.
      *
@@ -29,7 +39,7 @@ trait ApiConnector
      */
     protected function resolveEmail(Submission $submission, array $settings): ?string
     {
-        $values = SubmissionValues::byHandle($submission);
+        $values = $this->submissionValues($submission);
 
         $handle = trim((string) ($settings['emailField'] ?? ''));
         if ($handle !== '' && isset($values[$handle]) && is_string($values[$handle])
@@ -60,7 +70,7 @@ trait ApiConnector
             return [];
         }
 
-        $values = SubmissionValues::byHandle($submission);
+        $values = $this->submissionValues($submission);
         $out = [];
         foreach ($mapping as $handle => $target) {
             if (is_string($target) && $target !== '' && isset($values[$handle])) {
@@ -155,5 +165,24 @@ trait ApiConnector
         }
 
         return $this->_httpClient = Craft::createGuzzleClient($config);
+    }
+
+    /**
+     * Memoized {@see SubmissionValues::byHandle()} for the current submission: a
+     * single connector dispatch (`send()`) can call both {@see resolveEmail()}
+     * and {@see mappedFields()}, and this avoids walking the submission's field
+     * values twice. Keyed on the submission's object id so a different
+     * submission always recomputes.
+     *
+     * @return array<string, mixed>
+     */
+    private function submissionValues(Submission $submission): array
+    {
+        $key = spl_object_id($submission);
+        if ($this->_valuesCacheKey !== $key) {
+            $this->_valuesCache = SubmissionValues::byHandle($submission);
+            $this->_valuesCacheKey = $key;
+        }
+        return $this->_valuesCache;
     }
 }

@@ -346,15 +346,12 @@ class GoogleSheetsIntegration extends AbstractGoogleIntegration
         $byHandle = SubmissionValues::byHandle($submission);
         $synthetic = $this->syntheticValues($submission);
 
-        $row = [];
-        foreach ($mapping as $col) {
-            $handle = $col['handle'];
-            $value = str_starts_with($handle, 'sf:')
-                ? ($synthetic[$handle] ?? '')
-                : ($byHandle[$handle] ?? '');
-            $row[] = $this->stringify($value);
-        }
-        return $row;
+        return array_map(
+            fn(array $col): string => $this->stringify(
+                str_starts_with($col['handle'], 'sf:') ? ($synthetic[$col['handle']] ?? '') : ($byHandle[$col['handle']] ?? ''),
+            ),
+            $mapping,
+        );
     }
 
     /**

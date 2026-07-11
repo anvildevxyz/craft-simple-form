@@ -84,20 +84,15 @@ final class FormPresenter
      */
     public static function fields(Form $form): array
     {
-        $fields = [];
-        foreach ($form->getFields() as $row) {
-            $fields[] = [
-                'id' => (int)$row['id'],
-                'type' => (string)$row['type'],
-                'handle' => (string)$row['name'],
-                'label' => (string)$row['label'],
-                'required' => (bool)$row['required'],
-                'helpText' => (string)($row['helpText'] ?? ''),
-                'sortOrder' => (int)$row['sortOrder'],
-                'config' => $row['config'],
-            ];
-        }
-
-        return $fields;
+        return array_map(static fn($row): array => [
+            'id' => (int)$row['id'],
+            'type' => (string)$row['type'],
+            'handle' => (string)$row['name'],
+            'label' => (string)$row['label'],
+            'required' => (bool)$row['required'],
+            'helpText' => (string)($row['helpText'] ?? ''),
+            'sortOrder' => (int)$row['sortOrder'],
+            'config' => $row['config'],
+        ], $form->getFields());
     }
 }

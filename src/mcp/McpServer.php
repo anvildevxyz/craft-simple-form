@@ -306,9 +306,7 @@ class McpServer
             if (!$token->hasScope($provider->requiredScope())) {
                 continue;
             }
-            foreach ($provider->list() as $descriptor) {
-                $descriptors[] = $descriptor;
-            }
+            $descriptors = array_merge($descriptors, $provider->list());
         }
 
         return $descriptors;

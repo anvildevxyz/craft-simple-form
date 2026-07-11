@@ -48,14 +48,10 @@ final class InsightCorpus
      */
     public static function freeTextHandles(array $fieldTypes): array
     {
-        $handles = [];
-        foreach ($fieldTypes as $handle => $type) {
-            if (in_array($type, self::FREE_TEXT_TYPES, true)) {
-                $handles[] = $handle;
-            }
-        }
-
-        return $handles;
+        return array_keys(array_filter(
+            $fieldTypes,
+            static fn(string $type): bool => in_array($type, self::FREE_TEXT_TYPES, true),
+        ));
     }
 
     /**
