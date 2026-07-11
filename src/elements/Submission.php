@@ -327,7 +327,24 @@ class Submission extends Element
             $db->createCommand()->update('{{%simpleform_submissions}}', $row, ['id' => $this->id])->execute();
         }
 
+        // Stats aggregates (counts, per-form totals, daily series) are cached;
+        // a new/changed submission must drop them so the dashboard never shows a
+        // stale total (#339).
+        Plugin::getInstance()->getReports()->invalidateCache();
+
         parent::afterSave($isNew);
+    }
+
+    public function afterDelete(): void
+    {
+        Plugin::getInstance()->getReports()->invalidateCache();
+        parent::afterDelete();
+    }
+
+    public function afterRestore(): void
+    {
+        Plugin::getInstance()->getReports()->invalidateCache();
+        parent::afterRestore();
     }
 
     /**

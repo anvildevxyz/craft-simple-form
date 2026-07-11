@@ -8,9 +8,12 @@ use anvildev\simpleform\elements\SubmissionStatus;
 use anvildev\simpleform\fields\AggregationKind;
 use anvildev\simpleform\integrations\DispatchStatus;
 use anvildev\simpleform\Plugin;
+use Craft;
 use craft\db\Query;
+use craft\helpers\App;
 use craft\helpers\Db;
 use yii\base\Component;
+use yii\caching\TagDependency;
 
 /**
  * Aggregate read-only stats for the Submissions analytics dashboard (#111).
@@ -20,30 +23,88 @@ use yii\base\Component;
 class ReportsService extends Component
 {
     /**
+     * Cache tag for every memoized aggregate, invalidated whenever a submission
+     * is saved or deleted (see {@see self::invalidateCache()}).
+     */
+    private const CACHE_TAG = 'simpleform-reports';
+
+    /** Secondary time bound on cached aggregates (seconds). */
+    private const CACHE_TTL = 300;
+
+    /**
+     * Discard every cached aggregate. Called on submission save/delete so the
+     * dashboard/forms-index/Stats counts are never stale for more than one write.
+     */
+    public function invalidateCache(): void
+    {
+        TagDependency::invalidate(Craft::$app->getCache(), self::CACHE_TAG);
+    }
+
+    /**
+     * Memoize an aggregate under the reports cache tag. Bypassed in devMode and
+     * when Craft's cache is a dummy/disabled component, so those environments
+     * always read fresh — mirrors {@see FormStructureService}.
+     *
+     * @template T
+     * @param callable(): T $compute
+     * @return T
+     */
+    private function remember(string $key, callable $compute): mixed
+    {
+        if (!$this->cachingEnabled()) {
+            return $compute();
+        }
+
+        $cache = Craft::$app->getCache();
+        $full = self::CACHE_TAG . ':' . $key;
+        $cached = $cache->get($full);
+        if ($cached !== false) {
+            return $cached;
+        }
+
+        $value = $compute();
+        $cache->set($full, $value, self::CACHE_TTL, new TagDependency(['tags' => [self::CACHE_TAG]]));
+
+        return $value;
+    }
+
+    /**
+     * Whether aggregate memoization is active. Off in devMode and when Craft's
+     * cache is a dummy/disabled component, so those environments always read
+     * fresh — mirrors {@see FormStructureService}.
+     */
+    protected function cachingEnabled(): bool
+    {
+        return !App::devMode() && !(Craft::$app->getCache() instanceof \yii\caching\DummyCache);
+    }
+
+    /**
      * Submission counts per read status (plus total) for a site, optionally one form.
      *
      * @return array{total: int, new: int, read: int, archived: int, spam: int}
      */
     public function statusBreakdown(int $siteId, ?int $formId = null): array
     {
-        $count = function(?string $status) use ($siteId, $formId): int {
-            $query = Submission::find()->siteId($siteId);
-            if ($formId) {
-                $query->formId($formId);
-            }
-            if ($status !== null) {
-                $query->status($status);
-            }
-            return (int) $query->count();
-        };
+        return $this->remember('status:' . $siteId . ':' . ($formId ?? 'all'), function() use ($siteId, $formId): array {
+            $count = function(?string $status) use ($siteId, $formId): int {
+                $query = Submission::find()->siteId($siteId);
+                if ($formId) {
+                    $query->formId($formId);
+                }
+                if ($status !== null) {
+                    $query->status($status);
+                }
+                return (int) $query->count();
+            };
 
-        return [
-            'total' => $count(null),
-            'new' => $count(SubmissionStatus::NEW),
-            'read' => $count(SubmissionStatus::READ),
-            'archived' => $count(SubmissionStatus::ARCHIVED),
-            'spam' => $count(SubmissionStatus::SPAM),
-        ];
+            return [
+                'total' => $count(null),
+                'new' => $count(SubmissionStatus::NEW),
+                'read' => $count(SubmissionStatus::READ),
+                'archived' => $count(SubmissionStatus::ARCHIVED),
+                'spam' => $count(SubmissionStatus::SPAM),
+            ];
+        });
     }
 
     /**
@@ -69,30 +130,37 @@ class ReportsService extends Component
     {
         $days = max(1, $days);
         $utc = new \DateTimeZone('UTC');
-        $since = new \DateTime("today -{$days} days", $utc);
+        // Key on today's date so the rolling window rolls over at day boundaries
+        // even before the TTL lapses.
+        $today = (new \DateTime('now', $utc))->format('Y-m-d');
+        $key = 'perday:' . $siteId . ':' . $days . ':' . ($formId ?? 'all') . ':' . $today;
 
-        $query = (new Query())
-            ->select(['d' => 'DATE([[dateCreated]])', 'c' => 'COUNT(*)'])
-            ->from('{{%simpleform_submissions}}')
-            ->where(['siteId' => $siteId])
-            ->andWhere(['>=', 'dateCreated', Db::prepareDateForDb($since)])
-            ->groupBy(['d']);
-        if ($formId) {
-            $query->andWhere(['formId' => $formId]);
-        }
+        return $this->remember($key, function() use ($siteId, $days, $formId, $utc): array {
+            $since = new \DateTime("today -{$days} days", $utc);
 
-        $counts = [];
-        foreach ($query->all() as $row) {
-            $counts[(string) $row['d']] = (int) $row['c'];
-        }
+            $query = (new Query())
+                ->select(['d' => 'DATE([[dateCreated]])', 'c' => 'COUNT(*)'])
+                ->from('{{%simpleform_submissions}}')
+                ->where(['siteId' => $siteId])
+                ->andWhere(['>=', 'dateCreated', Db::prepareDateForDb($since)])
+                ->groupBy(['d']);
+            if ($formId) {
+                $query->andWhere(['formId' => $formId]);
+            }
 
-        $series = [];
-        for ($i = $days - 1; $i >= 0; $i--) {
-            $day = (new \DateTime("today -{$i} days", $utc))->format('Y-m-d');
-            $series[] = ['date' => $day, 'count' => $counts[$day] ?? 0];
-        }
+            $counts = [];
+            foreach ($query->all() as $row) {
+                $counts[(string) $row['d']] = (int) $row['c'];
+            }
 
-        return $series;
+            $series = [];
+            for ($i = $days - 1; $i >= 0; $i--) {
+                $day = (new \DateTime("today -{$i} days", $utc))->format('Y-m-d');
+                $series[] = ['date' => $day, 'count' => $counts[$day] ?? 0];
+            }
+
+            return $series;
+        });
     }
 
     /**
@@ -102,17 +170,19 @@ class ReportsService extends Component
      */
     public function perFormTotals(int $siteId): array
     {
-        $totals = [];
-        foreach (Form::find()->siteId($siteId)->all() as $form) {
-            $totals[] = [
-                'formId' => (int) $form->id,
-                'name' => (string) ($form->title ?? $form->name),
-                'count' => (int) Submission::find()->siteId($siteId)->formId((int) $form->id)->count(),
-            ];
-        }
+        return $this->remember('perform:' . $siteId, function() use ($siteId): array {
+            $totals = [];
+            foreach (Form::find()->siteId($siteId)->all() as $form) {
+                $totals[] = [
+                    'formId' => (int) $form->id,
+                    'name' => (string) ($form->title ?? $form->name),
+                    'count' => (int) Submission::find()->siteId($siteId)->formId((int) $form->id)->count(),
+                ];
+            }
 
-        usort($totals, static fn(array $a, array $b): int => $b['count'] <=> $a['count']);
-        return $totals;
+            usort($totals, static fn(array $a, array $b): int => $b['count'] <=> $a['count']);
+            return $totals;
+        });
     }
 
     /**
@@ -150,11 +220,13 @@ class ReportsService extends Component
         $counts = array_fill_keys($keys, 0);
         $dist = array_fill_keys($keys, []);
 
+        // Stream in bounded batches rather than ->all() so a form with millions
+        // of submissions never hydrates its whole history into memory at once.
         $submissions = Submission::find()
             ->siteId($siteId)
             ->formId($formId)
             ->status(null)
-            ->all();
+            ->each(500);
 
         foreach ($submissions as $submission) {
             $data = $submission->data ?? [];
