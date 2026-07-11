@@ -1147,28 +1147,57 @@ class SubmissionService extends Component
             return false;
         }
 
-        $fingerprint = $this->dedupeFingerprint($form, $data, $this->ipFingerprint());
-        if ($fingerprint === null) {
+        $hash = $this->computeDedupeHash($form, $data, $this->ipFingerprint());
+        if ($hash === null) {
             return false;
         }
 
+        // Indexed existence check on (formId, dedupeHash) — every prior submission
+        // stores the same fingerprint hash on save (#341), so this no longer
+        // hydrates the form's whole history and rehashes in PHP.
         $query = Submission::find()
             ->site('*')
-            ->formId((int) $form->id);
+            ->formId((int) $form->id)
+            ->andWhere(['simpleform_submissions.dedupeHash' => $hash]);
 
         if ($form->duplicateWindowMinutes > 0) {
             $threshold = Carbon::now()->subMinutes($form->duplicateWindowMinutes);
             $query->andWhere(['>=', 'elements.dateCreated', Db::prepareDateForDb($threshold)]);
         }
 
-        foreach ($query->all() as $existing) {
-            $existingData = is_array($existing->data) ? $existing->data : [];
-            if ($this->dedupeFingerprint($form, $existingData, $existing->ipHash) === $fingerprint) {
-                return true;
-            }
-        }
+        return $query->exists();
+    }
 
-        return false;
+    /**
+     * SHA-256 of a submission's dedupe fingerprint (per the form's `duplicateKey`),
+     * stored denormalized on each row so duplicate detection is an indexed lookup
+     * (#341). Passes the row's `ipHash` as the IP fingerprint — the stored `ipHash`
+     * is exactly the value {@see self::ipFingerprint()} produces at submit time, so
+     * the hash is identical whether computed at save or at check time. Null when no
+     * fingerprint is derivable (e.g. email key with no email value).
+     *
+     * @param array<string, mixed> $data
+     */
+    public function computeDedupeHash(Form $form, array $data, ?string $ipHash): ?string
+    {
+        $fingerprint = $this->dedupeFingerprint($form, $data, $ipHash);
+
+        return $fingerprint === null ? null : hash('sha256', $fingerprint);
+    }
+
+    /**
+     * SHA-256 of the submission's normalized (lowercased, trimmed) first email
+     * value, stored denormalized on each row so the per-guest email cap is an
+     * indexed lookup rather than a JSON `LIKE` (#341). Null when the data has no
+     * email value.
+     *
+     * @param array<string, mixed> $data
+     */
+    public function computeGuestEmailHash(array $data): ?string
+    {
+        $email = $this->firstEmail($data);
+
+        return $email === null ? null : hash('sha256', mb_strtolower(trim($email)));
     }
 
     /**
@@ -1348,17 +1377,14 @@ class SubmissionService extends Component
                 return 0;
             }
 
-            // Best-effort guest dedup: count prior submissions whose stored email
-            // field value matches. Documented as advisory, not a security control.
-            // Postgres stores `data` as jsonb, which has no LIKE operator, so match
-            // against its text form there; MySQL's json LIKEs as-is.
-            $dataColumn = Craft::$app->getDb()->getIsPgsql()
-                ? '[[simpleform_submissions.data]]::text'
-                : '[[simpleform_submissions.data]]';
+            // Best-effort guest dedup: count prior guest submissions whose stored
+            // email matches, via the indexed `guestEmailHash` column (#341) instead
+            // of a JSON `LIKE` scan. Documented as advisory, not a security control.
+            $hash = hash('sha256', mb_strtolower(trim($email)));
 
             return (int) $query
                 ->andWhere(Db::parseParam('simpleform_submissions.userId', ':empty:'))
-                ->andWhere(['like', $dataColumn, $email])
+                ->andWhere(['simpleform_submissions.guestEmailHash' => $hash])
                 ->count();
         }
 

@@ -123,6 +123,11 @@ class Install extends Migration
             'spamReason' => $this->string(64),
             'sourceIp' => $this->string(45),
             'ipHash' => $this->char(64),
+            // Denormalized dedupe/guest-email hashes (#341): populated on save so
+            // duplicate detection and the per-guest email cap are indexed lookups
+            // rather than full scans / JSON LIKEs.
+            'dedupeHash' => $this->char(64),
+            'guestEmailHash' => $this->char(64),
             'paymentStatus' => $this->string(20),
             'paymentAmount' => $this->decimal(14, 4),
             'orderId' => $this->integer(),
@@ -143,6 +148,9 @@ class Install extends Migration
         $this->createIndex(null, '{{%simpleform_submissions}}', ['siteId']);
         $this->createIndex(null, '{{%simpleform_submissions}}', ['orderId']);
         $this->createIndex(null, '{{%simpleform_submissions}}', ['workflowStatus']);
+        // Indexed duplicate detection + guest-email limiting (#341).
+        $this->createIndex(null, '{{%simpleform_submissions}}', ['formId', 'dedupeHash']);
+        $this->createIndex(null, '{{%simpleform_submissions}}', ['formId', 'guestEmailHash']);
         $this->addForeignKey(null, '{{%simpleform_submissions}}', ['id'], '{{%elements}}', ['id'], 'CASCADE', 'CASCADE');
         $this->addForeignKey(null, '{{%simpleform_submissions}}', ['formId'], '{{%simpleform_forms}}', ['id'], 'CASCADE', 'CASCADE');
         $this->addForeignKey(null, '{{%simpleform_submissions}}', ['siteId'], '{{%sites}}', ['id'], 'CASCADE', 'CASCADE');
