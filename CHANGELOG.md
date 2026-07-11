@@ -11,6 +11,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 > Plugin Store changelog parser skips an "Unreleased" section (#278).
 
 ### Added
+- A **spam-retention window** (`retainSpamDays`, default **30**): flagged-spam
+  submissions older than the window are pruned on garbage collection,
+  independently of `retainSubmissionsDays` (which stays `0` = keep legitimate
+  submissions forever), so a flag-mode spam pile can't grow without bound.
+  Upgrading installs are pinned to `0` (keep spam forever) so no spam is deleted
+  without an explicit choice; fresh installs get the 30-day default. Installs with
+  read-only project config (`allowAdminChanges = false`) are not auto-pinned — set
+  `retainSpamDays` explicitly if you retain spam for review (#338).
 - A **Callout** layout block: a presentational panel with a tone
   (info/success/warning/error), an optional icon, and per-site translatable body
   copy shown between fields. Like the heading/divider/text blocks it stores no
