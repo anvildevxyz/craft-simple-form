@@ -6,7 +6,8 @@
   "keywords": ["craft", "cms", "craftcms", "forms", "form-builder", "translatable"],
   "support": {
     "issues": "https://github.com/anvildev/craft-simple-form/issues",
-    "source": "https://github.com/anvildev/craft-simple-form"
+    "source": "https://github.com/anvildev/craft-simple-form",
+    "docs": "https://github.com/anvildev/craft-simple-form/blob/main/README.md"
   },
   "require": {
     "php": "^8.2",

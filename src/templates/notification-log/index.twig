@@ -23,6 +23,7 @@
 
     <form method="get" action="{{ cpUrl('simple-form/notifications') }}" class="buttons">
         {% if status %}<input type="hidden" name="status" value="{{ status }}">{% endif %}
+        <div class="select">
         <select name="formId" onchange="this.form.submit()">
             <option value="">{{ 'All Forms'|t('simple-form') }}</option>
             {% for form in forms %}
@@ -31,6 +32,7 @@
                 </option>
             {% endfor %}
         </select>
+        </div>
         {% if formId or status %}
             <a class="btn" href="{{ cpUrl('simple-form/notifications') }}">{{ 'Clear filters'|t('simple-form') }}</a>
         {% endif %}
