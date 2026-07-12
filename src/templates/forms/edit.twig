@@ -221,6 +221,7 @@
 
     {{ forms.textField({
         label: 'Name'|t('simple-form'),
+        instructions: 'The form’s label in the control panel.'|t('simple-form'),
         id: 'name',
         name: 'name',
         value: form.name,
@@ -231,6 +232,7 @@
 
     {{ forms.textField({
         label: 'Handle'|t('simple-form'),
+        instructions: 'How you reference this form in templates and the API, e.g. `simpleForm("handle")`.'|t('simple-form'),
         id: 'handle',
         name: 'handle',
         value: form.handle,
