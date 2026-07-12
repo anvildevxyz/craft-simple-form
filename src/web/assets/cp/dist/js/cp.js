@@ -344,6 +344,28 @@
         enableDenylists.addEventListener('change', syncDenylistSettingsVisibility);
     }
 
+    // --- Notification editor: Recipient type toggles fixed-address vs. field ---
+    // The fixed input and the field-select both post as `recipient`; only the
+    // active one may be enabled so a single value is submitted.
+    var recipientType = document.getElementById('recipientType');
+    var recipientFixed = document.getElementById('sf-recipient-fixed');
+    var recipientField = document.getElementById('sf-recipient-field');
+    if (recipientType && recipientFixed && recipientField) {
+        function syncRecipientInputs() {
+            var isField = recipientType.value === 'field';
+            recipientFixed.classList.toggle('hidden', isField);
+            recipientField.classList.toggle('hidden', !isField);
+            recipientFixed.querySelectorAll('input, select').forEach(function (el) {
+                el.disabled = isField;
+            });
+            recipientField.querySelectorAll('input, select').forEach(function (el) {
+                el.disabled = !isField;
+            });
+        }
+        syncRecipientInputs();
+        recipientType.addEventListener('change', syncRecipientInputs);
+    }
+
     // Elevated-session guard for sensitive settings forms: minting an MCP token
     // and saving the Spam Protection secrets require a re-verified password
     // (server-enforced in SettingsController). Craft.ElevatedSessionForm

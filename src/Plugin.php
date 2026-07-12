@@ -815,6 +815,7 @@ class Plugin extends BasePlugin
 
         // Per-form email notifications (admin alerts + autoresponders).
         $event->rules['simple-form/notifications/save'] = 'simple-form/notifications/save';
+        $event->rules['simple-form/notifications/test-send'] = 'simple-form/notifications/test-send';
         $event->rules['simple-form/notifications/delete'] = 'simple-form/notifications/delete';
         $event->rules['simple-form/notifications/toggle'] = 'simple-form/notifications/toggle';
         $event->rules['simple-form/forms/<formId:\d+>/notifications'] = 'simple-form/notifications/index';

@@ -377,6 +377,11 @@ class EmailService extends Component
                 ->setSubject($subject)
                 ->setHtmlBody($body);
 
+            // Always carry a plain-text alternative alongside the HTML part so
+            // text-only clients and spam filters see a complete message — a
+            // multipart/alternative body materially improves deliverability.
+            $mail->setTextBody($this->htmlToText($body));
+
             if ($cc !== []) {
                 $mail->setCc($cc);
             }
@@ -412,6 +417,85 @@ class EmailService extends Component
             Craft::warning('Failed to send form submission email: ' . $e->getMessage(), 'simple-form');
             return false;
         }
+    }
+
+    /**
+     * Compose and send a single test copy of a notification to `$to`, using
+     * sample placeholder data instead of a real submission. Reuses the same
+     * subject/body render + send helpers as a live dispatch, so the test mirrors
+     * production output. Attachments (which need a persisted submission and its
+     * assets) are omitted from a test send.
+     */
+    public function sendTest(NotificationModel $notification, Form $form, string $to): bool
+    {
+        $data = $this->sampleData($form);
+        $submission = $this->sampleSubmission($form, $data);
+
+        return $this->send(
+            [$to],
+            $this->renderSubjectFor($notification->subject, $form),
+            $this->renderBodyFor($notification->body, $form, $submission, $data),
+            $notification->replyTo,
+            [],
+            $this->parseAddressList($notification->cc),
+            $this->parseAddressList($notification->bcc),
+        );
+    }
+
+    /**
+     * Build a sample submission-data map from the form's fields, so a test send
+     * has representative content for every field placeholder.
+     *
+     * @return SubmissionData
+     */
+    private function sampleData(Form $form): array
+    {
+        $data = [];
+        foreach (Plugin::getInstance()->getFormStructure()->getFieldSet((int) $form->id, (int) $form->siteId) as $field) {
+            $label = (string) $field['label'];
+            $data['field_' . $field['id']] = [
+                'label' => $label,
+                'type' => (string) $field['type'],
+                'value' => $field['type'] === 'email'
+                    ? 'sample@example.com'
+                    : Craft::t('simple-form', 'Sample {label}', ['label' => $label]),
+            ];
+        }
+
+        return $data;
+    }
+
+    /**
+     * An in-memory (unsaved) submission carrying the sample data, sufficient for
+     * rendering a notification body without touching the database.
+     *
+     * @param SubmissionData $data
+     */
+    private function sampleSubmission(Form $form, array $data): Submission
+    {
+        $submission = new Submission();
+        $submission->formId = (int) $form->id;
+        $submission->siteId = (int) $form->siteId;
+        $submission->data = $data;
+        $submission->dateCreated = new \DateTime();
+
+        return $submission;
+    }
+
+    /**
+     * Derive a plain-text alternative from an HTML body: drop script/style
+     * blocks, turn block-level breaks into newlines, strip remaining tags,
+     * decode entities and collapse runs of whitespace.
+     */
+    private function htmlToText(string $html): string
+    {
+        $text = preg_replace('!<(script|style)\b[^>]*>.*?</\1>!is', '', $html) ?? $html;
+        $text = preg_replace('!<(br|/p|/div|/tr|/li|/h[1-6]|hr)\b[^>]*>!i', "\n", $text) ?? $text;
+        $text = html_entity_decode(strip_tags($text), ENT_QUOTES | ENT_HTML5, 'UTF-8');
+        $text = preg_replace('!\h+!', ' ', $text) ?? $text;
+        $text = preg_replace('!\n[ \t]*\n[ \t]*\n+!', "\n\n", $text) ?? $text;
+
+        return trim($text);
     }
 
     private function getSettings(): Settings

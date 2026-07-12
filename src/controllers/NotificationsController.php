@@ -97,6 +97,49 @@ class NotificationsController extends Controller
         return $this->redirect("simple-form/forms/{$formId}/notifications");
     }
 
+    /**
+     * Compose and send a single test copy of a saved notification, so an author
+     * can preview deliverability without submitting the form. Reuses the shared
+     * {@see \anvildev\simpleform\services\EmailService} compose+send path with
+     * sample placeholder data. Recipient is a posted address, else the current
+     * CP user's email. Permission-gated by the controller's MANAGE_FORMS gate.
+     */
+    public function actionTestSend(): Response
+    {
+        $this->requirePostRequest();
+        /** @var \craft\web\Request $request */
+        $request = Craft::$app->getRequest();
+
+        $formId = (int) $request->getRequiredBodyParam('formId');
+        $form = $this->getFormOrFail($formId);
+
+        $notificationId = (int) $request->getRequiredBodyParam('notificationId');
+        $notification = Plugin::getInstance()->getNotifications()->getById($notificationId);
+        if ($notification === null || $notification->formId !== $formId) {
+            throw new NotFoundHttpException('Notification not found');
+        }
+
+        $redirect = $this->redirect("simple-form/forms/{$formId}/notifications/{$notificationId}");
+
+        $to = trim((string) $request->getBodyParam('testEmail', ''));
+        if ($to === '') {
+            $to = (string) (Craft::$app->getUser()->getIdentity()?->email ?? '');
+        }
+        if ($to === '' || !filter_var($to, FILTER_VALIDATE_EMAIL)) {
+            Craft::$app->getSession()->setError(Craft::t('simple-form', 'Enter a valid test recipient email address.'));
+            return $redirect;
+        }
+
+        $sent = Plugin::getInstance()->getEmailService()->sendTest($notification, $form, $to);
+        if ($sent) {
+            Craft::$app->getSession()->setNotice(Craft::t('simple-form', 'Test notification sent to {email}.', ['email' => $to]));
+        } else {
+            Craft::$app->getSession()->setError(Craft::t('simple-form', 'Couldn’t send the test notification.'));
+        }
+
+        return $redirect;
+    }
+
     public function actionDelete(): Response
     {
         $this->requirePostRequest();
@@ -136,10 +179,59 @@ class NotificationsController extends Controller
             'form' => $form,
             'notification' => $notification,
             'fieldOptions' => $this->fieldOptions($form),
-            'operators' => ConditionalEvaluator::OPERATORS,
+            'recipientFieldOptions' => $this->recipientFieldOptions($form),
+            'operatorOptions' => $this->operatorOptions(),
             'pdfAvailable' => Plugin::getInstance()->getPdf()->isAvailable(),
             'errors' => $errors,
         ]);
+    }
+
+    /**
+     * Send-condition operator options: each canonical operator code paired with
+     * a friendly, translated label mirroring the form-builder JS, keeping the
+     * stored value equal to the code.
+     *
+     * @return list<array{label: string, value: string}>
+     */
+    private function operatorOptions(): array
+    {
+        $labels = [
+            'eq' => Craft::t('simple-form', 'is'),
+            'neq' => Craft::t('simple-form', 'is not'),
+            'empty' => Craft::t('simple-form', 'is empty'),
+            'notEmpty' => Craft::t('simple-form', 'is not empty'),
+            'contains' => Craft::t('simple-form', 'contains'),
+            'gt' => Craft::t('simple-form', 'greater than'),
+            'lt' => Craft::t('simple-form', 'less than'),
+        ];
+
+        $options = [];
+        foreach (ConditionalEvaluator::OPERATORS as $operator) {
+            $options[] = ['label' => $labels[$operator], 'value' => $operator];
+        }
+
+        return $options;
+    }
+
+    /**
+     * Field options for the autoresponder recipient select, limited to fields
+     * whose submitted value can be an email address (email/text). Each option's
+     * value is the field handle stored on the notification.
+     *
+     * @return list<array{label: string, value: string}>
+     */
+    private function recipientFieldOptions(Form $form): array
+    {
+        $fields = Plugin::getInstance()->getFormStructure()->getFieldSet((int) $form->id, (int) $form->siteId);
+
+        $options = [];
+        foreach ($fields as $field) {
+            if (in_array($field['type'], ['email', 'text'], true)) {
+                $options[] = ['label' => (string) $field['label'], 'value' => (string) $field['name']];
+            }
+        }
+
+        return $options;
     }
 
     /**
