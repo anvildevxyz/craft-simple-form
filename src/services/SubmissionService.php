@@ -167,7 +167,7 @@ class SubmissionService extends Component
             // Passive partial capture (#242): the token of the partial this submit
             // completes, so it can be deleted (one Submission, zero partials).
             'partialToken' => (string) $request->getBodyParam('partialToken', ''),
-        ]);
+        ], $formModel);
 
         // Temp PNGs are copied into the volume by saveTempFiles(); remove the
         // staging files regardless of outcome.
@@ -288,11 +288,13 @@ class SubmissionService extends Component
      * @param SubmissionContext $context
      * @return SubmissionResult
      */
-    public function submit(Form $form, array $values, array $context = []): array
+    public function submit(Form $form, array $values, array $context = [], ?FormModel $formModel = null): array
     {
         // Spam protection + validation + the persisted data payload are produced
-        // by the shared core so create and edit can never drift apart.
-        $core = $this->processSubmission($form, $values, $context);
+        // by the shared core so create and edit can never drift apart. An
+        // already-built $formModel (e.g. from createFromRequest, #412) is reused to
+        // avoid a second uncached field query; callers that omit it are unchanged.
+        $core = $this->processSubmission($form, $values, $context, $formModel);
         if ($core['result'] !== null) {
             // Honeypot/captcha/blocked-spam drop or a validation error: nothing to
             // persist, return the early result the core decided on.
@@ -642,7 +644,7 @@ class SubmissionService extends Component
      * @param SubmissionContext $context
      * @return array{result: array{submission: null, errors: array<string, mixed>|null}|null, data: array<string, mixed>, isSpam: bool, spamReason?: ?string, snapshot?: FieldSnapshot}
      */
-    private function processSubmission(Form $form, array $values, array $context): array
+    private function processSubmission(Form $form, array $values, array $context, ?FormModel $formModel = null): array
     {
         $settings = Plugin::getInstance()->getSettings();
 
@@ -706,7 +708,7 @@ class SubmissionService extends Component
             }
         }
 
-        $formModel = new FormModel($form);
+        $formModel ??= new FormModel($form);
 
         // (2b) Field snapshot (#312): capture the form's input-field structure —
         // handle, label, type, option labels, and display order — BEFORE the field
