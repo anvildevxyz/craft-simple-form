@@ -56,6 +56,56 @@ class TranslationCatalogParityTest extends TestCase
         'is',             // nl cognate — comparison verb identical in Dutch
         'Points',         // fr cognate (identical French word)
         'Pts',            // fr abbreviation — identical
+
+        // CP i18n catch-up (#285) — protocol/brand/acronym/symbol terms and
+        // tech cognates/loanwords that are legitimately identical in the
+        // flagged locale(s). Machine-translated; native review pending.
+        'Akismet',        // brand name — identical in every locale
+        'GraphQL',        // protocol/brand — identical everywhere
+        'JSON',           // format acronym — identical everywhere
+        'Pro',            // edition proper noun — identical everywhere
+        'BCC',            // email-header acronym — identical everywhere
+        'CC',             // email-header acronym — identical everywhere
+        '—',              // em-dash symbol — no translatable content
+        'spam',           // borrowed term — identical in es/fr/it/nl/pt (cf. 'Spam')
+        'API URL',        // protocol term — identical in ja
+        'Webhook URL',    // protocol term — identical in ja
+        'Code',           // tech cognate — identical in de/fr/nl
+        'Contact',        // cognate — identical in fr/nl
+        'Details',        // cognate — identical in de/nl
+        'Dashboard',      // loanword — identical in de/it/nl
+        'Layout',         // loanword — identical in de/it/nl
+        'Coupon',         // French-origin word — identical in fr/it/nl
+        'Coupons',        // French-origin word — identical in fr/it/nl
+        'Score',          // loanword — identical in fr/nl
+        'Provider',       // loanword — identical in it/nl
+        'Privacy',        // loanword — identical in it/nl (standard Italian term)
+        'Element',        // cognate — identical in de/nl
+        'Status',         // cognate — identical in de/nl
+        'Type',           // cognate — identical in fr/nl
+        'Operator',       // tech cognate — identical in de/nl
+        'Normal',         // cognate — identical in es/pt (and de)
+        'No',             // cognate — identical in es/it
+        'Quiz',           // loanword — identical in fr/it
+        'initial',        // cognate — identical in de/fr
+        'Action',         // cognate — identical in fr
+        'Attribution',    // cognate — identical in fr
+        'Section',        // cognate — identical in fr
+        'Confirmation',   // cognate — identical in fr
+        'Notification',   // cognate — identical in fr (cf. 'Notifications')
+        'Transitions',    // cognate — identical in fr
+        'Double opt-in',  // marketing loanword — identical in fr
+        'General',        // cognate — identical in es
+        'System',         // cognate — identical in de
+        'Integration',    // cognate — identical in de
+        'Workflow',       // loanword — identical in de/nl
+        'Deal',           // CRM loanword (Pipedrive term) — identical in de/nl
+        'Text:',          // de cognate (identical German word, cf. 'Text')
+        'Entry',          // Craft NL keeps the element-type name — identical in nl
+        'Label',          // loanword — identical in nl
+        'Percentage',     // cognate — identical in nl (standard Dutch word)
+        'Spreadsheet',    // loanword — identical in nl
+        'Form-encoded',   // technical term — identical in nl
     ];
 
     /**
