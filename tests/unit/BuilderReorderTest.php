@@ -24,8 +24,8 @@ class BuilderReorderTest extends TestCase
         $this->assertStringContainsString('function moveField(', $js);
         // Per-card buttons, accessible names, end-of-list disabling.
         $this->assertStringContainsString("className = 'sf-field-move'", $js);
-        $this->assertStringContainsString("setAttribute('aria-label', 'Move up')", $js);
-        $this->assertStringContainsString("setAttribute('aria-label', 'Move down')", $js);
+        $this->assertStringContainsString("setAttribute('aria-label', t('Move up'))", $js);
+        $this->assertStringContainsString("setAttribute('aria-label', t('Move down'))", $js);
         $this->assertStringContainsString('up.disabled = idx <= 0', $js);
         // Canvas routes button clicks to the move, not card selection.
         $this->assertStringContainsString(".closest('.sf-field-move')", $js);
@@ -42,7 +42,7 @@ class BuilderReorderTest extends TestCase
     {
         $js = $this->builderJs();
 
-        $this->assertStringContainsString("announce('Moved to position '", $js);
+        $this->assertStringContainsString("announce(t('Moved to position {pos} of {total}.'", $js);
         // render() rebuilds the DOM — the moved card must be refocused.
         $this->assertMatchesRegularExpression(
             '/function moveField\([\s\S]{0,900}querySelector\(\'\.sf-field\[data-cid="\' \+ cid \+ \'"\]\'\)/',

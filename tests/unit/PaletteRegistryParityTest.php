@@ -55,7 +55,7 @@ class PaletteRegistryParityTest extends TestCase
 
         foreach ($this->registeredHandles() as $handle) {
             $this->assertMatchesRegularExpression(
-                "/\\b$handle: '/",
+                "/\\b$handle: t\\('/",
                 $match[1],
                 "Field type `$handle` is registered but has no TYPE_LABELS entry in form-builder.js.",
             );
