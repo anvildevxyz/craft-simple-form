@@ -68,10 +68,12 @@ class CpScreensRenderTest extends SimpleFormTestCase
             'hasAnySubmissions' => false,
         ]);
 
-        // The at-a-glance cards reuse the existing .stat-card component.
-        $this->assertStringContainsString('stat-card', $html);
+        // One inviting zilch panel instead of a grid of zero tiles.
+        $this->assertStringContainsString('zilch', $html);
         $this->assertStringContainsString('No submissions yet.', $html);
-        // No chart or needs-attention note on a clean install.
+        $this->assertStringContainsString('New Form', $html);
+        $this->assertStringNotContainsString('sf-dash-tiles', $html);
+        // No chart or needs-attention pane on a clean install.
         $this->assertStringNotContainsString('Needs attention', $html);
     }
 
@@ -105,9 +107,9 @@ class CpScreensRenderTest extends SimpleFormTestCase
         // The by-weekday breakdown renders labelled horizontal bars.
         $this->assertStringContainsString('By weekday', $html);
         $this->assertStringContainsString('sf-hbar-fill', $html);
-        // Needs-attention (native note) surfaces both unread submissions and failed dispatches.
+        // Needs-attention (side-column pane) surfaces both unread submissions and failed dispatches.
         $this->assertStringContainsString('Needs attention', $html);
-        $this->assertStringContainsString('note warning', $html);
+        $this->assertStringContainsString('sf-attention', $html);
         $this->assertStringContainsString('status=new', $html);
         $this->assertStringContainsString('integrations/failures', $html);
         // Top forms lists the seeded form.
