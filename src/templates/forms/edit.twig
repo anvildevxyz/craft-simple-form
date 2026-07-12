@@ -129,65 +129,78 @@
             <div id="sf-palette" class="sf-panel">
                 <h3 class="sf-panel-title">{{ 'Field Types'|t('simple-form') }}</h3>
                 {% set isPro = craft.simpleForm.isPro() %}
-                {% set palette = [
-                    { type: 'text', label: 'Text'|t('simple-form') },
-                    { type: 'email', label: 'Email'|t('simple-form') },
-                    { type: 'url', label: 'URL'|t('simple-form') },
-                    { type: 'textarea', label: 'Textarea'|t('simple-form') },
-                    { type: 'select', label: 'Select / Dropdown'|t('simple-form') },
-                    { type: 'checkbox', label: 'Checkbox'|t('simple-form') },
-                    { type: 'radio', label: 'Radio Buttons'|t('simple-form') },
-                    { type: 'date', label: 'Date'|t('simple-form') },
-                    { type: 'time', label: 'Time'|t('simple-form') },
-                    { type: 'datetime', label: 'Date & Time'|t('simple-form') },
-                    { type: 'number', label: 'Number'|t('simple-form') },
-                    { type: 'phone', label: 'Phone'|t('simple-form') },
-                    { type: 'file', label: 'File Upload'|t('simple-form') },
-                    { type: 'name', label: 'Name'|t('simple-form') },
-                    { type: 'address', label: 'Address'|t('simple-form') },
-                    { type: 'payment', label: 'Payment'|t('simple-form'), pro: true },
-                    { type: 'hidden', label: 'Hidden'|t('simple-form') },
-                    { type: 'consent', label: 'Agree / Consent'|t('simple-form') },
-                    { type: 'rating', label: 'Rating'|t('simple-form'), pro: true },
-                    { type: 'opinion', label: 'Opinion Scale'|t('simple-form'), pro: true },
-                    { type: 'signature', label: 'Signature'|t('simple-form'), pro: true },
-                    { type: 'entry', label: 'Entries'|t('simple-form'), pro: true },
-                    { type: 'category', label: 'Categories'|t('simple-form'), pro: true },
-                    { type: 'tag', label: 'Tags'|t('simple-form'), pro: true },
-                    { type: 'user', label: 'Users'|t('simple-form'), pro: true },
-                    { type: 'asset', label: 'Assets'|t('simple-form'), pro: true },
-                    { type: 'calculation', label: 'Calculation'|t('simple-form'), pro: true },
-                    { type: 'repeater', label: 'Repeater'|t('simple-form'), pro: true },
+                <div class="sf-palette-search">
+                    <input type="search" id="sf-palette-search" class="text fullwidth" autocomplete="off"
+                           placeholder="{{ 'Filter field types…'|t('simple-form') }}"
+                           aria-label="{{ 'Filter field types'|t('simple-form') }}">
+                </div>
+                {# Grouped so a long palette stays scannable, and filterable via the
+                   search box above (JS filters by data-label). Layout blocks are a
+                   group like any other, but keep the --layout styling + HTML gating. #}
+                {% set groups = [
+                    { label: 'Basic'|t('simple-form'), items: [
+                        { type: 'text', label: 'Text'|t('simple-form') },
+                        { type: 'email', label: 'Email'|t('simple-form') },
+                        { type: 'url', label: 'URL'|t('simple-form') },
+                        { type: 'textarea', label: 'Textarea'|t('simple-form') },
+                        { type: 'number', label: 'Number'|t('simple-form') },
+                        { type: 'phone', label: 'Phone'|t('simple-form') },
+                        { type: 'date', label: 'Date'|t('simple-form') },
+                        { type: 'time', label: 'Time'|t('simple-form') },
+                        { type: 'datetime', label: 'Date & Time'|t('simple-form') },
+                        { type: 'hidden', label: 'Hidden'|t('simple-form') },
+                    ] },
+                    { label: 'Choice'|t('simple-form'), items: [
+                        { type: 'select', label: 'Select / Dropdown'|t('simple-form') },
+                        { type: 'checkbox', label: 'Checkbox'|t('simple-form') },
+                        { type: 'radio', label: 'Radio Buttons'|t('simple-form') },
+                        { type: 'consent', label: 'Agree / Consent'|t('simple-form') },
+                        { type: 'rating', label: 'Rating'|t('simple-form'), pro: true },
+                        { type: 'opinion', label: 'Opinion Scale'|t('simple-form'), pro: true },
+                    ] },
+                    { label: 'Advanced'|t('simple-form'), items: [
+                        { type: 'file', label: 'File Upload'|t('simple-form') },
+                        { type: 'name', label: 'Name'|t('simple-form') },
+                        { type: 'address', label: 'Address'|t('simple-form') },
+                        { type: 'payment', label: 'Payment'|t('simple-form'), pro: true },
+                        { type: 'signature', label: 'Signature'|t('simple-form'), pro: true },
+                        { type: 'calculation', label: 'Calculation'|t('simple-form'), pro: true },
+                        { type: 'repeater', label: 'Repeater'|t('simple-form'), pro: true },
+                        { type: 'entry', label: 'Entries'|t('simple-form'), pro: true },
+                        { type: 'category', label: 'Categories'|t('simple-form'), pro: true },
+                        { type: 'tag', label: 'Tags'|t('simple-form'), pro: true },
+                        { type: 'user', label: 'Users'|t('simple-form'), pro: true },
+                        { type: 'asset', label: 'Assets'|t('simple-form'), pro: true },
+                    ] },
+                    { label: 'Layout'|t('simple-form'), layout: true, items: [
+                        { type: 'heading', label: 'Heading'|t('simple-form'), html: false },
+                        { type: 'paragraph', label: 'Text'|t('simple-form'), html: false },
+                        { type: 'divider', label: 'Section Divider'|t('simple-form'), html: false },
+                        { type: 'callout', label: 'Callout'|t('simple-form'), html: false },
+                        { type: 'html', label: 'HTML Block'|t('simple-form'), html: true },
+                    ] },
                 ] %}
-                {% for p in palette %}
-                    {% if (p.pro ?? false) and not isPro %}
-                        <span class="sf-palette-locked" data-type="{{ p.type }}" aria-disabled="true"
-                              title="{{ 'Available in the Pro edition'|t('simple-form') }}">
-                            <span class="sf-grip" aria-hidden="true">⋮⋮</span>{{ p.label }}
-                            <span class="sf-pro-badge">{{ 'Pro'|t('simple-form') }}</span>
-                        </span>
-                    {% else %}
-                        <button type="button" class="sf-palette-item" draggable="true" data-type="{{ p.type }}">
-                            <span class="sf-grip" aria-hidden="true">⋮⋮</span>{{ p.label }}
-                        </button>
-                    {% endif %}
+                {% for group in groups %}
+                    <div class="sf-palette-group">
+                        <h4 class="sf-panel-title sf-panel-title--group">{{ group.label }}</h4>
+                        {% for p in group.items %}
+                            {% if (group.layout ?? false) and (p.html ?? false) and not (canEditHtmlBlocks ?? false) %}
+                                {# HTML block needs the edit-HTML permission — skip otherwise. #}
+                            {% elseif (p.pro ?? false) and not isPro %}
+                                <span class="sf-palette-locked" data-type="{{ p.type }}" data-label="{{ p.label }}" aria-disabled="true"
+                                      title="{{ 'Available in the Pro edition'|t('simple-form') }}">
+                                    <span class="sf-grip" aria-hidden="true">⋮⋮</span>{{ p.label }}
+                                    <span class="sf-pro-badge">{{ 'Pro'|t('simple-form') }}</span>
+                                </span>
+                            {% else %}
+                                <button type="button" class="sf-palette-item{% if group.layout ?? false %} sf-palette-item--layout{% endif %}" draggable="true" data-type="{{ p.type }}" data-label="{{ p.label }}">
+                                    <span class="sf-grip" aria-hidden="true">⋮⋮</span>{{ p.label }}
+                                </button>
+                            {% endif %}
+                        {% endfor %}
+                    </div>
                 {% endfor %}
-
-                <h3 class="sf-panel-title sf-panel-title--group">{{ 'Layout'|t('simple-form') }}</h3>
-                {% set layoutPalette = [
-                    { type: 'heading', label: 'Heading'|t('simple-form'), html: false },
-                    { type: 'paragraph', label: 'Text'|t('simple-form'), html: false },
-                    { type: 'divider', label: 'Section Divider'|t('simple-form'), html: false },
-                    { type: 'callout', label: 'Callout'|t('simple-form'), html: false },
-                    { type: 'html', label: 'HTML Block'|t('simple-form'), html: true },
-                ] %}
-                {% for p in layoutPalette %}
-                    {% if not p.html or (canEditHtmlBlocks ?? false) %}
-                        <button type="button" class="sf-palette-item sf-palette-item--layout" draggable="true" data-type="{{ p.type }}">
-                            <span class="sf-grip" aria-hidden="true">⋮⋮</span>{{ p.label }}
-                        </button>
-                    {% endif %}
-                {% endfor %}
+                <p class="sf-palette-noresults light" hidden>{{ 'No field types match your filter.'|t('simple-form') }}</p>
             </div>
 
             <div id="sf-inspector" class="sf-panel sf-inspector" hidden></div>

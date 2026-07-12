@@ -97,6 +97,10 @@
     // RepeaterFieldType::ALLOWED_INNER_TYPES — keep in lockstep).
     var REPEATER_INNER_TYPES = ['text', 'email', 'number', 'select'];
     var COMPOSITE_TYPES = ['name', 'address'];
+    // Field types whose value can back a Payment field's amount (#296).
+    var AMOUNT_FIELD_TYPES = ['number', 'calculation'];
+    // Common ISO-4217 currency codes offered for a Payment field (#296).
+    var PAYMENT_CURRENCIES = ['USD', 'EUR', 'GBP', 'CAD', 'AUD', 'CHF', 'JPY', 'SEK', 'NOK', 'DKK', 'NZD'];
 
     // Ordered sub-field defs per composite type, mirroring the PHP field types:
     // [key, default label, enabled-by-default, primary]. Used to seed default
@@ -552,14 +556,39 @@
         // Handle. Renaming rewrites any conditional rules in other fields that
         // referenced the old handle, so conditions survive a rename.
         var handleRow = row(t('Handle'));
+        var handleError = document.createElement('p');
+        handleError.className = 'error sf-handle-error';
+        handleError.setAttribute('role', 'alert');
+        handleError.hidden = true;
+        // Surface a handle collision / invalid format live rather than only at
+        // save (the submit guard's clientErrors() still catches it as a backstop).
+        function validateHandleInline() {
+            var v = (f.handle || '').trim();
+            var msg = '';
+            if (v !== '' && !/^[a-zA-Z_][a-zA-Z0-9_]*$/.test(v)) {
+                msg = t('Handles can only use letters, numbers and underscores, and can’t start with a number.');
+            } else if (v !== '') {
+                var lower = v.toLowerCase();
+                var clash = fields.some(function(other) {
+                    return other.clientId !== f.clientId && other.handle && other.handle.toLowerCase() === lower;
+                });
+                if (clash) { msg = t('Another field already uses the handle “{handle}”.', { handle: v }); }
+            }
+            handleError.textContent = msg;
+            handleError.hidden = msg === '';
+            if (msg === '') { handleInput.classList.remove('error'); } else { handleInput.classList.add('error'); }
+        }
         var handleInput = textInput(f.handle, function(v) {
             var old = f.handle;
             f.handle = v;
             if (old && old !== v) { renameHandleRefs(old, v); }
+            validateHandleInline();
             serialize();
         });
         handleRow._input.appendChild(handleInput);
+        handleRow._input.appendChild(handleError);
         inspector.appendChild(handleRow);
+        validateHandleInline();
 
         var isHiddenType = HIDDEN_TYPES.indexOf(f.type) !== -1;
 
@@ -943,15 +972,32 @@
             inspector.appendChild(numberRow(t('Min Amount'), c.minAmount, function(v) { setNum(c, 'minAmount', v); }));
             inspector.appendChild(numberRow(t('Max Amount'), c.maxAmount, function(v) { setNum(c, 'maxAmount', v); }));
 
-            var afRow = row(t('Amount Field Handle'));
-            afRow._input.appendChild(textInput(c.amountField || '', function(v) {
-                if (v.trim() === '') { delete c.amountField; } else { c.amountField = v.trim(); } serialize();
+            var afRow = row(t('Amount Field'));
+            // Pick from the form's number/calculation fields rather than free-typing
+            // a handle; still stored as the handle string.
+            var amountFieldOpts = [{ value: '', label: t('— none —') }].concat(
+                fields.filter(function(other) {
+                    return AMOUNT_FIELD_TYPES.indexOf(other.type) !== -1 && other.handle;
+                }).map(function(other) {
+                    return { value: other.handle, label: (other.label || other.handle) + ' (' + other.handle + ')' };
+                }));
+            // Preserve an already-chosen handle even if that field was since removed
+            // or changed type, so it isn't silently dropped on re-render.
+            if (c.amountField && !amountFieldOpts.some(function(o) { return o.value === c.amountField; })) {
+                amountFieldOpts.push({ value: c.amountField, label: c.amountField });
+            }
+            afRow._input.appendChild(selectEl(amountFieldOpts, c.amountField || '', function(v) {
+                if (v === '') { delete c.amountField; } else { c.amountField = v; } serialize();
             }));
             inspector.appendChild(afRow);
 
             var curRow = row(t('Currency'));
-            curRow._input.appendChild(textInput(c.currency || 'USD', function(v) {
-                c.currency = v.trim().toUpperCase(); serialize();
+            var curVal = (c.currency || 'USD').toUpperCase();
+            var curOpts = PAYMENT_CURRENCIES.map(function(code) { return { value: code, label: code }; });
+            // Keep a non-standard stored code selectable rather than losing it.
+            if (curVal && PAYMENT_CURRENCIES.indexOf(curVal) === -1) { curOpts.push({ value: curVal, label: curVal }); }
+            curRow._input.appendChild(selectEl(curOpts, curVal, function(v) {
+                c.currency = v; serialize();
             }));
             inspector.appendChild(curRow);
 
@@ -1854,6 +1900,31 @@
                 e.dataTransfer.setData('text/sf-new', item.dataset.type);
             });
         });
+
+        // Live label filter over the (grouped) palette. Matches on each item's
+        // data-label so the grip/Pro-badge text never interferes; a group with no
+        // visible items is hidden along with its heading, and a "no results" hint
+        // shows when nothing matches. Drag/click/keyboard on the items is untouched.
+        var paletteSearch = document.getElementById('sf-palette-search');
+        var paletteNoResults = palette.querySelector('.sf-palette-noresults');
+        if (paletteSearch) {
+            paletteSearch.addEventListener('input', function() {
+                var q = paletteSearch.value.trim().toLowerCase();
+                var anyMatch = false;
+                Array.prototype.slice.call(palette.querySelectorAll('.sf-palette-group')).forEach(function(group) {
+                    var groupMatch = false;
+                    Array.prototype.slice.call(group.querySelectorAll('.sf-palette-item, .sf-palette-locked')).forEach(function(item) {
+                        var label = (item.getAttribute('data-label') || '').toLowerCase();
+                        var match = q === '' || label.indexOf(q) !== -1;
+                        item.hidden = !match;
+                        if (match) { groupMatch = true; }
+                    });
+                    group.hidden = !groupMatch;
+                    if (groupMatch) { anyMatch = true; }
+                });
+                if (paletteNoResults) { paletteNoResults.hidden = anyMatch; }
+            });
+        }
     }
 
     canvas.addEventListener('dragstart', function(e) {

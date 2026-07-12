@@ -261,6 +261,14 @@ class Settings extends Model
     public ?string $pdfStorageVolume = null;
 
     /**
+     * Handle of the default volume that form file-upload/signature assets are
+     * stored in when a File/Signature field doesn't name its own `volume`.
+     * Empty falls through to the first available volume, preserving the previous
+     * behaviour. Resolution order: per-field volume → this default → first-available.
+     */
+    public ?string $uploadVolume = null;
+
+    /**
      * Total cap (in megabytes) on a notification's combined attachments (#143). A
      * notification whose PDF + uploaded files exceed this falls back to in-body
      * download links for the uploads (and logs the skip) to protect deliverability.
@@ -407,7 +415,7 @@ class Settings extends Model
             [['defaultEmailSender'], 'email', 'when' => fn(): bool => !str_starts_with((string) $this->defaultEmailSender, '$')],
             [['enableHoneypot', 'enableCaptcha', 'cacheFormStructure', 'inlineFormAssets', 'enableMcp', 'dispatchIntegrationsSynchronously', 'enableAkismet', 'anonymizeInsteadOfDelete', 'allowGraphqlCaptchaBypass', 'enableDenylists', 'collectIpAddresses'], 'boolean'],
             [['retainSubmissionsDays', 'retainSpamDays', 'retainIntegrationLogsDays', 'retainNotificationLogsDays', 'retainAuditLogDays', 'submitRateLimitPerMinute', 'maxAttachmentSizeMb'], 'integer', 'min' => 0],
-            [['pdfStorageVolume'], 'string'],
+            [['pdfStorageVolume', 'uploadVolume'], 'string'],
             [['draftRetentionDays', 'partialRetentionDays'], 'integer', 'min' => 1],
             [['akismetMode'], 'in', 'range' => [self::AKISMET_FLAG, self::AKISMET_BLOCK]],
             [['denylistMode'], 'in', 'range' => [self::DENYLIST_FLAG, self::DENYLIST_BLOCK]],

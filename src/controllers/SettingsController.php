@@ -27,7 +27,7 @@ class SettingsController extends Controller
 
     /** Settings fields grouped by tab. Drives both rendering and the per-tab save. */
     private const TAB_FIELDS = [
-        'general' => ['submitMessage', 'errorMessage', 'storageLocation', 'templatePath', 'addressAutocompleteProvider', 'addressAutocompleteEndpoint', 'addressAutocompleteApiKey'],
+        'general' => ['submitMessage', 'errorMessage', 'storageLocation', 'uploadVolume', 'templatePath', 'addressAutocompleteProvider', 'addressAutocompleteEndpoint', 'addressAutocompleteApiKey'],
         'workflow' => ['enableWorkflow'],
         'email' => ['defaultEmailSender', 'defaultEmailSenderName', 'pdfStorageVolume', 'maxAttachmentSizeMb'],
         'spam' => [

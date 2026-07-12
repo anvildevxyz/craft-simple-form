@@ -2,6 +2,7 @@
 
 namespace anvildev\simpleform\services;
 
+use anvildev\simpleform\Plugin;
 use Craft;
 use craft\elements\Asset;
 use craft\web\UploadedFile;
@@ -9,7 +10,8 @@ use yii\base\Component;
 
 /**
  * Turns validated form uploads into Craft Assets. Volume is taken from the
- * field's `volume` config handle, falling back to the first available volume.
+ * field's `volume` config handle, falling back to the plugin's configured
+ * default upload volume, then to the first available volume.
  */
 class AssetUploadService extends Component
 {
@@ -116,6 +118,17 @@ class AssetUploadService extends Component
         $volume = (is_string($volumeHandle) && $volumeHandle !== '')
             ? $volumes->getVolumeByHandle($volumeHandle)
             : null;
+
+        // Fall back to the plugin-wide default upload volume before the arbitrary
+        // first-available volume, so uploads without an explicit per-field volume
+        // land somewhere the operator chose rather than wherever happens to be first.
+        if ($volume === null) {
+            $settingHandle = Plugin::getInstance()->getSettings()->uploadVolume;
+            if (is_string($settingHandle) && $settingHandle !== '') {
+                $volume = $volumes->getVolumeByHandle($settingHandle);
+            }
+        }
+
         $volume ??= $volumes->getAllVolumes()[0] ?? null;
 
         return $volume === null
