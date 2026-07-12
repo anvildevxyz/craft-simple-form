@@ -41,7 +41,7 @@
         {% set attention = attention|merge([{ label: '{n} new submission(s) to review'|t('simple-form', { n: stats.new }), url: cpUrl('simple-form/submissions', { status: 'new' }) }]) %}
     {% endif %}
     {% if failedDispatches > 0 %}
-        {% set attention = attention|merge([{ label: '{n} failed integration dispatch(es)'|t('simple-form', { n: failedDispatches }), url: cpUrl('simple-form/settings/integrations/failures') }]) %}
+        {% set attention = attention|merge([{ label: '{n} failed integration dispatch(es)'|t('simple-form', { n: failedDispatches }), url: cpUrl('simple-form/integrations/failures') }]) %}
     {% endif %}
     {% if attention|length %}
         <blockquote class="note warning">

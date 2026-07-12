@@ -850,6 +850,10 @@ class Plugin extends BasePlugin
         // precede the generic settings/<tab> catch-all below.
         $event->rules['simple-form/settings/audit'] = 'simple-form/audit/index';
         $event->rules['simple-form/settings/integrations'] = 'simple-form/integrations/settings-index';
+        // Alias so a bookmarked/deep-linked failures URL under settings/ resolves to
+        // the controller action (which supplies the `failures` data) instead of
+        // falling through to template routing with no variables (#template-bug).
+        $event->rules['simple-form/settings/integrations/failures'] = 'simple-form/integrations/failures';
         $event->rules['simple-form/settings/integrations/new'] = 'simple-form/integrations/edit';
         $event->rules['simple-form/settings/integrations/<integrationId:\d+>'] = 'simple-form/integrations/edit';
         // Coupons management (#246), also under Settings. Specific routes precede
