@@ -90,6 +90,22 @@ class AddFieldTool implements ToolInterface
             ];
         }
 
+        // Same gate for Pro capabilities the field's own config may introduce
+        // (conditional logic, a logic jump, a 2nd-page placement), diffed against
+        // the form's existing fields so an already-used capability isn't re-blocked.
+        $blockedCaps = Editions::blockedNewFormCapabilities(
+            [['type' => $type, 'config' => $config]],
+            false,
+            $form->getFields(),
+            false,
+        );
+        if ($blockedCaps !== []) {
+            return [
+                'isError' => true,
+                'errors' => ['config' => [sprintf('This field uses features that require the Pro edition: %s.', implode(', ', $blockedCaps))]],
+            ];
+        }
+
         $errors = FieldOps::validate($type, $label, $handle, $config, $formId, null);
         if ($errors !== []) {
             return ['isError' => true, 'errors' => $errors];

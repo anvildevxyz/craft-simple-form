@@ -24,13 +24,16 @@ final class Editions
     public const PRO = 'pro';
 
     // Capability handles ------------------------------------------------------
-    public const CAP_PRO_FIELDS = 'proFields';
+    // Every listed capability is Pro-only. A handle exists only where something
+    // actually enforces or reports it — a save gate, a service guard, or the
+    // downgrade banner — so there are no dead constants to drift out of sync.
     public const CAP_CONDITIONAL_LOGIC = 'conditionalLogic';
     public const CAP_MULTI_PAGE = 'multiPage';
     public const CAP_SAVE_CONTINUE = 'saveAndContinue';
-    public const CAP_INTEGRATIONS = 'integrations';
-    public const CAP_PAYMENTS = 'payments';
-    public const CAP_SPAM_ADVANCED = 'spamAdvanced';
+    public const CAP_LOGIC_JUMPS = 'logicJumps';
+    public const CAP_CONVERSATIONAL = 'conversational';
+    public const CAP_QUIZ = 'quiz';
+    public const CAP_PARTIAL_CAPTURE = 'partialCapture';
     public const CAP_PDF = 'pdf';
     public const CAP_GOVERNANCE = 'governance';
     public const CAP_DEV_TOOLS = 'devTools';
@@ -76,6 +79,7 @@ final class Editions
     public const PRO_ENABLE_SETTINGS = [
         'enableAkismet',
         'enableDenylists',
+        'enableWorkflow',
         'retainSubmissionsDays',
         'retainAuditLogDays',
     ];
@@ -282,6 +286,33 @@ final class Editions
     }
 
     /**
+     * Whether any field in a builder/DB field set carries an *active* logic jump —
+     * a `config.jumps` entry with a non-empty target. Mirrors the render-time
+     * gating in {@see \anvildev\simpleform\helpers\JumpResolver} (the single source
+     * of truth): a jump without a target never routes, so it must not count as Pro
+     * usage here either.
+     *
+     * @param iterable<array<string, mixed>> $items
+     */
+    public static function usesLogicJumps(iterable $items): bool
+    {
+        foreach ($items as $item) {
+            $config = is_array($item['config'] ?? null) ? $item['config'] : [];
+            $jumps = $config['jumps'] ?? null;
+            if (!is_array($jumps)) {
+                continue;
+            }
+            foreach ($jumps as $jump) {
+                if (is_array($jump) && trim((string) ($jump['target'] ?? '')) !== '') {
+                    return true;
+                }
+            }
+        }
+
+        return false;
+    }
+
+    /**
      * The Pro form-level capabilities newly introduced by the posted state
      * relative to the already-saved state — the escalations Solo must reject.
      * Returns capability handles ({@see self::CAP_*}); [] on Pro or when nothing
@@ -310,8 +341,51 @@ final class Editions
         if (self::usesMultiPage($items) && !self::usesMultiPage($existing)) {
             $blocked[] = self::CAP_MULTI_PAGE;
         }
+        if (self::usesLogicJumps($items) && !self::usesLogicJumps($existing)) {
+            $blocked[] = self::CAP_LOGIC_JUMPS;
+        }
         if ($saveResume && !$existingSaveResume) {
             $blocked[] = self::CAP_SAVE_CONTINUE;
+        }
+
+        return $blocked;
+    }
+
+    /**
+     * The Pro form-level "modes" — scalar form toggles that aren't derivable from
+     * the field set, so they can't ride along in {@see self::blockedNewFormCapabilities()}.
+     *
+     * @var list<string>
+     */
+    public const PRO_FORM_MODES = [
+        self::CAP_CONVERSATIONAL,
+        self::CAP_QUIZ,
+        self::CAP_PARTIAL_CAPTURE,
+    ];
+
+    /**
+     * The Pro form-level modes newly switched on by the posted form state relative
+     * to the stored one — the escalations Solo must reject. Each argument maps a
+     * mode handle ({@see self::PRO_FORM_MODES}) to whether that state has it on. A
+     * mode already on in the stored state is allowed through (no-new-escalation),
+     * so a downgraded form keeps rendering/scoring; only turning one on anew is
+     * blocked.
+     *
+     * @param array<string, bool> $posted mode handle => on in the posted state
+     * @param array<string, bool> $stored mode handle => on in the stored state
+     * @return list<string> the blocked mode handles ([] when allowed)
+     */
+    public static function blockedNewFormModes(array $posted, array $stored, ?string $edition = null): array
+    {
+        if (self::isPro($edition)) {
+            return [];
+        }
+
+        $blocked = [];
+        foreach (self::PRO_FORM_MODES as $mode) {
+            if (!empty($posted[$mode]) && empty($stored[$mode])) {
+                $blocked[] = $mode;
+            }
         }
 
         return $blocked;

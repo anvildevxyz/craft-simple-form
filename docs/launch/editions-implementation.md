@@ -15,35 +15,53 @@ Solo wins against the only free options (Craft Contact Form = no storage; Freefo
 
 ## Capability matrix
 
-| Capability | Solo | Pro | Constant |
+The **Constant / gate** column names what actually enforces each split in the
+shipped `Editions.php` — a `CAP_*` handle where a service/save-gate checks it, or
+the list/predicate that does the work. There are **no dead `CAP_*` constants**: a
+handle exists only where something enforces or reports it.
+
+| Capability | Solo | Pro | Constant / gate |
 |---|---|---|---|
 | Unlimited forms | ✅ | ✅ | — |
 | Submission storage, CSV export | ✅ | ✅ | — |
-| Core fields (16) | ✅ | ✅ | — |
+| Core fields | ✅ | ✅ | — |
 | Email notification + autoresponder | ✅ | ✅ | — |
 | Honeypot, rate-limit, 1 captcha provider | ✅ | ✅ | — |
-| Webhook + Craft entry/user integration | ✅ | ✅ | — |
+| Webhook + Craft entry/user integration | ✅ | ✅ | `SOLO_INTEGRATIONS` |
 | Twig/PHP render, GraphQL read | ✅ | ✅ | — |
-| **Pro fields (12)** | ❌ | ✅ | `CAP_PRO_FIELDS` |
-| **Conditional logic** | ❌ | ✅ | `CAP_CONDITIONAL_LOGIC` |
-| **Multi-page** | ❌ | ✅ | `CAP_MULTI_PAGE` |
-| **Save & continue later** | ❌ | ✅ | `CAP_SAVE_CONTINUE` |
-| **Multi-site / per-site translation** | ✅ | ✅ | _(ungated — decision 2026-06-27: keeps the "translatable" brand in Solo)_ |
-| **3rd-party integrations** (Slack/Discord/CRM/Sheets) | ❌ | ✅ | `CAP_INTEGRATIONS` |
-| **Payments** (Commerce) | ❌ | ✅ | `CAP_PAYMENTS` |
-| **Akismet, denylists, spam review queue** | ❌ | ✅ | `CAP_SPAM_ADVANCED` |
-| **PDF attachments** | ❌ | ✅ | `CAP_PDF` |
-| **Audit log, retention automation, analytics** | ❌ | ✅ | `CAP_GOVERNANCE` |
-| **MCP server, forms-as-code** | ❌ | ✅ | `CAP_DEV_TOOLS` |
+| Multi-site / per-site translation | ✅ | ✅ | _ungated (2026-06-27: keeps the "translatable" brand in Solo)_ |
+| **Attribution / UTM capture, address autocomplete, analytics** | ✅ | ✅ | _ungated (Solo-free, 2026-07-12 #283)_ |
+| **Pro fields** | ❌ | ✅ | `PRO_FIELDS` → `fieldTypeAllowed()` |
+| **Conditional logic** | ❌ | ✅ | `CAP_CONDITIONAL_LOGIC` → `blockedNewFormCapabilities()` |
+| **Multi-page** | ❌ | ✅ | `CAP_MULTI_PAGE` → `blockedNewFormCapabilities()` |
+| **Save & continue later** | ❌ | ✅ | `CAP_SAVE_CONTINUE` → `blockedNewFormCapabilities()` |
+| **Logic jumps** | ❌ | ✅ | `CAP_LOGIC_JUMPS` → `blockedNewFormCapabilities()` (#283) |
+| **Conversational render mode** | ❌ | ✅ | `CAP_CONVERSATIONAL` → `blockedNewFormModes()` (#283) |
+| **Quiz scoring** (per-option scores / grade bands) | ❌ | ✅ | `CAP_QUIZ` → `blockedNewFormModes()` (#283) |
+| **Partial capture** | ❌ | ✅ | `CAP_PARTIAL_CAPTURE` → `blockedNewFormModes()` (#283) |
+| **Submission approval workflow** | ❌ | ✅ | `enableWorkflow` ∈ `PRO_ENABLE_SETTINGS` → `blocksProSettingChange()` (#283) |
+| **Payment coupons** | ❌ | ✅ | `CouponsController::actionSave` create gate (#283) |
+| **3rd-party integrations** (Slack/Discord/CRM/Sheets) | ❌ | ✅ | `SOLO_INTEGRATIONS` → `integrationAllowed()` |
+| **Payments** (Commerce) | ❌ | ✅ | `payment` ∈ `PRO_FIELDS` → `fieldTypeAllowed()` |
+| **Akismet, denylists** | ❌ | ✅ | `PRO_ENABLE_SETTINGS` / `PRO_MODE_SETTINGS` / `PRO_CONFIG_SETTINGS` → `blocksProSettingChange()` |
+| **PDF attachments** | ❌ | ✅ | `CAP_PDF` → `PdfService::isAvailable()` |
+| **Audit log, retention automation** | ❌ | ✅ | `CAP_GOVERNANCE` → `AuditService::log()` |
+| **MCP server, forms-as-code** | ❌ | ✅ | `CAP_DEV_TOOLS` → `McpController` |
+
+No-new-escalation applies to every gated row: a form/site already using a Pro
+feature keeps it after a downgrade; Solo only refuses *adding new* Pro usage. The
+gates that need a posted-vs-stored diff (`blockedNewProFields`,
+`blockedNewFormCapabilities`, `blockedNewFormModes`, `blocksProSettingChange`, the
+coupon create-only check) all compare against the previously-saved state.
 
 ### Field split
 
-- **Solo (16):** text, email, textarea, number, phone, date, select, checkbox, radio, hidden, consent, file, name, address, heading, divider, html
-- **Pro (12):** signature, payment, rating, opinionScale, calculation, repeater, entry/category/tag/user/asset relation
+- **Solo:** text, email, textarea, number, phone, date, select, checkbox, radio, hidden, consent, file, name, address, heading, divider, html
+- **Pro (`PRO_FIELDS`):** `signature`, `payment`, `rating`, `opinion`, `calculation`, `repeater`, `entry`, `category`, `tag`, `user`, `asset`
 
 ### Integration split
 
-- **Solo:** `webhook`, `craftElement`
+- **Solo (`SOLO_INTEGRATIONS`):** `webhook`, `craft-element`
 - **Pro:** slack, discord, mailchimp, activeCampaign, hubspot, pipedrive, googleSheets
 
 ## Core principle: gate authoring, never runtime
@@ -67,74 +85,33 @@ Three deliberate exceptions run edition checks at **execution time** (not author
 
 ## The keystone: `src/Editions.php`
 
-```php
-<?php
+The single source of truth for what each edition may *author* — never used to
+gate rendering/validation of already-saved data (that path is edition-blind; see
+`FieldTypeRegistry`). It is **default-open**: only an *explicit* Solo license is
+treated as non-Pro (`isPro()` returns `true` unless the active edition is exactly
+`solo`), so an unresolvable plugin instance (teardown paths) never fatals.
 
-declare(strict_types=1);
+Read `src/Editions.php` for the authoritative shape. The load-bearing surface:
 
-namespace anvildev\simpleform;
-
-/**
- * Edition + capability gate. The single source of truth for what each edition
- * may *author*. Never used to gate rendering/validation of already-saved data —
- * that path is edition-blind (see FieldTypeRegistry).
- */
-final class Editions
-{
-    public const SOLO = 'solo';
-    public const PRO = 'pro';
-
-    public const CAP_PRO_FIELDS = 'proFields';
-    public const CAP_CONDITIONAL_LOGIC = 'conditionalLogic';
-    public const CAP_MULTI_PAGE = 'multiPage';
-    public const CAP_MULTI_SITE = 'multiSite';
-    public const CAP_INTEGRATIONS = 'integrations';
-    public const CAP_PAYMENTS = 'payments';
-    public const CAP_SPAM_ADVANCED = 'spamAdvanced';
-    public const CAP_PDF = 'pdf';
-    public const CAP_GOVERNANCE = 'governance';
-    public const CAP_DEV_TOOLS = 'devTools';
-
-    /** Field-type handles reserved for Pro. */
-    public const PRO_FIELDS = [
-        'signature', 'payment', 'rating', 'opinionScale', 'calculation', 'repeater',
-        'entryRelation', 'categoryRelation', 'tagRelation', 'userRelation', 'assetRelation',
-    ];
-
-    /** Integration handles available to Solo; everything else is Pro. */
-    public const SOLO_INTEGRATIONS = ['webhook', 'craftElement'];
-
-    /** Capabilities Solo gets. Pro gets everything. */
-    private const SOLO_CAPS = [];
-
-    public static function current(): string
-    {
-        // Active edition (what the site is *running as*). Craft sets ->edition
-        // from the license, selectable in dev/trial.
-        return Plugin::getInstance()?->edition ?? self::PRO;
-    }
-
-    public static function isPro(): bool
-    {
-        return self::current() === self::PRO;
-    }
-
-    public static function can(string $capability): bool
-    {
-        return self::isPro() || in_array($capability, self::SOLO_CAPS, true);
-    }
-
-    public static function fieldTypeAllowed(string $handle): bool
-    {
-        return self::isPro() || !in_array($handle, self::PRO_FIELDS, true);
-    }
-
-    public static function integrationAllowed(string $handle): bool
-    {
-        return self::isPro() || in_array($handle, self::SOLO_INTEGRATIONS, true);
-    }
-}
-```
+- Handles: `SOLO` / `PRO`; the `CAP_*` capability handles (every one is checked
+  somewhere — conditional-logic, multi-page, save-continue, logic-jumps,
+  conversational, quiz, partial-capture, PDF, governance, dev-tools).
+- Lists: `PRO_FIELDS` (Pro field-type handles), `SOLO_INTEGRATIONS`,
+  `PRO_ENABLE_SETTINGS` (off-switch settings incl. `enableWorkflow`),
+  `PRO_MODE_SETTINGS`, `PRO_CONFIG_SETTINGS`, `PRO_FORM_MODES` (the scalar form
+  toggles: conversational / quiz / partial capture).
+- Predicates: `isPro()`, `fieldTypeAllowed()`, `integrationAllowed()`.
+- No-new-escalation diffs (posted-vs-stored):
+  - `blockedNewProFields($types, $existing)` — count-based per Pro field type.
+  - `blockedNewFormCapabilities($items, $saveResume, $existing, $existingSaveResume)`
+    — field-set-derived caps: conditional logic, multi-page, **logic jumps**,
+    save-continue.
+  - `blockedNewFormModes($posted, $stored)` — scalar form modes keyed by
+    `CAP_*` handle: only a mode switched *on* anew is blocked.
+  - `blocksProSettingChange($field, $stored, $posted)` — settings off-switches /
+    verdict modes / frozen config.
+- `can($capability)` is a thin `isPro()` alias (kept for the Twig
+  `craft.simpleForm.can(...)` surface); the real gating is the diff methods above.
 
 ## Enforcement checklist (call-sites)
 
@@ -152,8 +129,8 @@ Each is "filter the palette / reject *new* escalation," never "remove from regis
 ### Traps
 
 - **Do NOT gate `FieldTypeRegistry::typeHandles()`** — it is the canonical valid-type set for `FieldsService`/`FieldSyncService` validation. Gating it makes existing Pro fields invalid. Gate only the *palette* and *save-escalation*.
-- **Multi-site detection:** a form "uses" multi-site if enabled on >1 site OR has any per-site translated content. Base the Solo limit on *site-enablement count*, not on whether translations happen to differ.
-- **Conditional logic detection:** scan field `conditional` config across all fields; a single rule trips `CAP_CONDITIONAL_LOGIC`.
+- **Multi-site is ungated** (decision 2026-06-27) — there is no `CAP_MULTI_SITE`; per-site translation stays in Solo. (Earlier drafts of this spec proposed a site-count limit; it was dropped.)
+- **Conditional logic detection:** scan field `conditional` config across all fields; a single active rule trips `CAP_CONDITIONAL_LOGIC` (see `Editions::usesConditionalLogic()`).
 
 ## Phasing
 
@@ -173,3 +150,52 @@ Each is "filter the palette / reject *new* escalation," never "remove from regis
 - Integration: Solo install **renders + accepts a submission** for a form containing a Pro field/conditional/2nd page (downgrade safety).
 - Integration: Solo **rejects** adding a Pro field / conditional rule / 2nd site via save, GraphQL, and MCP.
 - Existing locale-parity + settings tests stay green (new strings added to all 8 catalogs).
+
+## Addendum — post-1.0 feature batch (#283, 2026-07-12)
+
+Assigns + enforces the features shipped after the original two-edition split.
+Conservative default ("advanced features = Pro"); the price split is a
+recommendation to revisit at listing time.
+
+**Pro (gated, no-new-escalation):**
+
+| Feature | Choke point | Handle |
+|---|---|---|
+| Conversational render mode (`Form::$renderMode = 'conversational'`) | `FormsController::actionSave` (+ import, banner) via `blockedNewFormModes()` | `CAP_CONVERSATIONAL` |
+| Quiz scoring (per-option scores / grade bands) | same | `CAP_QUIZ` |
+| Partial capture (`capturePartials`) | same | `CAP_PARTIAL_CAPTURE` |
+| Logic jumps (`config.jumps`) | `FormsController::actionSave` (+ import, clone, banner, MCP field tools) via `blockedNewFormCapabilities()` | `CAP_LOGIC_JUMPS` |
+| Submission approval workflow (`enableWorkflow`) | `SettingsController::actionSave` via `blocksProSettingChange()` (setting ∈ `PRO_ENABLE_SETTINGS`) | — |
+| Payment coupons | `CouponsController::actionSave` — create-only gate (new `CouponModel` blocked on Solo) | — |
+
+**Solo (free, ungated):** attribution / UTM capture, address autocomplete,
+submission analytics.
+
+**No-new-escalation** is enforced by snapshotting the *stored* form/field/setting
+state before the posted values overwrite it, then diffing:
+
+- Scalar form modes: `FormsController::actionSave` snapshots
+  `$priorModes = [CAP_CONVERSATIONAL => renderMode==='conversational', CAP_QUIZ => quizMode, CAP_PARTIAL_CAPTURE => capturePartials]`
+  before reading the POST, then `blockedNewFormModes(postedModes, $priorModes)`
+  blocks only a mode switched *on* anew. Same diff in
+  `FormPortabilityService::assertEditionAllows()` (against the target form's
+  stored modes) and `proFeaturesInUse()` (against empty = "report all in use").
+- Logic jumps ride in `blockedNewFormCapabilities()` alongside conditional
+  logic / multi-page — a jump already on the saved field set is preserved.
+- Workflow: `blocksProSettingChange()` allows off/unchanged, blocks a Solo
+  enable; `WorkflowService::isEnabled()` keeps a pre-downgrade queue running.
+- Coupons: only a brand-new coupon (`CouponModel::$id === null`) is blocked on
+  Solo; edits/toggles of existing coupons and `CouponsService::evaluate()` at
+  checkout stay edition-blind.
+
+**Defense-in-depth (MCP):** `AddFieldTool` and `UpdateFieldTool` now also reject
+Pro capabilities introduced via a field's `config` (conditional logic, logic
+jumps, 2nd-page placement), diffed against the form's / field's existing config —
+mirroring the CP save. The whole MCP server is already Pro-gated at
+`McpController` (`CAP_DEV_TOOLS`), so these are belt-and-suspenders; the other
+mutating tools (`CreateFormTool`, `UpdateFormTool`, delete/reorder,
+`CategorizeSubmissionsTool`) carry no Pro-authoring surface.
+
+**Constant cleanup:** removed the never-checked `CAP_PRO_FIELDS`,
+`CAP_INTEGRATIONS`, `CAP_PAYMENTS`, `CAP_SPAM_ADVANCED` (those splits are enforced
+by `PRO_FIELDS`/`SOLO_INTEGRATIONS`/`PRO_ENABLE_SETTINGS`, not a `CAP_*` handle).

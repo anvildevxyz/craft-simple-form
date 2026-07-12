@@ -96,6 +96,10 @@ class EditionsTest extends TestCase
         $this->assertTrue(Editions::blocksProSettingChange('enableDenylists', false, true, Editions::SOLO));
         $this->assertTrue(Editions::blocksProSettingChange('retainSubmissionsDays', 0, 30, Editions::SOLO));
         $this->assertTrue(Editions::blocksProSettingChange('retainAuditLogDays', 0, 30, Editions::SOLO));
+        // Submission approval workflow (#283) is a Pro off-switch: Solo can't enable it.
+        $this->assertTrue(Editions::blocksProSettingChange('enableWorkflow', false, true, Editions::SOLO));
+        $this->assertFalse(Editions::blocksProSettingChange('enableWorkflow', true, false, Editions::SOLO));
+        $this->assertFalse(Editions::blocksProSettingChange('enableWorkflow', true, true, Editions::SOLO));
 
         // ...as is changing a still-on value (e.g. shrinking — more destructive —
         // or even growing the retention window: it's still reconfiguring Pro).
@@ -126,7 +130,7 @@ class EditionsTest extends TestCase
         $this->assertTrue(Editions::isPro('standard'));
         $this->assertTrue(Editions::isPro(Editions::PRO));
         $this->assertFalse(Editions::isPro(Editions::SOLO));
-        $this->assertTrue(Editions::can(Editions::CAP_PAYMENTS, 'standard'));
+        $this->assertTrue(Editions::can(Editions::CAP_PDF, 'standard'));
     }
 
     public function testDetectsConditionalLogicAndMultiPage(): void
@@ -169,19 +173,77 @@ class EditionsTest extends TestCase
         $this->assertSame([], Editions::blockedNewFormCapabilities($conditional, true, $conditional, true, Editions::SOLO));
     }
 
+    public function testDetectsLogicJumps(): void
+    {
+        $plain = [['type' => 'select', 'config' => []]];
+        $jump = [['type' => 'select', 'config' => ['jumps' => [['target' => 'thanks', 'operator' => 'eq', 'value' => 'a']]]]];
+        // A jump with a blank/missing target never routes, so it isn't Pro usage.
+        $emptyTarget = [['type' => 'select', 'config' => ['jumps' => [['target' => '', 'operator' => 'eq']]]]];
+
+        $this->assertFalse(Editions::usesLogicJumps($plain));
+        $this->assertFalse(Editions::usesLogicJumps($emptyTarget));
+        $this->assertTrue(Editions::usesLogicJumps($jump));
+    }
+
+    public function testBlockedNewFormCapabilitiesGatesLogicJumps(): void
+    {
+        $jump = [['type' => 'select', 'config' => ['jumps' => [['target' => 'thanks', 'operator' => 'eq', 'value' => 'a']]]]];
+        $plain = [['type' => 'select', 'config' => []]];
+
+        // Pro: never blocked.
+        $this->assertSame([], Editions::blockedNewFormCapabilities($jump, false, [], false, Editions::PRO));
+
+        // Solo, introducing a jump: blocked.
+        $this->assertSame(
+            [Editions::CAP_LOGIC_JUMPS],
+            Editions::blockedNewFormCapabilities($jump, false, $plain, false, Editions::SOLO),
+        );
+
+        // Solo, jump already on the saved form: preserved.
+        $this->assertSame([], Editions::blockedNewFormCapabilities($jump, false, $jump, false, Editions::SOLO));
+    }
+
+    public function testBlockedNewFormModesAppliesNoEscalationRule(): void
+    {
+        $allOn = [Editions::CAP_CONVERSATIONAL => true, Editions::CAP_QUIZ => true, Editions::CAP_PARTIAL_CAPTURE => true];
+        $allOff = [Editions::CAP_CONVERSATIONAL => false, Editions::CAP_QUIZ => false, Editions::CAP_PARTIAL_CAPTURE => false];
+
+        // Pro: never blocked.
+        $this->assertSame([], Editions::blockedNewFormModes($allOn, $allOff, Editions::PRO));
+
+        // Solo, switching every mode on from off: each is a blocked escalation.
+        $this->assertSame(
+            [Editions::CAP_CONVERSATIONAL, Editions::CAP_QUIZ, Editions::CAP_PARTIAL_CAPTURE],
+            Editions::blockedNewFormModes($allOn, $allOff, Editions::SOLO),
+        );
+
+        // Solo, modes already on: preserved (posted == stored).
+        $this->assertSame([], Editions::blockedNewFormModes($allOn, $allOn, Editions::SOLO));
+
+        // Solo, only quiz is newly switched on; the others were already on.
+        $this->assertSame(
+            [Editions::CAP_QUIZ],
+            Editions::blockedNewFormModes(
+                $allOn,
+                [Editions::CAP_CONVERSATIONAL => true, Editions::CAP_QUIZ => false, Editions::CAP_PARTIAL_CAPTURE => true],
+                Editions::SOLO,
+            ),
+        );
+    }
+
     /**
      * @return list<string>
      */
     private function allCapabilities(): array
     {
         return [
-            Editions::CAP_PRO_FIELDS,
             Editions::CAP_CONDITIONAL_LOGIC,
             Editions::CAP_MULTI_PAGE,
             Editions::CAP_SAVE_CONTINUE,
-            Editions::CAP_INTEGRATIONS,
-            Editions::CAP_PAYMENTS,
-            Editions::CAP_SPAM_ADVANCED,
+            Editions::CAP_LOGIC_JUMPS,
+            Editions::CAP_CONVERSATIONAL,
+            Editions::CAP_QUIZ,
+            Editions::CAP_PARTIAL_CAPTURE,
             Editions::CAP_PDF,
             Editions::CAP_GOVERNANCE,
             Editions::CAP_DEV_TOOLS,
