@@ -389,30 +389,35 @@
 /* Submissions analytics (#111) */
 .sf-analytics-ranges { display: flex; gap: 6px; margin-bottom: 16px; }
 .sf-analytics-ranges .btn.active { background: var(--gray-200, #e4e7eb); font-weight: 600; }
+/* Daily bars sit on a hairline baseline; empty days stay empty so the shape of
+   the series reads at a glance. Colours come from Craft's CP palette variables
+   so both light and dark themes work. */
 .sf-bar-chart {
     display: flex;
     align-items: flex-end;
-    gap: 3px;
-    height: 140px;
+    gap: 2px;
+    height: 160px;
     padding: 0;
+    border-bottom: 1px solid var(--hairline-color, rgba(51, 64, 77, 0.1));
 }
-/* Each day is a faint full-height track so empty days still read as part of the
-   chart; the filled bar sits on top. */
 .sf-bar-col {
     flex: 1 1 0;
     display: flex;
     align-items: flex-end;
     height: 100%;
     min-width: 3px;
-    background: var(--gray-100, #edf0f5);
-    border-radius: 3px;
+    border-radius: 2px 2px 0 0;
 }
+/* The whole day-column is the hover target (it's wider than the bar). */
+.sf-bar-col:hover { background: var(--gray-100, #edf0f5); }
 .sf-bar {
     width: 100%;
-    min-height: 0;
-    background: var(--enabled-color, #3a85ee);
-    border-radius: 3px;
+    background: var(--blue-600, #2563eb);
+    border-radius: 2px 2px 0 0;
 }
+/* Non-zero days keep a visible sliver even when dwarfed by the peak. */
+.sf-bar.has-count { min-height: 2px; }
+.sf-bar-col:hover .sf-bar { background: var(--blue-700, #1d4ed8); }
 /* Chart header (title + total/peak summary) and the date axis below the bars.
    The axis mirrors the bar row's flex layout so each tick sits under its bar. */
 .sf-chart-head {
@@ -424,8 +429,8 @@
     margin-bottom: 14px;
 }
 .sf-chart-head h2 { margin: 0; }
-.sf-chart-sub { font-size: 12px; }
-.sf-chart-axis { display: flex; gap: 3px; margin-top: 6px; }
+.sf-chart-sub { font-size: 12px; font-variant-numeric: tabular-nums; }
+.sf-chart-axis { display: flex; gap: 2px; margin-top: 6px; }
 .sf-chart-tick {
     flex: 1 1 0;
     min-width: 3px;
@@ -435,6 +440,9 @@
     text-align: center;
     white-space: nowrap;
 }
+/* Keep the first/last labels from spilling outside the pane. */
+.sf-chart-tick:first-child { text-align: left; }
+.sf-chart-tick:last-child { text-align: right; }
 
 /* Inline approve/delete actions in the spam review queue. */
 .sf-inline-action {
@@ -557,56 +565,203 @@
 }
 
 
-/* Dashboard landing page. Cards reuse the existing .submission-stats/.stat-card
-   component; the lower row is a light responsive two-pane grid. Everything else
-   is native CP (.pane, .note, .data tables, .status, .btn). */
-.sf-dash-cols {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-    gap: 14px;
-    align-items: stretch;
-    margin-top: 14px;
+/* ==========================================================================
+   Dashboard landing page.
+   Native CP building blocks (.pane, .data, .status, .zilch, .go) arranged as
+   a stat-tile row + a main/side grid. Every colour is a Craft CP custom
+   property (with a light-theme fallback) so dark mode inherits for free.
+   ========================================================================== */
+.sf-dash {
+    --sf-dash-gap: 14px;
+    display: flex;
+    flex-direction: column;
+    gap: var(--sf-dash-gap);
 }
-/* Both panes fill the row to the same height. */
-.sf-dash-cols > .pane { margin: 0; }
-.sf-dash-actions { display: flex; flex-wrap: wrap; gap: 8px; }
-.stat-card.stat-clickable { cursor: pointer; }
-.sf-dash-h2-spaced { margin-top: 24px; }
+/* The grid gaps own the vertical rhythm, not the panes' default margins. */
+.sf-dash .pane { margin: 0; }
 
-/* Horizontal labelled bars (e.g. submissions by weekday). */
-.sf-hbars { display: flex; flex-direction: column; gap: 6px; }
+/* --- At-a-glance stat tiles (linked panes) --- */
+.sf-dash-tiles {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+    gap: var(--sf-dash-gap);
+}
+a.sf-tile {
+    display: block;
+    padding: 16px 20px;
+    color: var(--text-color, #3f4d5a);
+    text-decoration: none;
+}
+a.sf-tile:hover {
+    text-decoration: none;
+    border-color: var(--medium-hairline-color, #cfd8e3);
+}
+a.sf-tile:focus-visible { box-shadow: var(--focus-ring, 0 0 0 3px #5e9eff); }
+.sf-tile-label {
+    display: block;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--medium-text-color, #606d7b);
+}
+.sf-tile-value {
+    display: block;
+    margin-top: 2px;
+    font-size: 26px;
+    font-weight: 600;
+    line-height: 1.2;
+    font-variant-numeric: tabular-nums;
+}
+.sf-tile-meta {
+    display: flex;
+    align-items: center;
+    margin-top: 4px;
+    font-size: 12px;
+    color: var(--light-text-color, #8b97a3);
+}
+/* A scaled-down native status dot inside the small meta line. */
+.sf-tile-meta .status {
+    width: 0.5rem;
+    height: 0.5rem;
+    margin-inline-end: 5px;
+}
+
+/* --- Main/side grid --- */
+.sf-dash-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 5fr) minmax(240px, 2fr);
+    gap: var(--sf-dash-gap);
+    align-items: start;
+}
+.sf-dash-main,
+.sf-dash-side {
+    display: flex;
+    flex-direction: column;
+    gap: var(--sf-dash-gap);
+    min-width: 0;
+}
+@media (max-width: 973px) {
+    .sf-dash-grid { grid-template-columns: minmax(0, 1fr); }
+}
+
+/* Hairline-separated pane footer holding a native .go link. */
+.sf-pane-footer {
+    margin-top: 14px;
+    padding-top: 12px;
+    border-top: 1px solid var(--hairline-color, rgba(51, 64, 77, 0.1));
+}
+
+/* --- Needs attention --- */
+.sf-attention { border-inline-start: 3px solid var(--bg-pending, #fdd069); }
+.sf-attention-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+.sf-attention-list li { display: flex; align-items: flex-start; }
+.sf-attention-list .status {
+    flex: 0 0 auto;
+    margin-top: 4px;
+}
+
+/* --- Top forms (quick links with proportion bars) --- */
+.sf-topforms {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+.sf-topform-head {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 10px;
+}
+.sf-topform-head a {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.sf-topform-head .light {
+    flex: 0 0 auto;
+    font-size: 12px;
+    font-variant-numeric: tabular-nums;
+}
+.sf-topform-track {
+    margin-top: 4px;
+    height: 4px;
+    border-radius: 2px;
+    background: var(--gray-100, #edf0f5);
+    overflow: hidden;
+}
+.sf-topform-bar {
+    display: block;
+    height: 100%;
+    min-width: 2px;
+    border-radius: 2px;
+    background: var(--blue-600, #2563eb);
+}
+
+/* --- By weekday (horizontal labelled bars) --- */
+.sf-hbars { display: flex; flex-direction: column; gap: 8px; }
 .sf-hbar-row { display: flex; align-items: center; gap: 10px; }
 .sf-hbar-label {
-    flex: 0 0 34px;
+    flex: 0 0 36px;
     font-size: 12px;
-    color: var(--medium-text-color, #606d7b);
+    color: var(--light-text-color, #8b97a3);
 }
 .sf-hbar-track {
     flex: 1;
-    height: 14px;
+    height: 8px;
     background: var(--gray-100, #edf0f5);
-    border-radius: 3px;
+    border-radius: 4px;
     overflow: hidden;
 }
 .sf-hbar-fill {
     display: block;
     height: 100%;
-    background: var(--enabled-color, #3a85ee);
-    border-radius: 3px;
+    background: var(--blue-600, #2563eb);
+    border-radius: 4px;
 }
 .sf-hbar-val {
     flex: 0 0 auto;
-    min-width: 18px;
+    min-width: 20px;
     text-align: right;
     font-size: 12px;
     color: var(--medium-text-color, #606d7b);
     font-variant-numeric: tabular-nums;
 }
 
-/* Flush lists/tables: no left/right cell padding, no list indent. */
+/* --- First-run empty state --- */
+.sf-dash-empty .zilch {
+    flex-direction: column;
+    gap: 6px;
+    padding-block: 72px;
+    padding-inline: 24px;
+}
+.sf-dash-empty .zilch p { margin: 0; }
+.sf-dash-empty-icon {
+    width: 56px;
+    height: 56px;
+    color: var(--gray-300, #cdd8e4);
+    stroke: currentColor;
+}
+.sf-dash-empty-sub {
+    max-width: 40em;
+    font-size: 14px;
+}
+.sf-dash-empty .btn { margin-top: 10px; }
+
+/* Flush tables inside dashboard panes: no left/right cell padding. */
 .sf-dash .data th:first-child,
 .sf-dash .data td:first-child { padding-left: 0; }
 .sf-dash .data th:last-child,
 .sf-dash .data td:last-child { padding-right: 0; }
-.sf-dash .note ul { margin: 6px 0 0; padding-left: 0; list-style: none; }
-.sf-dash .note li { margin: 2px 0; }
+.sf-dash .data tbody th { font-weight: normal; }
+/* Right-align the trailing (date) column. */
+.sf-dash .data .sf-cell-end { text-align: right; }

@@ -18,8 +18,8 @@
 <div class="sf-chart-head">
     <h2>{{ 'Submissions over time'|t('simple-form') }}</h2>
     <span class="light sf-chart-sub">
-        {{ '{n} in {d} days'|t('simple-form', { n: rangeTotal, d: days }) }}
-        {%- if maxCount %} · {{ 'peak {n}/day'|t('simple-form', { n: maxCount }) }}{% endif -%}
+        {{ '{n} in {d} days'|t('simple-form', { n: rangeTotal|number, d: days }) }}
+        {%- if maxCount %} · {{ 'peak {n}/day'|t('simple-form', { n: maxCount|number }) }}{% endif -%}
     </span>
 </div>
 
@@ -27,8 +27,9 @@
     <div class="sf-bar-chart" role="img"
          aria-label="{{ 'Submissions over the last {d} days'|t('simple-form', { d: days }) }}">
         {% for point in perDay %}
-            <div class="sf-bar-col" title="{{ point.date }}: {{ point.count }}">
-                <div class="sf-bar" style="height: {{ maxCount ? (point.count / maxCount * 100)|round : 0 }}%"></div>
+            <div class="sf-bar-col" title="{{ point.date|date('medium') }}: {{ point.count|number }}">
+                {# Non-zero days keep a visible sliver even when dwarfed by the peak. #}
+                <div class="sf-bar{{ point.count ? ' has-count' }}" style="height: {{ maxCount ? (point.count / maxCount * 100)|round : 0 }}%"></div>
             </div>
         {% endfor %}
     </div>
