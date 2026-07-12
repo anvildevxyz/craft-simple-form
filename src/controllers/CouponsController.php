@@ -2,6 +2,7 @@
 
 namespace anvildev\simpleform\controllers;
 
+use anvildev\simpleform\Editions;
 use anvildev\simpleform\helpers\SimpleFormPermissions;
 use anvildev\simpleform\models\CouponModel;
 use anvildev\simpleform\Plugin;
@@ -74,6 +75,21 @@ class CouponsController extends Controller
             throw new NotFoundHttpException('Coupon not found');
         }
         $coupon ??= new CouponModel();
+
+        // Edition gate (authoritative, no-new-escalation): creating a coupon is a
+        // Pro feature. A downgraded site keeps its existing coupons — they stay
+        // editable/toggleable and still validate at checkout — but Solo may not
+        // add a *new* one. Only a brand-new coupon (no stored id) is blocked.
+        if ($coupon->id === null && !Editions::isPro()) {
+            Craft::$app->getSession()->setError(Craft::t(
+                'simple-form',
+                'Creating coupons requires the Pro edition.',
+            ));
+            Craft::$app->getUrlManager()->setRouteParams(['coupon' => $coupon]);
+            return $this->renderTemplate('simple-form/settings/coupons/edit', [
+                'coupon' => $coupon,
+            ]);
+        }
 
         $coupon->code = (string) $request->getBodyParam('code', '');
         $coupon->type = (string) $request->getBodyParam('type', CouponModel::TYPE_FIXED);

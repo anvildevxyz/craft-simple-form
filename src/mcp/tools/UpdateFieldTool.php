@@ -2,6 +2,7 @@
 
 namespace anvildev\simpleform\mcp\tools;
 
+use anvildev\simpleform\Editions;
 use anvildev\simpleform\elements\Form;
 use anvildev\simpleform\mcp\Scopes;
 use anvildev\simpleform\mcp\tools\support\FieldOps;
@@ -107,6 +108,24 @@ class UpdateFieldTool implements ToolInterface
         $helpText = array_key_exists('helpText', $arguments)
             ? (string)$arguments['helpText']
             : (string)($currentHelpText ?? '');
+
+        // Edition gate (defense in depth): mirror the CP's no-new-escalation guard
+        // so this non-CP authoring path can't switch a Pro capability (conditional
+        // logic, a logic jump, a 2nd-page placement) on via config on Solo. Diffed
+        // against the field's stored config, so a capability it already had stays
+        // editable after a downgrade.
+        $blockedCaps = Editions::blockedNewFormCapabilities(
+            [['type' => $type, 'config' => $config]],
+            false,
+            [['type' => $type, 'config' => is_array($currentConfig) ? $currentConfig : []]],
+            false,
+        );
+        if ($blockedCaps !== []) {
+            return [
+                'isError' => true,
+                'errors' => ['config' => [sprintf('This field uses features that require the Pro edition: %s.', implode(', ', $blockedCaps))]],
+            ];
+        }
 
         $errors = FieldOps::validate($type, $label, $handle, $config, $formId, $fieldId);
         if ($errors !== []) {

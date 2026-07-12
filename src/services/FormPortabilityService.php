@@ -230,6 +230,11 @@ class FormPortabilityService extends Component
             $data,
             FieldQueryHelper::fieldsForForm($formId, $canonicalSiteId),
             (bool)$form->allowSaveResume,
+            [
+                Editions::CAP_CONVERSATIONAL => $form->renderMode === 'conversational',
+                Editions::CAP_QUIZ => $form->quizMode,
+                Editions::CAP_PARTIAL_CAPTURE => $form->capturePartials,
+            ],
         );
 
         // Apply form-level changes from the file (name, save-resume, per-site
@@ -986,9 +991,10 @@ class FormPortabilityService extends Component
      *
      * @param array<string, mixed> $data the decoded export document
      * @param list<array<string, mixed>> $existingItems the target form's saved fields ([] for a new import)
+     * @param array<string, bool> $existingModes the target form's stored Pro modes ([] for a new import)
      * @throws InvalidArgumentException when Solo would be escalated
      */
-    private function assertEditionAllows(array $data, array $existingItems, bool $existingSaveResume): void
+    private function assertEditionAllows(array $data, array $existingItems, bool $existingSaveResume, array $existingModes = []): void
     {
         $fields = is_array($data['fields'] ?? null)
             ? array_values(array_filter($data['fields'], 'is_array'))
@@ -999,9 +1005,16 @@ class FormPortabilityService extends Component
         $types = array_map(static fn(array $f): string => (string)($f['type'] ?? ''), $fields);
         $existingTypes = array_map(static fn(array $f): string => (string)($f['type'] ?? ''), $existingItems);
 
+        $postedModes = [
+            Editions::CAP_CONVERSATIONAL => ($formNode['renderMode'] ?? 'standard') === 'conversational',
+            Editions::CAP_QUIZ => (bool)($formNode['quizMode'] ?? false),
+            Editions::CAP_PARTIAL_CAPTURE => (bool)($formNode['capturePartials'] ?? false),
+        ];
+
         $blocked = array_merge(
             Editions::blockedNewProFields($types, $existingTypes),
             Editions::blockedNewFormCapabilities($fields, $saveResume, $existingItems, $existingSaveResume),
+            Editions::blockedNewFormModes($postedModes, $existingModes),
         );
 
         if ($blocked !== []) {

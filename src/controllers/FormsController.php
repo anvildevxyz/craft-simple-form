@@ -166,6 +166,13 @@ class FormsController extends Controller
         // already had (no-new-escalation rule).
         $existingFields = $form->id ? FieldQueryHelper::fieldsForForm((int)$form->id, $site->id) : [];
         $priorSaveResume = (bool) $form->allowSaveResume;
+        // Scalar Pro modes aren't derivable from the field set, so snapshot them
+        // too (a new form's defaults are all "off"), keyed by capability handle.
+        $priorModes = [
+            Editions::CAP_CONVERSATIONAL => $form->renderMode === 'conversational',
+            Editions::CAP_QUIZ => $form->quizMode,
+            Editions::CAP_PARTIAL_CAPTURE => $form->capturePartials,
+        ];
 
         $form->name = $request->getBodyParam('name');
         $form->handle = $request->getBodyParam('handle');
@@ -313,13 +320,26 @@ class FormsController extends Controller
         }
 
         // Edition gate (authoritative): Solo may not newly enable Pro form-level
-        // capabilities (conditional logic, multi-page, save & continue). Ones
-        // already on the saved form survive a downgrade and stay editable.
-        $blockedCaps = Editions::blockedNewFormCapabilities(
-            $items,
-            $form->allowSaveResume,
-            $existingFields,
-            $priorSaveResume,
+        // capabilities. Field-set-derived ones (conditional logic, multi-page,
+        // logic jumps, save & continue) and scalar form modes (conversational
+        // render, quiz scoring, partial capture) are both diffed against the saved
+        // form, so a feature already on it survives a downgrade and stays editable;
+        // only *introducing* one on Solo is blocked (no-new-escalation).
+        $blockedCaps = array_merge(
+            Editions::blockedNewFormCapabilities(
+                $items,
+                $form->allowSaveResume,
+                $existingFields,
+                $priorSaveResume,
+            ),
+            Editions::blockedNewFormModes(
+                [
+                    Editions::CAP_CONVERSATIONAL => $form->renderMode === 'conversational',
+                    Editions::CAP_QUIZ => $form->quizMode,
+                    Editions::CAP_PARTIAL_CAPTURE => $form->capturePartials,
+                ],
+                $priorModes,
+            ),
         );
         if ($blockedCaps) {
             Craft::$app->getSession()->setError(Craft::t(
@@ -710,8 +730,19 @@ class FormsController extends Controller
 
         // Derive the form-level capabilities from the same enumeration the save
         // gate uses (empty "existing" => every Pro capability currently in use is
-        // reported), so the banner and the gate can never drift apart.
-        $capabilities = Editions::blockedNewFormCapabilities($fields, (bool)$form->allowSaveResume, [], false);
+        // reported), so the banner and the gate can never drift apart. The scalar
+        // modes are diffed the same way (empty "stored" => report whatever is on).
+        $capabilities = array_merge(
+            Editions::blockedNewFormCapabilities($fields, (bool)$form->allowSaveResume, [], false),
+            Editions::blockedNewFormModes(
+                [
+                    Editions::CAP_CONVERSATIONAL => $form->renderMode === 'conversational',
+                    Editions::CAP_QUIZ => $form->quizMode,
+                    Editions::CAP_PARTIAL_CAPTURE => $form->capturePartials,
+                ],
+                [],
+            ),
+        );
         foreach ($capabilities as $capability) {
             $features[] = $this->capabilityLabel($capability);
         }
@@ -756,6 +787,10 @@ class FormsController extends Controller
             Editions::CAP_CONDITIONAL_LOGIC => Craft::t('simple-form', 'conditional logic'),
             Editions::CAP_MULTI_PAGE => Craft::t('simple-form', 'multi-page forms'),
             Editions::CAP_SAVE_CONTINUE => Craft::t('simple-form', 'save & continue later'),
+            Editions::CAP_LOGIC_JUMPS => Craft::t('simple-form', 'logic jumps'),
+            Editions::CAP_CONVERSATIONAL => Craft::t('simple-form', 'conversational render mode'),
+            Editions::CAP_QUIZ => Craft::t('simple-form', 'quiz scoring'),
+            Editions::CAP_PARTIAL_CAPTURE => Craft::t('simple-form', 'partial capture'),
             default => $capability,
         };
     }

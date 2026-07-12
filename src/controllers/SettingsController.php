@@ -462,6 +462,7 @@ class SettingsController extends Controller
             'enableDenylists', 'denylistMode' => Craft::t('simple-form', 'Denylists'),
             'retainSubmissionsDays' => Craft::t('simple-form', 'Automatic submission deletion'),
             'retainAuditLogDays' => Craft::t('simple-form', 'Audit log retention'),
+            'enableWorkflow' => Craft::t('simple-form', 'Submission approval workflow'),
             default => $field,
         };
     }
