@@ -91,8 +91,8 @@ class AddFieldTool implements ToolInterface
         }
 
         // Same gate for Pro capabilities the field's own config may introduce
-        // (conditional logic, a logic jump, a 2nd-page placement), diffed against
-        // the form's existing fields so an already-used capability isn't re-blocked.
+        // (conditional logic, a 2nd-page placement), diffed against the form's
+        // existing fields so an already-used capability isn't re-blocked.
         $blockedCaps = Editions::blockedNewFormCapabilities(
             [['type' => $type, 'config' => $config]],
             false,

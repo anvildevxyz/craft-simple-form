@@ -787,7 +787,6 @@ class FormsController extends Controller
             Editions::CAP_CONDITIONAL_LOGIC => Craft::t('simple-form', 'conditional logic'),
             Editions::CAP_MULTI_PAGE => Craft::t('simple-form', 'multi-page forms'),
             Editions::CAP_SAVE_CONTINUE => Craft::t('simple-form', 'save & continue later'),
-            Editions::CAP_LOGIC_JUMPS => Craft::t('simple-form', 'logic jumps'),
             Editions::CAP_CONVERSATIONAL => Craft::t('simple-form', 'conversational render mode'),
             Editions::CAP_QUIZ => Craft::t('simple-form', 'quiz scoring'),
             Editions::CAP_PARTIAL_CAPTURE => Craft::t('simple-form', 'partial capture'),

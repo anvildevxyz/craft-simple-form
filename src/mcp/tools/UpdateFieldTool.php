@@ -111,7 +111,7 @@ class UpdateFieldTool implements ToolInterface
 
         // Edition gate (defense in depth): mirror the CP's no-new-escalation guard
         // so this non-CP authoring path can't switch a Pro capability (conditional
-        // logic, a logic jump, a 2nd-page placement) on via config on Solo. Diffed
+        // logic, a 2nd-page placement) on via config on Solo. Diffed
         // against the field's stored config, so a capability it already had stays
         // editable after a downgrade.
         $blockedCaps = Editions::blockedNewFormCapabilities(

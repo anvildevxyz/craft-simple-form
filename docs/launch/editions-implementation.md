@@ -35,11 +35,11 @@ handle exists only where something enforces or reports it.
 | **Conditional logic** | ❌ | ✅ | `CAP_CONDITIONAL_LOGIC` → `blockedNewFormCapabilities()` |
 | **Multi-page** | ❌ | ✅ | `CAP_MULTI_PAGE` → `blockedNewFormCapabilities()` |
 | **Save & continue later** | ❌ | ✅ | `CAP_SAVE_CONTINUE` → `blockedNewFormCapabilities()` |
-| **Logic jumps** | ❌ | ✅ | `CAP_LOGIC_JUMPS` → `blockedNewFormCapabilities()` (#283) |
+| **Logic jumps** | ✅ | ✅ | Solo-free (#283 split decision) — not gated |
 | **Conversational render mode** | ❌ | ✅ | `CAP_CONVERSATIONAL` → `blockedNewFormModes()` (#283) |
 | **Quiz scoring** (per-option scores / grade bands) | ❌ | ✅ | `CAP_QUIZ` → `blockedNewFormModes()` (#283) |
 | **Partial capture** | ❌ | ✅ | `CAP_PARTIAL_CAPTURE` → `blockedNewFormModes()` (#283) |
-| **Submission approval workflow** | ❌ | ✅ | `enableWorkflow` ∈ `PRO_ENABLE_SETTINGS` → `blocksProSettingChange()` (#283) |
+| **Submission approval workflow** | ✅ | ✅ | Solo-free (#283 split decision) — `enableWorkflow` not gated |
 | **Payment coupons** | ❌ | ✅ | `CouponsController::actionSave` create gate (#283) |
 | **3rd-party integrations** (Slack/Discord/CRM/Sheets) | ❌ | ✅ | `SOLO_INTEGRATIONS` → `integrationAllowed()` |
 | **Payments** (Commerce) | ❌ | ✅ | `payment` ∈ `PRO_FIELDS` → `fieldTypeAllowed()` |
@@ -94,18 +94,18 @@ treated as non-Pro (`isPro()` returns `true` unless the active edition is exactl
 Read `src/Editions.php` for the authoritative shape. The load-bearing surface:
 
 - Handles: `SOLO` / `PRO`; the `CAP_*` capability handles (every one is checked
-  somewhere — conditional-logic, multi-page, save-continue, logic-jumps,
-  conversational, quiz, partial-capture, PDF, governance, dev-tools).
+  somewhere — conditional-logic, multi-page, save-continue, conversational,
+  quiz, partial-capture, PDF, governance, dev-tools).
 - Lists: `PRO_FIELDS` (Pro field-type handles), `SOLO_INTEGRATIONS`,
-  `PRO_ENABLE_SETTINGS` (off-switch settings incl. `enableWorkflow`),
-  `PRO_MODE_SETTINGS`, `PRO_CONFIG_SETTINGS`, `PRO_FORM_MODES` (the scalar form
-  toggles: conversational / quiz / partial capture).
+  `PRO_ENABLE_SETTINGS` (off-switch settings — Akismet/denylists/retention;
+  `enableWorkflow` is Solo-free), `PRO_MODE_SETTINGS`, `PRO_CONFIG_SETTINGS`,
+  `PRO_FORM_MODES` (the scalar form toggles: conversational / quiz / partial
+  capture).
 - Predicates: `isPro()`, `fieldTypeAllowed()`, `integrationAllowed()`.
 - No-new-escalation diffs (posted-vs-stored):
   - `blockedNewProFields($types, $existing)` — count-based per Pro field type.
   - `blockedNewFormCapabilities($items, $saveResume, $existing, $existingSaveResume)`
-    — field-set-derived caps: conditional logic, multi-page, **logic jumps**,
-    save-continue.
+    — field-set-derived caps: conditional logic, multi-page, save-continue.
   - `blockedNewFormModes($posted, $stored)` — scalar form modes keyed by
     `CAP_*` handle: only a mode switched *on* anew is blocked.
   - `blocksProSettingChange($field, $stored, $posted)` — settings off-switches /
@@ -164,12 +164,12 @@ recommendation to revisit at listing time.
 | Conversational render mode (`Form::$renderMode = 'conversational'`) | `FormsController::actionSave` (+ import, banner) via `blockedNewFormModes()` | `CAP_CONVERSATIONAL` |
 | Quiz scoring (per-option scores / grade bands) | same | `CAP_QUIZ` |
 | Partial capture (`capturePartials`) | same | `CAP_PARTIAL_CAPTURE` |
-| Logic jumps (`config.jumps`) | `FormsController::actionSave` (+ import, clone, banner, MCP field tools) via `blockedNewFormCapabilities()` | `CAP_LOGIC_JUMPS` |
-| Submission approval workflow (`enableWorkflow`) | `SettingsController::actionSave` via `blocksProSettingChange()` (setting ∈ `PRO_ENABLE_SETTINGS`) | — |
 | Payment coupons | `CouponsController::actionSave` — create-only gate (new `CouponModel` blocked on Solo) | — |
 
 **Solo (free, ungated):** attribution / UTM capture, address autocomplete,
-submission analytics.
+submission analytics, **logic jumps**, and the **submission approval workflow**
+(#283 split decision — the latter two were considered for Pro but assigned to
+Solo).
 
 **No-new-escalation** is enforced by snapshotting the *stored* form/field/setting
 state before the posted values overwrite it, then diffing:
@@ -180,10 +180,6 @@ state before the posted values overwrite it, then diffing:
   blocks only a mode switched *on* anew. Same diff in
   `FormPortabilityService::assertEditionAllows()` (against the target form's
   stored modes) and `proFeaturesInUse()` (against empty = "report all in use").
-- Logic jumps ride in `blockedNewFormCapabilities()` alongside conditional
-  logic / multi-page — a jump already on the saved field set is preserved.
-- Workflow: `blocksProSettingChange()` allows off/unchanged, blocks a Solo
-  enable; `WorkflowService::isEnabled()` keeps a pre-downgrade queue running.
 - Coupons: only a brand-new coupon (`CouponModel::$id === null`) is blocked on
   Solo; edits/toggles of existing coupons and `CouponsService::evaluate()` at
   checkout stay edition-blind.

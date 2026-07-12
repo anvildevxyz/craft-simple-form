@@ -99,10 +99,11 @@ by default** — run the Pro edition to unlock the full feature set.
 | Multi-site / per-site translation | ✅ | ✅ |
 | Webhook + Craft entry/user integrations | ✅ | ✅ |
 | Attribution / UTM capture, address autocomplete, submission analytics | ✅ | ✅ |
+| Logic jumps, submission approval workflow | ✅ | ✅ |
 | Advanced fields (signature, payment, rating, calculation, repeater, relations…) | — | ✅ |
 | Conditional logic, multi-page, save & continue later | — | ✅ |
-| Logic jumps, conversational render mode, quiz scoring, partial capture | — | ✅ |
-| Submission approval workflow, payment coupons | — | ✅ |
+| Conversational render mode, quiz scoring, partial capture | — | ✅ |
+| Payment coupons | — | ✅ |
 | Third-party integrations (Slack, Discord, Mailchimp, HubSpot, Google Sheets…) | — | ✅ |
 | Commerce payments, PDF attachments, audit log, retention automation | — | ✅ |
 | MCP server + forms-as-code | — | ✅ |

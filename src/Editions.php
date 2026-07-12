@@ -30,7 +30,6 @@ final class Editions
     public const CAP_CONDITIONAL_LOGIC = 'conditionalLogic';
     public const CAP_MULTI_PAGE = 'multiPage';
     public const CAP_SAVE_CONTINUE = 'saveAndContinue';
-    public const CAP_LOGIC_JUMPS = 'logicJumps';
     public const CAP_CONVERSATIONAL = 'conversational';
     public const CAP_QUIZ = 'quiz';
     public const CAP_PARTIAL_CAPTURE = 'partialCapture';
@@ -79,7 +78,6 @@ final class Editions
     public const PRO_ENABLE_SETTINGS = [
         'enableAkismet',
         'enableDenylists',
-        'enableWorkflow',
         'retainSubmissionsDays',
         'retainAuditLogDays',
     ];
@@ -286,33 +284,6 @@ final class Editions
     }
 
     /**
-     * Whether any field in a builder/DB field set carries an *active* logic jump —
-     * a `config.jumps` entry with a non-empty target. Mirrors the render-time
-     * gating in {@see \anvildev\simpleform\helpers\JumpResolver} (the single source
-     * of truth): a jump without a target never routes, so it must not count as Pro
-     * usage here either.
-     *
-     * @param iterable<array<string, mixed>> $items
-     */
-    public static function usesLogicJumps(iterable $items): bool
-    {
-        foreach ($items as $item) {
-            $config = is_array($item['config'] ?? null) ? $item['config'] : [];
-            $jumps = $config['jumps'] ?? null;
-            if (!is_array($jumps)) {
-                continue;
-            }
-            foreach ($jumps as $jump) {
-                if (is_array($jump) && trim((string) ($jump['target'] ?? '')) !== '') {
-                    return true;
-                }
-            }
-        }
-
-        return false;
-    }
-
-    /**
      * The Pro form-level capabilities newly introduced by the posted state
      * relative to the already-saved state — the escalations Solo must reject.
      * Returns capability handles ({@see self::CAP_*}); [] on Pro or when nothing
@@ -340,9 +311,6 @@ final class Editions
         }
         if (self::usesMultiPage($items) && !self::usesMultiPage($existing)) {
             $blocked[] = self::CAP_MULTI_PAGE;
-        }
-        if (self::usesLogicJumps($items) && !self::usesLogicJumps($existing)) {
-            $blocked[] = self::CAP_LOGIC_JUMPS;
         }
         if ($saveResume && !$existingSaveResume) {
             $blocked[] = self::CAP_SAVE_CONTINUE;
