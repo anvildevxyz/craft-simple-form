@@ -1,6 +1,14 @@
 (function() {
     'use strict';
 
+    // Translate a builder UI string against the 'simple-form' catalog. Craft
+    // ships the catalog to the client via SimpleFormCpAsset::registerAssetFiles();
+    // falls back to the English source string when Craft isn't present (e.g. the
+    // Node parity test). An optional params object fills {placeholder} tokens.
+    function t(s, params) {
+        return (window.Craft && Craft.t) ? Craft.t('simple-form', s, params) : s;
+    }
+
     // Mirrors anvildev\simpleform\helpers\FormRows::MAX_COLUMNS — keep in sync.
     var MAX_COLUMNS = 4;
 
@@ -60,17 +68,17 @@
     var SF_SOURCES = JSON.parse(sfData.relationSources || '{}');
 
     var TYPE_LABELS = {
-        text: 'Text', email: 'Email', url: 'URL', textarea: 'Textarea', select: 'Select',
-        checkbox: 'Checkbox', radio: 'Radio', date: 'Date', time: 'Time', datetime: 'Date & Time', number: 'Number',
-        phone: 'Phone', file: 'File Upload',
-        name: 'Name', address: 'Address',
-        payment: 'Payment', hidden: 'Hidden', consent: 'Agree / Consent',
-        rating: 'Rating', opinion: 'Opinion Scale', signature: 'Signature',
-        entry: 'Entries', category: 'Categories', tag: 'Tags',
-        user: 'Users', asset: 'Assets', calculation: 'Calculation',
-        repeater: 'Repeater',
-        heading: 'Heading', divider: 'Section Divider', html: 'HTML Block',
-        paragraph: 'Text', callout: 'Callout'
+        text: t('Text'), email: t('Email'), url: t('URL'), textarea: t('Textarea'), select: t('Select'),
+        checkbox: t('Checkbox'), radio: t('Radio'), date: t('Date'), time: t('Time'), datetime: t('Date & Time'), number: t('Number'),
+        phone: t('Phone'), file: t('File Upload'),
+        name: t('Name'), address: t('Address'),
+        payment: t('Payment'), hidden: t('Hidden'), consent: t('Agree / Consent'),
+        rating: t('Rating'), opinion: t('Opinion Scale'), signature: t('Signature'),
+        entry: t('Entries'), category: t('Categories'), tag: t('Tags'),
+        user: t('Users'), asset: t('Assets'), calculation: t('Calculation'),
+        repeater: t('Repeater'),
+        heading: t('Heading'), divider: t('Section Divider'), html: t('HTML Block'),
+        paragraph: t('Text'), callout: t('Callout')
     };
     var OPTION_TYPES = ['select', 'checkbox', 'radio'];
     // Non-visible types: the visitor never sees them, so the inspector suppresses
@@ -95,19 +103,19 @@
     // config and to render the sub-field editor.
     var SUBFIELD_DEFS = {
         name: [
-            ['prefix', 'Prefix', false, false],
-            ['first', 'First name', true, true],
-            ['middle', 'Middle name', false, false],
-            ['last', 'Last name', true, true],
-            ['suffix', 'Suffix', false, false]
+            ['prefix', t('Prefix'), false, false],
+            ['first', t('First name'), true, true],
+            ['middle', t('Middle name'), false, false],
+            ['last', t('Last name'), true, true],
+            ['suffix', t('Suffix'), false, false]
         ],
         address: [
-            ['line1', 'Address line 1', true, true],
-            ['line2', 'Address line 2', true, false],
-            ['city', 'City', true, true],
-            ['state', 'State / Region', true, false],
-            ['postalCode', 'Postal code', true, true],
-            ['country', 'Country', true, true]
+            ['line1', t('Address line 1'), true, true],
+            ['line2', t('Address line 2'), true, false],
+            ['city', t('City'), true, true],
+            ['state', t('State / Region'), true, false],
+            ['postalCode', t('Postal code'), true, true],
+            ['country', t('Country'), true, true]
         ]
     };
 
@@ -161,7 +169,7 @@
 
     function defaultConfig(type) {
         if (OPTION_TYPES.indexOf(type) !== -1) {
-            return { options: [{ label: 'Option 1', value: 'option1' }] };
+            return { options: [{ label: t('Option 1'), value: 'option1' }] };
         }
         if (type === 'payment') {
             return { amountType: 'fixed', currency: 'USD' };
@@ -170,7 +178,7 @@
             return { source: 'static' };
         }
         if (type === 'consent') {
-            return { consentText: 'I agree to the [privacy policy](https://example.com/privacy)' };
+            return { consentText: t('I agree to the [privacy policy](https://example.com/privacy)') };
         }
         if (type === 'rating') {
             return { max: 5, iconStyle: 'star' };
@@ -187,7 +195,7 @@
         if (type === 'repeater') {
             return {
                 minRows: 1, maxRows: 0, addButtonLabel: '',
-                fields: [{ handle: 'item', type: 'text', label: 'Item', required: false }]
+                fields: [{ handle: 'item', type: 'text', label: t('Item'), required: false }]
             };
         }
         if (COMPOSITE_TYPES.indexOf(type) !== -1) {
@@ -261,8 +269,8 @@
                     var sep = document.createElement('div');
                     sep.className = 'sf-page-sep';
                     var ordinal = pages.indexOf(rowPage) + 1;
-                    sep.textContent = 'Step ' + ordinal
-                        + (ordinal !== rowPage ? ' (numbered ' + rowPage + ' — steps renumber contiguously on the form)' : '');
+                    sep.textContent = t('Step {n}', { n: ordinal })
+                        + (ordinal !== rowPage ? ' ' + t('(numbered {n} — steps renumber contiguously on the form)', { n: rowPage }) : '');
                     canvas.appendChild(sep);
                 }
             }
@@ -312,21 +320,21 @@
         // creator doesn't expect it to render (#124).
         if (HIDDEN_TYPES.indexOf(f.type) !== -1) {
             type.classList.add('sf-field-type-hidden');
-            type.title = 'Hidden — captured silently; never shown on the form.';
+            type.title = t('Hidden — captured silently; never shown on the form.');
         }
 
         var idx = fields.indexOf(f);
         var up = document.createElement('button');
         up.type = 'button'; up.className = 'sf-field-move'; up.dataset.dir = '-1';
-        up.title = 'Move up'; up.setAttribute('aria-label', 'Move up'); up.textContent = '\u25B4';
+        up.title = t('Move up'); up.setAttribute('aria-label', t('Move up')); up.textContent = '\u25B4';
         up.disabled = idx <= 0;
         var down = document.createElement('button');
         down.type = 'button'; down.className = 'sf-field-move'; down.dataset.dir = '1';
-        down.title = 'Move down'; down.setAttribute('aria-label', 'Move down'); down.textContent = '\u25BE';
+        down.title = t('Move down'); down.setAttribute('aria-label', t('Move down')); down.textContent = '\u25BE';
         down.disabled = idx === fields.length - 1;
 
         var del = document.createElement('button');
-        del.type = 'button'; del.className = 'sf-field-del'; del.title = 'Remove'; del.textContent = '×';
+        del.type = 'button'; del.className = 'sf-field-del'; del.title = t('Remove'); del.textContent = '×';
 
         el.appendChild(grip); el.appendChild(label);
         // Layout blocks are value-less, so the canvas never shows a required mark.
@@ -342,20 +350,20 @@
     // The canvas-preview text for a block: its visible content for layout blocks
     // (heading text / divider label / "HTML block"), its label otherwise.
     function blockPreviewText(f) {
-        if (f.type === 'heading') { return (f.label && f.label.trim()) || '(heading)'; }
-        if (f.type === 'divider') { return (f.label && f.label.trim()) || '— divider —'; }
-        if (f.type === 'html') { return 'HTML block'; }
+        if (f.type === 'heading') { return (f.label && f.label.trim()) || t('(heading)'); }
+        if (f.type === 'divider') { return (f.label && f.label.trim()) || t('— divider —'); }
+        if (f.type === 'html') { return t('HTML block'); }
         if (f.type === 'paragraph') {
             var body = (f.helpText || '').trim().replace(/\s+/g, ' ');
-            if (!body) { return '(text)'; }
+            if (!body) { return t('(text)'); }
             return body.length > 60 ? body.slice(0, 60) + '…' : body;
         }
         if (f.type === 'callout') {
             var cbody = (f.helpText || '').trim().replace(/\s+/g, ' ');
-            if (!cbody) { return '(callout)'; }
+            if (!cbody) { return t('(callout)'); }
             return cbody.length > 60 ? cbody.slice(0, 60) + '…' : cbody;
         }
-        return f.label || '(untitled)';
+        return f.label || t('(untitled)');
     }
 
     // ---- mutation --------------------------------------------------------
@@ -384,7 +392,7 @@
         // Layout blocks have no user-facing label (heading text / divider label
         // is the content); start them blank and seed the handle from the type so
         // the row is still uniquely addressable for conditionals + persistence.
-        var label = isLayout(type) ? '' : (TYPE_LABELS[type] || 'Field');
+        var label = isLayout(type) ? '' : (TYPE_LABELS[type] || t('Field'));
         // Consent is, by design, normally a required tick — default it on.
         var f = normalize({ id: null, type: type, label: label, required: type === 'consent', config: defaultConfig(type) });
         f.handle = uniqueHandle(slug(label) || type, f.clientId);
@@ -397,7 +405,7 @@
         commit();
         select(f.clientId);
         // Land keyboard focus in the editor and announce the change.
-        announce(label + ' field added.');
+        announce(t('{label} field added.', { label: label }));
         focusInspector();
     }
 
@@ -426,11 +434,13 @@
         if (!f) { return; }
         var name = f.label || TYPE_LABELS[f.type] || f.type;
         var refs = fieldReferences(f.handle);
-        var message = 'Delete the \u201C' + name + '\u201D field?';
+        var message = t('Delete the \u201C{name}\u201D field?', { name: name });
         if (refs.length) {
             var names = refs.map(function(r) { return r.label || r.handle; }).join(', ');
-            message += ' ' + refs.length + ' other field' + (refs.length === 1 ? ' has' : 's have')
-                + ' rules based on it (' + names + '); those rules will be removed too.';
+            var count = refs.length;
+            message += ' ' + (count === 1
+                ? t('{count} other field has rules based on it ({names}); those rules will be removed too.', { count: count, names: names })
+                : t('{count} other fields have rules based on it ({names}); those rules will be removed too.', { count: count, names: names }));
         }
         // cp.js (same bundle, loaded first) provides the accessible dialog;
         // native confirm() is banned in CP JS, so absent the dialog we keep the
@@ -456,7 +466,7 @@
         var moved = fields.splice(idx, 1)[0];
         fields.splice(target, 0, moved);
         commit();
-        announce('Moved to position ' + (target + 1) + ' of ' + fields.length + '.');
+        announce(t('Moved to position {pos} of {total}.', { pos: target + 1, total: fields.length }));
         // render() rebuilt the cards — put focus back on the moved one so a
         // keyboard user can keep arrowing.
         var el = canvas.querySelector('.sf-field[data-cid="' + cid + '"]');
@@ -467,7 +477,7 @@
         fields = fields.filter(function(f) { return f.clientId !== cid; });
         if (selectedId === cid) { selectedId = null; showPalette(); }
         commit();
-        announce('Field removed.');
+        announce(t('Field removed.'));
         // Move focus somewhere sensible now that the row is gone.
         var nextField = canvas.querySelector('.sf-field');
         if (nextField && typeof nextField.focus === 'function') { nextField.focus(); }
@@ -518,9 +528,9 @@
 
         var head = document.createElement('div'); head.className = 'sf-inspector-head';
         var title = document.createElement('h3'); title.className = 'sf-panel-title';
-        title.textContent = (TYPE_LABELS[f.type] || f.type) + ' ' + 'field';
+        title.textContent = t('{type} field', { type: TYPE_LABELS[f.type] || f.type });
         var back = document.createElement('button');
-        back.type = 'button'; back.className = 'btn sf-inspector-back'; back.textContent = 'Done';
+        back.type = 'button'; back.className = 'btn sf-inspector-back'; back.textContent = t('Done');
         back.addEventListener('click', function() { selectedId = null; render(); showPalette(); });
         head.appendChild(title); head.appendChild(back);
         inspector.appendChild(head);
@@ -533,7 +543,7 @@
         }
 
         // Label
-        var labelRow = row('Label');
+        var labelRow = row(t('Label'));
         labelRow._input.appendChild(textInput(f.label, function(v) {
             f.label = v; commit();
         }));
@@ -541,7 +551,7 @@
 
         // Handle. Renaming rewrites any conditional rules in other fields that
         // referenced the old handle, so conditions survive a rename.
-        var handleRow = row('Handle');
+        var handleRow = row(t('Handle'));
         var handleInput = textInput(f.handle, function(v) {
             var old = f.handle;
             f.handle = v;
@@ -562,12 +572,12 @@
             var cb = document.createElement('input'); cb.type = 'checkbox'; cb.className = 'checkbox';
             cb.id = 'sf-req-' + f.clientId; cb.checked = f.required;
             cb.addEventListener('change', function() { f.required = cb.checked; commit(); });
-            var cbl = document.createElement('label'); cbl.setAttribute('for', cb.id); cbl.textContent = 'Required field';
+            var cbl = document.createElement('label'); cbl.setAttribute('for', cb.id); cbl.textContent = t('Required field');
             reqWrap.appendChild(cb); reqWrap.appendChild(cbl); reqRow.appendChild(reqWrap);
             inspector.appendChild(reqRow);
 
             // Help text
-            var helpRow = row('Help Text');
+            var helpRow = row(t('Help Text'));
             var ta = document.createElement('textarea'); ta.className = 'text fullwidth'; ta.rows = 2; ta.value = f.helpText || '';
             ta.addEventListener('input', function() { f.helpText = ta.value; serialize(); });
             helpRow._input.appendChild(ta);
@@ -575,13 +585,13 @@
 
             // Custom validation message (per-site override). Blank falls back to the
             // field type's localized default message at submit time.
-            var errRow = row('Error Message');
+            var errRow = row(t('Error Message'));
             var errInput = textInput(f.errorMessage, function(v) { f.errorMessage = v; serialize(); });
-            errInput.placeholder = 'Leave blank to use the default';
+            errInput.placeholder = t('Leave blank to use the default');
             errRow._input.appendChild(errInput);
             var errHint = document.createElement('div'); errHint.className = 'instructions';
             var errHintP = document.createElement('p');
-            errHintP.textContent = 'Shown for this site when the field fails validation. Leave blank to use the default (translated) message.';
+            errHintP.textContent = t('Shown for this site when the field fails validation. Leave blank to use the default (translated) message.');
             errHint.appendChild(errHintP);
             errRow._input.appendChild(errHint);
             inspector.appendChild(errRow);
@@ -590,13 +600,13 @@
             // visitor's own input always overrides it.
             if (DEFAULT_VALUE_TYPES.indexOf(f.type) !== -1) {
                 f.config = f.config || {};
-                var defRow = row('Default value');
+                var defRow = row(t('Default value'));
                 defRow._input.appendChild(textInput(f.config.defaultValue || '', function(v) {
                     f.config.defaultValue = v; serialize();
                 }));
                 var defHint = document.createElement('div'); defHint.className = 'instructions';
                 var defHintP = document.createElement('p');
-                defHintP.textContent = 'Prefilled when the form first loads. For choice fields, use the option value. A visitor’s input overrides it.';
+                defHintP.textContent = t('Prefilled when the form first loads. For choice fields, use the option value. A visitor’s input overrides it.');
                 defHint.appendChild(defHintP);
                 defRow._input.appendChild(defHint);
                 inspector.appendChild(defRow);
@@ -606,12 +616,12 @@
         } else {
             var hiddenHint = document.createElement('div'); hiddenHint.className = 'instructions';
             var hiddenHintP = document.createElement('p');
-            hiddenHintP.textContent = 'Hidden — captured silently. This field is never shown on the form; the label is used only for the CP submission view and exports.';
+            hiddenHintP.textContent = t('Hidden — captured silently. This field is never shown on the form; the label is used only for the CP submission view and exports.');
             hiddenHint.appendChild(hiddenHintP);
             inspector.appendChild(hiddenHint);
         }
 
-        inspector.appendChild(numberRow('Step / Page', (f.config && f.config.page) || '', function(v) {
+        inspector.appendChild(numberRow(t('Step / Page'), (f.config && f.config.page) || '', function(v) {
             f.config = f.config || {};
             var n = parseInt(v, 10);
             if (v === '' || v == null || isNaN(n) || n < 1) { delete f.config.page; } else { f.config.page = n; }
@@ -621,7 +631,7 @@
         // Row: fields that share the same Row number (and Page) on consecutive
         // positions render side by side as columns (max MAX_COLUMNS). Blank = a
         // full-width, single-column field (the default).
-        var rowRow = numberRow('Row', (f.config && f.config.row) || '', function(v) {
+        var rowRow = numberRow(t('Row'), (f.config && f.config.row) || '', function(v) {
             f.config = f.config || {};
             var n = parseInt(v, 10);
             if (v === '' || v == null || isNaN(n) || n < 1) { delete f.config.row; } else { f.config.row = n; }
@@ -629,8 +639,7 @@
         });
         var rowHint = document.createElement('div'); rowHint.className = 'instructions';
         var rowHintP = document.createElement('p');
-        rowHintP.textContent = 'Drag a field onto the left or right edge of another to place them side by side '
-            + '(up to ' + MAX_COLUMNS + ' columns), or set a matching Row number here.';
+        rowHintP.textContent = t('Drag a field onto the left or right edge of another to place them side by side (up to {max} columns), or set a matching Row number here.', { max: MAX_COLUMNS });
         rowHint.appendChild(rowHintP);
         rowRow._input.appendChild(rowHint);
         inspector.appendChild(rowRow);
@@ -653,12 +662,12 @@
         var c = f.config || (f.config = {});
         var state = c.prefillFromQuery === true ? 'on' : (c.prefillFromQuery === false ? 'off' : 'default');
 
-        var pfRow = row('Prefill from query string');
+        var pfRow = row(t('Prefill from query string'));
         pfRow._input.appendChild(selectEl(
             [
-                { value: 'default', label: 'Use form default' },
-                { value: 'on', label: 'On' },
-                { value: 'off', label: 'Off' },
+                { value: 'default', label: t('Use form default') },
+                { value: 'on', label: t('On') },
+                { value: 'off', label: t('Off') },
             ],
             state,
             function(v) {
@@ -671,24 +680,23 @@
         ));
         var pfHint = document.createElement('div'); pfHint.className = 'instructions';
         var pfHintP = document.createElement('p');
-        pfHintP.textContent = 'When enabled, this field is pre-filled from a URL query parameter. '
-            + 'Prefilled values are still validated on submit.';
+        pfHintP.textContent = t('When enabled, this field is pre-filled from a URL query parameter. Prefilled values are still validated on submit.');
         pfHint.appendChild(pfHintP);
         pfRow._input.appendChild(pfHint);
         inspector.appendChild(pfRow);
 
         if (state === 'off') { return; }
 
-        var ppRow = row('Query parameter');
+        var ppRow = row(t('Query parameter'));
         var ppInput = textInput(c.prefillParam || '', function(v) {
             if (v.trim() === '') { delete c.prefillParam; } else { c.prefillParam = v.trim(); }
             serialize();
         });
-        ppInput.placeholder = f.handle || 'field handle';
+        ppInput.placeholder = f.handle || t('field handle');
         ppRow._input.appendChild(ppInput);
         var ppHint = document.createElement('div'); ppHint.className = 'instructions';
         var ppHintP = document.createElement('p');
-        ppHintP.textContent = 'The URL query parameter to read. Leave blank to use the field handle.';
+        ppHintP.textContent = t('The URL query parameter to read. Leave blank to use the field handle.');
         ppHint.appendChild(ppHintP);
         ppRow._input.appendChild(ppHint);
         inspector.appendChild(ppRow);
@@ -702,88 +710,85 @@
         var c = f.config || (f.config = {});
 
         if (f.type === 'heading') {
-            var lvlRow = row('Heading Level');
+            var lvlRow = row(t('Heading Level'));
             lvlRow._input.appendChild(selectEl(
-                [{ value: 'h2', label: 'Heading 2' }, { value: 'h3', label: 'Heading 3' }, { value: 'h4', label: 'Heading 4' }],
+                [{ value: 'h2', label: t('Heading 2') }, { value: 'h3', label: t('Heading 3') }, { value: 'h4', label: t('Heading 4') }],
                 c.level || 'h3',
                 function(v) { c.level = v; serialize(); }
             ));
             inspector.appendChild(lvlRow);
 
-            var textRow = row('Heading Text');
+            var textRow = row(t('Heading Text'));
             textRow._input.appendChild(textInput(f.label, function(v) { f.label = v; commit(); }));
             inspector.appendChild(textRow);
         } else if (f.type === 'divider') {
-            var labRow = row('Label (optional)');
+            var labRow = row(t('Label (optional)'));
             labRow._input.appendChild(textInput(f.label, function(v) { f.label = v; commit(); }));
             var labHint = document.createElement('div'); labHint.className = 'instructions';
             var labHintP = document.createElement('p');
-            labHintP.textContent = 'Optional text shown over the divider line. Leave blank for a plain rule.';
+            labHintP.textContent = t('Optional text shown over the divider line. Leave blank for a plain rule.');
             labHint.appendChild(labHintP); labRow._input.appendChild(labHint);
             inspector.appendChild(labRow);
         } else if (f.type === 'html') {
-            var htmlRow = row('HTML / Twig');
+            var htmlRow = row(t('HTML / Twig'));
             var ta = document.createElement('textarea'); ta.className = 'text fullwidth code'; ta.rows = 8;
             ta.value = f.helpText || '';
             ta.addEventListener('input', function() { f.helpText = ta.value; commit(); });
             htmlRow._input.appendChild(ta);
             var htmlHint = document.createElement('div'); htmlHint.className = 'instructions';
             var htmlHintP = document.createElement('p');
-            htmlHintP.textContent = 'Rendered safely on the form: Twig runs in a sandbox and the output is purified — '
-                + 'scripts, inline handlers and unsafe URLs are stripped.';
+            htmlHintP.textContent = t('Rendered safely on the form: Twig runs in a sandbox and the output is purified — scripts, inline handlers and unsafe URLs are stripped.');
             htmlHint.appendChild(htmlHintP); htmlRow._input.appendChild(htmlHint);
             inspector.appendChild(htmlRow);
         } else if (f.type === 'paragraph') {
-            var textRow2 = row('Text');
+            var textRow2 = row(t('Text'));
             var pta = document.createElement('textarea'); pta.className = 'text fullwidth'; pta.rows = 5;
             pta.value = f.helpText || '';
             pta.addEventListener('input', function() { f.helpText = pta.value; commit(); });
             textRow2._input.appendChild(pta);
             var pHint = document.createElement('div'); pHint.className = 'instructions';
             var pHintP = document.createElement('p');
-            pHintP.textContent = 'Static paragraph copy shown between fields. Plain text only — '
-                + 'line breaks are preserved and any markup is escaped (use the HTML Block for real formatting).';
+            pHintP.textContent = t('Static paragraph copy shown between fields. Plain text only — line breaks are preserved and any markup is escaped (use the HTML Block for real formatting).');
             pHint.appendChild(pHintP); textRow2._input.appendChild(pHint);
             inspector.appendChild(textRow2);
         } else if (f.type === 'callout') {
-            var toneRow = row('Tone');
+            var toneRow = row(t('Tone'));
             toneRow._input.appendChild(selectEl(
                 [
-                    { value: 'info', label: 'Info' },
-                    { value: 'success', label: 'Success' },
-                    { value: 'warning', label: 'Warning' },
-                    { value: 'error', label: 'Error' }
+                    { value: 'info', label: t('Info') },
+                    { value: 'success', label: t('Success') },
+                    { value: 'warning', label: t('Warning') },
+                    { value: 'error', label: t('Error') }
                 ],
                 c.tone || 'info',
                 function(v) { c.tone = v; serialize(); }
             ));
             inspector.appendChild(toneRow);
 
-            var iconRow = row('Icon (optional)');
+            var iconRow = row(t('Icon (optional)'));
             iconRow._input.appendChild(textInput(c.icon || '', function(v) {
                 if (v && v.trim()) { c.icon = v.trim(); } else { delete c.icon; }
                 serialize();
             }));
             var iconHint = document.createElement('div'); iconHint.className = 'instructions';
             var iconHintP = document.createElement('p');
-            iconHintP.textContent = 'An optional glyph or emoji shown before the text (e.g. ℹ️, ⚠️). Leave blank for none.';
+            iconHintP.textContent = t('An optional glyph or emoji shown before the text (e.g. ℹ️, ⚠️). Leave blank for none.');
             iconHint.appendChild(iconHintP); iconRow._input.appendChild(iconHint);
             inspector.appendChild(iconRow);
 
-            var calloutRow = row('Text');
+            var calloutRow = row(t('Text'));
             var cta = document.createElement('textarea'); cta.className = 'text fullwidth'; cta.rows = 4;
             cta.value = f.helpText || '';
             cta.addEventListener('input', function() { f.helpText = cta.value; commit(); });
             calloutRow._input.appendChild(cta);
             var cHint = document.createElement('div'); cHint.className = 'instructions';
             var cHintP = document.createElement('p');
-            cHintP.textContent = 'Guidance copy shown in a toned panel between fields. Plain text only — '
-                + 'line breaks are preserved and any markup is escaped (use the HTML Block for real formatting).';
+            cHintP.textContent = t('Guidance copy shown in a toned panel between fields. Plain text only — line breaks are preserved and any markup is escaped (use the HTML Block for real formatting).');
             cHint.appendChild(cHintP); calloutRow._input.appendChild(cHint);
             inspector.appendChild(calloutRow);
         }
 
-        inspector.appendChild(numberRow('Step / Page', (f.config && f.config.page) || '', function(v) {
+        inspector.appendChild(numberRow(t('Step / Page'), (f.config && f.config.page) || '', function(v) {
             f.config = f.config || {};
             var n = parseInt(v, 10);
             if (v === '' || v == null || isNaN(n) || n < 1) { delete f.config.page; } else { f.config.page = n; }
@@ -799,19 +804,19 @@
         if (OPTION_TYPES.indexOf(f.type) !== -1) {
             inspector.appendChild(optionsEditor(f));
         } else if (f.type === 'text' || f.type === 'textarea') {
-            inspector.appendChild(numberRow('Minimum Length', c.minLength, function(v) { setNum(c, 'minLength', v); }));
-            inspector.appendChild(numberRow('Maximum Length', c.maxLength, function(v) { setNum(c, 'maxLength', v); }));
+            inspector.appendChild(numberRow(t('Minimum Length'), c.minLength, function(v) { setNum(c, 'minLength', v); }));
+            inspector.appendChild(numberRow(t('Maximum Length'), c.maxLength, function(v) { setNum(c, 'maxLength', v); }));
         } else if (f.type === 'number') {
-            inspector.appendChild(numberRow('Minimum Value', c.min, function(v) { setNum(c, 'min', v); }));
-            inspector.appendChild(numberRow('Maximum Value', c.max, function(v) { setNum(c, 'max', v); }));
+            inspector.appendChild(numberRow(t('Minimum Value'), c.min, function(v) { setNum(c, 'min', v); }));
+            inspector.appendChild(numberRow(t('Maximum Value'), c.max, function(v) { setNum(c, 'max', v); }));
         } else if (f.type === 'phone') {
-            var phRow = row('Placeholder');
+            var phRow = row(t('Placeholder'));
             phRow._input.appendChild(textInput(c.placeholder || '', function(v) {
                 if (v.trim() === '') { delete c.placeholder; } else { c.placeholder = v; } serialize();
             }));
             inspector.appendChild(phRow);
 
-            var selRow = row('Show Country Selector');
+            var selRow = row(t('Show Country Selector'));
             var selCb = document.createElement('input'); selCb.type = 'checkbox'; selCb.checked = !!c.showCountrySelector;
             selCb.addEventListener('change', function() { c.showCountrySelector = selCb.checked; serialize(); });
             selRow._input.appendChild(selCb);
@@ -821,17 +826,17 @@
                 return { value: co.iso, label: co.label + ' (' + co.dial + ')' };
             });
 
-            var dcRow = row('Default Country');
+            var dcRow = row(t('Default Country'));
             dcRow._input.appendChild(selectEl(countryOpts, c.defaultCountry || 'CH', function(v) {
                 c.defaultCountry = v; serialize();
             }));
             inspector.appendChild(dcRow);
 
             var allowedSelected = Array.isArray(c.allowedCountries) ? c.allowedCountries : [];
-            var acRow = row('Allowed Countries');
+            var acRow = row(t('Allowed Countries'));
             var acHint = document.createElement('div'); acHint.className = 'instructions';
             var acHintP = document.createElement('p');
-            acHintP.textContent = 'Leave all unchecked to allow every country.';
+            acHintP.textContent = t('Leave all unchecked to allow every country.');
             acHint.appendChild(acHintP); acRow._input.appendChild(acHint);
             (SF_PHONE_COUNTRIES || []).forEach(function(co) {
                 var w = document.createElement('div'); w.className = 'checkbox-wrapper';
@@ -852,20 +857,20 @@
             });
             inspector.appendChild(acRow);
 
-            inspector.appendChild(numberRow('Minimum Digits', c.minDigits, function(v) { setNum(c, 'minDigits', v); }));
-            inspector.appendChild(numberRow('Maximum Digits', c.maxDigits, function(v) { setNum(c, 'maxDigits', v); }));
+            inspector.appendChild(numberRow(t('Minimum Digits'), c.minDigits, function(v) { setNum(c, 'minDigits', v); }));
+            inspector.appendChild(numberRow(t('Maximum Digits'), c.maxDigits, function(v) { setNum(c, 'maxDigits', v); }));
 
-            var patRow = row('Custom Pattern');
+            var patRow = row(t('Custom Pattern'));
             patRow._input.appendChild(textInput(c.pattern || '', function(v) {
                 if (v.trim() === '') { delete c.pattern; } else { c.pattern = v; } serialize();
             }));
             var patHint = document.createElement('div'); patHint.className = 'instructions';
             var patHintP = document.createElement('p');
-            patHintP.textContent = 'Optional regex applied to the number’s digits. Leave blank for the default check.';
+            patHintP.textContent = t('Optional regex applied to the number’s digits. Leave blank for the default check.');
             patHint.appendChild(patHintP); patRow._input.appendChild(patHint);
             inspector.appendChild(patRow);
         } else if (f.type === 'date') {
-            var fmtRow = row('Date Format');
+            var fmtRow = row(t('Date Format'));
             var sel = document.createElement('div'); sel.className = 'select';
             var s = document.createElement('select');
             [['Y-m-d', 'YYYY-MM-DD'], ['d.m.Y', 'DD.MM.YYYY'], ['m/d/Y', 'MM/DD/YYYY']].forEach(function(o) {
@@ -877,23 +882,23 @@
             sel.appendChild(s); fmtRow._input.appendChild(sel);
             inspector.appendChild(fmtRow);
         } else if (f.type === 'file') {
-            var volOpts = [{ value: '', label: '(first available)' }].concat(
+            var volOpts = [{ value: '', label: t('(first available)') }].concat(
                 (SF_VOLUMES || []).map(function(v) { return { value: v.handle, label: v.name }; }));
-            var volRow = row('Asset Volume');
+            var volRow = row(t('Asset Volume'));
             volRow._input.appendChild(selectEl(volOpts, c.volume || '', function(v) {
                 if (v === '') { delete c.volume; } else { c.volume = v; } serialize();
             }));
             inspector.appendChild(volRow);
 
-            var extRow = row('Allowed Extensions');
+            var extRow = row(t('Allowed Extensions'));
             extRow._input.appendChild(textInput(c.allowedExtensions || '', function(v) {
                 if (v.trim() === '') { delete c.allowedExtensions; } else { c.allowedExtensions = v; } serialize();
             }));
             inspector.appendChild(extRow);
 
-            inspector.appendChild(numberRow('Max Size (MB)', c.maxSize, function(v) { setNum(c, 'maxSize', v); }));
+            inspector.appendChild(numberRow(t('Max Size (MB)'), c.maxSize, function(v) { setNum(c, 'maxSize', v); }));
 
-            var multRow = row('Allow Multiple Files');
+            var multRow = row(t('Allow Multiple Files'));
             var cb = document.createElement('input'); cb.type = 'checkbox'; cb.checked = !!c.multiple;
             cb.addEventListener('change', function() { c.multiple = cb.checked; serialize(); });
             multRow._input.appendChild(cb);
@@ -901,15 +906,15 @@
         } else if (f.type === 'signature') {
             // Stored as an asset, same as the File field, so it gets the same
             // volume choice; pen/background are presentational (blank = default).
-            var sigVolOpts = [{ value: '', label: '(first available)' }].concat(
+            var sigVolOpts = [{ value: '', label: t('(first available)') }].concat(
                 (SF_VOLUMES || []).map(function(v) { return { value: v.handle, label: v.name }; }));
-            var sigVolRow = row('Asset Volume');
+            var sigVolRow = row(t('Asset Volume'));
             sigVolRow._input.appendChild(selectEl(sigVolOpts, c.volume || '', function(v) {
                 if (v === '') { delete c.volume; } else { c.volume = v; } serialize();
             }));
             inspector.appendChild(sigVolRow);
 
-            var penRow = row('Pen Color');
+            var penRow = row(t('Pen Color'));
             var penInput = textInput(c.penColor || '', function(v) {
                 if (v.trim() === '') { delete c.penColor; } else { c.penColor = v.trim(); } serialize();
             });
@@ -917,7 +922,7 @@
             penRow._input.appendChild(penInput);
             inspector.appendChild(penRow);
 
-            var bgRow = row('Pad Background');
+            var bgRow = row(t('Pad Background'));
             var bgInput = textInput(c.background || '', function(v) {
                 if (v.trim() === '') { delete c.background; } else { c.background = v.trim(); } serialize();
             });
@@ -925,33 +930,33 @@
             bgRow._input.appendChild(bgInput);
             inspector.appendChild(bgRow);
         } else if (f.type === 'payment') {
-            var atRow = row('Amount Type');
+            var atRow = row(t('Amount Type'));
             atRow._input.appendChild(selectEl(
-                [{ value: 'fixed', label: 'Fixed amount' }, { value: 'field', label: 'From a field' }],
+                [{ value: 'fixed', label: t('Fixed amount') }, { value: 'field', label: t('From a field') }],
                 c.amountType || 'fixed',
                 function(v) { c.amountType = v; serialize(); }
             ));
             inspector.appendChild(atRow);
 
-            inspector.appendChild(numberRow('Fixed Amount', c.amount, function(v) { setNum(c, 'amount', v); }));
+            inspector.appendChild(numberRow(t('Fixed Amount'), c.amount, function(v) { setNum(c, 'amount', v); }));
 
-            inspector.appendChild(numberRow('Min Amount', c.minAmount, function(v) { setNum(c, 'minAmount', v); }));
-            inspector.appendChild(numberRow('Max Amount', c.maxAmount, function(v) { setNum(c, 'maxAmount', v); }));
+            inspector.appendChild(numberRow(t('Min Amount'), c.minAmount, function(v) { setNum(c, 'minAmount', v); }));
+            inspector.appendChild(numberRow(t('Max Amount'), c.maxAmount, function(v) { setNum(c, 'maxAmount', v); }));
 
-            var afRow = row('Amount Field Handle');
+            var afRow = row(t('Amount Field Handle'));
             afRow._input.appendChild(textInput(c.amountField || '', function(v) {
                 if (v.trim() === '') { delete c.amountField; } else { c.amountField = v.trim(); } serialize();
             }));
             inspector.appendChild(afRow);
 
-            var curRow = row('Currency');
+            var curRow = row(t('Currency'));
             curRow._input.appendChild(textInput(c.currency || 'USD', function(v) {
                 c.currency = v.trim().toUpperCase(); serialize();
             }));
             inspector.appendChild(curRow);
 
             // Coupons (#246): show a discount-code box on the form when enabled.
-            var coupRow = row('Allow Coupons');
+            var coupRow = row(t('Allow Coupons'));
             var coupCb = document.createElement('input'); coupCb.type = 'checkbox'; coupCb.checked = !!c.enableCoupons;
             coupCb.addEventListener('change', function() { c.enableCoupons = coupCb.checked; serialize(); });
             coupRow._input.appendChild(coupCb);
@@ -961,7 +966,7 @@
         } else if (f.type === 'consent') {
             // Consent text (rich label). One inline [label](url) link is rendered
             // safely server-side; everything else is escaped.
-            var ctRow = row('Consent Text');
+            var ctRow = row(t('Consent Text'));
             var ctTa = document.createElement('textarea');
             ctTa.className = 'text fullwidth'; ctTa.rows = 3;
             ctTa.value = c.consentText || '';
@@ -971,9 +976,9 @@
             var addLink = document.createElement('button');
             addLink.type = 'button'; addLink.className = 'btn small';
             addLink.style.marginTop = '5px';
-            addLink.textContent = 'Add link';
+            addLink.textContent = t('Add link');
             addLink.addEventListener('click', function() {
-                var token = '[privacy policy](https://example.com/privacy)';
+                var token = t('[privacy policy](https://example.com/privacy)');
                 ctTa.value = (ctTa.value ? ctTa.value + ' ' : '') + token;
                 c.consentText = ctTa.value; serialize(); ctTa.focus();
             });
@@ -981,49 +986,49 @@
 
             var ctHint = document.createElement('div'); ctHint.className = 'instructions';
             var ctHintP = document.createElement('p');
-            ctHintP.textContent = 'Use [label](https://…) for a single inline link. Per-site translatable.';
+            ctHintP.textContent = t('Use [label](https://…) for a single inline link. Per-site translatable.');
             ctHint.appendChild(ctHintP);
             ctRow._input.appendChild(ctHint);
             inspector.appendChild(ctRow);
 
             // Required message override (the "must agree" error).
-            var rmRow = row('Required Message');
+            var rmRow = row(t('Required Message'));
             var rmInput = textInput(c.requiredMessage || '', function(v) {
                 if (v.trim() === '') { delete c.requiredMessage; } else { c.requiredMessage = v; } serialize();
             });
-            rmInput.placeholder = 'You must agree before submitting.';
+            rmInput.placeholder = t('You must agree before submitting.');
             rmRow._input.appendChild(rmInput);
             inspector.appendChild(rmRow);
         } else if (f.type === 'rating') {
-            inspector.appendChild(numberRow('Maximum (1–10)', c.max != null ? c.max : 5, function(v) {
+            inspector.appendChild(numberRow(t('Maximum (1–10)'), c.max != null ? c.max : 5, function(v) {
                 var n = parseInt(v, 10);
                 if (isNaN(n)) { delete c.max; } else { c.max = Math.max(1, Math.min(10, n)); }
                 serialize();
             }));
-            var styleRow = row('Icon Style');
+            var styleRow = row(t('Icon Style'));
             styleRow._input.appendChild(selectEl(
-                [{ value: 'star', label: 'Stars' }, { value: 'heart', label: 'Hearts' }, { value: 'number', label: 'Numbers' }],
+                [{ value: 'star', label: t('Stars') }, { value: 'heart', label: t('Hearts') }, { value: 'number', label: t('Numbers') }],
                 c.iconStyle || 'star',
                 function(v) { c.iconStyle = v; serialize(); }
             ));
             inspector.appendChild(styleRow);
         } else if (f.type === 'opinion') {
-            inspector.appendChild(numberRow('Minimum', c.min != null ? c.min : 0, function(v) {
+            inspector.appendChild(numberRow(t('Minimum'), c.min != null ? c.min : 0, function(v) {
                 var n = parseInt(v, 10);
                 if (v === '' || isNaN(n)) { delete c.min; } else { c.min = n; }
                 serialize();
             }));
-            inspector.appendChild(numberRow('Maximum', c.max != null ? c.max : 10, function(v) {
+            inspector.appendChild(numberRow(t('Maximum'), c.max != null ? c.max : 10, function(v) {
                 var n = parseInt(v, 10);
                 if (v === '' || isNaN(n)) { delete c.max; } else { c.max = n; }
                 serialize();
             }));
-            var leftRow = row('Left Label');
+            var leftRow = row(t('Left Label'));
             leftRow._input.appendChild(textInput(c.leftLabel || '', function(v) {
                 if (v.trim() === '') { delete c.leftLabel; } else { c.leftLabel = v; } serialize();
             }));
             inspector.appendChild(leftRow);
-            var rightRow = row('Right Label');
+            var rightRow = row(t('Right Label'));
             rightRow._input.appendChild(textInput(c.rightLabel || '', function(v) {
                 if (v.trim() === '') { delete c.rightLabel; } else { c.rightLabel = v; } serialize();
             }));
@@ -1031,7 +1036,7 @@
         } else if (RELATION_TYPES.indexOf(f.type) !== -1) {
             renderRelationConfig(f);
         } else if (f.type === 'calculation') {
-            var fRow = row('Formula');
+            var fRow = row(t('Formula'));
             var ta = document.createElement('textarea');
             ta.className = 'text fullwidth'; ta.rows = 2;
             ta.placeholder = '{quantity} * {unitPrice}';
@@ -1040,14 +1045,14 @@
             fRow._input.appendChild(ta);
             var fHint = document.createElement('div'); fHint.className = 'instructions';
             var fp = document.createElement('p');
-            fp.textContent = 'Reference fields by handle, e.g. {quantity} * {unitPrice}. Allowed: + - * / ( ) and min, max, round, ceil, floor, abs.';
+            fp.textContent = t('Reference fields by handle, e.g. {quantity} * {unitPrice}. Allowed: + - * / ( ) and min, max, round, ceil, floor, abs.');
             fHint.appendChild(fp); fRow.appendChild(fHint);
             inspector.appendChild(fRow);
 
             // Quick-insert buttons for each other field's handle.
             var handles = fields.filter(function(other) { return other.clientId !== f.clientId && other.handle; });
             if (handles.length) {
-                var pickRow = row('Insert Field');
+                var pickRow = row(t('Insert Field'));
                 handles.forEach(function(other) {
                     var b = document.createElement('button');
                     b.type = 'button'; b.className = 'btn'; b.textContent = '{' + other.handle + '}';
@@ -1061,38 +1066,38 @@
                 inspector.appendChild(pickRow);
             }
 
-            inspector.appendChild(numberRow('Decimal Places', c.decimals != null ? c.decimals : 2, function(v) {
+            inspector.appendChild(numberRow(t('Decimal Places'), c.decimals != null ? c.decimals : 2, function(v) {
                 if (v === '' || v == null) { c.decimals = 2; } else { c.decimals = Math.max(0, Math.min(6, parseInt(v, 10) || 0)); }
                 serialize();
             }));
 
-            var sepRow = row('Thousands Separator');
+            var sepRow = row(t('Thousands Separator'));
             var sepCb = document.createElement('input'); sepCb.type = 'checkbox'; sepCb.checked = !!c.thousandsSeparator;
             sepCb.addEventListener('change', function() { c.thousandsSeparator = sepCb.checked; serialize(); });
             sepRow._input.appendChild(sepCb);
             inspector.appendChild(sepRow);
 
-            var preRow = row('Prefix');
+            var preRow = row(t('Prefix'));
             preRow._input.appendChild(textInput(c.prefix || '', function(v) {
                 if (v === '') { delete c.prefix; } else { c.prefix = v; } serialize();
             }));
             inspector.appendChild(preRow);
 
-            var sufRow = row('Suffix');
+            var sufRow = row(t('Suffix'));
             sufRow._input.appendChild(textInput(c.suffix || '', function(v) {
                 if (v === '') { delete c.suffix; } else { c.suffix = v; } serialize();
             }));
             inspector.appendChild(sufRow);
         } else if (f.type === 'repeater') {
-            inspector.appendChild(numberRow('Minimum Rows', c.minRows, function(v) {
+            inspector.appendChild(numberRow(t('Minimum Rows'), c.minRows, function(v) {
                 var n = parseInt(v, 10); c.minRows = (isNaN(n) || n < 0) ? 0 : n; serialize();
             }));
-            inspector.appendChild(numberRow('Maximum Rows (0 = unlimited)', c.maxRows, function(v) {
+            inspector.appendChild(numberRow(t('Maximum Rows (0 = unlimited)'), c.maxRows, function(v) {
                 var n = parseInt(v, 10); c.maxRows = (isNaN(n) || n < 0) ? 0 : n; serialize();
             }));
-            var addLabelRow = row('Add Button Label');
+            var addLabelRow = row(t('Add Button Label'));
             var addLabelInput = textInput(c.addButtonLabel || '', function(v) { c.addButtonLabel = v; serialize(); });
-            addLabelInput.placeholder = 'Add another';
+            addLabelInput.placeholder = t('Add another');
             addLabelRow._input.appendChild(addLabelInput);
             inspector.appendChild(addLabelRow);
 
@@ -1103,7 +1108,7 @@
             // Address autocomplete (#250): opt in to a type-ahead lookup that fills
             // the sub-fields. The provider is configured in plugin settings.
             if (f.type === 'address') {
-                var acRow = row('Enable Autocomplete');
+                var acRow = row(t('Enable Autocomplete'));
                 var acCb = document.createElement('input'); acCb.type = 'checkbox'; acCb.checked = !!c.enableAutocomplete;
                 acCb.addEventListener('change', function() { c.enableAutocomplete = acCb.checked; serialize(); });
                 acRow._input.appendChild(acCb);
@@ -1123,16 +1128,16 @@
 
         var srcWrap = document.createElement('div'); srcWrap.className = 'field';
         var srcHead = document.createElement('div'); srcHead.className = 'heading';
-        var srcLab = document.createElement('label'); srcLab.textContent = 'Allowed Sources';
+        var srcLab = document.createElement('label'); srcLab.textContent = t('Allowed Sources');
         srcHead.appendChild(srcLab); srcWrap.appendChild(srcHead);
         var srcHint = document.createElement('div'); srcHint.className = 'instructions';
         var srcHintP = document.createElement('p');
-        srcHintP.textContent = 'Leave all unchecked to allow any source of this element type.';
+        srcHintP.textContent = t('Leave all unchecked to allow any source of this element type.');
         srcHint.appendChild(srcHintP); srcWrap.appendChild(srcHint);
 
         if (available.length === 0) {
             var none = document.createElement('p'); none.className = 'light';
-            none.textContent = 'No sources available for this element type.';
+            none.textContent = t('No sources available for this element type.');
             srcWrap.appendChild(none);
         }
 
@@ -1155,7 +1160,7 @@
         inspector.appendChild(srcWrap);
 
         // Single vs. multiple.
-        var multRow = row('Allow Multiple');
+        var multRow = row(t('Allow Multiple'));
         var multCb = document.createElement('input'); multCb.type = 'checkbox'; multCb.checked = !!c.multiple;
         multCb.addEventListener('change', function() {
             c.multiple = multCb.checked;
@@ -1169,7 +1174,7 @@
 
         // Limit only applies to multiple-select.
         if (c.multiple) {
-            inspector.appendChild(numberRow('Limit', c.limit, function(v) { setNum(c, 'limit', v); }));
+            inspector.appendChild(numberRow(t('Limit'), c.limit, function(v) { setNum(c, 'limit', v); }));
         }
     }
 
@@ -1179,13 +1184,13 @@
     function renderHiddenConfig(f, c) {
         if (!c.source) { c.source = 'static'; }
 
-        var srcRow = row('Source');
+        var srcRow = row(t('Source'));
         srcRow._input.appendChild(selectEl(
             [
-                { value: 'static', label: 'Static value' },
-                { value: 'query', label: 'URL query parameter' },
-                { value: 'user', label: 'Logged-in user' },
-                { value: 'cookie', label: 'Cookie' }
+                { value: 'static', label: t('Static value') },
+                { value: 'query', label: t('URL query parameter') },
+                { value: 'user', label: t('Logged-in user') },
+                { value: 'cookie', label: t('Cookie') }
             ],
             c.source,
             function(v) { c.source = v; serialize(); renderInspector(); }
@@ -1193,25 +1198,25 @@
         inspector.appendChild(srcRow);
 
         if (c.source === 'query') {
-            var qpRow = row('Query Parameter');
+            var qpRow = row(t('Query Parameter'));
             qpRow._input.appendChild(textInput(c.queryParam || '', function(v) {
                 c.queryParam = v.trim(); serialize();
             }));
             inspector.appendChild(qpRow);
         } else if (c.source === 'user') {
-            var uaRow = row('User Attribute');
+            var uaRow = row(t('User Attribute'));
             uaRow._input.appendChild(selectEl(
                 [
-                    { value: 'email', label: 'Email' },
-                    { value: 'id', label: 'User ID' },
-                    { value: 'username', label: 'Username' }
+                    { value: 'email', label: t('Email') },
+                    { value: 'id', label: t('User ID') },
+                    { value: 'username', label: t('Username') }
                 ],
                 c.userAttribute || 'email',
                 function(v) { c.userAttribute = v; serialize(); }
             ));
             inspector.appendChild(uaRow);
         } else if (c.source === 'cookie') {
-            var ckRow = row('Cookie Name');
+            var ckRow = row(t('Cookie Name'));
             ckRow._input.appendChild(textInput(c.cookieName || '', function(v) {
                 c.cookieName = v.trim(); serialize();
             }));
@@ -1219,13 +1224,13 @@
         }
 
         // Default / fallback value (used when the source yields nothing).
-        var defRow = row(c.source === 'static' ? 'Value' : 'Default Value');
+        var defRow = row(c.source === 'static' ? t('Value') : t('Default Value'));
         defRow._input.appendChild(textInput(c.default || '', function(v) {
             if (v === '') { delete c.default; } else { c.default = v; } serialize();
         }));
         inspector.appendChild(defRow);
 
-        inspector.appendChild(numberRow('Maximum Length', c.maxLength, function(v) { setNum(c, 'maxLength', v); }));
+        inspector.appendChild(numberRow(t('Maximum Length'), c.maxLength, function(v) { setNum(c, 'maxLength', v); }));
     }
 
     // ---- repeater inner-field editor -------------------------------------
@@ -1239,12 +1244,12 @@
 
         var wrap = document.createElement('div'); wrap.className = 'field sf-repeater-fields';
         var heading = document.createElement('div'); heading.className = 'heading';
-        var lab = document.createElement('label'); lab.textContent = 'Inner Fields';
+        var lab = document.createElement('label'); lab.textContent = t('Inner Fields');
         heading.appendChild(lab); wrap.appendChild(heading);
 
         var hint = document.createElement('div'); hint.className = 'instructions';
         var hp = document.createElement('p');
-        hp.textContent = 'The sub-fields a visitor fills in per row. Allowed types: text, email, number, select.';
+        hp.textContent = t('The sub-fields a visitor fills in per row. Allowed types: text, email, number, select.');
         hint.appendChild(hp); wrap.appendChild(hint);
 
         var list = document.createElement('div'); list.className = 'sf-repeater-list';
@@ -1258,11 +1263,11 @@
         function innerRow(inner, idx) {
             var r = document.createElement('div'); r.className = 'sf-repeater-row';
 
-            var li = document.createElement('input'); li.type = 'text'; li.className = 'text'; li.placeholder = 'Label';
+            var li = document.createElement('input'); li.type = 'text'; li.className = 'text'; li.placeholder = t('Label');
             li.value = inner.label || '';
             li.addEventListener('input', function() { inner.label = li.value; serialize(); });
 
-            var hi = document.createElement('input'); hi.type = 'text'; hi.className = 'text'; hi.placeholder = 'Handle';
+            var hi = document.createElement('input'); hi.type = 'text'; hi.className = 'text'; hi.placeholder = t('Handle');
             hi.value = inner.handle || '';
             hi.addEventListener('input', function() { inner.handle = slug(hi.value); serialize(); });
 
@@ -1280,7 +1285,7 @@
             var cb = document.createElement('input'); cb.type = 'checkbox'; cb.checked = !!inner.required;
             cb.addEventListener('change', function() { inner.required = cb.checked; serialize(); });
             reqWrap.appendChild(cb);
-            reqWrap.appendChild(document.createTextNode(' required'));
+            reqWrap.appendChild(document.createTextNode(' ' + t('required')));
 
             var del = document.createElement('button'); del.type = 'button'; del.className = 'btn sf-repeater-del'; del.textContent = '×';
             del.addEventListener('click', function() { c.fields.splice(idx, 1); redraw(); serialize(); });
@@ -1292,8 +1297,8 @@
                 r.appendChild(innerOptionsEditor(inner));
             } else if (inner.type === 'number') {
                 var nWrap = document.createElement('div'); nWrap.className = 'sf-repeater-subsettings';
-                nWrap.appendChild(miniNumber('Min', inner.min, function(v) { setNum(inner, 'min', v); }));
-                nWrap.appendChild(miniNumber('Max', inner.max, function(v) { setNum(inner, 'max', v); }));
+                nWrap.appendChild(miniNumber(t('Min'), inner.min, function(v) { setNum(inner, 'min', v); }));
+                nWrap.appendChild(miniNumber(t('Max'), inner.max, function(v) { setNum(inner, 'max', v); }));
                 r.appendChild(nWrap);
             }
 
@@ -1309,7 +1314,7 @@
 
         redraw();
 
-        var add = document.createElement('button'); add.type = 'button'; add.className = 'btn sf-repeater-add'; add.textContent = 'Add Inner Field';
+        var add = document.createElement('button'); add.type = 'button'; add.className = 'btn sf-repeater-add'; add.textContent = t('Add Inner Field');
         add.addEventListener('click', function() {
             c.fields.push({ handle: uniqueInnerHandle(c.fields, 'field'), type: 'text', label: '', required: false });
             redraw(); serialize();
@@ -1335,8 +1340,8 @@
             wrap.innerHTML = '';
             inner.options.forEach(function(opt, idx) {
                 var r = document.createElement('div'); r.className = 'sf-option-row';
-                var li = document.createElement('input'); li.type = 'text'; li.className = 'text'; li.placeholder = 'Label'; li.value = opt.label || '';
-                var vi = document.createElement('input'); vi.type = 'text'; vi.className = 'text'; vi.placeholder = 'Value'; vi.value = opt.value || '';
+                var li = document.createElement('input'); li.type = 'text'; li.className = 'text'; li.placeholder = t('Label'); li.value = opt.label || '';
+                var vi = document.createElement('input'); vi.type = 'text'; vi.className = 'text'; vi.placeholder = t('Value'); vi.value = opt.value || '';
                 li.addEventListener('input', function() { opt.label = li.value; serialize(); });
                 vi.addEventListener('input', function() { opt.value = vi.value; serialize(); });
                 var del = document.createElement('button'); del.type = 'button'; del.className = 'btn sf-option-del'; del.textContent = '×';
@@ -1344,7 +1349,7 @@
                 r.appendChild(li); r.appendChild(vi); r.appendChild(del);
                 wrap.appendChild(r);
             });
-            var add = document.createElement('button'); add.type = 'button'; add.className = 'btn sf-option-add'; add.textContent = 'Add Option';
+            var add = document.createElement('button'); add.type = 'button'; add.className = 'btn sf-option-add'; add.textContent = t('Add Option');
             add.addEventListener('click', function() { inner.options.push({ label: '', value: '' }); redraw(); serialize(); });
             wrap.appendChild(add);
         }
@@ -1362,7 +1367,7 @@
 
         var wrap = document.createElement('div'); wrap.className = 'field sf-subfields';
         var heading = document.createElement('div'); heading.className = 'heading';
-        var lab = document.createElement('label'); lab.textContent = SF_SOURCE_SITE ? 'Sub-fields' : 'Sub-field Labels (this site)';
+        var lab = document.createElement('label'); lab.textContent = SF_SOURCE_SITE ? t('Sub-fields') : t('Sub-field Labels (this site)');
         heading.appendChild(lab); wrap.appendChild(heading);
 
         var list = document.createElement('div'); list.className = 'sf-subfields-list';
@@ -1394,7 +1399,7 @@
                 var rq = document.createElement('input'); rq.type = 'checkbox'; rq.className = 'checkbox';
                 rq.checked = !!sub.required;
                 rq.addEventListener('change', function() { sub.required = rq.checked; serialize(); });
-                var rqt = document.createElement('span'); rqt.textContent = 'Required';
+                var rqt = document.createElement('span'); rqt.textContent = t('Required');
                 reqWrap.appendChild(rq); reqWrap.appendChild(rqt);
                 r.appendChild(reqWrap);
             }
@@ -1429,12 +1434,12 @@
     function appendWidthRow(f) {
         var group = rowGroupOf(f);
         if (group.length <= 1) { return; }
-        var WIDTH_LABELS = { 1: 'Equal', 2: 'Wide', 3: 'Wider', 4: 'Widest' };
+        var WIDTH_LABELS = { 1: t('Equal'), 2: t('Wide'), 3: t('Wider'), 4: t('Widest') };
         var opts = [];
         for (var i = 1; i <= MAX_COLUMNS; i++) {
-            opts.push({ value: String(i), label: i === 1 ? 'Equal' : ((WIDTH_LABELS[i] || 'Wide') + ' (' + i + '×)') });
+            opts.push({ value: String(i), label: i === 1 ? WIDTH_LABELS[1] : t('{label} ({n}×)', { label: WIDTH_LABELS[i] || WIDTH_LABELS[2], n: i }) });
         }
-        var widthRow = row('Column Width');
+        var widthRow = row(t('Column Width'));
         widthRow._input.appendChild(selectEl(opts, String(widthOf(f)), function(v) {
             f.config = f.config || {};
             var n = parseInt(v, 10);
@@ -1445,7 +1450,7 @@
         var ratio = group.map(function(x) { return widthOf(x); }).join(' : ');
         var wHint = document.createElement('div'); wHint.className = 'instructions';
         var wp = document.createElement('p');
-        wp.textContent = 'Relative width within the row. This row: ' + ratio + '.';
+        wp.textContent = t('Relative width within the row. This row: {ratio}.', { ratio: ratio });
         wHint.appendChild(wp);
         widthRow._input.appendChild(wHint);
         inspector.appendChild(widthRow);
@@ -1456,13 +1461,13 @@
         if (!Array.isArray(c.options)) { c.options = []; }
         var wrap = document.createElement('div'); wrap.className = 'field sf-options';
         var heading = document.createElement('div'); heading.className = 'heading';
-        var lab = document.createElement('label'); lab.textContent = SF_SOURCE_SITE ? 'Options' : 'Option Labels (this site)';
+        var lab = document.createElement('label'); lab.textContent = SF_SOURCE_SITE ? t('Options') : t('Option Labels (this site)');
         heading.appendChild(lab); wrap.appendChild(heading);
 
         if (!SF_SOURCE_SITE) {
             var hint = document.createElement('div'); hint.className = 'instructions';
             var hp = document.createElement('p');
-            hp.textContent = 'Translate each option for this site. Leave blank to use the source label. Option values are managed on the primary site.';
+            hp.textContent = t('Translate each option for this site. Leave blank to use the source label. Option values are managed on the primary site.');
             hint.appendChild(hp); wrap.appendChild(hint);
         }
 
@@ -1472,8 +1477,8 @@
         // Source site: full structural editor (label, value, add/remove).
         function sourceRow(opt, idx) {
             var r = document.createElement('div'); r.className = 'sf-option-row';
-            var li = document.createElement('input'); li.type = 'text'; li.className = 'text'; li.placeholder = 'Label'; li.value = opt.label || '';
-            var vi = document.createElement('input'); vi.type = 'text'; vi.className = 'text'; vi.placeholder = 'Value'; vi.value = opt.value || '';
+            var li = document.createElement('input'); li.type = 'text'; li.className = 'text'; li.placeholder = t('Label'); li.value = opt.label || '';
+            var vi = document.createElement('input'); vi.type = 'text'; vi.className = 'text'; vi.placeholder = t('Value'); vi.value = opt.value || '';
             li.addEventListener('input', function() { opt.label = li.value; serialize(); });
             vi.addEventListener('input', function() { opt.value = vi.value; serialize(); });
             r.appendChild(li); r.appendChild(vi);
@@ -1484,13 +1489,13 @@
                 var key = document.createElement('span'); key.className = 'sf-answer-key';
                 var cbId = 'sf-correct-' + (f.clientId || 'f') + '-' + idx;
                 var cb = document.createElement('input'); cb.type = 'checkbox'; cb.id = cbId; cb.checked = !!opt.correct;
-                var cbl = document.createElement('label'); cbl.setAttribute('for', cbId); cbl.textContent = 'Correct';
+                var cbl = document.createElement('label'); cbl.setAttribute('for', cbId); cbl.textContent = t('Correct');
                 cb.addEventListener('change', function() {
                     if (cb.checked) { opt.correct = true; } else { delete opt.correct; }
                     serialize();
                 });
                 var pts = document.createElement('input'); pts.type = 'number'; pts.min = '0'; pts.className = 'text sf-answer-points';
-                pts.placeholder = 'Pts'; pts.title = 'Points'; pts.value = (opt.points != null ? opt.points : '');
+                pts.placeholder = t('Pts'); pts.title = t('Points'); pts.value = (opt.points != null ? opt.points : '');
                 pts.addEventListener('input', function() {
                     var n = parseInt(pts.value, 10);
                     if (pts.value === '' || isNaN(n) || n < 0) { delete opt.points; } else { opt.points = n; }
@@ -1512,7 +1517,7 @@
             var r = document.createElement('div'); r.className = 'sf-option-row sf-option-row--translate';
             var src = document.createElement('span'); src.className = 'sf-option-source'; src.textContent = opt.label || opt.value || '';
             var ti = document.createElement('input'); ti.type = 'text'; ti.className = 'text fullwidth';
-            ti.placeholder = opt.label || opt.value || 'Label';
+            ti.placeholder = opt.label || opt.value || t('Label');
             ti.value = opt.siteLabel || '';
             ti.addEventListener('input', function() { opt.siteLabel = ti.value; serialize(); });
             r.appendChild(src); r.appendChild(ti);
@@ -1528,7 +1533,7 @@
         redraw();
 
         if (SF_SOURCE_SITE) {
-            var add = document.createElement('button'); add.type = 'button'; add.className = 'btn sf-option-add'; add.textContent = 'Add Option';
+            var add = document.createElement('button'); add.type = 'button'; add.className = 'btn sf-option-add'; add.textContent = t('Add Option');
             add.addEventListener('click', function() {
                 c.options.push({ label: '', value: '' }); redraw(); serialize();
             });
@@ -1541,13 +1546,13 @@
 
     // Operators offered in the rule builder. `noValue` ops hide the value input.
     var OPERATORS = [
-        { op: 'eq', label: 'is' },
-        { op: 'neq', label: 'is not' },
-        { op: 'empty', label: 'is empty', noValue: true },
-        { op: 'notEmpty', label: 'is not empty', noValue: true },
-        { op: 'contains', label: 'contains' },
-        { op: 'gt', label: 'greater than' },
-        { op: 'lt', label: 'less than' }
+        { op: 'eq', label: t('is') },
+        { op: 'neq', label: t('is not') },
+        { op: 'empty', label: t('is empty'), noValue: true },
+        { op: 'notEmpty', label: t('is not empty'), noValue: true },
+        { op: 'contains', label: t('contains') },
+        { op: 'gt', label: t('greater than') },
+        { op: 'lt', label: t('less than') }
     ];
 
     // Fields the current field may reference: every other field with a handle.
@@ -1595,7 +1600,7 @@
         var rowEl = document.createElement('div'); rowEl.className = 'sf-cond-rule';
 
         var targets = targetFields(self);
-        var fieldOpts = [{ value: '', label: '— field —' }].concat(targets.map(function(t) {
+        var fieldOpts = [{ value: '', label: t('— field —') }].concat(targets.map(function(t) {
             return { value: t.handle, label: t.label || t.handle };
         }));
         rowEl.appendChild(selectEl(fieldOpts, rule.field || '', function(v) { rule.field = v; onChange(true); }));
@@ -1609,7 +1614,7 @@
             var valueCell;
             if (target && OPTION_TYPES.indexOf(target.type) !== -1) {
                 // Value is one of the target's option values.
-                var opts = [{ value: '', label: '— value —' }].concat(((target.config && target.config.options) || []).map(function(o) {
+                var opts = [{ value: '', label: t('— value —') }].concat(((target.config && target.config.options) || []).map(function(o) {
                     return { value: o.value, label: o.label || o.value };
                 }));
                 valueCell = selectEl(opts, rule.value != null ? rule.value : '', function(v) { rule.value = v; onChange(false); });
@@ -1622,7 +1627,7 @@
         }
 
         var del = document.createElement('button');
-        del.type = 'button'; del.className = 'btn sf-cond-del'; del.textContent = '×'; del.title = 'Remove rule';
+        del.type = 'button'; del.className = 'btn sf-cond-del'; del.textContent = '×'; del.title = t('Remove rule');
         del.addEventListener('click', onRemove);
         rowEl.appendChild(del);
         return rowEl;
@@ -1640,11 +1645,11 @@
         var wrap = document.createElement('div'); wrap.className = 'sf-cond-rules';
 
         var matchRow = document.createElement('div'); matchRow.className = 'sf-cond-match';
-        var pre = document.createElement('span'); pre.textContent = 'Match';
+        var pre = document.createElement('span'); pre.textContent = t('Match');
         matchRow.appendChild(pre);
-        matchRow.appendChild(selectEl([{ value: 'all', label: 'all' }, { value: 'any', label: 'any' }],
+        matchRow.appendChild(selectEl([{ value: 'all', label: t('all') }, { value: 'any', label: t('any') }],
             block.match || 'all', function(v) { block.match = v; onSerialize(); }));
-        var post = document.createElement('span'); post.textContent = 'of:';
+        var post = document.createElement('span'); post.textContent = t('of:');
         matchRow.appendChild(post);
         wrap.appendChild(matchRow);
 
@@ -1659,7 +1664,7 @@
         });
 
         var add = document.createElement('button');
-        add.type = 'button'; add.className = 'btn sf-cond-add'; add.textContent = 'Add rule';
+        add.type = 'button'; add.className = 'btn sf-cond-add'; add.textContent = t('Add rule');
         add.addEventListener('click', function() {
             block.rules.push({ field: '', operator: 'eq', value: '' });
             onSerialize(); rerender();
@@ -1683,13 +1688,13 @@
         var wrap = document.createElement('div'); wrap.className = 'sf-cond';
 
         var hr = document.createElement('hr'); wrap.appendChild(hr);
-        var title = document.createElement('h3'); title.className = 'sf-panel-title'; title.textContent = 'Conditions';
+        var title = document.createElement('h3'); title.className = 'sf-panel-title'; title.textContent = t('Conditions');
         wrap.appendChild(title);
 
         var others = targetFields(f);
         if (!others.length) {
             var none = document.createElement('p'); none.className = 'light';
-            none.textContent = 'Add another field first to base conditions on it.';
+            none.textContent = t('Add another field first to base conditions on it.');
             wrap.appendChild(none);
             return wrap;
         }
@@ -1699,7 +1704,7 @@
             wrap.parentNode.replaceChild(fresh, wrap);
         }
 
-        wrap.appendChild(checkbox('sf-cond-enable-' + f.clientId, 'Enable conditional logic', c.enabled, function(on) {
+        wrap.appendChild(checkbox('sf-cond-enable-' + f.clientId, t('Enable conditional logic'), c.enabled, function(on) {
             c.enabled = on; serialize(); rerender();
         }));
 
@@ -1707,16 +1712,16 @@
 
         // Visibility block.
         var visLabel = document.createElement('div'); visLabel.className = 'sf-cond-line';
-        visLabel.appendChild(selectEl([{ value: 'show', label: 'Show' }, { value: 'hide', label: 'Hide' }],
+        visLabel.appendChild(selectEl([{ value: 'show', label: t('Show') }, { value: 'hide', label: t('Hide') }],
             c.action || 'show', function(v) { c.action = v; serialize(); }));
-        var visText = document.createElement('span'); visText.textContent = 'this field when';
+        var visText = document.createElement('span'); visText.textContent = t('this field when');
         visLabel.appendChild(visText);
         wrap.appendChild(visLabel);
         wrap.appendChild(ruleList(f, c, rerender));
 
         // Conditional-required block.
         var req = c.required || (c.required = { enabled: false, match: 'all', rules: [] });
-        wrap.appendChild(checkbox('sf-cond-req-' + f.clientId, 'Make this field required when…', req.enabled, function(on) {
+        wrap.appendChild(checkbox('sf-cond-req-' + f.clientId, t('Make this field required when…'), req.enabled, function(on) {
             req.enabled = on; serialize(); rerender();
         }));
         if (req.enabled) {
@@ -1742,7 +1747,7 @@
         var opDef = OPERATORS.find(function(o) { return o.op === (jump.operator || 'eq'); });
         if (opDef && opDef.noValue) { return null; }
         if (OPTION_TYPES.indexOf(self.type) !== -1) {
-            var opts = [{ value: '', label: '— value —' }].concat(((self.config && self.config.options) || []).map(function(o) {
+            var opts = [{ value: '', label: t('— value —') }].concat(((self.config && self.config.options) || []).map(function(o) {
                 return { value: o.value, label: o.label || o.value };
             }));
             return selectEl(opts, jump.value != null ? jump.value : '', function(v) { jump.value = v; serialize(); });
@@ -1765,13 +1770,13 @@
         var arrow = document.createElement('span'); arrow.className = 'sf-jump-arrow'; arrow.textContent = '→';
         rowEl.appendChild(arrow);
 
-        var targetOpts = [{ value: '', label: '— jump to —' }].concat(laters.map(function(t) {
+        var targetOpts = [{ value: '', label: t('— jump to —') }].concat(laters.map(function(t) {
             return { value: t.handle, label: t.label || t.handle };
         }));
         rowEl.appendChild(selectEl(targetOpts, jump.target || '', function(v) { jump.target = v; serialize(); }));
 
         var del = document.createElement('button');
-        del.type = 'button'; del.className = 'btn sf-cond-del'; del.textContent = '×'; del.title = 'Remove jump';
+        del.type = 'button'; del.className = 'btn sf-cond-del'; del.textContent = '×'; del.title = t('Remove jump');
         del.addEventListener('click', onRemove);
         rowEl.appendChild(del);
         return rowEl;
@@ -1782,13 +1787,13 @@
         var wrap = document.createElement('div'); wrap.className = 'sf-cond sf-jumps';
 
         var hr = document.createElement('hr'); wrap.appendChild(hr);
-        var title = document.createElement('h3'); title.className = 'sf-panel-title'; title.textContent = 'Logic jumps';
+        var title = document.createElement('h3'); title.className = 'sf-panel-title'; title.textContent = t('Logic jumps');
         wrap.appendChild(title);
 
         var laters = laterFields(f);
         if (!laters.length) {
             var none = document.createElement('p'); none.className = 'light';
-            none.textContent = 'Add a field after this one to jump to it.';
+            none.textContent = t('Add a field after this one to jump to it.');
             wrap.appendChild(none);
             return wrap;
         }
@@ -1801,7 +1806,7 @@
         }
 
         var hint = document.createElement('p'); hint.className = 'light';
-        hint.textContent = 'When this field’s answer matches, skip ahead to the chosen field’s step. First matching rule wins.';
+        hint.textContent = t('When this field’s answer matches, skip ahead to the chosen field’s step. First matching rule wins.');
         wrap.appendChild(hint);
 
         f.config.jumps.forEach(function(jump, idx) {
@@ -1812,7 +1817,7 @@
         });
 
         var add = document.createElement('button');
-        add.type = 'button'; add.className = 'btn sf-cond-add'; add.textContent = 'Add jump';
+        add.type = 'button'; add.className = 'btn sf-cond-add'; add.textContent = t('Add jump');
         add.addEventListener('click', function() {
             f.config.jumps.push({ operator: 'eq', value: '', target: '' });
             serialize(); rerender();
@@ -2004,35 +2009,35 @@
             // Layout blocks carry no user-facing label (their content is the
             // heading text / divider label / HTML body), so a label is not
             // required — but every block still needs a unique handle.
-            if (!layout && (!f.label || !f.label.trim())) { errs.push('Field "' + name + '": label is required.'); }
-            if (!f.handle || !f.handle.trim()) { errs.push('Field "' + name + '": handle is required.'); }
-            else if (!/^[a-zA-Z_][a-zA-Z0-9_]*$/.test(f.handle)) { errs.push('Field "' + name + '": invalid handle.'); }
-            else { var k = f.handle.toLowerCase(); if (seen[k]) { errs.push('Duplicate handle "' + f.handle + '".'); } seen[k] = true; }
+            if (!layout && (!f.label || !f.label.trim())) { errs.push(t('Field "{name}": label is required.', { name: name })); }
+            if (!f.handle || !f.handle.trim()) { errs.push(t('Field "{name}": handle is required.', { name: name })); }
+            else if (!/^[a-zA-Z_][a-zA-Z0-9_]*$/.test(f.handle)) { errs.push(t('Field "{name}": invalid handle.', { name: name })); }
+            else { var k = f.handle.toLowerCase(); if (seen[k]) { errs.push(t('Duplicate handle "{handle}".', { handle: f.handle })); } seen[k] = true; }
             if (OPTION_TYPES.indexOf(f.type) !== -1) {
                 var opts = (f.config && f.config.options) || [];
-                if (!opts.length) { errs.push('Field "' + name + '": needs at least one option.'); }
+                if (!opts.length) { errs.push(t('Field "{name}": needs at least one option.', { name: name })); }
             }
             if (f.type === 'repeater') {
                 var inner = (f.config && f.config.fields) || [];
-                if (!inner.length) { errs.push('Field "' + name + '": needs at least one inner field.'); }
+                if (!inner.length) { errs.push(t('Field "{name}": needs at least one inner field.', { name: name })); }
                 var min = parseInt((f.config && f.config.minRows), 10) || 0;
                 var max = parseInt((f.config && f.config.maxRows), 10) || 0;
-                if (max > 0 && min > max) { errs.push('Field "' + name + '": minimum rows cannot exceed maximum rows.'); }
+                if (max > 0 && min > max) { errs.push(t('Field "{name}": minimum rows cannot exceed maximum rows.', { name: name })); }
                 var innerSeen = {};
                 inner.forEach(function(inf, j) {
                     var iname = inf.handle || ('#' + (j + 1));
                     if (!inf.handle || !/^[a-zA-Z_][a-zA-Z0-9_]*$/.test(inf.handle)) {
-                        errs.push('Field "' + name + '": inner field "' + iname + '" has an invalid handle.');
+                        errs.push(t('Field "{name}": inner field "{iname}" has an invalid handle.', { name: name, iname: iname }));
                     } else {
                         var ik = inf.handle.toLowerCase();
-                        if (innerSeen[ik]) { errs.push('Field "' + name + '": duplicate inner handle "' + inf.handle + '".'); }
+                        if (innerSeen[ik]) { errs.push(t('Field "{name}": duplicate inner handle "{handle}".', { name: name, handle: inf.handle })); }
                         innerSeen[ik] = true;
                     }
                     if (REPEATER_INNER_TYPES.indexOf(inf.type) === -1) {
-                        errs.push('Field "' + name + '": inner field "' + iname + '" has an unsupported type.');
+                        errs.push(t('Field "{name}": inner field "{iname}" has an unsupported type.', { name: name, iname: iname }));
                     }
                     if (inf.type === 'select' && !((inf.options || []).length)) {
-                        errs.push('Field "' + name + '": inner select "' + iname + '" needs at least one option.');
+                        errs.push(t('Field "{name}": inner select "{iname}" needs at least one option.', { name: name, iname: iname }));
                     }
                 });
             }
@@ -2145,10 +2150,10 @@
             grip.setAttribute('draggable', 'true'); grip.textContent = '⋮⋮';
             head.appendChild(grip);
             var title = document.createElement('span');
-            title.className = 'sf-sm-row-title'; title.textContent = 'Message ' + (index + 1);
+            title.className = 'sf-sm-row-title'; title.textContent = t('Message {n}', { n: index + 1 });
             head.appendChild(title);
             var del = document.createElement('button');
-            del.type = 'button'; del.className = 'btn sf-sm-del'; del.textContent = '×'; del.title = 'Remove message';
+            del.type = 'button'; del.className = 'btn sf-sm-del'; del.textContent = '×'; del.title = t('Remove message');
             del.addEventListener('click', function() {
                 smRows.splice(index, 1); serializeMessages(); renderMessages();
             });
@@ -2156,7 +2161,7 @@
             el.appendChild(head);
 
             var showWhen = document.createElement('p');
-            showWhen.className = 'sf-sm-when light'; showWhen.textContent = 'Show this message when';
+            showWhen.className = 'sf-sm-when light'; showWhen.textContent = t('Show this message when');
             el.appendChild(showWhen);
 
             // The reused rule builder (match all/any + field/operator/value rows).
@@ -2169,12 +2174,12 @@
             if (dangling.length) {
                 var warn = document.createElement('p');
                 warn.className = 'sf-sm-warning warning';
-                warn.textContent = 'A rule references a field that no longer exists: ' + dangling.join(', ') + '.';
+                warn.textContent = t('A rule references a field that no longer exists: {fields}.', { fields: dangling.join(', ') });
                 el.appendChild(warn);
             }
 
             var msgLabel = document.createElement('label');
-            msgLabel.className = 'sf-sm-msg-label'; msgLabel.textContent = 'Message';
+            msgLabel.className = 'sf-sm-msg-label'; msgLabel.textContent = t('Message');
             el.appendChild(msgLabel);
             var ta = document.createElement('textarea');
             ta.className = 'text fullwidth'; ta.rows = 2; ta.value = row.message || '';

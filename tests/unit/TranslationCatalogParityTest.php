@@ -40,6 +40,22 @@ class TranslationCatalogParityTest extends TestCase
         'Honeypot',    // borrowed term — kept verbatim in all shipped locales
         'CAPTCHA',     // acronym — identical in all shipped locales
         'Notifications', // cognate — identical in fr (de=Benachrichtigungen, etc.)
+
+        // Form builder UI (#335) — protocol/format terms, placeholder-only
+        // strings, loanwords, and single-language cognates with no distinct
+        // form in the flagged locale.
+        'URL',            // protocol term — identical in every shipped locale
+        'HTML / Twig',    // format/protocol terms — identical everywhere
+        '{label} ({n}×)', // placeholder + symbol only, no translatable words
+        'Cookie',         // web loanword — identical in every shipped locale
+        'Text',           // de cognate (identical German word)
+        'Date',           // fr cognate (identical French word)
+        'Signature',      // fr cognate (identical French word)
+        'Error',          // es cognate (identical Spanish word)
+        'Formula',        // it cognate (identical Italian word)
+        'is',             // nl cognate — comparison verb identical in Dutch
+        'Points',         // fr cognate (identical French word)
+        'Pts',            // fr abbreviation — identical
     ];
 
     /**
