@@ -301,6 +301,14 @@
 .sf-palette-item--layout { background: #fbf7f2; }
 .sf-panel-title--group { margin-top: 16px; }
 
+/* Palette filter + grouping (#296). */
+.sf-palette-search { margin-bottom: 10px; }
+.sf-palette-group:first-of-type .sf-panel-title--group { margin-top: 4px; }
+.sf-palette-noresults { margin: 8px 2px 0; font-size: 13px; }
+
+/* Inline handle-collision warning under the Handle input (#296). */
+.sf-handle-error { margin: 5px 0 0; font-size: 12px; }
+
 .sf-panel {
     border: 1px solid #dfe5ec;
     border-radius: 5px;

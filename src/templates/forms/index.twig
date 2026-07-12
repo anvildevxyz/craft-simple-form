@@ -130,7 +130,31 @@
     <div class="zilch sf-empty-state">
         <p class="sf-empty-heading">{{ 'No forms yet.'|t('simple-form') }}</p>
         <p class="light">{{ 'Create your first form to start collecting submissions.'|t('simple-form') }}</p>
-        <a class="btn submit add icon" href="{{ cpUrl('simple-form/forms/new') }}">{{ 'New Form'|t('simple-form') }}</a>
+        <div class="btngroup">
+            <a class="btn submit add icon" href="{{ cpUrl('simple-form/forms/new') }}">{{ 'New Form'|t('simple-form') }}</a>
+            {% if stencils|length %}
+                <button type="button" class="btn submit menubtn" title="{{ 'New form from stencil'|t('simple-form') }}" aria-label="{{ 'New form from stencil'|t('simple-form') }}"></button>
+                <div class="menu">
+                    <h6>{{ 'Start from a stencil'|t('simple-form') }}</h6>
+                    <ul>
+                        {% for stencil in stencils %}
+                            <li>
+                                {# data-form="false": this page has no fullPageForm (and
+                                   Garnish detaches menus to <body>), so Craft must build
+                                   the hidden CSRF form itself. #}
+                                <a class="formsubmit"
+                                   data-form="false"
+                                   data-action="simple-form/forms/new-from-stencil"
+                                   data-params="{{ { stencil: stencil.handle }|json_encode }}"
+                                   title="{{ stencil.description }}">
+                                    {{ stencil.name }}
+                                </a>
+                            </li>
+                        {% endfor %}
+                    </ul>
+                </div>
+            {% endif %}
+        </div>
     </div>
 {% endif %}
 

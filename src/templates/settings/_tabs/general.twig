@@ -29,6 +29,20 @@
     errors: settings.getErrors('storageLocation') ?? [],
 }) }}
 
+{% set uploadVolumeOptions = [{ label: 'First available volume'|t('simple-form'), value: '' }] %}
+{% for volume in craft.app.volumes.allVolumes %}
+    {% set uploadVolumeOptions = uploadVolumeOptions|merge([{ label: volume.name, value: volume.handle }]) %}
+{% endfor %}
+
+{{ forms.selectField({
+    label: 'Default upload volume'|t('simple-form'),
+    name: 'uploadVolume',
+    options: uploadVolumeOptions,
+    value: settings.uploadVolume ?? '',
+    instructions: 'Where File Upload and Signature field assets are stored when the field doesn’t choose its own volume. Leave on “First available volume” to keep the previous behaviour.'|t('simple-form'),
+    errors: settings.getErrors('uploadVolume') ?? [],
+}) }}
+
 {{ forms.autosuggestField({
     label: 'Default render template path'|t('simple-form'),
     name: 'templatePath',
