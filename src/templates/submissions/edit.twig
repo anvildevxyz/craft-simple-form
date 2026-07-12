@@ -1,0 +1,51 @@
+{% extends '_layouts/cp.twig' %}
+{% import '_includes/forms.twig' as forms %}
+
+{% set title = 'Edit submission #{id}'|t('simple-form', { id: submission.id }) %}
+{% set selectedSubnavItem = 'submissions' %}
+{% set fullPageForm = true %}
+{% do craft.app.view.registerAssetBundle('anvildev\\simpleform\\web\\assets\\cp\\SimpleFormCpAsset') %}
+
+{% set crumbs = [
+    { label: 'Simple Form'|t('simple-form'), url: cpUrl('simple-form/forms') },
+    { label: 'Submissions'|t('simple-form'), url: cpUrl('simple-form/submissions', form ? { formId: form.id } : {}) },
+    { label: 'Submission #'|t('simple-form') ~ submission.id, url: cpUrl('simple-form/submissions/' ~ submission.id) },
+] %}
+
+{% block content %}
+    <input type="hidden" name="action" value="simple-form/submissions/save-edit">
+    <input type="hidden" name="submissionId" value="{{ submission.id }}">
+    {{ redirectInput('simple-form/submissions/' ~ submission.id) }}
+    {{ csrfInput() }}
+
+    {% if errors is not empty %}
+        <ul class="errors">
+            {% for attr, attrErrors in errors %}
+                {% for err in attrErrors %}
+                    <li>{{ err }}</li>
+                {% endfor %}
+            {% endfor %}
+        </ul>
+    {% endif %}
+
+    {% for field in fields %}
+        {% if field.readOnly %}
+            {# File/signature/payment fields aren't re-editable here; their stored
+               value is preserved unchanged when the submission is saved. #}
+            {{ forms.field({
+                label: field.label,
+                instructions: 'This field can’t be edited here. Its stored value is kept as-is.'|t('simple-form'),
+            }, '<span class="light">' ~ '—' ~ '</span>') }}
+        {% else %}
+            <div class="field">
+                <div class="heading">
+                    <label for="{{ field.name }}">
+                        {{ field.label }}
+                        {% if field.required %}<span class="required" aria-hidden="true"></span>{% endif %}
+                    </label>
+                </div>
+                <div class="input ltr">{{ field.input }}</div>
+            </div>
+        {% endif %}
+    {% endfor %}
+{% endblock %}

@@ -37,7 +37,7 @@ use yii\base\Component;
  * @phpstan-import-type FieldSnapshot from Submission
  *
  * @phpstan-type SubmissionResult array{submission: Submission|null, errors: array<string, mixed>|null, data?: array<string, mixed>, paymentRedirectUrl?: string}
- * @phpstan-type SubmissionContext array{honeypot?: string, captchaToken?: ?string, skipCaptcha?: bool, userId?: ?int, siteId?: ?int, payment?: array<string, mixed>, couponCode?: string, actor?: string, _isEdit?: bool, attribution?: array<string, string>|null, partialToken?: string}
+ * @phpstan-type SubmissionContext array{honeypot?: string, captchaToken?: ?string, skipCaptcha?: bool, userId?: ?int, siteId?: ?int, payment?: array<string, mixed>, couponCode?: string, actor?: string, _isEdit?: bool, _cpEdit?: bool, attribution?: array<string, string>|null, partialToken?: string}
  */
 class SubmissionService extends Component
 {
@@ -477,11 +477,12 @@ class SubmissionService extends Component
         Plugin::getInstance()->trigger(Plugin::EVENT_AFTER_SUBMISSION_SAVE, $afterEvent);
 
         $actor = (string) ($context['actor'] ?? 'token');
+        $channel = !empty($context['_cpEdit']) ? 'the control panel' : 'the front-end';
         Plugin::getInstance()->getAudit()->log(
             AuditService::ACTION_SUBMISSION_EDIT,
             AuditService::TARGET_SUBMISSION,
             (int) $submission->id,
-            'edited via front-end (' . $actor . ')',
+            'edited via ' . $channel . ' (' . $actor . ')',
         );
 
         return ['submission' => $submission, 'errors' => null];
@@ -662,7 +663,12 @@ class SubmissionService extends Component
         // but before captcha/validation so a closed form does no extra work.
         // The cap is a soft business limit; see Form::getSubmissionCount() for
         // the documented race-safety note.
-        if (!$form->isAcceptingSubmissions()) {
+        // A permission-gated CP edit (#294) bypasses the availability/access
+        // gates below — it rewrites an existing row rather than accepting a new
+        // visitor submission — while still running spam + validation.
+        $isCpEdit = !empty($context['_cpEdit']);
+
+        if (!$isCpEdit && !$form->isAcceptingSubmissions()) {
             return [
                 'result' => ['submission' => null, 'errors' => ['form' => [$form->getResolvedClosedMessage()]]],
                 'data' => [],
@@ -677,7 +683,7 @@ class SubmissionService extends Component
         $userId = isset($context['userId']) ? (int) $context['userId'] : null;
 
         // Require login: reject anonymous submissions outright.
-        if ($form->requireLogin && $userId === null) {
+        if (!$isCpEdit && $form->requireLogin && $userId === null) {
             return [
                 'result' => ['submission' => null, 'errors' => ['form' => [$form->getLoginRequiredMessage()]]],
                 'data' => [],
@@ -687,7 +693,8 @@ class SubmissionService extends Component
 
         // Per-user limit: block a user at/over their cap. Guests are only limited
         // when the form opts into a guest key (email); spam rows never count.
-        if ($form->submissionsPerUser !== null
+        if (!$isCpEdit
+            && $form->submissionsPerUser !== null
             && $this->userSubmissionCount($form, $userId, $values) >= $form->submissionsPerUser) {
             return [
                 'result' => ['submission' => null, 'errors' => ['form' => [$form->getUserLimitMessage()]]],

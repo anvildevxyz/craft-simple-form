@@ -36,6 +36,11 @@
 } %}
 
 {% set additionalButtons %}
+    {% if canManageSubmissions %}
+        <a href="{{ cpUrl('simple-form/submissions/' ~ submission.id ~ '/edit') }}" class="btn" data-icon="edit">
+            {{ 'Edit submission'|t('simple-form') }}
+        </a>
+    {% endif %}
     {% if form %}
         <a href="{{ cpUrl('simple-form/forms/edit/' ~ form.id) }}" class="btn">{{ 'Edit Form'|t('simple-form') }}</a>
     {% endif %}

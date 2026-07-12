@@ -835,6 +835,10 @@ class Plugin extends BasePlugin
         $event->rules['simple-form/submissions/export'] = 'simple-form/submissions/export';
         $event->rules['simple-form/submissions/export-options'] = 'simple-form/submissions/export-options';
         $event->rules['simple-form/submissions/<submissionId:\d+>/pdf'] = 'simple-form/submissions/pdf';
+        // Editable submissions (#294): the more specific /edit rule must precede
+        // the bare `<submissionId>` view rule so the id doesn't swallow it.
+        $event->rules['simple-form/submissions/<submissionId:\d+>/edit'] = 'simple-form/submissions/edit';
+        $event->rules['simple-form/submissions/save-edit'] = 'simple-form/submissions/save-edit';
         $event->rules['simple-form/submissions/<submissionId:\d+>'] = 'simple-form/submissions/view';
         $event->rules['simple-form/submissions/toggle-status'] = 'simple-form/submissions/toggle-status';
         $event->rules['simple-form/settings'] = 'simple-form/settings/index';

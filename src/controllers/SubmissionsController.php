@@ -5,10 +5,16 @@ namespace anvildev\simpleform\controllers;
 use anvildev\simpleform\elements\Form;
 use anvildev\simpleform\elements\Submission;
 use anvildev\simpleform\elements\SubmissionStatus;
+use anvildev\simpleform\fields\FileFieldType;
+use anvildev\simpleform\fields\PaymentFieldType;
+use anvildev\simpleform\fields\SignatureFieldType;
 use anvildev\simpleform\helpers\SimpleFormPermissions;
 use anvildev\simpleform\helpers\SubmissionCsv;
+use anvildev\simpleform\integrations\support\SubmissionValues;
+use anvildev\simpleform\models\FormModel;
 use anvildev\simpleform\Plugin;
 use Craft;
+use craft\helpers\Template;
 use craft\web\Controller;
 use yii\web\Response;
 
@@ -25,8 +31,10 @@ class SubmissionsController extends Controller
             return false;
         }
 
-        // Mutating actions additionally require MANAGE_SUBMISSIONS.
-        if (in_array($action->id, ['toggle-status', 'mark-not-spam', 'delete', 'transition'], true)) {
+        // Mutating actions additionally require MANAGE_SUBMISSIONS. The edit
+        // screen is gated too (not just the save) so a view-only operator can't
+        // even open the editor.
+        if (in_array($action->id, ['toggle-status', 'mark-not-spam', 'delete', 'transition', 'edit', 'save-edit'], true)) {
             $this->requirePermission(SimpleFormPermissions::MANAGE_SUBMISSIONS);
         }
 
@@ -314,6 +322,7 @@ class SubmissionsController extends Controller
             'integrationLogs' => $logs,
             'integrationNames' => $integrationNames,
             'elementLinks' => $elementLinks,
+            'canManageSubmissions' => $canManageSubmissions,
             'canManageIntegrations' => $user->checkPermission(SimpleFormPermissions::MANAGE_INTEGRATIONS),
             'pdfAvailable' => Plugin::getInstance()->getPdf()->isAvailable(),
             'workflowEnabled' => $workflowEnabled,
@@ -322,6 +331,170 @@ class SubmissionsController extends Controller
                 ? $workflow->allowedTransitions($submission->workflowStatus, $user->getIdentity())
                 : [],
         ]);
+    }
+
+    /**
+     * Field types that can't be re-edited in the simple CP edit form: file
+     * uploads, drawn signatures, and Commerce payment capture. They render as a
+     * read-only note and their stored value is preserved verbatim on save (see
+     * {@see self::actionSaveEdit()}).
+     *
+     * @return list<string>
+     */
+    private function uneditableFieldTypes(): array
+    {
+        return [FileFieldType::getType(), SignatureFieldType::getType(), PaymentFieldType::getType()];
+    }
+
+    /**
+     * CP editor for a submission's field values (#294). Renders each input field
+     * primed with the submission's stored value through the same field-type
+     * renderer the front-end uses, so an admin edits with the real controls.
+     * Gated by MANAGE_SUBMISSIONS in {@see self::beforeAction()}.
+     *
+     * @throws \yii\web\NotFoundHttpException when the submission or its form is missing
+     */
+    public function actionEdit(int $submissionId): Response
+    {
+        $siteId = Craft::$app->getSites()->getCurrentSite()->id;
+
+        $submission = Submission::find()->siteId($siteId)->id($submissionId)->one();
+        if (!$submission instanceof Submission) {
+            throw new \yii\web\NotFoundHttpException('Submission not found');
+        }
+
+        $form = $submission->getForm();
+        if (!$form instanceof Form) {
+            throw new \yii\web\NotFoundHttpException('Form not found');
+        }
+
+        return $this->renderTemplate('simple-form/submissions/edit', [
+            'submission' => $submission,
+            'form' => $form,
+            'fields' => $this->editableFieldRows($form, $submission),
+            'errors' => [],
+        ]);
+    }
+
+    /**
+     * Persist an admin's edits to a submission's field values (#294) through the
+     * shared {@see \anvildev\simpleform\services\SubmissionService::update()}
+     * path, so the edit is re-validated + re-snapshotted exactly like the
+     * front-end tokenized editor. Gated by MANAGE_SUBMISSIONS.
+     *
+     * @throws \yii\web\NotFoundHttpException when the submission or its form is missing
+     * @throws \yii\base\InvalidConfigException
+     */
+    public function actionSaveEdit(): Response
+    {
+        $this->requirePostRequest();
+
+        /** @var \craft\web\Request $request */
+        $request = Craft::$app->getRequest();
+        $submissionId = (int) $request->getRequiredBodyParam('submissionId');
+        $siteId = Craft::$app->getSites()->getCurrentSite()->id;
+
+        $submission = Submission::find()->siteId($siteId)->id($submissionId)->one();
+        if (!$submission instanceof Submission) {
+            throw new \yii\web\NotFoundHttpException('Submission not found');
+        }
+
+        $form = $submission->getForm();
+        if (!$form instanceof Form) {
+            throw new \yii\web\NotFoundHttpException('Form not found');
+        }
+
+        // Collect a value for every input field, keyed field_<id>. Editable fields
+        // take their posted value (mirroring how SubmissionService collects a
+        // create); the un-editable types (file/signature/payment) are re-seeded
+        // from the submission's existing data so update() re-persists them
+        // unchanged — update() rebuilds the whole data payload from the values it
+        // is handed, so an omitted field would otherwise be dropped.
+        $storedData = is_array($submission->data) ? $submission->data : [];
+        $uneditable = $this->uneditableFieldTypes();
+        $values = [];
+        foreach ((new FormModel($form))->getFields() as $fieldId => $field) {
+            if (!$field->isInputType()) {
+                continue;
+            }
+            if (in_array($field->getType(), $uneditable, true)) {
+                $values['field_' . $fieldId] = SubmissionValues::value($storedData['field_' . $fieldId] ?? null);
+            } else {
+                $values['field_' . $fieldId] = $request->getBodyParam('field_' . $fieldId);
+            }
+        }
+
+        // A string actor label keeps the audit attribution type-clean; identify
+        // the CP operator making the change.
+        $identity = Craft::$app->getUser()->getIdentity();
+        $actor = 'cp:' . ($identity?->username ?? 'unknown');
+
+        $result = Plugin::getInstance()->getSubmissionService()->update($submission, $values, [
+            'actor' => $actor,
+            'skipCaptcha' => true,
+            // A permission-gated CP edit of an existing row is not a new visitor
+            // submission, so the availability / require-login / per-user-quota
+            // gates must not block it (#294). Spam + validation still run.
+            '_cpEdit' => true,
+        ]);
+
+        if (!empty($result['errors'])) {
+            Craft::$app->getSession()->setError(Craft::t('simple-form', 'Couldn’t save the submission.'));
+
+            return $this->renderTemplate('simple-form/submissions/edit', [
+                'submission' => $submission,
+                'form' => $form,
+                'fields' => $this->editableFieldRows($form, $submission),
+                'errors' => $result['errors'],
+            ]);
+        }
+
+        Craft::$app->getSession()->setNotice(Craft::t('simple-form', 'Submission saved.'));
+
+        return $this->redirectToPostedUrl($submission, 'simple-form/submissions/' . $submission->id);
+    }
+
+    /**
+     * Build the per-field view models the edit screen renders: for each input
+     * field, its label, required flag, and either a pre-rendered editable input
+     * (primed with the stored value) or a read-only marker for the un-editable
+     * types. Presentational layout blocks and unknown types are skipped.
+     *
+     * @return list<array<string, mixed>>
+     */
+    private function editableFieldRows(Form $form, Submission $submission): array
+    {
+        $registry = Plugin::getInstance()->getFieldTypeRegistry();
+        $data = is_array($submission->data) ? $submission->data : [];
+        $uneditable = $this->uneditableFieldTypes();
+
+        $rows = [];
+        foreach ((new FormModel($form))->getFields() as $fieldId => $field) {
+            if (!$field->isInputType()) {
+                continue;
+            }
+
+            $type = $field->getType();
+            $fieldType = $registry->getFieldType($type, $field->getConfig());
+            if ($fieldType === null) {
+                continue;
+            }
+
+            $name = 'field_' . $fieldId;
+            $currentValue = SubmissionValues::value($data[$name] ?? null);
+            $readOnly = in_array($type, $uneditable, true);
+
+            $rows[] = [
+                'id' => $fieldId,
+                'name' => $name,
+                'label' => $field->getLabel() ?? $field->getName(),
+                'required' => $field->isRequired(),
+                'readOnly' => $readOnly,
+                'input' => $readOnly ? null : Template::raw($fieldType->renderInput($name, $currentValue)),
+            ];
+        }
+
+        return $rows;
     }
 
     /**
