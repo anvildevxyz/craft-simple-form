@@ -52,7 +52,7 @@
                     <td>{{ f.attempts }}</td>
                     <td>{{ f.responseCode ?? '—' }}</td>
                     <td class="sf-log-message is-error">{{ f.message ?: '—' }}</td>
-                    <td>{{ f.dateCreated }}</td>
+                    <td>{{ f.dateCreated ? f.dateCreated|datetime('short') : '—' }}</td>
                     <td class="thin">
                         {% if f.submissionId %}
                             <form method="post" class="sf-inline-action" data-sf-confirm="{{ 'Resend this dispatch?'|t('simple-form') }}">
