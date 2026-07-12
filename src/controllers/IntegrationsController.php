@@ -83,6 +83,10 @@ class IntegrationsController extends Controller
             'type' => $type,
             'availableTypes' => $this->availableTypesFor($registry),
             'errors' => $errors,
+            // Re-displaying a rejected save: echo what the operator just typed
+            // (their own input, not a stored secret), so nothing is lost on a
+            // validation error.
+            'displaySettings' => $integration !== null ? $integration->settings : [],
         ]);
     }
 
@@ -149,6 +153,11 @@ class IntegrationsController extends Controller
             'type' => $type,
             'availableTypes' => $this->availableTypesFor($registry),
             'errors' => [],
+            // Never echo a stored literal secret back into the form (#429); env
+            // references stay visible so they can be edited.
+            'displaySettings' => $integration !== null
+                ? $this->service()->redactSecretsForDisplay($integration->settings)
+                : [],
         ]);
     }
 
@@ -168,6 +177,10 @@ class IntegrationsController extends Controller
         }
         $integration ??= new IntegrationModel();
 
+        // The (decrypted) secrets already stored, so a masked secret field left
+        // blank on save keeps its value instead of wiping it (#429).
+        $storedSettings = $integration->settings;
+
         // The type already stored on this integration (empty for a new one), used
         // by the edition gate below to tell "keep an existing Pro integration" from
         // "introduce a Pro type".
@@ -177,7 +190,7 @@ class IntegrationsController extends Controller
         $integration->name = (string) $request->getBodyParam('name', $integration->type);
         $integration->enabled = (bool) $request->getBodyParam('enabled', true);
         $settings = $request->getBodyParam('settings', []);
-        $integration->settings = is_array($settings) ? $settings : [];
+        $integration->settings = $service->preserveBlankSecrets(is_array($settings) ? $settings : [], $storedSettings);
 
         $type = $registry->getType($integration->type);
         if ($type === null) {
