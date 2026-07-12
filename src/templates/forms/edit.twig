@@ -240,6 +240,7 @@
 
     {{ forms.textField({
         label: 'Title'|t('simple-form'),
+        instructions: 'Optional, per-site. Defaults to the form name.'|t('simple-form'),
         id: 'title',
         name: 'title',
         value: form.title,

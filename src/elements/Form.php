@@ -452,6 +452,21 @@ class Form extends Element
     }
 
     /**
+     * The Title field is optional in the form editor (no required marker), but
+     * {@see self::hasTitles()} makes Craft reject a blank title on save. Default
+     * it to the Name so leaving Title empty is genuinely allowed, matching how
+     * the editor presents it (#428).
+     */
+    public function beforeValidate(): bool
+    {
+        if (($this->title ?? '') === '') {
+            $this->title = $this->name;
+        }
+
+        return parent::beforeValidate();
+    }
+
+    /**
      * @return array<int, array<array-key, mixed>|\yii\validators\Validator>
      */
     protected function defineRules(): array
