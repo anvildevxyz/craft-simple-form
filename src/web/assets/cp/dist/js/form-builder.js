@@ -76,6 +76,10 @@
     // Non-visible types: the visitor never sees them, so the inspector suppresses
     // the Required / Help Text / Error Message rows (#124).
     var HIDDEN_TYPES = ['hidden'];
+    // Field types that support an authored default value prefilled on first
+    // render (#295). File/signature/payment/calculation/repeater/relations are
+    // excluded — a static default makes no sense for them.
+    var DEFAULT_VALUE_TYPES = ['text', 'email', 'number', 'textarea', 'phone', 'url', 'date', 'select', 'radio', 'checkbox'];
     // Presentational/layout blocks: value-less, so the inspector omits
     // Required / validation / conditions and the submit guard skips them.
     var LAYOUT_TYPES = ['heading', 'divider', 'html', 'paragraph', 'callout'];
@@ -581,6 +585,22 @@
             errHint.appendChild(errHintP);
             errRow._input.appendChild(errHint);
             inspector.appendChild(errRow);
+
+            // Default value (#295): prefilled when the form first loads; a
+            // visitor's own input always overrides it.
+            if (DEFAULT_VALUE_TYPES.indexOf(f.type) !== -1) {
+                f.config = f.config || {};
+                var defRow = row('Default value');
+                defRow._input.appendChild(textInput(f.config.defaultValue || '', function(v) {
+                    f.config.defaultValue = v; serialize();
+                }));
+                var defHint = document.createElement('div'); defHint.className = 'instructions';
+                var defHintP = document.createElement('p');
+                defHintP.textContent = 'Prefilled when the form first loads. For choice fields, use the option value. A visitor’s input overrides it.';
+                defHint.appendChild(defHintP);
+                defRow._input.appendChild(defHint);
+                inspector.appendChild(defRow);
+            }
 
             renderPrefillConfig(f);
         } else {

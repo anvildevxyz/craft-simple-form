@@ -594,7 +594,11 @@ class FormRenderService extends Component
         $row['conditional'] = $conditional;
         $row['label'] = $row['label'] ?? ($row['name'] ?? '');
         $row['helpText'] = $row['helpText'] ?? '';
-        $row['input'] = Template::raw($fieldType !== null ? $fieldType->renderInput($fieldName, $prefill[$fieldName] ?? null) : '');
+        // Authored default value (#295): prefills a fresh render. Any resume /
+        // query-string / submitted value in $prefill takes precedence, so a
+        // visitor's own input always wins over the default.
+        $initialValue = $prefill[$fieldName] ?? ($config['defaultValue'] ?? null);
+        $row['input'] = Template::raw($fieldType !== null ? $fieldType->renderInput($fieldName, $initialValue) : '');
 
         // Presentational/layout blocks (heading, divider, html) and bare value
         // fields (Hidden) render outside the labelled group wrapper. Pre-render
@@ -614,7 +618,7 @@ class FormRenderService extends Component
 
         if (!$fieldType->rendersInGroup()) {
             $row['displayMode'] = 'bare';
-            $row['rawHtml'] = Template::raw($fieldType->renderInput($fieldName, $prefill[$fieldName] ?? null));
+            $row['rawHtml'] = Template::raw($fieldType->renderInput($fieldName, $initialValue));
             return $row;
         }
 
