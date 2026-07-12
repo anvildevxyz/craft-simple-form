@@ -444,6 +444,53 @@ class IntegrationsService extends Component
     }
 
     /**
+     * Redact secret settings for display on the edit screen: a stored literal
+     * secret is blanked so it is never echoed back into an input, while an
+     * environment reference ($VAR) is kept — it's safe and the operator needs to
+     * see and edit it. Pairs with {@see preserveBlankSecrets()} so a blanked
+     * field left untouched on save keeps its stored value rather than wiping it
+     * (#429).
+     *
+     * @param array<string, mixed> $settings
+     * @return array<string, mixed>
+     */
+    public function redactSecretsForDisplay(array $settings): array
+    {
+        foreach (self::SECRET_KEYS as $secretKey) {
+            $value = $settings[$secretKey] ?? null;
+            if (is_string($value) && $value !== '' && !str_starts_with($value, '$')) {
+                $settings[$secretKey] = '';
+            }
+        }
+
+        return $settings;
+    }
+
+    /**
+     * Write-only counterpart to {@see redactSecretsForDisplay()}: a secret field
+     * left blank on save keeps its previously-stored value instead of wiping it,
+     * so editing other fields doesn't clear a masked secret. A non-blank posted
+     * secret replaces the stored one as usual (#429).
+     *
+     * @param array<string, mixed> $posted
+     * @param array<string, mixed> $existing
+     * @return array<string, mixed>
+     */
+    public function preserveBlankSecrets(array $posted, array $existing): array
+    {
+        foreach (self::SECRET_KEYS as $secretKey) {
+            $postedValue = $posted[$secretKey] ?? null;
+            $storedValue = $existing[$secretKey] ?? null;
+            if ((!is_string($postedValue) || trim($postedValue) === '')
+                && is_string($storedValue) && $storedValue !== '') {
+                $posted[$secretKey] = $storedValue;
+            }
+        }
+
+        return $posted;
+    }
+
+    /**
      * Normalise a raw `settings` column value into an array. Craft's json column
      * returns a JSON string on MySQL/MariaDB and may return an already-decoded
      * array on Postgres; both (and empty/null) collapse to an array here.
