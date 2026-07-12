@@ -7,8 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-> Rename this heading to the release version + date before tagging — the
-> Plugin Store changelog parser skips an "Unreleased" section (#278).
+## 1.0.0 - 2026-07-12
 
 ### Added
 - A **spam-retention window** (`retainSpamDays`, default **30**): flagged-spam
@@ -75,7 +74,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Embed & share modes** (#247): a shareable standalone form URL and an
   embeddable variant.
 - A CP **notification log** for outbound form emails: per-send rows with
-  sent/failed status, error messages, filters, and stat cards.
+  sent/failed status, error messages, filters, and stat cards, plus a per-row
+  **Resend** action that re-dispatches through the existing send path and
+  cross-references the original send (#318).
 - **No-JS submissions** (#287): a plain form POST (no JavaScript) now
   round-trips as HTML — errors are flashed per-form and rendered through the
   `errors.twig` theme seam with field labels, success shows the resolved
@@ -88,98 +89,64 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   fields whose rules depend on it; saves that prune rules referencing a
   removed field say so in the save notice instead of dropping them silently
   (#288).
-- Privacy: a **"Collect IP addresses"** opt-out for GDPR data minimization
-  (#293) — rate limiting keeps working (nothing stored), IP-based duplicate
-  detection degrades to the other keys.
-
-### Changed
-- A freshly-installed plugin resolves to the Solo edition by default; run the
-  Pro edition to unlock the full feature set.
-- Fresh installs seed the default email sender from Craft's system mail
-  settings, so settings tabs save out of the box (#280); failed settings saves
-  now list every error and name the tab an offending field lives on.
-- A failed form save now flashes every validation error (not just the first),
-  and element errors open the Details tab selected and error-badged instead of
-  leaving a seemingly clean Build tab (#289).
-- The CP Overview screen was renamed **Dashboard** and rebuilt from native CP
-  components.
-
-### Fixed
-- The Forms index row actions (Delete, Duplicate, "Start from a stencil") did
-  nothing when clicked — they posted into a nonexistent form (#279). Delete now
-  confirms through Craft's dialog and redirects with a notice.
-- The signature field was registered, documented, and Pro-gated but missing
-  from the builder palette, so it couldn't be added through the UI (#281).
-- Form duplication (and third-party stencils) bypassed the edition gate,
-  letting Solo mint new forms carrying Pro features; duplicated forms also
-  lost their notifications' PDF/upload attachment flags (#282). Two further
-  edition-gate bypasses in CP write paths were closed (#254).
-- Duplicate-submission prevention wrongly reused the denylist's block/flag
-  mode, silently dropping duplicates when the denylist was set to block — it
-  now has its own mode setting (#273).
-- The save-&-resume link discarded the page's query string, breaking
-  `?handle=`-routed forms and UTM attribution on resume (#274).
-- Required fields on steps skipped by logic jumps blocked the browser's native
-  validation, leaving a dead submit button; skipped and jump-unreachable
-  steps' controls are now disabled correctly (#275).
-- Form export/apply silently reset `renderMode`, quiz settings, attribution
-  capture, and partial capture to defaults (#276).
-- The `submitForm` GraphQL mutation now returns the resolved (per-form,
-  per-site, conditional) message instead of the global default (#263).
-
-### Security
-- **Critical** — the Craft Element integration's entry-title template was
-  rendered with the unsandboxed Twig environment, so an editor holding only the
-  (non-admin) *Manage form integrations* permission could reach `craft.app`, the
-  database, and secrets on the next submission (SSTI → site takeover, CWE-94). It
-  now renders through the same forced-sandbox seam as every other editor
-  template.
-- **MCP tokens are admin-only.** Creating or revoking an MCP access token now
-  requires an admin with an elevated session. Previously *Manage plugin
-  settings* alone could mint a `submissions:export` token and read/export every
-  submission, bypassing the separate *View submissions* permission (privilege
-  escalation, CWE-269).
-- **Privacy hashes are keyed.** The denormalized `ipHash`, `guestEmailHash`, and
-  `dedupeHash` fingerprints were unsalted SHA-256 digests, reversible from a
-  DB-only leak by precomputation — which defeated the IP-anonymization guarantee
-  (CWE-759/916). They are now HMAC-keyed with the site security key. A migration
-  re-keys the email/dedupe hashes from stored data and purges the now-reversible
-  historical `ipHash` values (IP-based duplicate detection rebuilds from new
-  submissions). Note: privacy hashes don't survive a `securityKey` rotation.
-- **Submit rate limiting is on by default** (`submitRateLimitPerMinute` now
-  defaults to **10**/visitor-IP/minute) so a fresh install isn't an open flood
-  target; set `0` to disable (CWE-770). The Spam Protection tab warns when both
-  rate limiting and CAPTCHA are off.
-- **Elevated session for spam secrets.** Saving the Spam Protection tab (which
-  holds the CAPTCHA/Akismet secret keys) now requires a re-verified password
-  (CWE-306), and a save-time tip steers operators toward environment references
-  so secrets stay out of the database and project config (CWE-312).
-- **Field-length ceiling.** Text-bearing fields reject values over 64 KB even
-  when no `maxLength` is configured, so an oversized POST can't inflate the
-  submission store (CWE-770).
-- **Rate limiter hardening.** The abuse throttle now initializes its window
-  atomically and logs a warning when the app cache is a `DummyCache` (under which
-  it can't accumulate), instead of silently disappearing (CWE-703).
-- **SSRF DNS-pin hardening.** Integration dispatch is pinned to Guzzle's cURL
-  handler so the DNS-rebinding guard's `CURLOPT_RESOLVE` can't be silently
-  dropped by a stream-handler fallback (CWE-918).
-
-## [1.0.0] - 2026-06-24
-
-### Fixed
-- Duplicating a form now copies translated field labels for every site, not just
-  the primary site.
-- Calculation-field values that are whole numbers no longer compare unequal after
-  the submission-data round-trip.
-- Chat/notification "Label: value" lines no longer error on legacy submissions
-  whose rows were stored as bare scalars.
-
-### Changed
-- Simple Form is now commercial software with a single **Pro** edition
-  (`Plugin::editions()`); the license changed from MIT to proprietary
-  (see LICENSE.md).
-
-### Added
+- Builder: multi-page forms show a **"Step N"** separator bracketing each
+  page's fields in the canvas, with an inline note when the authored step
+  number differs from the effective (compacted) step (#292).
+- Builder: the field palette is grouped into Basic/Choice/Advanced/Layout with
+  a search filter, and the field handle input warns on a live duplicate
+  collision as you type — the save-time guard remains the backstop (#296).
+- Privacy: IP capture is now a three-state policy — **full, anonymized** (the
+  last IPv4 octet or low 80 bits of an IPv6 address are masked before storage),
+  **or off** — superseding the old on/off "Collect IP addresses" toggle while
+  staying backward-compatible with it (#293, #315). Rate limiting keeps working
+  under any mode (nothing is stored beyond the window), and IP-based duplicate
+  detection degrades to the other dedupe keys when IPs aren't fully captured.
+- Immutable **per-submission field snapshots** (#312): a submission now
+  captures its form's field handles, labels, option labels, and display order
+  at submit time. The CP detail view and every CSV export render from the
+  snapshot when present, so renaming, reordering, or deleting a field later no
+  longer corrupts the labels/order shown for existing submissions.
+- **CC/BCC address lists** on notifications, alongside the existing recipient
+  and Reply-To, with the same header-injection-safe validation (#313).
+- Two new submissions console subcommands for data-subject requests:
+  `submissions/export-by-email` (CSV of every submission tied to an email) and
+  `submissions/erase-by-email` (delete or anonymize matches, honoring
+  `anonymizeInsteadOfDelete`, with `--dry-run` preview) (#314).
+- Opt-in **query-string prefill**: a field can be set to read its default value
+  from a URL query parameter (per-field On/Off/inherit, with a form-level
+  default); prefilled values are still ordinary defaults, validated on submit
+  and overridden by resume/edit or an actual submitted value (#316).
+- **CSV export column selection**: operators can export a chosen subset of
+  submission columns from the Submissions index instead of every column; the
+  default stays every column, and formula-injection neutralization still runs
+  on every emitted cell (#317).
+- **URL** field type: a single validated, normalized URL (scheme-less entries
+  are normalized to `https://`); participates in snapshots, CSV export,
+  conditional logic, and GraphQL like the other scalar fields (#319).
+- **Time** field type: a time-of-day (HH:MM, 24-hour) independent of a date
+  (#320).
+- **Date & Time** field type: a combined date + time value in one input,
+  stored as `YYYY-MM-DDTHH:MM` (#321).
+- **Editable submissions in the CP** (#294): an admin with *Manage
+  submissions* can correct a submission's field values from an "Edit
+  submission" screen, which re-validates, re-snapshots, and re-scores through
+  the same core the front-end tokenized editor uses. File/signature/payment
+  values are read-only.
+- Notification authoring: friendly operator labels in the send-condition
+  dropdown, a field-select autoresponder recipient (choose an email/text field
+  instead of typing an address), a documented available-variables reference
+  under the body editor, a **Send test** button, and a plain-text alternative
+  part on every send for better deliverability (#290).
+- Field **default values**: a field can carry an authored default that
+  prefills the input the first time a form renders — a submitted or resumed
+  value always takes precedence (#295).
+- A **default upload volume** setting (Settings → General) that File fields
+  fall back to when they don't specify their own volume (#296).
+- Payment field inspector: Amount is now a select of the form's
+  number/calculation field handles, and Currency is an ISO-4217 select instead
+  of free text (#296).
+- The Forms index empty state now offers "New from stencil" alongside a blank
+  New Form (#296).
 - Runs on both **MySQL 8** and **PostgreSQL 16**; the integration suite runs
   against both databases in CI.
 - Auto-apply forms on deploy: a new `applyFormsConfigOnUp` setting (off by
@@ -234,12 +201,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `EVENT_BEFORE_SEND_NOTIFICATION` and `EVENT_BEFORE_INTEGRATION_DISPATCH` — for
   modifying or cancelling rendering, validation, notifications and dispatch
   without forking the plugin. See [Developer API](docs/twig-and-api.md#events).
-- **Payments via Craft Commerce** ([guide](docs/payments.md)): a Payment field
-  collects a payment on submit through the configured gateway's embedded form
-  (pay-to-submit — a decline saves nothing). Notifications and integrations are
-  withheld until the payment settles; abandoned offsite checkouts expire to a
-  `canceled` status. Commerce stays a soft dependency. CP shows payment status,
-  amount, and a link to the order.
+- **Payments via Craft Commerce** ([guide](docs/payments.md)): add a Payment
+  field to a form to collect a fixed or field-driven amount through the
+  configured gateway's embedded form (pay-to-submit — a decline saves
+  nothing). On submit a pending Commerce order is created (a Donation line
+  item for the amount); the submission records its order id + payment status.
+  Notifications and integrations are withheld until the payment settles and
+  released automatically once it does; abandoned offsite checkouts expire to a
+  `canceled` status. Commerce is an optional/soft dependency — without it the
+  field is inert. CP shows payment status, amount, and a link to the order.
 - **18 new field types** ([guide](docs/field-types.md)): Phone (country code +
   validation), Hidden (dynamic defaults), Agree/Consent (GDPR), Name and Address
   (composite), Rating and Opinion Scale/NPS, Signature, Calculation (formula
@@ -266,12 +236,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Front-end submission editing** ([guide](docs/submissions.md)): let submitters
   edit a submission via a secure tokenized link or `craft.simpleForm.editForm()`,
   with a per-form toggle + edit window and a GraphQL `updateSubmission` mutation.
-- **Payment field** (requires Craft Commerce): add a Payment field to a form to
-  collect a fixed or field-driven amount. On submit a pending Commerce order is
-  created (a Donation line item for the amount) and the submission records its
-  order id + payment status; notifications and integrations are held until the
-  order is paid, then released automatically. Commerce is an optional/soft
-  dependency — without it the field is inert.
 - Japanese, Dutch and Portuguese translation catalogs (now 8 locales: en/de/es/fr/it/ja/nl/pt).
 - Audit log (Settings → Audit Log): an append-only trail of form, integration,
   notification and submission-status changes (actor, action, target, summary),
@@ -373,3 +337,106 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Initial plugin scaffold with Form and Submission element types
 - CP navigation menu for Forms and Submissions
 - Database migrations for forms, fields, and submissions tables
+
+### Changed
+- A freshly-installed plugin resolves to the Solo edition by default; run the
+  Pro edition to unlock the full feature set.
+- Fresh installs seed the default email sender from Craft's system mail
+  settings, so settings tabs save out of the box (#280); failed settings saves
+  now list every error and name the tab an offending field lives on.
+- A failed form save now flashes every validation error (not just the first),
+  and element errors open the Details tab selected and error-badged instead of
+  leaving a seemingly clean Build tab (#289).
+- The CP Overview screen was renamed **Dashboard** and rebuilt from native CP
+  components.
+- Edition assignment now covers the post-1.0 feature batch: logic jumps,
+  conversational render mode, quiz scoring, partial capture, and the
+  submission-approval workflow require **Pro** to newly enable (a form already
+  using one of them on a downgraded install keeps working); attribution/UTM
+  capture, address autocomplete, and analytics stay Solo-free (#283).
+- The control panel is now fully translated: every CP screen (575 strings) and
+  the form-builder's JavaScript UI (245 strings) route through the translation
+  catalogs across all 8 locales (#285, #335).
+- Large installations scale better: indexed duplicate detection with a
+  configurable guest-email submission limit, cached Dashboard/Stats aggregates
+  (invalidated on writes), CSV exports streamed in bounded batches, and
+  additional indexes on the submissions table (#337–#341).
+- Simple Form is now commercial software; the license changed from MIT to
+  proprietary (see LICENSE.md).
+
+### Fixed
+- The Forms index row actions (Delete, Duplicate, "Start from a stencil") did
+  nothing when clicked — they posted into a nonexistent form (#279). Delete now
+  confirms through Craft's dialog and redirects with a notice.
+- The signature field was registered, documented, and Pro-gated but missing
+  from the builder palette, so it couldn't be added through the UI (#281).
+- Form duplication (and third-party stencils) bypassed the edition gate,
+  letting Solo mint new forms carrying Pro features; duplicated forms also
+  lost their notifications' PDF/upload attachment flags (#282). Two further
+  edition-gate bypasses in CP write paths were closed (#254).
+- Duplicate-submission prevention wrongly reused the denylist's block/flag
+  mode, silently dropping duplicates when the denylist was set to block — it
+  now has its own mode setting (#273).
+- The save-&-resume link discarded the page's query string, breaking
+  `?handle=`-routed forms and UTM attribution on resume (#274).
+- Required fields on steps skipped by logic jumps blocked the browser's native
+  validation, leaving a dead submit button; skipped and jump-unreachable
+  steps' controls are now disabled correctly (#275).
+- Form export/apply silently reset `renderMode`, quiz settings, attribution
+  capture, and partial capture to defaults (#276).
+- The `submitForm` GraphQL mutation now returns the resolved (per-form,
+  per-site, conditional) message instead of the global default (#263).
+- The form editor presented Title as optional but a blank Title blocked save
+  with "Title cannot be blank"; a blank Title now defaults to the form's Name
+  (matching what's displayed elsewhere), and the field is hinted as optional
+  (#428).
+- Integration secrets (API keys/tokens/signing secrets) are no longer echoed
+  back in cleartext on the integration edit screen; env-var references
+  (`$VAR`) stay visible/editable, and leaving a masked secret field blank on
+  save now keeps its stored value instead of wiping it (#429).
+- The dispatch-failures screen crashed ("Variable failures does not exist")
+  when reached via its `settings/` URL, which fell through to template
+  routing instead of the controller action (#435).
+- Duplicating a form now copies translated field labels for every site, not just
+  the primary site.
+- Calculation-field values that are whole numbers no longer compare unequal after
+  the submission-data round-trip.
+- Chat/notification "Label: value" lines no longer error on legacy submissions
+  whose rows were stored as bare scalars.
+
+### Security
+- **Critical** — the Craft Element integration's entry-title template was
+  rendered with the unsandboxed Twig environment, so an editor holding only the
+  (non-admin) *Manage form integrations* permission could reach `craft.app`, the
+  database, and secrets on the next submission (SSTI → site takeover, CWE-94). It
+  now renders through the same forced-sandbox seam as every other editor
+  template.
+- **MCP tokens are admin-only.** Creating or revoking an MCP access token now
+  requires an admin with an elevated session. Previously *Manage plugin
+  settings* alone could mint a `submissions:export` token and read/export every
+  submission, bypassing the separate *View submissions* permission (privilege
+  escalation, CWE-269).
+- **Privacy hashes are keyed.** The denormalized `ipHash`, `guestEmailHash`, and
+  `dedupeHash` fingerprints were unsalted SHA-256 digests, reversible from a
+  DB-only leak by precomputation — which defeated the IP-anonymization guarantee
+  (CWE-759/916). They are now HMAC-keyed with the site security key. A migration
+  re-keys the email/dedupe hashes from stored data and purges the now-reversible
+  historical `ipHash` values (IP-based duplicate detection rebuilds from new
+  submissions). Note: privacy hashes don't survive a `securityKey` rotation.
+- **Submit rate limiting is on by default** (`submitRateLimitPerMinute` now
+  defaults to **10**/visitor-IP/minute) so a fresh install isn't an open flood
+  target; set `0` to disable (CWE-770). The Spam Protection tab warns when both
+  rate limiting and CAPTCHA are off.
+- **Elevated session for spam secrets.** Saving the Spam Protection tab (which
+  holds the CAPTCHA/Akismet secret keys) now requires a re-verified password
+  (CWE-306), and a save-time tip steers operators toward environment references
+  so secrets stay out of the database and project config (CWE-312).
+- **Field-length ceiling.** Text-bearing fields reject values over 64 KB even
+  when no `maxLength` is configured, so an oversized POST can't inflate the
+  submission store (CWE-770).
+- **Rate limiter hardening.** The abuse throttle now initializes its window
+  atomically and logs a warning when the app cache is a `DummyCache` (under which
+  it can't accumulate), instead of silently disappearing (CWE-703).
+- **SSRF DNS-pin hardening.** Integration dispatch is pinned to Guzzle's cURL
+  handler so the DNS-rebinding guard's `CURLOPT_RESOLVE` can't be silently
+  dropped by a stream-handler fallback (CWE-918).
