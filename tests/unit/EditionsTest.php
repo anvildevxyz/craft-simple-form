@@ -96,10 +96,8 @@ class EditionsTest extends TestCase
         $this->assertTrue(Editions::blocksProSettingChange('enableDenylists', false, true, Editions::SOLO));
         $this->assertTrue(Editions::blocksProSettingChange('retainSubmissionsDays', 0, 30, Editions::SOLO));
         $this->assertTrue(Editions::blocksProSettingChange('retainAuditLogDays', 0, 30, Editions::SOLO));
-        // Submission approval workflow (#283) is a Pro off-switch: Solo can't enable it.
-        $this->assertTrue(Editions::blocksProSettingChange('enableWorkflow', false, true, Editions::SOLO));
-        $this->assertFalse(Editions::blocksProSettingChange('enableWorkflow', true, false, Editions::SOLO));
-        $this->assertFalse(Editions::blocksProSettingChange('enableWorkflow', true, true, Editions::SOLO));
+        // Submission approval workflow is Solo-free (#283 split): never gated.
+        $this->assertFalse(Editions::blocksProSettingChange('enableWorkflow', false, true, Editions::SOLO));
 
         // ...as is changing a still-on value (e.g. shrinking — more destructive —
         // or even growing the retention window: it's still reconfiguring Pro).
@@ -173,34 +171,14 @@ class EditionsTest extends TestCase
         $this->assertSame([], Editions::blockedNewFormCapabilities($conditional, true, $conditional, true, Editions::SOLO));
     }
 
-    public function testDetectsLogicJumps(): void
+    public function testLogicJumpsAreSoloFree(): void
     {
-        $plain = [['type' => 'select', 'config' => []]];
+        // Logic jumps are Solo-free (#283 split): a field carrying config.jumps
+        // is never a Pro escalation, on either edition.
         $jump = [['type' => 'select', 'config' => ['jumps' => [['target' => 'thanks', 'operator' => 'eq', 'value' => 'a']]]]];
-        // A jump with a blank/missing target never routes, so it isn't Pro usage.
-        $emptyTarget = [['type' => 'select', 'config' => ['jumps' => [['target' => '', 'operator' => 'eq']]]]];
 
-        $this->assertFalse(Editions::usesLogicJumps($plain));
-        $this->assertFalse(Editions::usesLogicJumps($emptyTarget));
-        $this->assertTrue(Editions::usesLogicJumps($jump));
-    }
-
-    public function testBlockedNewFormCapabilitiesGatesLogicJumps(): void
-    {
-        $jump = [['type' => 'select', 'config' => ['jumps' => [['target' => 'thanks', 'operator' => 'eq', 'value' => 'a']]]]];
-        $plain = [['type' => 'select', 'config' => []]];
-
-        // Pro: never blocked.
+        $this->assertSame([], Editions::blockedNewFormCapabilities($jump, false, [], false, Editions::SOLO));
         $this->assertSame([], Editions::blockedNewFormCapabilities($jump, false, [], false, Editions::PRO));
-
-        // Solo, introducing a jump: blocked.
-        $this->assertSame(
-            [Editions::CAP_LOGIC_JUMPS],
-            Editions::blockedNewFormCapabilities($jump, false, $plain, false, Editions::SOLO),
-        );
-
-        // Solo, jump already on the saved form: preserved.
-        $this->assertSame([], Editions::blockedNewFormCapabilities($jump, false, $jump, false, Editions::SOLO));
     }
 
     public function testBlockedNewFormModesAppliesNoEscalationRule(): void
@@ -240,7 +218,6 @@ class EditionsTest extends TestCase
             Editions::CAP_CONDITIONAL_LOGIC,
             Editions::CAP_MULTI_PAGE,
             Editions::CAP_SAVE_CONTINUE,
-            Editions::CAP_LOGIC_JUMPS,
             Editions::CAP_CONVERSATIONAL,
             Editions::CAP_QUIZ,
             Editions::CAP_PARTIAL_CAPTURE,

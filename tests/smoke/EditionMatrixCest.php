@@ -129,22 +129,14 @@ class EditionMatrixCest extends BaseSmokeCest
     }
 
     /**
-     * The post-1.0 batch's Pro form features (#283) are gated at authoring on Solo:
-     * logic jumps (field-set-derived) and the scalar form modes — conversational
-     * render, quiz scoring, partial capture — all block when *introduced*.
+     * The post-1.0 batch's Pro form modes (#283) are gated at authoring on Solo:
+     * conversational render, quiz scoring, and partial capture all block when
+     * *introduced*. (Logic jumps + the approval workflow are Solo-free — see
+     * {@see soloAllowsJumpsAndWorkflow}.)
      */
     public function soloGatesNewFormFeatures(SmokeTester $I): void
     {
         $this->setEdition(Editions::SOLO);
-
-        // Logic jumps ride along in blockedNewFormCapabilities (like conditional
-        // logic / multi-page): a field carrying config.jumps trips it.
-        $jumpItems = [['type' => 'select', 'config' => ['jumps' => [['target' => 'thanks', 'operator' => 'eq', 'value' => 'a']]]]];
-        $I->assertContains(
-            Editions::CAP_LOGIC_JUMPS,
-            Editions::blockedNewFormCapabilities($jumpItems, false, [], false),
-            'Solo blocks introducing a logic jump',
-        );
 
         // Scalar form modes: introducing any Pro mode from an all-off form is blocked.
         $blockedModes = Editions::blockedNewFormModes(
@@ -166,14 +158,6 @@ class EditionMatrixCest extends BaseSmokeCest
     {
         $this->setEdition(Editions::SOLO);
 
-        // A logic jump already on the saved form is not a new escalation.
-        $jumpItems = [['type' => 'select', 'config' => ['jumps' => [['target' => 'thanks', 'operator' => 'eq', 'value' => 'a']]]]];
-        $I->assertSame(
-            [],
-            Editions::blockedNewFormCapabilities($jumpItems, false, $jumpItems, false),
-            'Solo preserves a logic jump the form already had',
-        );
-
         // Scalar modes already on stay on (posted == stored, all on).
         $allOn = [Editions::CAP_CONVERSATIONAL => true, Editions::CAP_QUIZ => true, Editions::CAP_PARTIAL_CAPTURE => true];
         $I->assertSame([], Editions::blockedNewFormModes($allOn, $allOn), 'Solo preserves modes already on');
@@ -186,8 +170,6 @@ class EditionMatrixCest extends BaseSmokeCest
     {
         $this->setEdition(Editions::PRO);
 
-        $jumpItems = [['type' => 'select', 'config' => ['jumps' => [['target' => 'thanks']]]]];
-        $I->assertSame([], Editions::blockedNewFormCapabilities($jumpItems, false, [], false));
         $I->assertSame(
             [],
             Editions::blockedNewFormModes(
@@ -198,30 +180,26 @@ class EditionMatrixCest extends BaseSmokeCest
     }
 
     /**
-     * The submission approval workflow (#283) is a Pro "off switch" setting: Solo
-     * may not turn it on, but may turn it off or leave a running one on (so a
-     * downgraded site keeps its queue) — and Pro can always change it.
+     * Logic jumps and the submission approval workflow are Solo-free (#283 split
+     * decision): neither is gated at authoring, so Solo may introduce a logic
+     * jump and enable the approval workflow.
      */
-    public function soloGatesWorkflowEnable(SmokeTester $I): void
+    public function soloAllowsJumpsAndWorkflow(SmokeTester $I): void
     {
         $this->setEdition(Editions::SOLO);
-        $I->assertTrue(
-            Editions::blocksProSettingChange('enableWorkflow', false, true),
-            'Solo blocks enabling the approval workflow',
-        );
-        $I->assertFalse(
-            Editions::blocksProSettingChange('enableWorkflow', true, false),
-            'Solo may turn a running workflow off',
-        );
-        $I->assertFalse(
-            Editions::blocksProSettingChange('enableWorkflow', true, true),
-            'Solo preserves an already-enabled workflow',
+
+        // A field carrying config.jumps is not a Pro escalation.
+        $jumpItems = [['type' => 'select', 'config' => ['jumps' => [['target' => 'thanks', 'operator' => 'eq', 'value' => 'a']]]]];
+        $I->assertSame(
+            [],
+            Editions::blockedNewFormCapabilities($jumpItems, false, [], false),
+            'Solo may introduce a logic jump',
         );
 
-        $this->setEdition(Editions::PRO);
+        // enableWorkflow is not a Pro off-switch setting: Solo may turn it on.
         $I->assertFalse(
             Editions::blocksProSettingChange('enableWorkflow', false, true),
-            'Pro may enable the approval workflow',
+            'Solo may enable the approval workflow',
         );
     }
 
