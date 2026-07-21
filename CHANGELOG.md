@@ -19,6 +19,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   which could redirect the signed assertion to an attacker host.
 - The `raw` filter is now denied in the notification/HTML-block Twig sandbox, so
   an author template can no longer emit a submitter's markup unescaped.
+- Outbound integration requests now validate the host and pin its resolved IP in
+  a single lookup, closing a DNS-rebinding window between the SSRF check and
+  connect.
+- File-upload fields now enforce a hard file-count cap (20 for multi-file
+  fields) and a default 25 MB per-file ceiling when no size is configured, and
+  reject browser-rendered/executable extensions (`svg`, `xml`, `html`, …)
+  regardless of the field's allowlist — backing up the content-type sniff.
+- Erasing or anonymizing a submission now also deletes its notification send-log
+  rows (recipient + rendered body), so that PII no longer outlives the erasure.
+- A front-end edit token is now single-use: it is consumed after a successful
+  token-authorized edit, so a leaked edit link can't be replayed for the rest of
+  the edit window.
 
 ## 1.0.0 - 2026-07-12
 

@@ -24,8 +24,11 @@ class FileFieldTypeTest extends TestCase
     public function testMaxBytes(): void
     {
         $this->assertSame(2 * 1024 * 1024, (new FileFieldType(['maxSize' => 2]))->maxBytes());
-        $this->assertNull((new FileFieldType([]))->maxBytes());
-        $this->assertNull((new FileFieldType(['maxSize' => 0]))->maxBytes());
+        // An unset or zero maxSize falls back to the default per-file ceiling so an
+        // anonymous upload is always bounded (was: null / unlimited).
+        $default = 25 * 1024 * 1024;
+        $this->assertSame($default, (new FileFieldType([]))->maxBytes());
+        $this->assertSame($default, (new FileFieldType(['maxSize' => 0]))->maxBytes());
     }
 
     public function testRenderInputSingle(): void

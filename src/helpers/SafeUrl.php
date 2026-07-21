@@ -181,6 +181,50 @@ final class SafeUrl
     }
 
     /**
+     * Validate $url and build its DNS-pin options in a SINGLE host resolution:
+     * returns the cURL pin options for exactly the IPs that were range-checked, or
+     * `null` when the URL is not a public http(s) address (callers must treat
+     * `null` as blocked). Resolving once closes the rebinding window that opens
+     * when {@see isPublicHttpUrl()} and {@see guzzlePinDnsOptions()} each resolve
+     * the host independently and can observe different IPs.
+     *
+     * A host that does not resolve is permitted with no pin (an unresolvable host
+     * is not an SSRF target — the socket simply fails), mirroring
+     * {@see isPublicHttpUrl()}.
+     *
+     * @return array<string, mixed>|null
+     */
+    public static function guardedRequestOptions(string $url): ?array
+    {
+        $url = trim($url);
+        if ($url === '') {
+            return null;
+        }
+
+        $parts = parse_url($url);
+        if ($parts === false || !isset($parts['scheme'], $parts['host']) || !self::isHttp($parts['scheme'])) {
+            return null;
+        }
+
+        $host = trim($parts['host'], '[]');
+        $ips = self::resolveIps($host);
+        if ($ips === []) {
+            return [];
+        }
+
+        foreach ($ips as $ip) {
+            if (!self::isPublicIp($ip)) {
+                return null;
+            }
+        }
+
+        $scheme = strtolower($parts['scheme']);
+        $port = $parts['port'] ?? ($scheme === 'https' ? 443 : 80);
+
+        return ['curl' => [CURLOPT_RESOLVE => array_map(static fn(string $ip): string => "{$host}:{$port}:{$ip}", $ips)]];
+    }
+
+    /**
      * Guzzle/cURL options that pin $url's host to the IPs resolved at call time,
      * closing the DNS-rebinding window between {@see isPublicHttpUrl()} and connect.
      *

@@ -14,6 +14,31 @@ use craft\web\UploadedFile;
  */
 class FileFieldType extends FieldType
 {
+    /**
+     * Hard ceiling on files accepted by a multi-file field, bounding an
+     * upload-flood from an anonymous submitter even when the field configures no
+     * explicit limit. A single-file field is capped at 1.
+     */
+    private const MAX_FILES = 20;
+
+    /**
+     * Default per-file size ceiling (bytes) applied when the field configures no
+     * `maxSize`, so an anonymous upload is always bounded (PHP's own
+     * `upload_max_filesize` is a server-wide fallback, not a per-field one).
+     */
+    private const DEFAULT_MAX_BYTES = 25 * 1024 * 1024;
+
+    /**
+     * Extensions rejected regardless of the per-field allowlist: browser-rendered
+     * markup/script (`svg`, `html`, …) that would be stored XSS if the volume is
+     * public and same-origin, plus server-executable types. This is an extension
+     * denylist that backs up the content sniff in {@see isExecutableContent()},
+     * which finfo can evade by misclassifying e.g. an SVG as `text/xml`.
+     *
+     * @var list<string>
+     */
+    private const BLOCKED_EXTENSIONS = ['svg', 'svgz', 'xml', 'xhtml', 'html', 'htm', 'shtml'];
+
     public static function getType(): string
     {
         return 'file';
@@ -53,11 +78,11 @@ class FileFieldType extends FieldType
         return array_values(array_unique($out));
     }
 
-    /** Maximum allowed size per file in bytes, or null for no limit. */
-    public function maxBytes(): ?int
+    /** Maximum allowed size per file in bytes: the configured `maxSize` (MB), else a default ceiling. */
+    public function maxBytes(): int
     {
         $mb = $this->config['maxSize'] ?? null;
-        return (is_numeric($mb) && $mb > 0) ? (int) ((float) $mb * 1024 * 1024) : null;
+        return (is_numeric($mb) && $mb > 0) ? (int) ((float) $mb * 1024 * 1024) : self::DEFAULT_MAX_BYTES;
     }
 
     /**
@@ -84,8 +109,11 @@ class FileFieldType extends FieldType
             return $errors;
         }
 
-        if (!$this->isMultiple() && count($files) > 1) {
-            $errors[] = Craft::t('simple-form', 'Only one file may be uploaded.');
+        $maxFiles = $this->isMultiple() ? self::MAX_FILES : 1;
+        if (count($files) > $maxFiles) {
+            $errors[] = $maxFiles === 1
+                ? Craft::t('simple-form', 'Only one file may be uploaded.')
+                : Craft::t('simple-form', 'At most {count} files may be uploaded.', ['count' => $maxFiles]);
         }
 
         $allowed = $this->allowedExtensions();
@@ -97,6 +125,13 @@ class FileFieldType extends FieldType
                 continue;
             }
             $ext = strtolower((string) $file->getExtension());
+            // Always reject browser-rendered/executable extensions, even when the
+            // field's allowlist is empty ("any"): the content sniff below can be
+            // evaded by finfo misclassification (e.g. an SVG read as text/xml).
+            if (in_array($ext, self::BLOCKED_EXTENSIONS, true)) {
+                $errors[] = Craft::t('simple-form', 'File type “.{ext}” is not allowed.', ['ext' => $ext]);
+                continue;
+            }
             if ($allowed !== [] && !in_array($ext, $allowed, true)) {
                 $errors[] = Craft::t('simple-form', 'File type “.{ext}” is not allowed.', ['ext' => $ext]);
             }
@@ -107,7 +142,7 @@ class FileFieldType extends FieldType
             if ($this->isExecutableContent($file->tempName)) {
                 $errors[] = Craft::t('simple-form', 'The contents of “{name}” are not an allowed file type.', ['name' => $file->name]);
             }
-            if ($maxBytes !== null && $file->size > $maxBytes) {
+            if ($file->size > $maxBytes) {
                 $errors[] = Craft::t('simple-form', '“{name}” exceeds the maximum size.', ['name' => $file->name]);
             }
         }

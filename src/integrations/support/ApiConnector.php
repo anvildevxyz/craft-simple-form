@@ -116,14 +116,16 @@ trait ApiConnector
      */
     protected function rawRequest(string $method, string $url, array $options = []): ResponseInterface|IntegrationResult
     {
-        // SSRF guard (F3): only dispatch to a public address.
-        if (!SafeUrl::isPublicHttpUrl($url)) {
+        // SSRF guard (F3): validate the host and pin its resolved IPs in ONE
+        // lookup, so the address that was range-checked is exactly the address the
+        // socket connects to (no DNS-rebinding window between check and connect).
+        // null = not a public http(s) URL.
+        $pinOptions = SafeUrl::guardedRequestOptions($url);
+        if ($pinOptions === null) {
             return IntegrationResult::failure(null, 'Blocked request to a non-public address');
         }
 
         try {
-            $pinOptions = SafeUrl::guzzlePinDnsOptions($url);
-
             return $this->httpClient()->request($method, $url, ['http_errors' => false] + $pinOptions + $options);
         } catch (\Throwable $e) {
             return IntegrationResult::failure(null, $e->getMessage());

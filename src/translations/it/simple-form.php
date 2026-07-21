@@ -970,6 +970,7 @@ return [
     'One per line. A single IPv4/IPv6 address or a CIDR range (e.g. 203.0.113.0/24, 2001:db8::/32).' => 'Uno per riga. Un singolo indirizzo IPv4/IPv6 o un intervallo CIDR (es. 203.0.113.0/24, 2001:db8::/32).',
     'One per line. Exact address (bob@x.tld), whole domain (@x.tld), or domain + subdomains (*.x.tld).' => 'Uno per riga. Indirizzo esatto (bob@x.tld), intero dominio (@x.tld), o dominio + sottodomini (*.x.tld).',
     'Only one file may be uploaded.' => 'È possibile caricare un solo file.',
+    'At most {count} files may be uploaded.' => 'È possibile caricare al massimo {count} file.',
     'Only send when a condition is met' => 'Invia solo quando una condizione è soddisfatta',
     'Only the site it is created in' => 'Solo il sito in cui è stato creato',
     'Operator' => 'Operatore',

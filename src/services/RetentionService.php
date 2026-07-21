@@ -250,6 +250,12 @@ class RetentionService extends Component
         // image too, not only the reference (#129).
         $this->deleteSubmissionAssets($ids);
 
+        // Notification-log rows carry the recipient address and the rendered email
+        // body (the submitted answers), so anonymizing the submission must scrub
+        // them too — otherwise that PII outlives the erasure until the age-based
+        // log prune.
+        $this->deleteNotificationLogs($ids);
+
         // Null the JSON data + user reference in place; the element row, count and
         // readStatus survive so stats stay meaningful.
         return (int) Craft::$app->getDb()->createCommand()
@@ -265,6 +271,10 @@ class RetentionService extends Component
         // Remove asset-bearing field values (file + signature) so no orphaned
         // image survives the submission it belonged to (#129).
         $this->deleteSubmissionAssets($ids);
+
+        // Scrub the PII-bearing notification-log rows (recipient + rendered body)
+        // for these submissions so nothing survives the hard delete.
+        $this->deleteNotificationLogs($ids);
 
         $elements = Craft::$app->getElements();
         $db = Craft::$app->getDb();
@@ -319,6 +329,21 @@ class RetentionService extends Component
         if ($assetIds !== []) {
             Plugin::getInstance()->getAssetUploadService()->deleteAssets(...array_keys($assetIds));
         }
+    }
+
+    /**
+     * Delete the notification send-log rows for the given submissions. Those rows
+     * store the recipient address and up to 1000 chars of the rendered email body
+     * (the submitted answers), so an erase/anonymize must remove them or that PII
+     * survives until the age-based {@see pruneNotificationLogs()} sweep.
+     *
+     * @param list<int> $ids
+     */
+    private function deleteNotificationLogs(array $ids): void
+    {
+        Craft::$app->getDb()->createCommand()
+            ->delete(self::NOTIFICATION_LOGS, ['submissionId' => $ids])
+            ->execute();
     }
 
     /**
