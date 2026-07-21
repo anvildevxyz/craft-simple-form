@@ -34,6 +34,11 @@ class DompdfEngine implements PdfEngineInterface
         // stay off so a template can't be used to make the worker fetch arbitrary
         // URLs. Local assets render through the regular file paths.
         $options->set('isRemoteEnabled', false);
+        // Explicitly deny in-template PHP and JS execution (both default off, pinned
+        // here as defense-in-depth): an author-overridden pdf.twig renders untrusted
+        // submission content, and neither is needed to lay out a form PDF.
+        $options->set('isPhpEnabled', false);
+        $options->set('isJavascriptEnabled', false);
         $options->set('isHtml5ParserEnabled', true);
         $options->set('defaultFont', 'DejaVu Sans');
 

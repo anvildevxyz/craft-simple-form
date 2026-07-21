@@ -556,7 +556,9 @@ class IntegrationsService extends Component
     {
         foreach (self::SECRET_KEYS as $key) {
             $value = $settings[$key] ?? null;
-            if (is_string($value) && strlen($value) >= 6) {
+            // Redact from 4 chars up: short signing secrets are still secrets, and
+            // a 4-char over-redaction in a log line is preferable to leaking one.
+            if (is_string($value) && strlen($value) >= 4) {
                 $message = str_replace($value, '[redacted]', $message);
             }
         }

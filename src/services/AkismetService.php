@@ -73,7 +73,9 @@ class AkismetService extends Component
             );
             $body = trim((string) $response->getBody());
         } catch (\Throwable $e) {
-            Craft::warning('Akismet check failed: ' . $e->getMessage(), 'simple-form');
+            // The API key is the request host (https://<key>.rest.akismet.com), so a
+            // transport error's message can carry the URL — scrub the key before logging.
+            Craft::warning('Akismet check failed: ' . str_replace($key, '[redacted]', $e->getMessage()), 'simple-form');
             return false;
         }
 
