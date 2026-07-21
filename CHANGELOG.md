@@ -31,6 +31,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - A front-end edit token is now single-use: it is consumed after a successful
   token-authorized edit, so a leaked edit link can't be replayed for the rest of
   the edit window.
+- The Akismet API key (carried in the request host) is now scrubbed from
+  transport-error log messages, and integration-secret redaction covers secrets
+  from 4 characters up.
+- PDF generation explicitly disables in-template PHP and JavaScript execution as
+  defense-in-depth for author-overridden `pdf.twig` templates.
 
 ## 1.0.0 - 2026-07-12
 
