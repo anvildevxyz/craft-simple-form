@@ -193,9 +193,12 @@ abstract class AbstractGoogleIntegration implements IntegrationTypeInterface
         }
 
         $assertion = $this->buildServiceAccountJwt($key, $scope);
-        $tokenUri = $key['token_uri'] ?? self::TOKEN_ENDPOINT;
 
-        return $this->exchange($cacheKey, $tokenUri, [
+        // Pin the token endpoint to Google's constant — never the `token_uri` from
+        // the uploaded service-account JSON. Honoring that field would let whoever
+        // supplies the key POST the signed assertion (and the resulting token
+        // exchange) to an arbitrary host, bypassing the SSRF guard (CWE-918).
+        return $this->exchange($cacheKey, self::TOKEN_ENDPOINT, [
             'grant_type' => 'urn:ietf:params:oauth:grant-type:jwt-bearer',
             'assertion' => $assertion,
         ]);

@@ -94,10 +94,20 @@ class SafeRenderService extends Component
             $allowedClasses = array_merge($basePolicy->getAllowedClasses(), $allowedClasses);
         }
 
+        // Deny the `raw` filter even though Craft's default sandbox allowlist
+        // permits it: author templates (notification bodies, HTML blocks) run here
+        // with attacker-controlled submission values in scope, and `raw` would let
+        // an editor emit an anonymous submitter's markup unescaped into a staff
+        // email (stored XSS). Everything else stays auto-escaped.
+        $withoutRaw = static fn(array $names): array => array_values(array_filter(
+            $names,
+            static fn(string $name): bool => strtolower($name) !== 'raw',
+        ));
+
         $scoped = new SecurityPolicy(
             $basePolicy?->getAllowedTags() ?? [],
-            $basePolicy?->getAllowedFilters() ?? [],
-            $basePolicy?->getAllowedFunctions() ?? [],
+            $withoutRaw($basePolicy?->getAllowedFilters() ?? []),
+            $withoutRaw($basePolicy?->getAllowedFunctions() ?? []),
             $basePolicy?->getAllowedMethods() ?? [],
             $basePolicy?->getAllowedProperties() ?? [],
             $allowedClasses,

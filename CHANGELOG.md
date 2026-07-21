@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Security
+- Closed an SSRF bypass where IPv4-mapped/-compatible and NAT64 IPv6 spellings
+  (e.g. `::ffff:169.254.169.254`) slipped past the outbound-request guard and
+  could reach cloud metadata or localhost through an integration URL.
+- Front-end submission editing now verifies the edit token (or submission
+  ownership) **before** rendering the pre-filled form, closing a read-side IDOR
+  that could disclose a submission's stored values by id.
+- The Google integration token endpoint is now pinned to Google's constant URL
+  and no longer honors a `token_uri` from the uploaded service-account JSON,
+  which could redirect the signed assertion to an attacker host.
+- The `raw` filter is now denied in the notification/HTML-block Twig sandbox, so
+  an author template can no longer emit a submitter's markup unescaped.
+
 ## 1.0.0 - 2026-07-12
 
 ### Added

@@ -196,6 +196,22 @@ class FormRenderService extends Component
             return '<!-- Editing is not enabled for this form -->';
         }
 
+        // Authorize the READ the same way the submit path authorizes the write:
+        // prefilling the stored data below discloses every submitted value, so a
+        // valid edit token (or an owning logged-in user) must be verified BEFORE
+        // any value is rendered — otherwise an anonymous caller could read any
+        // submission by id with a bogus/absent token (IDOR).
+        $editToken = isset($options['token']) ? (string) $options['token'] : null;
+        $currentUserId = Craft::$app->getUser()->getId();
+        $authorized = Plugin::getInstance()->getSubmissionService()->authorizeEdit(
+            $submission,
+            $editToken,
+            $currentUserId !== null ? (int) $currentUserId : null,
+        );
+        if ($authorized === null) {
+            return '<!-- You are not authorized to edit this submission -->';
+        }
+
         // Map the submission's stored data (field_<id> => [..., value]) into the
         // prefill shape the field partial expects (field_<id> => value). A legacy
         // bare-scalar entry (older rows without the {label,type,value} wrapper) is
