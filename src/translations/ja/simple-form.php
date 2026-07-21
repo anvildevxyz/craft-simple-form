@@ -964,6 +964,7 @@ return [
     'One per line. A single IPv4/IPv6 address or a CIDR range (e.g. 203.0.113.0/24, 2001:db8::/32).' => '1 行につき 1 件。単一の IPv4/IPv6 アドレスまたは CIDR 範囲(例: 203.0.113.0/24、2001:db8::/32)。',
     'One per line. Exact address (bob@x.tld), whole domain (@x.tld), or domain + subdomains (*.x.tld).' => '1 行につき 1 件。正確なアドレス(bob@x.tld)、ドメイン全体(@x.tld)、またはドメイン + サブドメイン(*.x.tld)。',
     'Only one file may be uploaded.' => 'アップロードできるファイルは 1 つのみです。',
+    'At most {count} files may be uploaded.' => 'アップロードできるファイルは最大 {count} 個です。',
     'Only send when a condition is met' => '条件が満たされたときのみ送信',
     'Only the site it is created in' => '作成されたサイトのみ',
     'Operator' => '演算子',

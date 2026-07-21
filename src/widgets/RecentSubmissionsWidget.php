@@ -74,19 +74,12 @@ class RecentSubmissionsWidget extends Widget
 
     public function getSettingsHtml(): ?string
     {
-        $formOptions = $this->formScopeOptions();
-
         return Cp::textFieldHtml([
             'label' => Craft::t('simple-form', 'How many to show'),
             'name' => 'limit',
             'type' => 'number',
             'value' => (string) $this->limit,
-        ]) . Cp::selectFieldHtml([
-            'label' => Craft::t('simple-form', 'Form'),
-            'name' => 'formId',
-            'options' => $formOptions,
-            'value' => (string) ($this->formId ?? ''),
-        ]);
+        ]) . $this->formScopeFieldHtml();
     }
 
     /**

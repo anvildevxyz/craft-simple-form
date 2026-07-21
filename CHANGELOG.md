@@ -7,6 +7,31 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Security
+- Closed an SSRF bypass where IPv4-mapped/-compatible and NAT64 IPv6 spellings
+  (e.g. `::ffff:169.254.169.254`) slipped past the outbound-request guard and
+  could reach cloud metadata or localhost through an integration URL.
+- Front-end submission editing now verifies the edit token (or submission
+  ownership) **before** rendering the pre-filled form, closing a read-side IDOR
+  that could disclose a submission's stored values by id.
+- The Google integration token endpoint is now pinned to Google's constant URL
+  and no longer honors a `token_uri` from the uploaded service-account JSON,
+  which could redirect the signed assertion to an attacker host.
+- The `raw` filter is now denied in the notification/HTML-block Twig sandbox, so
+  an author template can no longer emit a submitter's markup unescaped.
+- Outbound integration requests now validate the host and pin its resolved IP in
+  a single lookup, closing a DNS-rebinding window between the SSRF check and
+  connect.
+- File-upload fields now enforce a hard file-count cap (20 for multi-file
+  fields) and a default 25 MB per-file ceiling when no size is configured, and
+  reject browser-rendered/executable extensions (`svg`, `xml`, `html`, …)
+  regardless of the field's allowlist — backing up the content-type sniff.
+- Erasing or anonymizing a submission now also deletes its notification send-log
+  rows (recipient + rendered body), so that PII no longer outlives the erasure.
+- A front-end edit token is now single-use: it is consumed after a successful
+  token-authorized edit, so a leaked edit link can't be replayed for the rest of
+  the edit window.
+
 ## 1.0.0 - 2026-07-12
 
 ### Added

@@ -964,6 +964,7 @@ return [
     'One per line. A single IPv4/IPv6 address or a CIDR range (e.g. 203.0.113.0/24, 2001:db8::/32).' => 'Eén per regel. Eén IPv4-/IPv6-adres of een CIDR-bereik (bijv. 203.0.113.0/24, 2001:db8::/32).',
     'One per line. Exact address (bob@x.tld), whole domain (@x.tld), or domain + subdomains (*.x.tld).' => 'Eén per regel. Exact adres (bob@x.tld), heel domein (@x.tld), of domein + subdomeinen (*.x.tld).',
     'Only one file may be uploaded.' => 'Er mag slechts één bestand worden geüpload.',
+    'At most {count} files may be uploaded.' => 'Er mogen maximaal {count} bestanden worden geüpload.',
     'Only send when a condition is met' => 'Alleen verzenden wanneer aan een voorwaarde is voldaan',
     'Only the site it is created in' => 'Alleen de site waarin het is aangemaakt',
     'Operator' => 'Operator',

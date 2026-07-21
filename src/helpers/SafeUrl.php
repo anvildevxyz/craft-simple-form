@@ -181,6 +181,50 @@ final class SafeUrl
     }
 
     /**
+     * Validate $url and build its DNS-pin options in a SINGLE host resolution:
+     * returns the cURL pin options for exactly the IPs that were range-checked, or
+     * `null` when the URL is not a public http(s) address (callers must treat
+     * `null` as blocked). Resolving once closes the rebinding window that opens
+     * when {@see isPublicHttpUrl()} and {@see guzzlePinDnsOptions()} each resolve
+     * the host independently and can observe different IPs.
+     *
+     * A host that does not resolve is permitted with no pin (an unresolvable host
+     * is not an SSRF target — the socket simply fails), mirroring
+     * {@see isPublicHttpUrl()}.
+     *
+     * @return array<string, mixed>|null
+     */
+    public static function guardedRequestOptions(string $url): ?array
+    {
+        $url = trim($url);
+        if ($url === '') {
+            return null;
+        }
+
+        $parts = parse_url($url);
+        if ($parts === false || !isset($parts['scheme'], $parts['host']) || !self::isHttp($parts['scheme'])) {
+            return null;
+        }
+
+        $host = trim($parts['host'], '[]');
+        $ips = self::resolveIps($host);
+        if ($ips === []) {
+            return [];
+        }
+
+        foreach ($ips as $ip) {
+            if (!self::isPublicIp($ip)) {
+                return null;
+            }
+        }
+
+        $scheme = strtolower($parts['scheme']);
+        $port = $parts['port'] ?? ($scheme === 'https' ? 443 : 80);
+
+        return ['curl' => [CURLOPT_RESOLVE => array_map(static fn(string $ip): string => "{$host}:{$port}:{$ip}", $ips)]];
+    }
+
+    /**
      * Guzzle/cURL options that pin $url's host to the IPs resolved at call time,
      * closing the DNS-rebinding window between {@see isPublicHttpUrl()} and connect.
      *
@@ -243,13 +287,48 @@ final class SafeUrl
     /**
      * True when the IP is neither private (RFC-1918 / ULA) nor reserved
      * (loopback, link-local, 0.0.0.0/8, etc.).
+     *
+     * IPv4-mapped/compatible and NAT64 IPv6 forms are collapsed to their embedded
+     * IPv4 first: PHP's reserved/private filter does NOT flag e.g.
+     * `::ffff:169.254.169.254`, yet the kernel routes it to the real internal
+     * IPv4 — an SSRF bypass — so the embedded address must be range-checked.
      */
     private static function isPublicIp(string $ip): bool
     {
         return filter_var(
-            $ip,
+            self::unwrapMappedIpv4($ip),
             FILTER_VALIDATE_IP,
             FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE,
         ) !== false;
+    }
+
+    /**
+     * Return the embedded IPv4 for an IPv4-mapped (`::ffff:0:0/96`),
+     * IPv4-compatible (`::/96`) or NAT64 (`64:ff9b::/96`) IPv6 address, else $ip
+     * unchanged. Operates on the packed binary form so every textual spelling
+     * (`::ffff:127.0.0.1`, `::ffff:7f00:1`, …) collapses to the same IPv4.
+     */
+    private static function unwrapMappedIpv4(string $ip): string
+    {
+        $bin = @inet_pton($ip);
+        if ($bin === false || strlen($bin) !== 16) {
+            return $ip;
+        }
+
+        $prefixes = [
+            str_repeat("\x00", 10) . "\xff\xff",   // IPv4-mapped  ::ffff:0:0/96
+            str_repeat("\x00", 12),                 // IPv4-compat  ::/96
+            "\x00\x64\xff\x9b" . str_repeat("\x00", 8), // NAT64  64:ff9b::/96
+        ];
+        foreach ($prefixes as $prefix) {
+            if (str_starts_with($bin, $prefix)) {
+                $v4 = inet_ntop(substr($bin, 12, 4));
+                if ($v4 !== false) {
+                    return $v4;
+                }
+            }
+        }
+
+        return $ip;
     }
 }

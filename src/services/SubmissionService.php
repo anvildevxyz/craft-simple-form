@@ -485,6 +485,14 @@ class SubmissionService extends Component
             'edited via ' . $channel . ' (' . $actor . ')',
         );
 
+        // Single-use: a token-authorized front-end edit consumes the token so a
+        // leaked edit link (email history, Referer, a forwarded message) can't be
+        // replayed for the rest of the edit window. An owning user (actor 'user')
+        // and CP edits carry no token and are unaffected; the owner keeps editing.
+        if ($actor === 'token' && empty($context['_cpEdit'])) {
+            Plugin::getInstance()->getSubmissionEditTokens()->invalidate($submission);
+        }
+
         return ['submission' => $submission, 'errors' => null];
     }
 
