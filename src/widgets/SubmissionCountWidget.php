@@ -73,8 +73,6 @@ class SubmissionCountWidget extends Widget
 
     public function getSettingsHtml(): ?string
     {
-        $formOptions = $this->formScopeOptions();
-
         return Cp::selectFieldHtml([
             'label' => Craft::t('simple-form', 'Range'),
             'name' => 'range',
@@ -85,12 +83,7 @@ class SubmissionCountWidget extends Widget
                 ['label' => Craft::t('simple-form', 'All time'), 'value' => 'all'],
             ],
             'value' => $this->range,
-        ]) . Cp::selectFieldHtml([
-            'label' => Craft::t('simple-form', 'Form'),
-            'name' => 'formId',
-            'options' => $formOptions,
-            'value' => (string) ($this->formId ?? ''),
-        ]);
+        ]) . $this->formScopeFieldHtml();
     }
 
     /**

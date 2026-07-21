@@ -7,6 +7,7 @@ use anvildev\simpleform\elements\Submission;
 use anvildev\simpleform\gql\types\FieldValueInputType;
 use anvildev\simpleform\gql\types\SubmitFormPayloadType;
 use anvildev\simpleform\Plugin;
+use anvildev\simpleform\services\SubmissionService;
 use Craft;
 use craft\gql\base\Mutation as BaseMutation;
 use craft\helpers\Gql as GqlHelper;
@@ -103,6 +104,22 @@ class FormMutations extends BaseMutation
     }
 
     /**
+     * Per-IP abuse throttle, applied identically to the submit and update
+     * mutations so GraphQL can't be used to sidestep the front-end limit.
+     *
+     * @return array<string, mixed>|null the error payload when throttled, else null
+     */
+    private static function rateLimitError(SubmissionService $submissionService): ?array
+    {
+        /** @var \craft\web\Request $request */
+        $request = Craft::$app->getRequest();
+        if ($submissionService->isRateLimited($request->getUserIP())) {
+            return self::errorPayload([['key' => 'form', 'messages' => ['Too many submissions. Please wait a moment and try again.']]]);
+        }
+        return null;
+    }
+
+    /**
      * @param mixed $source
      * @param array<string, mixed> $args
      * @return array<string, mixed>
@@ -129,11 +146,10 @@ class FormMutations extends BaseMutation
 
         // Abuse throttle, shared with the front-end submit path so GraphQL can't
         // be used to sidestep the per-IP limit (audit follow-up).
-        /** @var \craft\web\Request $request */
-        $request = Craft::$app->getRequest();
         $submissionService = Plugin::getInstance()->getSubmissionService();
-        if ($submissionService->isRateLimited($request->getUserIP())) {
-            return self::errorPayload([['key' => 'form', 'messages' => ['Too many submissions. Please wait a moment and try again.']]]);
+        $rateLimited = self::rateLimitError($submissionService);
+        if ($rateLimited !== null) {
+            return $rateLimited;
         }
 
         $values = self::buildValueMap($args['values'] ?? null);
@@ -220,11 +236,10 @@ class FormMutations extends BaseMutation
         }
 
         // Shared per-IP abuse throttle (also guards the create path).
-        /** @var \craft\web\Request $request */
-        $request = Craft::$app->getRequest();
         $submissionService = Plugin::getInstance()->getSubmissionService();
-        if ($submissionService->isRateLimited($request->getUserIP())) {
-            return self::errorPayload([['key' => 'form', 'messages' => ['Too many submissions. Please wait a moment and try again.']]]);
+        $rateLimited = self::rateLimitError($submissionService);
+        if ($rateLimited !== null) {
+            return $rateLimited;
         }
 
         // Authorize: a valid token, or an authenticated owner — plus allowEditing

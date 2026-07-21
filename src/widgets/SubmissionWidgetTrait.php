@@ -5,6 +5,7 @@ namespace anvildev\simpleform\widgets;
 use anvildev\simpleform\elements\Form;
 use anvildev\simpleform\helpers\SimpleFormPermissions;
 use Craft;
+use craft\helpers\Cp;
 
 /**
  * Shared scaffolding for the submission dashboard widgets: the "Form" scope
@@ -25,6 +26,17 @@ trait SubmissionWidgetTrait
             $options[] = ['label' => (string) ($form->title ?? $form->name), 'value' => (string) $form->id];
         }
         return $options;
+    }
+
+    /** The "Form" scope picker for a widget's settings, shared across the submission widgets. */
+    private function formScopeFieldHtml(): string
+    {
+        return Cp::selectFieldHtml([
+            'label' => Craft::t('simple-form', 'Form'),
+            'name' => 'formId',
+            'options' => $this->formScopeOptions(),
+            'value' => (string) ($this->formId ?? ''),
+        ]);
     }
 
     /** The widget-body permission message, or null when the user may view submissions. */
