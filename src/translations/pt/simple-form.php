@@ -836,6 +836,8 @@ return [
     'Entry' => 'Entrada',
     'Entry type' => 'Tipo de entrada',
     'Expiry' => 'Validade',
+    'days' => 'dias',
+    'Leave blank for a token that never expires.' => 'Deixe em branco para um token que nunca expira.',
     'Expiry date' => 'Data de validade',
     'Failed to add field' => 'Falha ao adicionar campo',
     'Failed to delete field' => 'Falha ao eliminar campo',

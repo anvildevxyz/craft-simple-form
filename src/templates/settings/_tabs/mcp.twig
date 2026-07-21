@@ -73,6 +73,7 @@
                 <th>{{ 'Scopes'|t('simple-form') }}</th>
                 <th>{{ 'Created'|t('simple-form') }}</th>
                 <th>{{ 'Last used'|t('simple-form') }}</th>
+                <th>{{ 'Expiry'|t('simple-form') }}</th>
                 <th></th>
             </tr>
         </thead>
@@ -87,6 +88,7 @@
                     </td>
                     <td>{{ token.dateCreated ? token.dateCreated|datetime('short') : '—' }}</td>
                     <td>{{ token.lastUsed ? token.lastUsed|datetime('short') : 'never'|t('simple-form') }}</td>
+                    <td>{{ token.expiresAt ? token.expiresAt|datetime('short') : 'never'|t('simple-form') }}</td>
                     <td class="thin">
                         <form method="post" accept-charset="UTF-8" data-sf-confirm="{{ 'Revoke this token?'|t('simple-form') }}">
                             {{ csrfInput() }}
@@ -128,6 +130,15 @@
         name: 'scopes',
         options: scopeOptions,
         instructions: 'Grant only what this client needs. Deny-by-default: a tool runs only when the token holds its scope.'|t('simple-form'),
+    }) }}
+
+    {{ forms.textField({
+        label: 'Expiry'|t('simple-form'),
+        name: 'expiresInDays',
+        type: 'number',
+        size: 6,
+        unit: 'days'|t('simple-form'),
+        instructions: 'Leave blank for a token that never expires.'|t('simple-form'),
     }) }}
 
     <div class="buttons">

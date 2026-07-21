@@ -842,6 +842,8 @@ return [
     'Entry' => 'Entrada',
     'Entry type' => 'Tipo de entrada',
     'Expiry' => 'Caducidad',
+    'days' => 'días',
+    'Leave blank for a token that never expires.' => 'Déjalo en blanco para un token que nunca caduca.',
     'Expiry date' => 'Fecha de caducidad',
     'Failed to add field' => 'No se pudo añadir el campo',
     'Failed to delete field' => 'No se pudo eliminar el campo',

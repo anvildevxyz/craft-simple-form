@@ -842,6 +842,8 @@ return [
     'Entry' => 'Entrée',
     'Entry type' => 'Type d’entrée',
     'Expiry' => 'Expiration',
+    'days' => 'jours',
+    'Leave blank for a token that never expires.' => 'Laissez vide pour un jeton qui n’expire jamais.',
     'Expiry date' => 'Date d’expiration',
     'Failed to add field' => 'Échec de l’ajout du champ',
     'Failed to delete field' => 'Échec de la suppression du champ',

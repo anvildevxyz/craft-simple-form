@@ -36,6 +36,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   from 4 characters up.
 - PDF generation explicitly disables in-template PHP and JavaScript execution as
   defense-in-depth for author-overridden `pdf.twig` templates.
+- MCP access tokens can now be given an optional expiry (in days) at creation;
+  an expired token is rejected at authentication. Existing tokens are unaffected
+  (no expiry = never expires).
 
 ## 1.0.0 - 2026-07-12
 

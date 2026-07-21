@@ -836,6 +836,8 @@ return [
     'Entry' => 'エントリ',
     'Entry type' => 'エントリタイプ',
     'Expiry' => '有効期限',
+    'days' => '日',
+    'Leave blank for a token that never expires.' => '無期限のトークンにする場合は空欄のままにします。',
     'Expiry date' => '有効期限日',
     'Failed to add field' => 'フィールドの追加に失敗しました',
     'Failed to delete field' => 'フィールドの削除に失敗しました',
