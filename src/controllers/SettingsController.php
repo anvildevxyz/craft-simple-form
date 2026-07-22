@@ -243,7 +243,10 @@ class SettingsController extends Controller
             return $this->redirect('simple-form/settings/mcp');
         }
 
-        $result = Plugin::getInstance()->getMcpTokenManager()->createToken($label, $scopes);
+        $expiresInDays = (int) $request->getBodyParam('expiresInDays', 0);
+        $expiresInDays = $expiresInDays > 0 ? $expiresInDays : null;
+
+        $result = Plugin::getInstance()->getMcpTokenManager()->createToken($label, $scopes, $expiresInDays);
 
         // One-time display of the plaintext secret. Stored in the flash so the
         // redirected page can render it once, then it is gone.

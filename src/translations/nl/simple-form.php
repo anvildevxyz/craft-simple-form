@@ -836,6 +836,8 @@ return [
     'Entry' => 'Entry',
     'Entry type' => 'Entry-type',
     'Expiry' => 'Vervaldatum',
+    'days' => 'dagen',
+    'Leave blank for a token that never expires.' => 'Laat leeg voor een token dat nooit verloopt.',
     'Expiry date' => 'Vervaldatum',
     'Failed to add field' => 'Veld toevoegen mislukt',
     'Failed to delete field' => 'Veld verwijderen mislukt',

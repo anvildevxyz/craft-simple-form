@@ -13,7 +13,7 @@ namespace anvildev\simpleform\mcp;
  * Identity for auditing is the opaque `id` + operator-chosen `label`. Logs
  * reference these, never the secret (see {@see McpServer}).
  *
- * @phpstan-type TokenArray array{id?:string,label?:string,hash?:string,scopes?:list<string>,dateCreated?:?string,lastUsed?:?string}
+ * @phpstan-type TokenArray array{id?:string,label?:string,hash?:string,scopes?:list<string>,dateCreated?:?string,lastUsed?:?string,expiresAt?:?string}
  */
 final class McpToken
 {
@@ -24,6 +24,7 @@ final class McpToken
      * @param list<string> $scopes Granted capability scopes (see {@see Scopes}).
      * @param string|null $dateCreated ISO-8601 creation timestamp.
      * @param string|null $lastUsed    ISO-8601 timestamp of the last authenticated use.
+     * @param string|null $expiresAt   ISO-8601 expiry, or null for a token that never expires.
      */
     public function __construct(
         public string $id,
@@ -32,6 +33,7 @@ final class McpToken
         public array $scopes,
         public ?string $dateCreated = null,
         public ?string $lastUsed = null,
+        public ?string $expiresAt = null,
     ) {
     }
 
@@ -42,6 +44,26 @@ final class McpToken
     public function hasScope(string $scope): bool
     {
         return in_array($scope, $this->scopes, true);
+    }
+
+    /**
+     * Whether the token's expiry has passed. A null expiry never expires; an
+     * unparseable expiry is treated as expired (fail closed) rather than granting
+     * an unbounded token.
+     */
+    public function isExpired(?\DateTimeInterface $now = null): bool
+    {
+        if ($this->expiresAt === null) {
+            return false;
+        }
+
+        try {
+            $expires = new \DateTimeImmutable($this->expiresAt);
+        } catch (\Exception) {
+            return true;
+        }
+
+        return ($now ?? new \DateTimeImmutable()) >= $expires;
     }
 
     /**
@@ -59,6 +81,7 @@ final class McpToken
             )),
             dateCreated: isset($data['dateCreated']) ? (string)$data['dateCreated'] : null,
             lastUsed: isset($data['lastUsed']) ? (string)$data['lastUsed'] : null,
+            expiresAt: isset($data['expiresAt']) ? (string)$data['expiresAt'] : null,
         );
     }
 
@@ -74,6 +97,7 @@ final class McpToken
             'scopes' => array_values($this->scopes),
             'dateCreated' => $this->dateCreated,
             'lastUsed' => $this->lastUsed,
+            'expiresAt' => $this->expiresAt,
         ];
     }
 }

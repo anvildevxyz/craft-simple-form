@@ -838,6 +838,8 @@ return [
     'Entry' => 'Entry',
     'Entry type' => 'Entry type',
     'Expiry' => 'Expiry',
+    'days' => 'days',
+    'Leave blank for a token that never expires.' => 'Leave blank for a token that never expires.',
     'Expiry date' => 'Expiry date',
     'Failed to add field' => 'Failed to add field',
     'Failed to delete field' => 'Failed to delete field',

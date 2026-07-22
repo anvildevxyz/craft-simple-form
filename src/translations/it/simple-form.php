@@ -842,6 +842,8 @@ return [
     'Entry' => 'Voce',
     'Entry type' => 'Tipo di voce',
     'Expiry' => 'Scadenza',
+    'days' => 'giorni',
+    'Leave blank for a token that never expires.' => 'Lascia vuoto per un token che non scade mai.',
     'Expiry date' => 'Data di scadenza',
     'Failed to add field' => 'Impossibile aggiungere il campo',
     'Failed to delete field' => 'Impossibile eliminare il campo',

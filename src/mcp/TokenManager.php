@@ -62,9 +62,11 @@ class TokenManager
      * store the {@see McpToken} (hash only) into plugin settings.
      *
      * @param list<string> $scopes Requested scopes; unknown scopes are dropped.
+     * @param int|null $expiresInDays Optional lifetime in days; null (or <= 0) for
+     *   a token that never expires.
      * @return array{token: McpToken, secret: string}
      */
-    public function createToken(string $label, array $scopes): array
+    public function createToken(string $label, array $scopes, ?int $expiresInDays = null): array
     {
         $scopes = array_values(array_filter(
             $scopes,
@@ -76,6 +78,10 @@ class TokenManager
         // 32 chars), well below the 256 bits this token is meant to carry.
         $secret = self::SECRET_PREFIX . bin2hex(random_bytes(self::SECRET_BYTES));
 
+        $expiresAt = ($expiresInDays !== null && $expiresInDays > 0)
+            ? (new \DateTime())->modify('+' . $expiresInDays . ' days')->format(\DateTime::ATOM)
+            : null;
+
         $token = new McpToken(
             id: StringHelper::UUID(),
             label: $label !== '' ? $label : 'Unnamed token',
@@ -83,6 +89,7 @@ class TokenManager
             scopes: $scopes,
             dateCreated: (new \DateTime())->format(\DateTime::ATOM),
             lastUsed: null,
+            expiresAt: $expiresAt,
         );
 
         $tokens = $this->allTokens();
@@ -143,6 +150,13 @@ class TokenManager
             if (hash_equals($token->hash, $presentedHash)) {
                 $match = $token;
             }
+        }
+
+        // Reject an expired token as if it did not match. The check is on the
+        // single matched token (O(1)) and runs after the full-list scan, so it
+        // adds no timing signal about the other tokens.
+        if ($match !== null && $match->isExpired()) {
+            return null;
         }
 
         return $match;

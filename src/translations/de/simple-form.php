@@ -842,6 +842,8 @@ return [
     'Entry' => 'Eintrag',
     'Entry type' => 'Eintragstyp',
     'Expiry' => 'Ablauf',
+    'days' => 'Tage',
+    'Leave blank for a token that never expires.' => 'Leer lassen für ein Token, das nie abläuft.',
     'Expiry date' => 'Ablaufdatum',
     'Failed to add field' => 'Feld konnte nicht hinzugefügt werden',
     'Failed to delete field' => 'Feld konnte nicht gelöscht werden',
