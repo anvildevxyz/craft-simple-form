@@ -40,7 +40,7 @@ class DoctorController extends Controller
 
         $this->stdout("\nMCP\n", Console::BOLD);
         $this->line('Server', $settings->enableMcp ? 'enabled' : 'disabled');
-        $this->line('Tokens', (string) count($settings->mcpTokens));
+        $this->line('Tokens', (string) count(Plugin::getInstance()->getMcpTokenManager()->allTokens()));
 
         $this->stdout("\nRetention\n", Console::BOLD);
         $this->line('Submissions', $settings->retainSubmissionsDays > 0 ? "{$settings->retainSubmissionsDays} days" . ($settings->anonymizeInsteadOfDelete ? ' (anonymize)' : '') : 'keep forever');

@@ -63,12 +63,23 @@ The webhook payload is:
 
 #### Verifying the signature
 
-When a signing secret is configured, the request carries an
-`X-SimpleForm-Signature: sha256=<hex>` header. Recompute it over the raw body and
-compare:
+When a signing secret is configured, each request carries two headers:
+
+- `X-SimpleForm-Timestamp: <unix-seconds>` — when the request was signed.
+- `X-SimpleForm-Signature: sha256=<hex>` — HMAC-SHA256 of `<timestamp>.<rawBody>`.
+
+Recompute the signature over `timestamp . '.' . rawBody`, compare in constant
+time, and reject a stale timestamp to defend against replay:
 
 ```php
-$expected = 'sha256=' . hash_hmac('sha256', $rawBody, $secret);
+$timestamp = $request->getHeaderLine('X-SimpleForm-Timestamp');
+
+// Reject anything older than your freshness window (e.g. 5 minutes).
+if (abs(time() - (int) $timestamp) > 300) {
+    // stale — drop it
+}
+
+$expected = 'sha256=' . hash_hmac('sha256', $timestamp . '.' . $rawBody, $secret);
 hash_equals($expected, $request->getHeaderLine('X-SimpleForm-Signature'));
 ```
 

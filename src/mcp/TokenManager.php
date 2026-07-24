@@ -2,9 +2,11 @@
 
 namespace anvildev\simpleform\mcp;
 
-use anvildev\simpleform\models\Settings;
 use anvildev\simpleform\Plugin;
 use Craft;
+use craft\db\Query;
+use craft\helpers\Db;
+use craft\helpers\Json;
 use craft\helpers\StringHelper;
 
 /**
@@ -38,7 +40,9 @@ use craft\helpers\StringHelper;
  * All comparisons use {@see hash_equals()} (constant time). We never log,
  * echo, or store the plaintext after creation.
  *
- * @phpstan-import-type TokenArray from McpToken
+ * Tokens live in a dedicated table ({@see self::TABLE}), never in plugin
+ * settings / project config, so the keyed hashes don't sync into git or across
+ * environments.
  */
 class TokenManager
 {
@@ -48,10 +52,8 @@ class TokenManager
     /** Visible prefix so an operator can recognise a Simple Form MCP token. */
     private const SECRET_PREFIX = 'sfmcp_';
 
-    private function settings(): Settings
-    {
-        return Plugin::getInstance()->getSettings();
-    }
+    /** Dedicated storage — never plugin settings / project config. */
+    private const TABLE = '{{%simpleform_mcp_tokens}}';
 
     /**
      * Generate a new token, persist its hash + metadata, and return the
@@ -59,7 +61,7 @@ class TokenManager
      *
      * The returned secret is the only time the plaintext exists; the caller
      * must surface it to the operator immediately and must not persist it. We
-     * store the {@see McpToken} (hash only) into plugin settings.
+     * store the {@see McpToken} (hash only) in the dedicated tokens table.
      *
      * @param list<string> $scopes Requested scopes; unknown scopes are dropped.
      * @param int|null $expiresInDays Optional lifetime in days; null (or <= 0) for
@@ -82,19 +84,27 @@ class TokenManager
             ? (new \DateTime())->modify('+' . $expiresInDays . ' days')->format(\DateTime::ATOM)
             : null;
 
+        $now = new \DateTime();
         $token = new McpToken(
             id: StringHelper::UUID(),
             label: $label !== '' ? $label : 'Unnamed token',
             hash: $this->hashSecret($secret),
             scopes: $scopes,
-            dateCreated: (new \DateTime())->format(\DateTime::ATOM),
+            dateCreated: $now->format(\DateTime::ATOM),
             lastUsed: null,
             expiresAt: $expiresAt,
         );
 
-        $tokens = $this->allTokens();
-        $tokens[] = $token;
-        $this->persist($tokens);
+        Craft::$app->getDb()->createCommand()->insert(self::TABLE, [
+            'tokenId' => $token->id,
+            'label' => $token->label,
+            'hash' => $token->hash,
+            'scopes' => Json::encode($token->scopes),
+            'expiresAt' => $expiresAt !== null ? Db::prepareDateForDb(new \DateTime($expiresAt)) : null,
+            'dateCreated' => Db::prepareDateForDb($now),
+            'dateUpdated' => Db::prepareDateForDb($now),
+            'uid' => StringHelper::UUID(),
+        ])->execute();
 
         return ['token' => $token, 'secret' => $secret];
     }
@@ -104,18 +114,11 @@ class TokenManager
      */
     public function revokeToken(string $id): bool
     {
-        $tokens = $this->allTokens();
-        $remaining = array_values(array_filter(
-            $tokens,
-            static fn(McpToken $t): bool => $t->id !== $id,
-        ));
+        $affected = Craft::$app->getDb()->createCommand()
+            ->delete(self::TABLE, ['tokenId' => $id])
+            ->execute();
 
-        if (count($remaining) === count($tokens)) {
-            return false;
-        }
-
-        $this->persist($remaining);
-        return true;
+        return $affected > 0;
     }
 
     /**
@@ -169,33 +172,49 @@ class TokenManager
     public function touch(McpToken $token): void
     {
         try {
-            $tokens = $this->allTokens();
-            foreach ($tokens as $t) {
-                if ($t->id === $token->id) {
-                    $t->lastUsed = (new \DateTime())->format(\DateTime::ATOM);
-                    break;
-                }
-            }
-            $this->persist($tokens);
+            $now = Db::prepareDateForDb(new \DateTime());
+            Craft::$app->getDb()->createCommand()->update(
+                self::TABLE,
+                ['lastUsed' => $now, 'dateUpdated' => $now],
+                ['tokenId' => $token->id],
+            )->execute();
         } catch (\Throwable $e) {
             Craft::warning('Could not update MCP token lastUsed: ' . $e->getMessage(), 'simple-form');
         }
     }
 
     /**
-     * All configured tokens (hash-only models).
+     * All configured tokens (hash-only models), oldest first.
      *
      * @return list<McpToken>
      */
     public function allTokens(): array
     {
-        /** @var list<TokenArray> $entries */
-        $entries = array_filter($this->settings()->mcpTokens, 'is_array');
+        $rows = (new Query())
+            ->select(['tokenId', 'label', 'hash', 'scopes', 'dateCreated', 'lastUsed', 'expiresAt'])
+            ->from(self::TABLE)
+            ->orderBy(['dateCreated' => SORT_ASC, 'id' => SORT_ASC])
+            ->all();
 
-        return array_values(array_map(
-            static fn(array $entry): McpToken => McpToken::fromArray($entry),
-            $entries,
-        ));
+        return array_map($this->rowToToken(...), $rows);
+    }
+
+    /**
+     * @param array<string, mixed> $row
+     */
+    private function rowToToken(array $row): McpToken
+    {
+        $scopes = Json::decodeIfJson((string) ($row['scopes'] ?? '[]'));
+
+        return new McpToken(
+            id: (string) ($row['tokenId'] ?? ''),
+            label: (string) ($row['label'] ?? ''),
+            hash: (string) ($row['hash'] ?? ''),
+            scopes: is_array($scopes) ? array_values(array_filter($scopes, 'is_string')) : [],
+            dateCreated: isset($row['dateCreated']) ? (string) $row['dateCreated'] : null,
+            lastUsed: ($row['lastUsed'] ?? null) !== null ? (string) $row['lastUsed'] : null,
+            expiresAt: ($row['expiresAt'] ?? null) !== null ? (string) $row['expiresAt'] : null,
+        );
     }
 
     /**
@@ -213,22 +232,5 @@ class TokenManager
             throw new \RuntimeException('A securityKey must be configured in .env to use Simple Form MCP tokens.');
         }
         return hash_hmac('sha256', $secret, $key);
-    }
-
-    /**
-     * Persist the full token list back into plugin settings.
-     *
-     * @param list<McpToken> $tokens
-     */
-    private function persist(array $tokens): void
-    {
-        $plugin = Plugin::getInstance();
-        $settings = $plugin->getSettings();
-        $values = $settings->getAttributes();
-        $values['mcpTokens'] = array_map(static fn(McpToken $t): array => $t->toArray(), $tokens);
-
-        if (!Craft::$app->getPlugins()->savePluginSettings($plugin, $values)) {
-            throw new \RuntimeException('Could not persist MCP tokens: ' . implode(', ', $settings->getFirstErrors()));
-        }
     }
 }
