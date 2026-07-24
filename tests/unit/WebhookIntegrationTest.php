@@ -26,10 +26,10 @@ class MockWebhookIntegration extends WebhookIntegration
 
 class WebhookIntegrationTest extends TestCase
 {
-    public function testSignBodyIsDeterministicHmacSha256(): void
+    public function testSignPayloadIsDeterministicHmacSha256OverTimestampAndBody(): void
     {
-        $expected = 'sha256=' . hash_hmac('sha256', '{"a":1}', 'topsecret');
-        $this->assertSame($expected, WebhookIntegration::signBody('{"a":1}', 'topsecret'));
+        $expected = 'sha256=' . hash_hmac('sha256', '1700000000.{"a":1}', 'topsecret');
+        $this->assertSame($expected, WebhookIntegration::signPayload('1700000000', '{"a":1}', 'topsecret'));
     }
 
     public function testTwoXxIsSuccess(): void
@@ -124,8 +124,13 @@ class WebhookIntegrationTest extends TestCase
         $this->assertCount(1, $history);
         /** @var Request $sent */
         $sent = $history[0]['request'];
+
+        // The timestamp header is present and the signature is the HMAC over
+        // "<timestamp>.<body>" for exactly that timestamp.
+        $timestamp = $sent->getHeaderLine(WebhookIntegration::TIMESTAMP_HEADER);
+        $this->assertNotSame('', $timestamp);
         $this->assertSame(
-            WebhookIntegration::signBody('{"x":1}', 'sekret'),
+            WebhookIntegration::signPayload($timestamp, '{"x":1}', 'sekret'),
             $sent->getHeaderLine(WebhookIntegration::SIGNATURE_HEADER),
         );
     }

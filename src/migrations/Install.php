@@ -353,12 +353,31 @@ class Install extends Migration
             $this->createIndex(null, '{{%simpleform_coupons}}', ['code'], true);
         }
 
+        // MCP access tokens. Stored in their own table (not plugin settings /
+        // project config) so the keyed token hashes never sync into git or across
+        // environments.
+        $this->createTable('{{%simpleform_mcp_tokens}}', [
+            'id' => $this->primaryKey(),
+            'tokenId' => $this->char(36)->notNull(),
+            'label' => $this->string()->notNull(),
+            'hash' => $this->string(128)->notNull(),
+            'scopes' => $this->text()->notNull(),
+            'lastUsed' => $this->dateTime(),
+            'expiresAt' => $this->dateTime(),
+            'dateCreated' => $this->dateTime()->notNull(),
+            'dateUpdated' => $this->dateTime()->notNull(),
+            'uid' => $this->uid(),
+        ]);
+        $this->createIndex(null, '{{%simpleform_mcp_tokens}}', ['tokenId'], true);
+        $this->createIndex(null, '{{%simpleform_mcp_tokens}}', ['hash']);
+
         return true;
     }
 
     public function safeDown(): bool
     {
         // Drop children before parents (FK-safe order).
+        $this->dropTableIfExists('{{%simpleform_mcp_tokens}}');
         $this->dropTableIfExists('{{%simpleform_audit_log}}');
         $this->dropTableIfExists('{{%simpleform_submit_messages_sites}}');
         $this->dropTableIfExists('{{%simpleform_submit_messages}}');

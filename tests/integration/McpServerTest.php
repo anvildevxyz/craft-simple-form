@@ -308,15 +308,14 @@ class McpServerTest extends SimpleFormTestCase
         $this->requireCraft();
 
         $secret = $this->issueToken([Scopes::FORMS_MANAGE], 'Hashing check');
-        $stored = Plugin::getInstance()->getSettings()->mcpTokens;
+        $stored = Plugin::getInstance()->getMcpTokenManager()->allTokens();
 
         $this->assertNotEmpty($stored);
-        foreach ($stored as $entry) {
+        foreach ($stored as $token) {
             // The plaintext secret must never appear at rest.
-            $this->assertNotSame($secret, $entry['hash'] ?? null);
-            $this->assertArrayNotHasKey('secret', $entry);
+            $this->assertNotSame($secret, $token->hash);
             // Hash is a 64-char hex SHA-256 digest.
-            $this->assertMatchesRegularExpression('/^[0-9a-f]{64}$/', (string) ($entry['hash'] ?? ''));
+            $this->assertMatchesRegularExpression('/^[0-9a-f]{64}$/', $token->hash);
         }
     }
 }

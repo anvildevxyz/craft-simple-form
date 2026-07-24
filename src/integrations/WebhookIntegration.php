@@ -26,6 +26,8 @@ class WebhookIntegration implements IntegrationTypeInterface
 
     public const SIGNATURE_HEADER = 'X-SimpleForm-Signature';
 
+    public const TIMESTAMP_HEADER = 'X-SimpleForm-Timestamp';
+
     public static function handle(): string
     {
         return 'webhook';
@@ -126,7 +128,13 @@ class WebhookIntegration implements IntegrationTypeInterface
     {
         $headers = ['Content-Type' => $contentType];
         if ($secret !== null) {
-            $headers[self::SIGNATURE_HEADER] = self::signBody($body, $secret);
+            // Sign the timestamp together with the body and send the timestamp in
+            // its own header, so a receiver can reject a replayed request whose
+            // timestamp is outside its freshness window (the signature is bound to
+            // that timestamp, so it can't be back-dated).
+            $timestamp = (string) time();
+            $headers[self::TIMESTAMP_HEADER] = $timestamp;
+            $headers[self::SIGNATURE_HEADER] = self::signPayload($timestamp, $body, $secret);
         }
 
         return $this->request($method, $url, [
@@ -135,10 +143,14 @@ class WebhookIntegration implements IntegrationTypeInterface
         ]);
     }
 
-    /** HMAC-SHA256 of the raw body, formatted `sha256=<hex>`. */
-    public static function signBody(string $body, string $secret): string
+    /**
+     * HMAC-SHA256 of `<timestamp>.<body>`, formatted `sha256=<hex>`. The timestamp
+     * is part of the signed content so a receiver can bind the signature to the
+     * `X-SimpleForm-Timestamp` header and reject stale/replayed deliveries.
+     */
+    public static function signPayload(string $timestamp, string $body, string $secret): string
     {
-        return 'sha256=' . hash_hmac('sha256', $body, $secret);
+        return 'sha256=' . hash_hmac('sha256', $timestamp . '.' . $body, $secret);
     }
 
     /**

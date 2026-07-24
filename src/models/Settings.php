@@ -277,10 +277,10 @@ class Settings extends Model
     public int $maxAttachmentSizeMb = 10;
 
     /**
-     * Configured MCP access tokens, stored as hash-only arrays (see
-     * {@see \anvildev\simpleform\mcp\McpToken}). The plaintext secret is NEVER
-     * stored here — only its keyed hash. Shape per entry:
-     * {id, label, hash, scopes[], dateCreated, lastUsed}.
+     * @deprecated MCP tokens now live in the `simpleform_mcp_tokens` table (see
+     * {@see \anvildev\simpleform\mcp\TokenManager}), not in settings/project
+     * config. Retained only so the m260724_000001 migration can read and clear any
+     * pre-migration tokens; it stays empty afterwards. Do not read or write it.
      *
      * @var array<int, TokenArray>
      */
