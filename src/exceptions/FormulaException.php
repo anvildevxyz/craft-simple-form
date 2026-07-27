@@ -1,0 +1,17 @@
+<?php
+
+namespace anvildev\simpleform\exceptions;
+
+/**
+ * Raised by {@see \anvildev\simpleform\helpers\Formula} when a Calculation
+ * field formula is syntactically invalid (an unexpected character, an unknown
+ * function, a malformed reference, or a structural error). Save-time validation
+ * catches it and surfaces a translated field error; runtime evaluation of an
+ * already-validated formula is total and never throws.
+ *
+ * @author Anvil Dev
+ * @since 1.0.0
+ */
+class FormulaException extends \RuntimeException
+{
+}

@@ -1,0 +1,111 @@
+{% extends '_layouts/cp.twig' %}
+
+{% set title = 'Survey report'|t('simple-form') ~ ' — ' ~ (form.title ?: form.name) %}
+{% set selectedSubnavItem = 'forms' %}
+{% do craft.app.view.registerAssetBundle('anvildev\\simpleform\\web\\assets\\cp\\SimpleFormCpAsset') %}
+
+{% set crumbs = [
+    { label: 'Simple Form'|t('simple-form'), url: cpUrl('simple-form/forms') },
+    { label: 'Forms'|t('simple-form'), url: cpUrl('simple-form/forms') },
+    { label: (form.title ?: form.name), url: cpUrl('simple-form/forms/edit/' ~ form.id) },
+] %}
+
+{# Shared form tab strip — the report is a sibling page of the form's panes. #}
+{% set editUrl = cpUrl('simple-form/forms/edit/' ~ form.id) %}
+{% set tabs = {
+    'sf-build': { label: 'Build'|t('simple-form'), url: editUrl ~ '#sf-build' },
+    'sf-details': { label: 'Details'|t('simple-form'), url: editUrl ~ '#sf-details' },
+    'sf-confirmation': { label: 'Confirmation'|t('simple-form'), url: editUrl ~ '#sf-confirmation' },
+    'sf-rules': { label: 'Rules'|t('simple-form'), url: editUrl ~ '#sf-rules' },
+    notifications: { label: 'Notifications'|t('simple-form'), url: cpUrl('simple-form/forms/' ~ form.id ~ '/notifications') },
+    integrations: { label: 'Integrations'|t('simple-form'), url: cpUrl('simple-form/forms/' ~ form.id ~ '/integrations') },
+    report: { label: 'Report'|t('simple-form'), url: cpUrl('simple-form/forms/' ~ form.id ~ '/report') },
+} %}
+{% set selectedTab = 'report' %}
+
+{% block actionButton %}
+    <a class="btn" href="{{ cpUrl('simple-form/submissions', { formId: form.id, status: 'all' }) }}">
+        {{ 'Submissions'|t('simple-form') }}
+    </a>
+{% endblock %}
+
+{% block content %}
+    {# Date-range filter — a plain GET form so it bookmarks/shares cleanly. #}
+    <form method="get" action="{{ cpUrl('simple-form/forms/' ~ form.id ~ '/report') }}" class="sf-report-filter">
+        <div class="sf-report-filter-field">
+            <label for="sf-report-from">{{ 'From'|t('simple-form') }}</label>
+            <input type="date" id="sf-report-from" name="dateFrom" value="{{ dateFrom }}" class="text">
+        </div>
+        <div class="sf-report-filter-field">
+            <label for="sf-report-to">{{ 'To'|t('simple-form') }}</label>
+            <input type="date" id="sf-report-to" name="dateTo" value="{{ dateTo }}" class="text">
+        </div>
+        <div class="sf-report-filter-actions">
+            <button type="submit" class="btn submit">{{ 'Apply'|t('simple-form') }}</button>
+            {% if dateFrom or dateTo %}
+                <a class="btn" href="{{ cpUrl('simple-form/forms/' ~ form.id ~ '/report') }}">{{ 'Clear'|t('simple-form') }}</a>
+            {% endif %}
+        </div>
+    </form>
+
+    <div class="submission-stats sf-report-summary">
+        <div class="stat-card">
+            <span class="stat-value">{{ responses }}</span>
+            <span class="stat-label">{{ 'Responses'|t('simple-form') }}</span>
+        </div>
+    </div>
+
+    {% if not report|length %}
+        <p class="light">{{ 'This form has no fields to report on.'|t('simple-form') }}</p>
+    {% else %}
+        {% for field in report %}
+            <div class="sf-report-field">
+                <h2>{{ field.label }}</h2>
+
+                {% if field.count == 0 %}
+                    <p class="light">{{ 'No responses yet.'|t('simple-form') }}</p>
+
+                {% elseif field.kind == 'choice' %}
+                    <p class="light">{{ '{n} responses'|t('simple-form', { n: field.count }) }}</p>
+                    <ul class="sf-report-bars">
+                        {% for option in field.options %}
+                            {% set pct = field.count ? (option.count / field.count * 100)|round : 0 %}
+                            <li class="sf-report-bar-row">
+                                <span class="sf-report-bar-label">{{ option.label }}</span>
+                                <span class="sf-report-bar-track" aria-hidden="true">
+                                    <span class="sf-report-bar-fill" style="width: {{ pct }}%"></span>
+                                </span>
+                                <span class="sf-report-bar-value">{{ option.count }} ({{ pct }}%)</span>
+                            </li>
+                        {% endfor %}
+                    </ul>
+
+                {% elseif field.kind == 'scale' %}
+                    <p class="light">
+                        {{ 'Average'|t('simple-form') }}: <strong>{{ field.average }}</strong>
+                        ({{ '{n} responses'|t('simple-form', { n: field.count }) }})
+                    </p>
+                    {% set maxBar = 1 %}
+                    {% for c in field.distribution %}{% set maxBar = max(maxBar, c) %}{% endfor %}
+                    <ul class="sf-report-bars">
+                        {% for value, count in field.distribution %}
+                            <li class="sf-report-bar-row">
+                                <span class="sf-report-bar-label">{{ value }}</span>
+                                <span class="sf-report-bar-track" aria-hidden="true">
+                                    <span class="sf-report-bar-fill" style="width: {{ (count / maxBar * 100)|round }}%"></span>
+                                </span>
+                                <span class="sf-report-bar-value">{{ count }}</span>
+                            </li>
+                        {% endfor %}
+                    </ul>
+
+                {% else %}
+                    <p class="light">
+                        {{ '{n} responses'|t('simple-form', { n: field.count }) }}
+                        — {{ 'Free-form answers aren’t charted.'|t('simple-form') }}
+                    </p>
+                {% endif %}
+            </div>
+        {% endfor %}
+    {% endif %}
+{% endblock %}

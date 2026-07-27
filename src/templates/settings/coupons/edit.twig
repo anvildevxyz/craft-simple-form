@@ -1,0 +1,101 @@
+{% extends '_layouts/cp.twig' %}
+{% import '_includes/forms.twig' as forms %}
+
+{% set title = coupon and coupon.id
+    ? 'Edit Coupon'|t('simple-form')
+    : 'New Coupon'|t('simple-form') %}
+{% set selectedSubnavItem = 'settings' %}
+{% do craft.app.view.registerAssetBundle('anvildev\\simpleform\\web\\assets\\cp\\SimpleFormCpAsset') %}
+
+{% set crumbs = [
+    { label: 'Simple Form'|t('simple-form'), url: cpUrl('simple-form/forms') },
+    { label: 'Settings'|t('simple-form'), url: cpUrl('simple-form/settings') },
+    { label: 'Coupons'|t('simple-form'), url: cpUrl('simple-form/settings/coupons') },
+] %}
+
+{% block content %}
+    <form method="post" accept-charset="UTF-8">
+        {{ csrfInput() }}
+        <input type="hidden" name="action" value="simple-form/coupons/save">
+        {{ redirectInput('simple-form/settings/coupons') }}
+        {% if coupon.id %}<input type="hidden" name="couponId" value="{{ coupon.id }}">{% endif %}
+
+        {{ forms.textField({
+            label: 'Code'|t('simple-form'),
+            instructions: 'The code a visitor enters to redeem the discount. Matched case-insensitively.'|t('simple-form'),
+            id: 'code',
+            name: 'code',
+            value: coupon.code,
+            required: true,
+            class: 'code',
+            errors: coupon.getErrors('code'),
+        }) }}
+
+        {{ forms.selectField({
+            label: 'Discount type'|t('simple-form'),
+            id: 'type',
+            name: 'type',
+            value: coupon.type,
+            options: [
+                { label: 'Fixed amount'|t('simple-form'), value: 'fixed' },
+                { label: 'Percentage'|t('simple-form'), value: 'percentage' },
+            ],
+        }) }}
+
+        {{ forms.textField({
+            label: 'Amount'|t('simple-form'),
+            instructions: 'For a fixed coupon, the amount taken off (in the store currency). For a percentage coupon, a value from 0–100.'|t('simple-form'),
+            id: 'amount',
+            name: 'amount',
+            type: 'number',
+            step: 'any',
+            min: 0,
+            value: coupon.amount,
+            required: true,
+            errors: coupon.getErrors('amount'),
+        }) }}
+
+        {{ forms.dateField({
+            label: 'Expiry date'|t('simple-form'),
+            instructions: 'Optional. After this date the coupon can no longer be redeemed.'|t('simple-form'),
+            id: 'expiryDate',
+            name: 'expiryDate',
+            value: coupon.expiryDate,
+        }) }}
+
+        {{ forms.textField({
+            label: 'Usage limit'|t('simple-form'),
+            instructions: 'Optional. The maximum number of times this coupon may be redeemed. Leave blank for unlimited.'|t('simple-form'),
+            id: 'maxUsages',
+            name: 'maxUsages',
+            type: 'number',
+            min: 1,
+            value: coupon.maxUsages,
+            errors: coupon.getErrors('maxUsages'),
+        }) }}
+
+        {% if coupon.id %}
+            <div class="field">
+                <div class="heading">
+                    <label>{{ 'Redeemed'|t('simple-form') }}</label>
+                </div>
+                <div class="input">
+                    <p class="light">{{ '{count} time(s) so far.'|t('simple-form', { count: coupon.usageCount }) }}</p>
+                </div>
+            </div>
+        {% endif %}
+
+        {{ forms.lightswitchField({
+            label: 'Enabled'|t('simple-form'),
+            id: 'enabled',
+            name: 'enabled',
+            on: coupon.enabled,
+            instructions: 'When off, the code is rejected at checkout.'|t('simple-form'),
+        }) }}
+
+        <div class="buttons">
+            <button type="submit" class="btn submit">{{ 'Save'|t('simple-form') }}</button>
+            <a class="btn" href="{{ cpUrl('simple-form/settings/coupons') }}">{{ 'Cancel'|t('simple-form') }}</a>
+        </div>
+    </form>
+{% endblock %}

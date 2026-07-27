@@ -1,0 +1,3 @@
+<?php
+
+// Smoke test bootstrap

@@ -1,0 +1,86 @@
+<?php
+
+namespace anvildev\simpleform\tests\integration;
+
+use anvildev\simpleform\captcha\RecaptchaProvider;
+use anvildev\simpleform\models\Settings;
+use anvildev\simpleform\Plugin;
+
+/**
+ * #85 — captcha provider abstraction. Verifies the default delegates to
+ * reCAPTCHA (backward-compatible) and that the widget renders through the
+ * provider.
+ *
+ * @group requires-craft
+ */
+class CaptchaProviderTest extends SimpleFormTestCase
+{
+    public function testDefaultProviderIsRecaptcha(): void
+    {
+        $this->requireCraft();
+        $this->assertInstanceOf(
+            RecaptchaProvider::class,
+            Plugin::getInstance()->getCaptchaService()->provider(),
+        );
+    }
+
+    public function testVerifyReturnsTrueWhenCaptchaDisabled(): void
+    {
+        $this->requireCraft();
+        $settings = Plugin::getInstance()->getSettings();
+        $settings->enableCaptcha = false;
+        $this->assertTrue(Plugin::getInstance()->getCaptchaService()->verify('anything'));
+    }
+
+    public function testRenderWidgetEmptyWhenDisabled(): void
+    {
+        $this->requireCraft();
+        $settings = Plugin::getInstance()->getSettings();
+        $settings->enableCaptcha = false;
+        $this->assertSame('', Plugin::getInstance()->getCaptchaService()->renderWidget());
+    }
+
+    public function testRecaptchaV2WidgetRendersThroughProvider(): void
+    {
+        $this->requireCraft();
+        $settings = Plugin::getInstance()->getSettings();
+        $original = $settings->getAttributes();
+
+        try {
+            $settings->enableCaptcha = true;
+            $settings->selectedCaptchaProvider = 'recaptcha';
+            $settings->captchaType = Settings::CAPTCHA_V2;
+            $settings->recaptchaV2SiteKey = 'test-site-key';
+
+            $html = Plugin::getInstance()->getCaptchaService()->renderWidget();
+            $this->assertStringContainsString('g-recaptcha', $html);
+            $this->assertStringContainsString('test-site-key', $html);
+        } finally {
+            $settings->setAttributes($original, false);
+        }
+    }
+
+    public function testRecaptchaV3SiteKeyIsContextEncoded(): void
+    {
+        $this->requireCraft();
+        $settings = Plugin::getInstance()->getSettings();
+        $original = $settings->getAttributes();
+
+        try {
+            // F15 (CWE-116): a site key with script-breakout characters must be
+            // encoded per output context — never emitted raw into the JS string.
+            $settings->enableCaptcha = true;
+            $settings->selectedCaptchaProvider = 'recaptcha';
+            $settings->captchaType = Settings::CAPTCHA_V3;
+            $settings->recaptchaV3SiteKey = 'k"</script><script>alert(1)</script>';
+
+            $html = (new RecaptchaProvider())->renderWidget($settings);
+
+            // The raw breakout payload must not appear; the closing tag is escaped.
+            $this->assertStringNotContainsString('</script><script>alert(1)', $html);
+            $this->assertStringContainsString('var siteKey = ', $html);
+        } finally {
+            $settings->setAttributes($original, false);
+        }
+    }
+}

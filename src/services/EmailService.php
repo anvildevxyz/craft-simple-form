@@ -1,0 +1,562 @@
+<?php
+
+namespace anvildev\simpleform\services;
+
+use anvildev\simpleform\elements\Form;
+use anvildev\simpleform\elements\Submission;
+use anvildev\simpleform\events\BeforeSendNotificationEvent;
+use anvildev\simpleform\fields\FileFieldType;
+use anvildev\simpleform\helpers\AddressList;
+use anvildev\simpleform\jobs\SendNotifications;
+use anvildev\simpleform\models\FieldModel;
+use anvildev\simpleform\models\NotificationModel;
+use anvildev\simpleform\models\Settings;
+use anvildev\simpleform\Plugin;
+use Craft;
+use craft\helpers\App;
+use yii\base\Component;
+
+/**
+ * @phpstan-import-type SubmissionData from Submission
+ * @phpstan-type EmailAttachment array{content: string, fileName: string, contentType: string}
+ */
+class EmailService extends Component
+{
+    /**
+     * Send every notification that fires for this submission. When the form has
+     * no notification rows, fall back to its legacy email columns so existing
+     * forms keep working unchanged.
+     *
+     * When `$resentFromLogId` is set, every log row written by this pass points
+     * back at that original send so a manual resend stays auditable (#318).
+     *
+     * @param SubmissionData $data
+     */
+    public function sendSubmissionEmail(Form $form, Submission $submission, array $data, ?int $resentFromLogId = null): bool
+    {
+        $resolved = Plugin::getInstance()->getNotifications()->resolveForSubmission($form, $submission, $data);
+
+        if ($resolved === []) {
+            return $this->sendLegacy($form, $submission, $data, $resentFromLogId);
+        }
+
+        $plugin = Plugin::getInstance();
+        $hasHandlers = $plugin !== null && $plugin->hasEventHandlers(Plugin::EVENT_BEFORE_SEND_NOTIFICATION);
+
+        $allSent = true;
+        foreach ($resolved as $entry) {
+            $notification = $entry['notification'];
+            $recipients = $entry['recipients'];
+
+            // Let third parties rewrite recipients or suppress this notification.
+            if ($hasHandlers) {
+                $event = new BeforeSendNotificationEvent([
+                    'form' => $form,
+                    'submission' => $submission,
+                    'notification' => $notification,
+                    'recipients' => array_values($recipients),
+                    'submissionData' => $data,
+                ]);
+                $plugin->trigger(Plugin::EVENT_BEFORE_SEND_NOTIFICATION, $event);
+                if (!$event->send || $event->recipients === []) {
+                    continue;
+                }
+                $recipients = $event->recipients;
+            }
+
+            $subject = $this->renderSubjectFor($notification->subject, $form);
+            $sent = $this->send(
+                $recipients,
+                $subject,
+                $this->renderBodyFor($notification->body, $form, $submission, $data),
+                $notification->replyTo,
+                $this->attachmentsFor($notification, $form, $submission, $data),
+                $this->parseAddressList($notification->cc),
+                $this->parseAddressList($notification->bcc),
+            );
+            $this->_logSend(
+                $form,
+                $submission,
+                $notification->id,
+                $notification->name,
+                $recipients,
+                $subject,
+                $sent,
+                $resentFromLogId,
+            );
+            $allSent = $sent && $allSent;
+        }
+
+        return $allSent;
+    }
+
+    /**
+     * Build the attachment set for one notification (#143): the rendered
+     * submission PDF when `attachPdf`, plus the submission's uploaded files when
+     * `attachUploads` and they fit under the configured total-size cap. Over the
+     * cap the uploads are skipped (and logged) — they remain available as in-body
+     * download links.
+     *
+     * @param array<string, mixed> $data
+     * @return list<EmailAttachment>
+     */
+    private function attachmentsFor(NotificationModel $notification, Form $form, Submission $submission, array $data): array
+    {
+        $attachments = [];
+        $totalBytes = 0;
+        $maxMb = $this->getSettings()->maxAttachmentSizeMb;
+        $capBytes = max(0, $maxMb) * 1024 * 1024;
+
+        if ($notification->attachPdf) {
+            $pdfService = Plugin::getInstance()->getPdf();
+            $pdf = $pdfService->render($form, $submission, $data, (int) $submission->siteId);
+            if ($pdf !== null) {
+                $attachments[] = [
+                    'content' => $pdf,
+                    'fileName' => $pdfService->filename($form, $submission),
+                    'contentType' => 'application/pdf',
+                ];
+                $totalBytes += strlen($pdf);
+            }
+        }
+
+        if ($notification->attachUploads) {
+            foreach ($this->uploadAttachments($data) as $upload) {
+                $size = strlen($upload['content']);
+                if ($capBytes > 0 && $totalBytes + $size > $capBytes) {
+                    Craft::warning(sprintf(
+                        'Skipping upload attachment "%s" for submission %d: over the %d MB attachment cap; sent as an in-body link instead.',
+                        $upload['fileName'],
+                        (int) $submission->id,
+                        $maxMb,
+                    ), 'simple-form');
+                    continue;
+                }
+                $attachments[] = $upload;
+                $totalBytes += $size;
+            }
+        }
+
+        return $attachments;
+    }
+
+    /**
+     * Resolve the submission's file-field uploads to attachment payloads.
+     *
+     * @param array<string, mixed> $data
+     * @return list<EmailAttachment>
+     */
+    private function uploadAttachments(array $data): array
+    {
+        $ids = [];
+        foreach ($data as $fieldData) {
+            if (!is_array($fieldData) || ($fieldData['type'] ?? null) !== FileFieldType::getType()) {
+                continue;
+            }
+            foreach (is_array($fieldData['value'] ?? null) ? $fieldData['value'] : [] as $id) {
+                $ids[] = (int) $id;
+            }
+        }
+
+        if ($ids === []) {
+            return [];
+        }
+
+        // Batch-load every referenced asset in one query instead of one per id.
+        // Iterating $ids (not $assets) preserves the original order and repeats.
+        $assets = \craft\elements\Asset::find()->id($ids)->indexBy('id')->all();
+
+        $attachments = [];
+        foreach ($ids as $id) {
+            $asset = $assets[$id] ?? null;
+            if (!$asset instanceof \craft\elements\Asset) {
+                continue;
+            }
+            try {
+                $contents = $asset->getContents();
+            } catch (\Throwable $e) {
+                Craft::warning('Failed to read upload for attachment: ' . $e->getMessage(), 'simple-form');
+                continue;
+            }
+            $attachments[] = [
+                'content' => $contents,
+                'fileName' => (string) $asset->getFilename(),
+                'contentType' => $asset->getMimeType() ?? 'application/octet-stream',
+            ];
+        }
+
+        return $attachments;
+    }
+
+    /**
+     * Queue a submission's notification emails for off-request sending (#143).
+     * Composing can render a PDF / read uploaded files, so it must not run inline
+     * in the visitor's submit request. Falls back to inline sending only when the
+     * `dispatchIntegrationsSynchronously` debug escape hatch is on.
+     *
+     * @param array<string, mixed> $data
+     */
+    public function queueForSubmission(Form $form, Submission $submission, array $data): void
+    {
+        if ($this->getSettings()->dispatchIntegrationsSynchronously || $submission->id === null) {
+            $this->sendSubmissionEmail($form, $submission, $data);
+            return;
+        }
+
+        Craft::$app->getQueue()->push(new SendNotifications([
+            'submissionId' => (int) $submission->id,
+        ]));
+    }
+
+    /**
+     * Re-dispatch the notifications for the submission behind an existing log row
+     * (#318). Reuses the same {@see SendNotifications} queue job as an automatic
+     * send — honoring the `dispatchIntegrationsSynchronously` escape hatch — and
+     * threads `$logId` through so the fresh log rows reference the original send.
+     * Returns false when the original send can no longer be resolved to a live
+     * submission (e.g. it was pruned).
+     */
+    public function resendFromLog(int $logId): bool
+    {
+        $row = Plugin::getInstance()->getNotificationLog()->getById($logId);
+        $submissionId = isset($row['submissionId']) ? (int) $row['submissionId'] : 0;
+        if ($submissionId === 0) {
+            return false;
+        }
+
+        // Worker/primary-site context: resolve across all sites.
+        $submission = Submission::find()->siteId('*')->id($submissionId)->one();
+        if ($submission === null) {
+            return false;
+        }
+
+        $form = $submission->getForm();
+        if ($form === null) {
+            return false;
+        }
+
+        $data = is_array($submission->data) ? $submission->data : [];
+
+        if ($this->getSettings()->dispatchIntegrationsSynchronously) {
+            $this->sendSubmissionEmail($form, $submission, $data, $logId);
+            return true;
+        }
+
+        Craft::$app->getQueue()->push(new SendNotifications([
+            'submissionId' => $submissionId,
+            'resentFromLogId' => $logId,
+        ]));
+
+        return true;
+    }
+
+    /**
+     * Legacy single-notification path driven by the form's own email columns.
+     *
+     * @param SubmissionData $data
+     */
+    private function sendLegacy(Form $form, Submission $submission, array $data, ?int $resentFromLogId = null): bool
+    {
+        if (!$form->emailTo) {
+            return false;
+        }
+
+        $recipients = [$form->emailTo];
+
+        // Same suppression/recipient-rewrite seam as the resolved path, so a form
+        // configured with the simple emailTo column is equally controllable.
+        $plugin = Plugin::getInstance();
+        if ($plugin !== null && $plugin->hasEventHandlers(Plugin::EVENT_BEFORE_SEND_NOTIFICATION)) {
+            $event = new BeforeSendNotificationEvent([
+                'form' => $form,
+                'submission' => $submission,
+                'notification' => null,
+                'recipients' => $recipients,
+                'submissionData' => $data,
+            ]);
+            $plugin->trigger(Plugin::EVENT_BEFORE_SEND_NOTIFICATION, $event);
+            if (!$event->send || $event->recipients === []) {
+                return true;
+            }
+            $recipients = $event->recipients;
+        }
+
+        $subject = $this->renderSubjectFor($form->emailSubject, $form);
+        $sent = $this->send(
+            $recipients,
+            $subject,
+            $this->renderBodyFor($form->emailBody, $form, $submission, $data),
+            $form->emailReplyTo,
+        );
+        $this->_logSend(
+            $form,
+            $submission,
+            null,
+            Craft::t('simple-form', 'Legacy email'),
+            $recipients,
+            $subject,
+            $sent,
+            $resentFromLogId,
+        );
+
+        return $sent;
+    }
+
+    /**
+     * @param list<string>|string $recipients
+     */
+    private function _logSend(
+        Form $form,
+        Submission $submission,
+        ?int $notificationId,
+        string $notificationName,
+        array|string $recipients,
+        string $subject,
+        bool $sent,
+        ?int $resentFromLogId = null,
+    ): void {
+        if ($form->id === null) {
+            return;
+        }
+
+        $recipientList = is_array($recipients) ? $recipients : [$recipients];
+        Plugin::getInstance()->getNotificationLog()->logSend(
+            (int) $form->id,
+            $submission->id !== null ? (int) $submission->id : null,
+            $notificationId,
+            $notificationName,
+            $sent,
+            array_values($recipientList),
+            $subject,
+            $sent ? '' : Craft::t('simple-form', 'Failed to send email.'),
+            $resentFromLogId,
+        );
+    }
+
+    /**
+     * Split a comma/semicolon/whitespace-separated address string into a
+     * de-duplicated list of valid email addresses (#313). Validation already
+     * rejects header-injection input at save time; this is a defensive filter so
+     * only clean addresses ever reach the mailer.
+     *
+     * @return list<string>
+     */
+    private function parseAddressList(?string $value): array
+    {
+        return array_values(array_unique(array_filter(
+            AddressList::split($value),
+            static fn(string $p): bool => (bool) filter_var($p, FILTER_VALIDATE_EMAIL),
+        )));
+    }
+
+    /**
+     * Compose + send one email.
+     *
+     * @param list<string>|string $to
+     * @param list<EmailAttachment> $attachments
+     * @param list<string> $cc
+     * @param list<string> $bcc
+     */
+    private function send(
+        array|string $to,
+        string $subject,
+        string $body,
+        ?string $replyTo,
+        array $attachments = [],
+        array $cc = [],
+        array $bcc = [],
+    ): bool {
+        if ($to === [] || $to === '') {
+            return false;
+        }
+
+        try {
+            $mail = Craft::$app->getMailer()
+                ->compose()
+                ->setTo($to)
+                ->setSubject($subject)
+                ->setHtmlBody($body);
+
+            // Always carry a plain-text alternative alongside the HTML part so
+            // text-only clients and spam filters see a complete message — a
+            // multipart/alternative body materially improves deliverability.
+            $mail->setTextBody($this->htmlToText($body));
+
+            if ($cc !== []) {
+                $mail->setCc($cc);
+            }
+            if ($bcc !== []) {
+                $mail->setBcc($bcc);
+            }
+
+            foreach ($attachments as $attachment) {
+                $mail->attachContent($attachment['content'], [
+                    'fileName' => $attachment['fileName'],
+                    'contentType' => $attachment['contentType'],
+                ]);
+            }
+
+            // Set from address: prefer the plugin's configured sender, falling
+            // back to Craft's system email settings.
+            $mailSettings = App::mailSettings();
+            $settings = $this->getSettings();
+            $parsedFromEmail = App::parseEnv($mailSettings->fromEmail);
+            $parsedFromName = App::parseEnv($mailSettings->fromName);
+            $fromEmail = $settings->getSenderEmail() ?? (is_string($parsedFromEmail) ? $parsedFromEmail : null);
+            $fromName = $settings->getSenderName() ?? (is_string($parsedFromName) ? $parsedFromName : null);
+            if ($fromEmail) {
+                $mail->setFrom($fromName ? [$fromEmail => $fromName] : $fromEmail);
+            }
+
+            if ($replyTo) {
+                $mail->setReplyTo($replyTo);
+            }
+
+            return $mail->send();
+        } catch (\Exception $e) {
+            Craft::warning('Failed to send form submission email: ' . $e->getMessage(), 'simple-form');
+            return false;
+        }
+    }
+
+    /**
+     * Compose and send a single test copy of a notification to `$to`, using
+     * sample placeholder data instead of a real submission. Reuses the same
+     * subject/body render + send helpers as a live dispatch, so the test mirrors
+     * production output. Attachments (which need a persisted submission and its
+     * assets) are omitted from a test send.
+     */
+    public function sendTest(NotificationModel $notification, Form $form, string $to): bool
+    {
+        $data = $this->sampleData($form);
+        $submission = $this->sampleSubmission($form, $data);
+
+        return $this->send(
+            [$to],
+            $this->renderSubjectFor($notification->subject, $form),
+            $this->renderBodyFor($notification->body, $form, $submission, $data),
+            $notification->replyTo,
+            [],
+            $this->parseAddressList($notification->cc),
+            $this->parseAddressList($notification->bcc),
+        );
+    }
+
+    /**
+     * Build a sample submission-data map from the form's fields, so a test send
+     * has representative content for every field placeholder.
+     *
+     * @return SubmissionData
+     */
+    private function sampleData(Form $form): array
+    {
+        $data = [];
+        foreach (Plugin::getInstance()->getFormStructure()->getFieldSet((int) $form->id, (int) $form->siteId) as $field) {
+            $label = (string) $field['label'];
+            $data['field_' . $field['id']] = [
+                'label' => $label,
+                'type' => (string) $field['type'],
+                'value' => $field['type'] === 'email'
+                    ? 'sample@example.com'
+                    : Craft::t('simple-form', 'Sample {label}', ['label' => $label]),
+            ];
+        }
+
+        return $data;
+    }
+
+    /**
+     * An in-memory (unsaved) submission carrying the sample data, sufficient for
+     * rendering a notification body without touching the database.
+     *
+     * @param SubmissionData $data
+     */
+    private function sampleSubmission(Form $form, array $data): Submission
+    {
+        $submission = new Submission();
+        $submission->formId = (int) $form->id;
+        $submission->siteId = (int) $form->siteId;
+        $submission->data = $data;
+        $submission->dateCreated = new \DateTime();
+
+        return $submission;
+    }
+
+    /**
+     * Derive a plain-text alternative from an HTML body: drop script/style
+     * blocks, turn block-level breaks into newlines, strip remaining tags,
+     * decode entities and collapse runs of whitespace.
+     */
+    private function htmlToText(string $html): string
+    {
+        $text = preg_replace('!<(script|style)\b[^>]*>.*?</\1>!is', '', $html) ?? $html;
+        $text = preg_replace('!<(br|/p|/div|/tr|/li|/h[1-6]|hr)\b[^>]*>!i', "\n", $text) ?? $text;
+        $text = html_entity_decode(strip_tags($text), ENT_QUOTES | ENT_HTML5, 'UTF-8');
+        $text = preg_replace('!\h+!', ' ', $text) ?? $text;
+        $text = preg_replace('!\n[ \t]*\n[ \t]*\n+!', "\n\n", $text) ?? $text;
+
+        return trim($text);
+    }
+
+    private function getSettings(): Settings
+    {
+        return Plugin::getInstance()->getSettings();
+    }
+
+    private function renderSubjectFor(?string $subject, Form $form): string
+    {
+        if ($subject !== null && trim($subject) !== '') {
+            return $subject;
+        }
+        return Craft::t('simple-form', 'New Submission: {formTitle}', [
+            'formTitle' => $form->title ?? $form->name,
+        ]);
+    }
+
+    /**
+     * Render a notification body template (per-site so it localises), falling
+     * back to the shared default template when blank or on a render error.
+     *
+     * @param SubmissionData $data
+     */
+    private function renderBodyFor(?string $body, Form $form, Submission $submission, array $data): string
+    {
+        if ($body !== null && trim($body) !== '') {
+            try {
+                return $this->renderSandboxed($body, [
+                    'form' => $form,
+                    'submission' => $submission,
+                    'data' => $data,
+                ]);
+            } catch (\Throwable $e) {
+                Craft::warning('Failed to render notification body, using default: ' . $e->getMessage(), 'simple-form');
+            }
+        }
+
+        return Plugin::getInstance()->getSubmissionBodyRenderer()->render($form, $submission, $data);
+    }
+
+    /**
+     * Render an admin-authored Twig body string with the Twig sandbox FORCED on
+     * (audit finding F2, CWE-94 / SSTI).
+     *
+     * Notification bodies are editable by CP users holding only `manageForms` —
+     * a non-admin permission — so they must NOT be able to reach `craft.app.*`,
+     * the database, the filesystem or arbitrary classes through the template.
+     * The form, submission and field models are additionally allowed so
+     * legitimate templates like `{{ submission.id }}` or
+     * `{% for f in form.fields %}` keep working. Delegates to the shared
+     * {@see SafeRenderService} seam.
+     *
+     * @param array<string, mixed> $variables
+     * @throws \Throwable when the sandbox rejects the template or rendering fails
+     */
+    private function renderSandboxed(string $template, array $variables): string
+    {
+        return Plugin::getInstance()->getSafeRender()->render(
+            $template,
+            $variables,
+            [Form::class, Submission::class, FieldModel::class],
+        );
+    }
+}

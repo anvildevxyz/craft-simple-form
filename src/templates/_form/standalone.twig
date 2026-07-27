@@ -1,0 +1,23 @@
+{#-
+  Standalone shareable form page (#247). Rendered by FormController::actionStandalone
+  — the public share URL and the iframe target for the embed modes. The form was
+  rendered before this template so its asset bundle is registered; head()/endBody()
+  emit the form CSS/JS. A theme can override this whole file via the `simple-form`
+  template root.
+-#}
+<!DOCTYPE html>
+<html lang="{{ currentSite.language|split('-')|first }}">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="robots" content="noindex">
+    <title>{{ (form.title ?: form.name) }}</title>
+    {{ head() }}
+</head>
+<body class="sf-standalone">
+    <main class="sf-standalone-main">
+        {{ formHtml|raw }}
+    </main>
+    {{ endBody() }}
+</body>
+</html>

@@ -1,0 +1,464 @@
+.simple-form {
+    max-width: 500px;
+    margin: 20px 0;
+}
+/* Standalone shareable form page (#247): centre the form with comfortable
+   page padding. Embedded in an iframe, the body has no chrome of its own. */
+.sf-standalone-main {
+    max-width: 640px;
+    margin: 40px auto;
+    padding: 0 16px;
+}
+.sf-standalone-main .simple-form {
+    max-width: none;
+    margin: 0;
+}
+.simple-form-group {
+    margin-bottom: 20px;
+}
+.simple-form-group label {
+    display: block;
+    margin-bottom: 5px;
+    font-weight: bold;
+}
+.simple-form-group .required {
+    color: red;
+}
+.simple-form-group .help-text {
+    display: block;
+    margin-top: 5px;
+    font-size: 0.9em;
+    color: #666;
+}
+.simple-form-group input[type="text"],
+.simple-form-group input[type="email"],
+.simple-form-group input[type="date"],
+.simple-form-group input[type="number"],
+.simple-form-group textarea,
+.simple-form-group select {
+    width: 100%;
+    padding: 10px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    font-family: inherit;
+    font-size: 1em;
+}
+.simple-form-group textarea {
+    resize: vertical;
+}
+.simple-form-submit-btn {
+    background-color: #0066cc;
+    color: white;
+    padding: 10px 20px;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 1em;
+}
+.simple-form-submit-btn:hover {
+    background-color: #0052a3;
+}
+.simple-form .form-error {
+    color: red;
+    font-size: 0.9em;
+    margin-top: 5px;
+}
+
+/* Form-level error summary (no-JS POST round-trip / hand-authored layouts).
+   Reset the browser's default bullet + indent so it reads as a clean list. */
+.simple-form-errors {
+    list-style: none;
+    margin: 0 0 16px;
+    padding: 0;
+    color: #b91c1c;
+}
+.simple-form-errors li {
+    margin: 2px 0;
+}
+
+/* Multi-column rows: a CSS grid that collapses on mobile (no JS). Column widths
+   come from the inline `--sf-cols` custom property (e.g. "2fr 1fr" for a 66/33
+   split); the per-field weight is set in the builder. The data-cols fallbacks
+   below keep older cached markup (no --sf-cols) rendering as equal columns. */
+.simple-form-row {
+    display: grid;
+    gap: 1rem;
+    grid-template-columns: var(--sf-cols, 1fr);
+}
+/* When `--sf-cols` is present (new markup) it wins; the repeat() fallback keeps
+   older cached markup, which only has data-cols, rendering as equal columns. */
+.simple-form-row[data-cols="2"] { grid-template-columns: var(--sf-cols, repeat(2, 1fr)); }
+.simple-form-row[data-cols="3"] { grid-template-columns: var(--sf-cols, repeat(3, 1fr)); }
+.simple-form-row[data-cols="4"] { grid-template-columns: var(--sf-cols, repeat(4, 1fr)); }
+.simple-form-col { min-width: 0; }
+/* Give multi-column layouts room to breathe without affecting single-column
+   forms (their .simple-form max-width is unchanged). */
+.simple-form:has(.simple-form-row) { max-width: 720px; }
+@media (max-width: 600px) {
+    /* Match the [data-cols]/--sf-cols specificity so the collapse always wins. */
+    .simple-form-row,
+    .simple-form-row[data-cols] { grid-template-columns: 1fr; }
+}
+
+/* Save & resume */
+.simple-form-save-resume { margin-left: .5em; }
+.simple-form-resume-link {
+    margin-top: 1em;
+    padding: .75em 1em;
+    border: 1px solid #cbd5e1;
+    border-radius: 4px;
+    background: #f8fafc;
+}
+.simple-form-resume-link p { margin: 0 0 .5em; }
+.simple-form-resume-row { display: flex; gap: .5em; }
+.simple-form-resume-url { flex: 1; }
+
+/* Presentational / layout blocks (heading, divider, html) */
+.simple-form-layout { margin: 18px 0; }
+.simple-form-heading { margin: 0 0 .25em; }
+.simple-form-divider { border: 0; border-top: 1px solid #d4d9df; margin: 0; }
+.simple-form-divider--labelled {
+    display: flex; align-items: center; gap: .75em; color: #6b7280;
+}
+.simple-form-divider--labelled hr { flex: 1; }
+.simple-form-divider__label { white-space: nowrap; font-size: .9em; }
+.simple-form-html :first-child { margin-top: 0; }
+.simple-form-html :last-child { margin-bottom: 0; }
+
+/* Callout — a toned guidance panel (info/success/warning/error) */
+.simple-form-callout {
+    display: flex; gap: .6em; align-items: flex-start;
+    padding: .75em 1em; border-left: 4px solid; border-radius: 4px;
+    font-size: .95em; line-height: 1.5;
+}
+.simple-form-callout__icon { flex: 0 0 auto; line-height: 1.5; }
+.simple-form-callout__body :first-child { margin-top: 0; }
+.simple-form-callout__body :last-child { margin-bottom: 0; }
+.simple-form-callout--info { background: #eef4fd; border-color: #3b82f6; color: #1e3a5f; }
+.simple-form-callout--success { background: #ecfdf3; border-color: #22c55e; color: #14532d; }
+.simple-form-callout--warning { background: #fef8ec; border-color: #f59e0b; color: #713f12; }
+.simple-form-callout--error { background: #fdeeee; border-color: #ef4444; color: #7f1d1d; }
+
+/* Rating (#128) — a native radio group styled into star/heart/number controls.
+   The radios stay in the DOM (no-JS fallback + screen-reader semantics); only
+   their visual box is replaced by the label's icon/pill. */
+.sf-rating {
+    display: inline-flex;
+    flex-direction: row;
+    gap: .25em;
+}
+.sf-rating-input {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    opacity: 0;
+}
+.sf-rating-label {
+    display: inline-flex;
+    align-items: center;
+    cursor: pointer;
+    font-weight: normal;
+}
+.sf-rating-text {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
+}
+.sf-rating-icon {
+    font-size: 1.8em;
+    line-height: 1;
+    color: #cbd5e1;
+    transition: color .1s ease;
+}
+.sf-rating[data-icon-style="star"] .sf-rating-icon::before { content: "\2605"; }
+.sf-rating[data-icon-style="heart"] .sf-rating-icon::before { content: "\2665"; }
+.sf-rating[data-icon-style="number"] .sf-rating-label {
+    width: 2em;
+    height: 2em;
+    justify-content: center;
+    border: 1px solid #cbd5e1;
+    border-radius: 50%;
+    margin-right: .15em;
+}
+.sf-rating[data-icon-style="number"] .sf-rating-icon { display: none; }
+.sf-rating[data-icon-style="number"] .sf-rating-text {
+    position: static;
+    width: auto;
+    height: auto;
+    clip: auto;
+}
+/* Selected / hover fill. The number style fills its pill instead of a glyph. */
+.sf-rating-input:checked + .sf-rating-label .sf-rating-icon { color: #f59e0b; }
+.sf-rating[data-icon-style="heart"] .sf-rating-input:checked + .sf-rating-label .sf-rating-icon { color: #e11d48; }
+.sf-rating[data-icon-style="number"] .sf-rating-input:checked + .sf-rating-label {
+    background: #0b69a3;
+    border-color: #0b69a3;
+    color: #fff;
+}
+.sf-rating-input:focus-visible + .sf-rating-label {
+    outline: 2px solid #0b69a3;
+    outline-offset: 2px;
+}
+
+/* Opinion / NPS scale (#128) — a labelled horizontal strip of numbered radios. */
+.sf-opinion {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: .5em;
+}
+.sf-opinion-anchor {
+    font-size: .9em;
+    color: #475569;
+}
+.sf-opinion-scale {
+    display: inline-flex;
+    gap: .25em;
+}
+.sf-opinion-input {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    opacity: 0;
+}
+.sf-opinion-label {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 2.2em;
+    height: 2.2em;
+    padding: 0 .4em;
+    border: 1px solid #cbd5e1;
+    border-radius: 4px;
+    cursor: pointer;
+    font-weight: normal;
+}
+.sf-opinion-input:checked + .sf-opinion-label {
+    background: #0b69a3;
+    border-color: #0b69a3;
+    color: #fff;
+}
+.sf-opinion-input:focus-visible + .sf-opinion-label {
+    outline: 2px solid #0b69a3;
+    outline-offset: 2px;
+}
+
+/* Signature pad (#129) */
+.simple-form-signature { max-width: 100%; }
+.simple-form-signature__canvas {
+    display: block;
+    width: 100%;
+    height: 150px;
+    border: 1px solid #cbd5e1;
+    border-radius: 4px;
+    background: #fff;
+    touch-action: none;
+    cursor: crosshair;
+}
+.simple-form-signature__controls {
+    display: flex;
+    align-items: center;
+    gap: .75em;
+    margin-top: .4em;
+}
+.simple-form-signature__hint { color: #64748b; }
+.simple-form-signature__nojs { color: #b91c1c; }
+
+/* Post-submit inline success (#133) */
+.simple-form-success {
+    padding: .75em 1em;
+    border: 1px solid #bbf7d0;
+    border-radius: 4px;
+    background: #f0fdf4;
+    color: #166534;
+}
+
+/* Address autocomplete (#250) */
+.sf-address-autocomplete {
+    position: relative;
+    margin-bottom: .75em;
+}
+.sf-address-suggestions {
+    position: absolute;
+    z-index: 20;
+    left: 0;
+    right: 0;
+    margin: 2px 0 0;
+    padding: 0;
+    list-style: none;
+    background: #fff;
+    border: 1px solid #cbd5e1;
+    border-radius: 4px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, .08);
+    max-height: 240px;
+    overflow-y: auto;
+}
+.sf-address-suggestion {
+    padding: .5em .7em;
+    cursor: pointer;
+    font-size: .95em;
+}
+.sf-address-suggestion:hover,
+.sf-address-suggestion[aria-selected="true"] {
+    background: #eff6ff;
+}
+.sf-address-message {
+    margin: .4em 0 0;
+    font-size: .9em;
+    color: #b91c1c;
+}
+.sf-address-message:empty {
+    display: none;
+}
+
+/* Coupon / discount code box (#246) */
+.simple-form-coupon {
+    margin: .75em 0;
+}
+.simple-form-coupon-label {
+    display: block;
+    margin-bottom: .35em;
+    font-weight: 600;
+}
+.simple-form-coupon-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+.simple-form-coupon-input {
+    flex: 1 1 auto;
+    min-width: 0;
+}
+.simple-form-coupon-apply {
+    flex: 0 0 auto;
+    cursor: pointer;
+}
+.simple-form-coupon-apply[disabled] {
+    opacity: .6;
+    cursor: default;
+}
+.simple-form-coupon-message {
+    margin: .4em 0 0;
+    font-size: .9em;
+}
+.simple-form-coupon-message.simple-form-coupon-ok { color: #166534; }
+.simple-form-coupon-message.simple-form-coupon-error { color: #b91c1c; }
+
+/* Conversational render mode (#239): one screen at a time + a nav row. The
+   screens toggle via the [hidden] attribute; a gentle slide-up eases the change,
+   suppressed under prefers-reduced-motion. */
+.simple-form-step-nav {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 10px;
+    margin-top: 16px;
+}
+.simple-form-step-progress {
+    margin-left: auto;
+    color: #6b7280;
+    font-size: .9em;
+}
+.simple-form--conversational .simple-form-step:not([hidden]) {
+    animation: sf-screen-in .25s ease;
+}
+@keyframes sf-screen-in {
+    from { opacity: 0; transform: translateY(14px); }
+    to { opacity: 1; transform: none; }
+}
+@media (prefers-reduced-motion: reduce) {
+    .simple-form--conversational .simple-form-step:not([hidden]) { animation: none; }
+    .simple-form--conversational .simple-form-progressbar > span { transition: none; }
+}
+
+/* Built-in conversational theme (#243): an opinionated, accessible "centered
+   card" default so conversational mode is usable with zero theming — a centered
+   card, hero-sized question, thin top progress bar, roomy inputs. Every rule is
+   scoped to .simple-form--conversational and uses a single class' worth of
+   specificity, so a host site can override any of it with its own CSS. */
+.simple-form--conversational {
+    position: relative;
+    max-width: 640px;
+    margin-inline: auto;
+    padding: 34px clamp(20px, 5vw, 48px) 28px;
+    background: #fff;
+    border: 1px solid #e5e7eb;
+    border-radius: 14px;
+    box-shadow: 0 10px 40px rgba(2, 6, 23, .08);
+}
+
+/* Thin progress bar pinned to the card's top edge. */
+.simple-form--conversational .simple-form-progressbar {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 4px;
+    background: #eef2f7;
+    border-radius: 14px 14px 0 0;
+    overflow: hidden;
+}
+.simple-form--conversational .simple-form-progressbar > span {
+    display: block;
+    height: 100%;
+    width: 0;
+    background: #2563eb;
+    transition: width .3s ease;
+}
+
+/* One question per screen, with a stable min-height so the card doesn't jump. */
+.simple-form--conversational .simple-form-step {
+    min-height: 168px;
+}
+
+/* Hero-sized question (the field label) + muted help text. */
+.simple-form--conversational .simple-form-step .simple-form-group > label,
+.simple-form--conversational .simple-form-step .simple-form-label {
+    display: block;
+    font-size: clamp(1.4rem, 1rem + 1.6vw, 2rem);
+    font-weight: 600;
+    line-height: 1.25;
+    margin-bottom: .5em;
+}
+.simple-form--conversational .simple-form-step .help-text {
+    display: block;
+    font-size: 1rem;
+    color: #6b7280;
+    margin-bottom: 1em;
+}
+
+/* Roomy, touch-friendly controls. */
+.simple-form--conversational .simple-form-step input:not([type="checkbox"]):not([type="radio"]):not([type="file"]),
+.simple-form--conversational .simple-form-step select,
+.simple-form--conversational .simple-form-step textarea {
+    width: 100%;
+    font-size: 1.1rem;
+    padding: .7em .8em;
+}
+
+/* Prominent forward action; the progress text stays muted at the end of the row. */
+.simple-form--conversational .simple-form-step-nav {
+    margin-top: 24px;
+}
+.simple-form--conversational .simple-form-step-next,
+.simple-form--conversational .simple-form-submit-btn {
+    font-size: 1.05rem;
+    padding: .6em 1.4em;
+    cursor: pointer;
+}
+
+/* Always-visible keyboard focus (a11y). */
+.simple-form--conversational :focus-visible {
+    outline: 2px solid #2563eb;
+    outline-offset: 2px;
+}
+
+@media (max-width: 600px) {
+    .simple-form--conversational {
+        border-radius: 10px;
+        padding: 28px 18px 22px;
+    }
+}

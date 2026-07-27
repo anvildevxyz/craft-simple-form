@@ -1,0 +1,521 @@
+<?php
+
+namespace anvildev\simpleform\services;
+
+use anvildev\simpleform\elements\Form;
+use anvildev\simpleform\elements\Submission;
+use anvildev\simpleform\fields\EmailFieldType;
+use anvildev\simpleform\fields\PaymentFieldType;
+use anvildev\simpleform\integrations\support\SubmissionValues;
+use anvildev\simpleform\Plugin;
+use Craft;
+use craft\helpers\Db;
+use yii\base\Component;
+
+/**
+ * Form payments (#116). Soft-depends on Craft Commerce: a form with a Payment
+ * field collects a payment on submit via the configured Commerce gateway (an
+ * embedded, gateway-agnostic payment form rendered by the gateway itself) and a
+ * Donation line item carrying the resolved amount. Payment is collected BEFORE
+ * the submission is persisted — a decline saves nothing; an offsite/3-D-Secure
+ * redirect persists a pending row and sends the visitor on to complete payment.
+ * Notifications / integrations are withheld until the payment settles. Without
+ * Commerce the Payment field is inert.
+ *
+ * The orchestration here (amount resolution, gating, status transitions) is
+ * Commerce-agnostic and unit-tested; the order creation + charge path is guarded
+ * behind {@see commerceAvailable()} and exercised by the live smoke suite.
+ *
+ * @phpstan-import-type SubmissionData from Submission
+ * @phpstan-type PaymentResult array{status: string, orderId: int, amount: float, redirectUrl: string|null, error: string|null, couponCode: string|null, discount: float}
+ */
+class PaymentsService extends Component
+{
+    public const STATUS_PENDING = Submission::PAYMENT_PENDING;
+    public const STATUS_PAID = Submission::PAYMENT_PAID;
+    public const STATUS_CANCELED = Submission::PAYMENT_CANCELED;
+
+    public function commerceAvailable(): bool
+    {
+        return class_exists(\craft\commerce\Plugin::class);
+    }
+
+    /**
+     * The Commerce store's primary payment-currency ISO code (for formatting
+     * amounts), or null when Commerce is unavailable.
+     */
+    public function primaryCurrencyIso(): ?string
+    {
+        if (!$this->commerceAvailable()) {
+            return null;
+        }
+        try {
+            return \craft\commerce\Plugin::getInstance()->getPaymentCurrencies()->getPrimaryPaymentCurrencyIso();
+        } catch (\Throwable) {
+            return null;
+        }
+    }
+
+    /**
+     * The Payment field's config on a form, or null if it has none.
+     *
+     * @return array<string, mixed>|null
+     */
+    public function paymentFieldConfig(Form $form): ?array
+    {
+        foreach ($this->fieldSet($form) as $field) {
+            if ($field['type'] === PaymentFieldType::getType()) {
+                return $field['config'];
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * @return list<array<string, mixed>>
+     */
+    private function fieldSet(Form $form): array
+    {
+        return Plugin::getInstance()->getFormStructure()->getFieldSet((int) $form->id, (int) $form->siteId);
+    }
+
+    /**
+     * Whether a submission of this form should collect payment (has a Payment
+     * field and Commerce is installed).
+     */
+    public function requiresPayment(Form $form): bool
+    {
+        // Edition-blind at runtime: a form that already has a Payment field keeps
+        // collecting payment regardless of edition, so a Standard->Solo downgrade never
+        // silently turns a pay-to-submit form into a free one. Adding a *new*
+        // Payment field is what's gated to Standard (the builder palette + save gate).
+        return $this->commerceAvailable()
+            && $this->paymentFieldConfig($form) !== null;
+    }
+
+    /**
+     * Resolve the amount due from the Payment field config + submitted data:
+     * a fixed amount, or the value of another field (by handle). Returns null
+     * when no positive amount is configured.
+     *
+     * @param SubmissionData $data submission data keyed by field_<id>
+     */
+    public function resolveAmount(Form $form, array $data): ?float
+    {
+        $config = $this->paymentFieldConfig($form);
+        return $config === null ? null : $this->resolveAmountFromConfig($config, $form, $data);
+    }
+
+    /**
+     * The amount-resolution logic, given an already-resolved Payment field config
+     * so {@see authorizeForSubmit()} can resolve the config once and thread it
+     * through instead of re-querying it per public method.
+     *
+     * @param array<string, mixed> $config
+     * @param SubmissionData $data
+     */
+    private function resolveAmountFromConfig(array $config, Form $form, array $data): ?float
+    {
+        if (($config['amountType'] ?? PaymentFieldType::AMOUNT_TYPE_FIXED) === PaymentFieldType::AMOUNT_TYPE_FIELD) {
+            $handle = (string) ($config['amountField'] ?? '');
+            $amount = $handle !== '' ? ($this->valuesByHandle($form, $data)[$handle] ?? null) : null;
+        } else {
+            $amount = $config['amount'] ?? null;
+        }
+
+        $amount = is_numeric($amount) ? (float) $amount : 0.0;
+        return $amount > 0 ? round($amount, 2) : null;
+    }
+
+    public function isAwaitingPayment(Submission $submission): bool
+    {
+        return $submission->isAwaitingPayment();
+    }
+
+    /**
+     * Collect payment for a submit, BEFORE the submission is persisted
+     * (pay-to-submit, #116). Resolves the amount, builds a Commerce order with a
+     * Donation line item, and — when the request carries gateway payment-form
+     * data — charges it through the configured gateway.
+     *
+     * Returns null when the form collects no payment (caller proceeds normally).
+     * Otherwise a result the caller writes onto the new submission:
+     *  - error !== null  → decline/misconfig; caller must persist NOTHING.
+     *  - status = paid   → charged; release notifications/integrations normally.
+     *  - status = pending + redirectUrl → offsite/3DS or headless; persist the
+     *    row pending and send the visitor to redirectUrl to finish.
+     *
+     * @param SubmissionData $data
+     * @param array<string, mixed> $paymentParams gateway payment-form params from
+     *   the request (the `paymentForm` body param); empty for headless/GraphQL.
+     * @param string|null $couponCode an optional discount code (#246) applied
+     *   server-side to the resolved amount; an invalid one rejects the submit.
+     * @return PaymentResult|null
+     */
+    public function authorizeForSubmit(Form $form, array $data, array $paymentParams = [], ?string $couponCode = null): ?array
+    {
+        // Resolve the Payment field config once and thread it through, instead of
+        // re-querying it via requiresPayment()/resolveAmount()/amountOutOfBounds()
+        // (three FormStructure lookups — real DB queries when its cache is off).
+        // Guard order matches the old requiresPayment() short-circuit exactly.
+        if (!$this->commerceAvailable()) {
+            return null;
+        }
+        $config = $this->paymentFieldConfig($form);
+        if ($config === null) {
+            return null;
+        }
+
+        $amount = $this->resolveAmountFromConfig($config, $form, $data);
+        if ($amount === null) {
+            // A Payment field with no positive amount due — nothing to charge.
+            return null;
+        }
+
+        if (($boundsError = $this->boundsErrorFromConfig($config, $amount)) !== null) {
+            return $this->result('', 0, $amount, null, $boundsError);
+        }
+
+        // Coupon discount (#246): resolved server-side against the bounded amount.
+        // A bad/expired/used-up code rejects the submit so the visitor can fix it;
+        // a valid one reduces what the gateway actually charges.
+        $coupon = null;
+        $discount = 0.0;
+        $charge = $amount;
+        if ($couponCode !== null && trim($couponCode) !== '') {
+            $eval = Plugin::getInstance()->getCoupons()->evaluate($couponCode, $amount);
+            if ($eval['error'] !== null) {
+                return $this->result('', 0, $amount, null, $eval['error'], $couponCode);
+            }
+            $coupon = $eval['coupon'];
+            $discount = $eval['discount'];
+            $charge = $eval['total'];
+        }
+
+        // A coupon covering the full amount makes the submission free: record it
+        // paid without touching the gateway (Commerce can't charge a zero total).
+        // Reserve the redemption atomically; a concurrent submit may have just
+        // exhausted a once-only code.
+        if ($charge <= 0.0) {
+            if ($coupon !== null && $coupon->id !== null && !Plugin::getInstance()->getCoupons()->tryConsume($coupon->id)) {
+                return $this->result('', 0, $amount, null, Craft::t('simple-form', 'This coupon code has reached its usage limit.'), $couponCode);
+            }
+            return $this->result(self::STATUS_PAID, 0, 0.0, null, null, $couponCode, $discount);
+        }
+
+        if ($paymentParams === []) {
+            return $this->result('', 0, $charge, null, Craft::t('simple-form', 'Payment information is required.'), $couponCode, $discount);
+        }
+
+        try {
+            $gateway = $this->gateway();
+            $donation = $this->donation();
+            $order = $this->buildOrder($gateway, $donation, $charge, $this->submitterEmail($form, $data));
+        } catch (\Throwable $e) {
+            Craft::error('Payment setup failed (#116): ' . $e->getMessage(), 'simple-form');
+            return $this->result('', 0, $charge, null, Craft::t('simple-form', 'Payments are not available right now. Please try again later.'), $couponCode, $discount);
+        }
+
+        // Reserve the coupon (#246) right before charging — the atomic claim closes
+        // the race where two simultaneous submits both pass evaluate()'s usage
+        // check. A decline below releases it; an onsite settle / offsite redirect
+        // keeps it (released later by markCanceled() if a pending charge expires).
+        $reserved = false;
+        if ($coupon !== null && $coupon->id !== null) {
+            if (!Plugin::getInstance()->getCoupons()->tryConsume($coupon->id)) {
+                return $this->result('', 0, $charge, null, Craft::t('simple-form', 'This coupon code has reached its usage limit.'), $couponCode, $discount);
+            }
+            $reserved = true;
+        }
+
+        $paymentForm = $gateway->getPaymentFormModel();
+        $paymentForm->setAttributes($paymentParams, false);
+
+        $redirect = null;
+        $transaction = null;
+        try {
+            \craft\commerce\Plugin::getInstance()->getPayments()->processPayment($order, $paymentForm, $redirect, $transaction);
+        } catch (\craft\commerce\errors\PaymentException $e) {
+            Craft::warning('Payment declined (#116): ' . $e->getMessage(), 'simple-form');
+            if ($reserved && $coupon !== null && $coupon->id !== null) {
+                Plugin::getInstance()->getCoupons()->releaseUsage($coupon->id);
+            }
+
+            return $this->result('', 0, $charge, null, Craft::t('simple-form', 'Your payment could not be processed.'), $couponCode, $discount);
+        }
+
+        // Offsite / 3-D-Secure: persist pending and hand the visitor off. The
+        // coupon stays reserved; markCanceled() releases it if the visitor never
+        // completes and the pending payment is expired.
+        if (is_string($redirect) && $redirect !== '') {
+            return $this->result(self::STATUS_PENDING, (int) $order->id, $charge, $redirect, null, $couponCode, $discount);
+        }
+
+        // Onsite: paid if the order settled, otherwise authorized-but-pending.
+        // Either way the reservation made above stands.
+        $status = $order->getIsPaid() ? self::STATUS_PAID : self::STATUS_PENDING;
+
+        return $this->result($status, (int) $order->id, $charge, null, null, $couponCode, $discount);
+    }
+
+    /**
+     * Whether a resolved charge amount falls outside the Payment field's optional
+     * min/max bounds. Returns a user-safe error message, or null when in range or
+     * unbounded.
+     */
+    public function amountOutOfBoundsMessage(Form $form, float $amount): ?string
+    {
+        $config = $this->paymentFieldConfig($form);
+        return $config === null ? null : $this->boundsErrorFromConfig($config, $amount);
+    }
+
+    /**
+     * Bounds check against an already-resolved Payment field config.
+     *
+     * @param array<string, mixed> $config
+     */
+    private function boundsErrorFromConfig(array $config, float $amount): ?string
+    {
+        $min = isset($config['minAmount']) && is_numeric($config['minAmount']) ? (float) $config['minAmount'] : null;
+        $max = isset($config['maxAmount']) && is_numeric($config['maxAmount']) ? (float) $config['maxAmount'] : null;
+
+        if ($min !== null && $amount < $min) {
+            return Craft::t('simple-form', 'The payment amount is below the minimum allowed.');
+        }
+
+        if ($max !== null && $amount > $max) {
+            return Craft::t('simple-form', 'The payment amount exceeds the maximum allowed.');
+        }
+
+        return null;
+    }
+
+    /**
+     * @return PaymentResult
+     */
+    private function result(string $status, int $orderId, float $amount, ?string $redirectUrl, ?string $error, ?string $couponCode = null, float $discount = 0.0): array
+    {
+        return [
+            'status' => $status,
+            'orderId' => $orderId,
+            'amount' => $amount,
+            'redirectUrl' => $redirectUrl,
+            'error' => $error,
+            'couponCode' => ($couponCode !== null && trim($couponCode) !== '') ? trim($couponCode) : null,
+            'discount' => round($discount, 2),
+        ];
+    }
+
+    /**
+     * Mark a submission paid and release its gated notifications + integrations.
+     */
+    public function markPaid(Submission $submission): void
+    {
+        if ($submission->paymentStatus === self::STATUS_PAID) {
+            return;
+        }
+
+        $submission->paymentStatus = self::STATUS_PAID;
+        Craft::$app->getElements()->saveElement($submission);
+
+        // An applied coupon (#246) was already reserved at authorize time, so a
+        // settle does not consume it again.
+
+        $form = $submission->getForm();
+        if (!$form instanceof Form) {
+            return;
+        }
+
+        // Integration dispatch and the notification email are withheld until
+        // payment clears (see IntegrationsService/NotificationsService gating).
+        Plugin::getInstance()->getIntegrations()->dispatchForSubmission($submission);
+        Plugin::getInstance()->getEmailService()->queueForSubmission($form, $submission, $submission->data ?? []);
+    }
+
+    /**
+     * Handle a completed Commerce order: mark its linked submission paid.
+     */
+    public function handleOrderCompleted(int $orderId): void
+    {
+        $submission = Submission::find()->siteId('*')->andWhere(['orderId' => $orderId])->one();
+        if ($submission instanceof Submission && $this->isAwaitingPayment($submission)) {
+            $this->markPaid($submission);
+        }
+    }
+
+    /**
+     * Mark a pending submission's payment canceled (abandoned/expired). A no-op
+     * once it has settled, so a late completion always wins over expiry.
+     */
+    public function markCanceled(Submission $submission): void
+    {
+        if ($submission->paymentStatus !== self::STATUS_PENDING) {
+            return;
+        }
+
+        $submission->paymentStatus = self::STATUS_CANCELED;
+        Craft::$app->getElements()->saveElement($submission);
+
+        // Release the coupon (#246) reserved when this offsite payment was
+        // authorized, since it never completed.
+        if (!empty($submission->couponCode)) {
+            $coupon = Plugin::getInstance()->getCoupons()->getByCode($submission->couponCode);
+            if ($coupon !== null && $coupon->id !== null) {
+                Plugin::getInstance()->getCoupons()->releaseUsage($coupon->id);
+            }
+        }
+    }
+
+    /**
+     * Cancel submissions whose payment has been pending longer than the
+     * configured TTL (abandoned redirect/offsite checkouts). Returns the count
+     * canceled. Disabled when the TTL is 0. Abandoned Commerce carts are reaped
+     * by Commerce's own purge, so only the submission state is reconciled here.
+     */
+    public function expirePending(): int
+    {
+        $ttl = (int) Plugin::getInstance()->getSettings()->paymentPendingTtlMinutes;
+        if ($ttl <= 0) {
+            return 0;
+        }
+
+        $cutoff = (new \DateTime('now', new \DateTimeZone('UTC')))->modify("-{$ttl} minutes");
+
+        /** @var Submission[] $stale */
+        $stale = Submission::find()
+            ->siteId('*')
+            ->status(null)
+            ->andWhere(['paymentStatus' => self::STATUS_PENDING])
+            ->andWhere(['<', 'elements.dateCreated', Db::prepareDateForDb($cutoff)])
+            ->all();
+
+        foreach ($stale as $submission) {
+            $this->markCanceled($submission);
+        }
+
+        return count($stale);
+    }
+
+    /**
+     * The embedded payment-form HTML rendered by the configured gateway (e.g.
+     * card fields), for {@see PaymentFieldType::renderInput()}. Returns null when
+     * Commerce or a usable gateway is absent, so the field degrades gracefully.
+     */
+    public function paymentFormHtml(): ?string
+    {
+        if (!$this->commerceAvailable()) {
+            return null;
+        }
+
+        try {
+            $html = $this->gateway()->getPaymentFormHtml([]);
+
+            // Gateways render bare input names (number, expiry, cvv…); namespace
+            // them under `paymentForm` so they post as a single array the submit
+            // controller hands straight to the gateway's PaymentForm model.
+            return $html === null ? null : Craft::$app->getView()->namespaceInputs($html, 'paymentForm');
+        } catch (\Throwable $e) {
+            Craft::warning('Could not render payment form (#116): ' . $e->getMessage(), 'simple-form');
+            return null;
+        }
+    }
+
+    /**
+     * Build (and persist) a fresh Commerce order carrying a single Donation line
+     * item for the amount, bound to the gateway and buyer email. Not completed —
+     * completion happens when the charge settles.
+     *
+     * @throws \RuntimeException if the order can't be saved
+     */
+    private function buildOrder(\craft\commerce\base\Gateway $gateway, \craft\commerce\elements\Donation $donation, float $amount, ?string $email): \craft\commerce\elements\Order
+    {
+        $commerce = \craft\commerce\Plugin::getInstance();
+
+        $order = new \craft\commerce\elements\Order();
+        $order->gatewayId = (int) $gateway->id;
+        $order->orderLanguage = Craft::$app->language;
+        if ($email !== null && $email !== '') {
+            $order->setEmail($email);
+        }
+
+        $lineItem = $commerce->getLineItems()->createLineItem($order, (int) $donation->id, ['donationAmount' => $amount]);
+        $order->addLineItem($lineItem);
+
+        if (!Craft::$app->getElements()->saveElement($order)) {
+            throw new \RuntimeException('Could not save the payment order: ' . implode('; ', $order->getErrorSummary(true)));
+        }
+
+        return $order;
+    }
+
+    /**
+     * The configured gateway (by handle), else the store's first customer-enabled
+     * gateway.
+     *
+     * @throws \RuntimeException if no usable gateway exists
+     */
+    private function gateway(): \craft\commerce\base\Gateway
+    {
+        $gateways = \craft\commerce\Plugin::getInstance()->getGateways();
+        $handle = (string) (Plugin::getInstance()->getSettings()->paymentGatewayHandle ?? '');
+
+        $gateway = $handle !== '' ? $gateways->getGatewayByHandle($handle) : null;
+        $gateway ??= $gateways->getAllCustomerEnabledGateways()->first();
+
+        if (!$gateway instanceof \craft\commerce\base\Gateway) {
+            throw new \RuntimeException('No Commerce payment gateway is configured.');
+        }
+
+        return $gateway;
+    }
+
+    /**
+     * The Commerce Donation purchasable. Commerce does not seed one by default —
+     * the store admin enables it under Commerce → Store Settings → Donation.
+     *
+     * @throws \RuntimeException if the donation purchasable is missing
+     */
+    private function donation(): \craft\commerce\elements\Donation
+    {
+        $donation = \craft\commerce\elements\Donation::find()->status(null)->one();
+        if (!$donation instanceof \craft\commerce\elements\Donation || $donation->id === null) {
+            throw new \RuntimeException('The Commerce Donation purchasable is not configured (Commerce → Store Settings → Donation).');
+        }
+
+        return $donation;
+    }
+
+    /**
+     * Best-effort submitter email: the first email-type field's value.
+     *
+     * @param SubmissionData $data
+     */
+    private function submitterEmail(Form $form, array $data): ?string
+    {
+        foreach ($this->fieldSet($form) as $field) {
+            if ($field['type'] === EmailFieldType::getType()) {
+                $value = SubmissionValues::value($data['field_' . $field['id']] ?? null);
+                if (is_string($value) && filter_var($value, FILTER_VALIDATE_EMAIL)) {
+                    return $value;
+                }
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * @param SubmissionData $data
+     * @return array<string, mixed>
+     */
+    private function valuesByHandle(Form $form, array $data): array
+    {
+        $values = [];
+        foreach ($this->fieldSet($form) as $field) {
+            $values[(string) $field['name']] = SubmissionValues::value($data['field_' . $field['id']] ?? null);
+        }
+
+        return $values;
+    }
+}

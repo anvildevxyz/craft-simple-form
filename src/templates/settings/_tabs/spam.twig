@@ -1,0 +1,296 @@
+{% import "_includes/forms.twig" as forms %}
+
+{# This tab persists the captcha/Akismet secret keys, so saving it requires an
+   elevated session (server-enforced in SettingsController::actionSave). The
+   marker tells cp.js to prompt for the password before the shared #main-form
+   POST, which it can't annotate directly from this include. #}
+<span data-sf-elevate-main-form hidden></span>
+
+<h2>{{ 'Spam Protection'|t('simple-form') }}</h2>
+<p class="light">{{ 'These defenses stack — enable any combination of the honeypot, CAPTCHA, and Akismet below.'|t('simple-form') }}</p>
+
+<h3>{{ 'Honeypot'|t('simple-form') }}</h3>
+
+{{ forms.checkboxField({
+    label: 'Enable Honeypot Field'|t('simple-form'),
+    name: 'enableHoneypot',
+    value: 1,
+    checked: settings.enableHoneypot ?? true,
+    instructions: 'Adds a hidden field to catch spam bots automatically.'|t('simple-form'),
+}) }}
+
+<hr>
+
+<h3>{{ 'CAPTCHA'|t('simple-form') }}</h3>
+
+{{ forms.checkboxField({
+    label: 'Enable CAPTCHA'|t('simple-form'),
+    name: 'enableCaptcha',
+    value: 1,
+    checked: settings.enableCaptcha ?? false,
+    toggle: '#captcha-settings',
+    instructions: 'Add CAPTCHA verification to forms for additional spam protection.'|t('simple-form'),
+}) }}
+
+<div id="captcha-settings" style="display: {% if settings.enableCaptcha ?? false %}block{% else %}none{% endif %};">
+    {{ forms.selectField({
+        label: 'CAPTCHA Provider'|t('simple-form'),
+        id: 'selectedCaptchaProvider',
+        name: 'selectedCaptchaProvider',
+        options: captchaProviders ?? {'recaptcha': 'Google reCAPTCHA'},
+        value: settings.selectedCaptchaProvider ?? 'recaptcha',
+        instructions: 'Which CAPTCHA service to use.'|t('simple-form'),
+    }) }}
+
+    <div id="recaptcha-provider-settings" class="captcha-provider-settings"{% if (settings.selectedCaptchaProvider ?? 'recaptcha') != 'recaptcha' %} style="display:none;"{% endif %}>
+    {{ forms.selectField({
+        label: 'CAPTCHA Type'|t('simple-form'),
+        id: 'captchaType',
+        name: 'captchaType',
+        options: {
+            'recaptcha-v3': 'reCAPTCHA v3 (Invisible)'|t('simple-form'),
+            'recaptcha-v2': 'reCAPTCHA v2 (Checkbox)'|t('simple-form'),
+        },
+        value: settings.captchaType ?? 'recaptcha-v3',
+        instructions: 'Choose the CAPTCHA type. v3 is invisible to users, v2 shows a checkbox.'|t('simple-form'),
+    }) }}
+
+    <div id="recaptcha-v3-settings" class="captcha-type-settings">
+        {{ forms.autosuggestField({
+            label: 'reCAPTCHA v3 Site Key'|t('simple-form'),
+            name: 'recaptchaV3SiteKey',
+            value: settings.recaptchaV3SiteKey ?? '',
+            suggestEnvVars: true,
+            instructions: 'Your reCAPTCHA v3 site key from Google.'|t('simple-form'),
+            errors: settings.getErrors('recaptchaV3SiteKey') ?? [],
+        }) }}
+
+        {{ forms.autosuggestField({
+            label: 'reCAPTCHA v3 Secret Key'|t('simple-form'),
+            name: 'recaptchaV3SecretKey',
+            value: settings.recaptchaV3SecretKey ?? '',
+            suggestEnvVars: true,
+            instructions: 'Your reCAPTCHA v3 secret key. Use an environment variable (e.g. $RECAPTCHA_SECRET) to keep it out of project config.'|t('simple-form'),
+            errors: settings.getErrors('recaptchaV3SecretKey') ?? [],
+        }) }}
+
+        {{ forms.textField({
+            label: 'reCAPTCHA v3 Minimum Score'|t('simple-form'),
+            name: 'recaptchaV3MinScore',
+            type: 'number',
+            value: settings.recaptchaV3MinScore ?? 0.5,
+            min: 0,
+            max: 1,
+            step: 0.1,
+            instructions: 'Responses scoring below this threshold (0.0–1.0) are rejected.'|t('simple-form'),
+            errors: settings.getErrors('recaptchaV3MinScore') ?? [],
+        }) }}
+    </div>
+
+    <div id="recaptcha-v2-settings" class="captcha-type-settings hidden">
+        {{ forms.autosuggestField({
+            label: 'reCAPTCHA v2 Site Key'|t('simple-form'),
+            name: 'recaptchaV2SiteKey',
+            value: settings.recaptchaV2SiteKey ?? '',
+            suggestEnvVars: true,
+            instructions: 'Your reCAPTCHA v2 site key from Google.'|t('simple-form'),
+            errors: settings.getErrors('recaptchaV2SiteKey') ?? [],
+        }) }}
+
+        {{ forms.autosuggestField({
+            label: 'reCAPTCHA v2 Secret Key'|t('simple-form'),
+            name: 'recaptchaV2SecretKey',
+            value: settings.recaptchaV2SecretKey ?? '',
+            suggestEnvVars: true,
+            instructions: 'Your reCAPTCHA v2 secret key. Use an environment variable (e.g. $RECAPTCHA_SECRET) to keep it out of project config.'|t('simple-form'),
+            errors: settings.getErrors('recaptchaV2SecretKey') ?? [],
+        }) }}
+    </div>
+    </div>{# /recaptcha-provider-settings #}
+
+    <div id="turnstile-provider-settings" class="captcha-provider-settings"{% if (settings.selectedCaptchaProvider ?? 'recaptcha') != 'turnstile' %} style="display:none;"{% endif %}>
+        {{ forms.autosuggestField({
+            label: 'Turnstile Site Key'|t('simple-form'),
+            name: 'turnstileSiteKey',
+            value: settings.turnstileSiteKey ?? '',
+            suggestEnvVars: true,
+            instructions: 'Your Cloudflare Turnstile site key.'|t('simple-form'),
+            errors: settings.getErrors('turnstileSiteKey') ?? [],
+        }) }}
+
+        {{ forms.autosuggestField({
+            label: 'Turnstile Secret Key'|t('simple-form'),
+            name: 'turnstileSecretKey',
+            value: settings.turnstileSecretKey ?? '',
+            suggestEnvVars: true,
+            instructions: 'Your Cloudflare Turnstile secret key. Use an environment variable (e.g. $TURNSTILE_SECRET) to keep it out of project config.'|t('simple-form'),
+            errors: settings.getErrors('turnstileSecretKey') ?? [],
+        }) }}
+    </div>{# /turnstile-provider-settings #}
+
+    <div id="hcaptcha-provider-settings" class="captcha-provider-settings"{% if (settings.selectedCaptchaProvider ?? 'recaptcha') != 'hcaptcha' %} style="display:none;"{% endif %}>
+        {{ forms.autosuggestField({
+            label: 'hCaptcha Site Key'|t('simple-form'),
+            name: 'hcaptchaSiteKey',
+            value: settings.hcaptchaSiteKey ?? '',
+            suggestEnvVars: true,
+            instructions: 'Your hCaptcha site key.'|t('simple-form'),
+            errors: settings.getErrors('hcaptchaSiteKey') ?? [],
+        }) }}
+
+        {{ forms.autosuggestField({
+            label: 'hCaptcha Secret Key'|t('simple-form'),
+            name: 'hcaptchaSecretKey',
+            value: settings.hcaptchaSecretKey ?? '',
+            suggestEnvVars: true,
+            instructions: 'Your hCaptcha secret key. Use an environment variable (e.g. $HCAPTCHA_SECRET) to keep it out of project config.'|t('simple-form'),
+            errors: settings.getErrors('hcaptchaSecretKey') ?? [],
+        }) }}
+    </div>{# /hcaptcha-provider-settings #}
+</div>
+
+<hr>
+
+{% include 'simple-form/settings/_edition-notice' with { feature: 'Akismet and the keyword/email/IP denylists'|t('simple-form') } only %}
+
+<h3>{{ 'Akismet'|t('simple-form') }}</h3>
+<p class="light">{{ 'Content-based spam scoring that complements CAPTCHA.'|t('simple-form') }}</p>
+
+{{ forms.checkboxField({
+    label: 'Enable Akismet'|t('simple-form'),
+    name: 'enableAkismet',
+    value: 1,
+    checked: settings.enableAkismet ?? false,
+    toggle: '#akismet-settings',
+    instructions: 'Score each submission with Akismet and flag or block likely spam.'|t('simple-form'),
+}) }}
+
+<div id="akismet-settings" style="display: {% if settings.enableAkismet ?? false %}block{% else %}none{% endif %};">
+    {{ forms.autosuggestField({
+        label: 'Akismet API Key'|t('simple-form'),
+        name: 'akismetApiKey',
+        value: settings.akismetApiKey ?? '',
+        suggestEnvVars: true,
+        disabled: 'akismetApiKey' in proLockedFields,
+        instructions: 'Your Akismet API key. Use an environment variable (e.g. $AKISMET_KEY) to keep it out of project config.'|t('simple-form'),
+        errors: settings.getErrors('akismetApiKey') ?? [],
+    }) }}
+
+    {{ forms.selectField({
+        label: 'On spam verdict'|t('simple-form'),
+        id: 'akismetMode',
+        name: 'akismetMode',
+        options: {
+            'flag': 'Flag (save as spam for review)'|t('simple-form'),
+            'block': 'Block (silently drop the submission)'|t('simple-form'),
+        },
+        value: settings.akismetMode ?? 'flag',
+    }) }}
+</div>
+
+<hr>
+
+<h3>{{ 'Denylists'|t('simple-form') }}</h3>
+<p class="light">{{ 'Deterministic, owner-controlled filters that run before Akismet — no third-party call needed. Add one entry per line.'|t('simple-form') }}</p>
+
+{{ forms.checkboxField({
+    label: 'Enable denylists'|t('simple-form'),
+    name: 'enableDenylists',
+    value: 1,
+    checked: settings.enableDenylists ?? false,
+    toggle: '#denylist-settings',
+    instructions: 'Block or flag submissions that match a keyword, email/domain, or IP you specify below.'|t('simple-form'),
+}) }}
+
+<div id="denylist-settings" style="display: {% if settings.enableDenylists ?? false %}block{% else %}none{% endif %};">
+    {{ forms.selectField({
+        label: 'On a denylist hit'|t('simple-form'),
+        id: 'denylistMode',
+        name: 'denylistMode',
+        options: {
+            'flag': 'Flag (save as spam for review)'|t('simple-form'),
+            'block': 'Block (silently drop the submission)'|t('simple-form'),
+        },
+        value: settings.denylistMode ?? 'flag',
+    }) }}
+
+    {{ forms.textareaField({
+        label: 'Blocked keywords'|t('simple-form'),
+        name: 'blockedKeywords',
+        value: settings.blockedKeywords ?? '',
+        rows: 4,
+        disabled: 'blockedKeywords' in proLockedFields,
+        instructions: 'One keyword per line. Matched case-insensitively against any text value. Use * as a wildcard (e.g. buy*now).'|t('simple-form'),
+        errors: settings.getErrors('blockedKeywords') ?? [],
+    }) }}
+
+    {{ forms.textareaField({
+        label: 'Blocked emails'|t('simple-form'),
+        name: 'blockedEmails',
+        value: settings.blockedEmails ?? '',
+        rows: 4,
+        disabled: 'blockedEmails' in proLockedFields,
+        instructions: 'One per line. Exact address (bob@x.tld), whole domain (@x.tld), or domain + subdomains (*.x.tld).'|t('simple-form'),
+        errors: settings.getErrors('blockedEmails') ?? [],
+    }) }}
+
+    {{ forms.textareaField({
+        label: 'Blocked IPs'|t('simple-form'),
+        name: 'blockedIps',
+        value: settings.blockedIps ?? '',
+        rows: 4,
+        disabled: 'blockedIps' in proLockedFields,
+        instructions: 'One per line. A single IPv4/IPv6 address or a CIDR range (e.g. 203.0.113.0/24, 2001:db8::/32).'|t('simple-form'),
+        errors: settings.getErrors('blockedIps') ?? [],
+    }) }}
+</div>
+
+<hr>
+
+<h3>{{ 'Duplicate submissions'|t('simple-form') }}</h3>
+<p class="light">{{ 'Duplicate prevention is enabled per form (on each form’s Advanced settings). This global setting controls what happens when a duplicate is detected.'|t('simple-form') }}</p>
+
+{{ forms.selectField({
+    label: 'On a duplicate hit'|t('simple-form'),
+    id: 'duplicateMode',
+    name: 'duplicateMode',
+    options: {
+        'flag': 'Flag (save as spam for review)'|t('simple-form'),
+        'block': 'Block (silently drop the submission)'|t('simple-form'),
+    },
+    value: settings.duplicateMode ?? 'flag',
+}) }}
+
+<hr>
+
+<h3>{{ 'Rate limiting'|t('simple-form') }}</h3>
+<p class="light">{{ 'Throttle how often a single visitor can submit, independent of CAPTCHA/honeypot.'|t('simple-form') }}</p>
+
+{% if (settings.submitRateLimitPerMinute ?? 0) == 0 and not (settings.enableCaptcha ?? false) %}
+    <p class="warning with-icon">
+        {{ 'Rate limiting and CAPTCHA are both off. Public forms are then protected only by the honeypot, which scripted spam can bypass — leaving the submit endpoint open to flooding. Set a per-minute limit (e.g. 10) or enable CAPTCHA.'|t('simple-form') }}
+    </p>
+{% endif %}
+
+{{ forms.textField({
+    label: 'Submissions per minute'|t('simple-form'),
+    name: 'submitRateLimitPerMinute',
+    type: 'number',
+    value: settings.submitRateLimitPerMinute ?? 10,
+    min: 0,
+    step: 1,
+    instructions: 'Max front-end submissions allowed per visitor IP per minute. 0 disables the limit; 10 is a sensible starting point for public forms.'|t('simple-form'),
+    errors: settings.getErrors('submitRateLimitPerMinute') ?? [],
+}) }}
+
+<hr>
+
+<h3>{{ 'GraphQL'|t('simple-form') }}</h3>
+
+{{ forms.lightswitchField({
+    label: 'Bypass CAPTCHA for GraphQL submissions'|t('simple-form'),
+    name: 'allowGraphqlCaptchaBypass',
+    on: settings.allowGraphqlCaptchaBypass ?? false,
+    instructions: 'Off (recommended): GraphQL submitForm mutations must pass a captchaToken when CAPTCHA is enabled. Turn on only for trusted server-to-server callers that cannot obtain a browser CAPTCHA token.'|t('simple-form'),
+}) }}
+

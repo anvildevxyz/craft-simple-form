@@ -1,0 +1,24 @@
+vendor/
+node_modules/
+.env
+.env.local
+.DS_Store
+*.log
+composer.lock
+package-lock.json
+.vscode/
+.idea/
+.phpunit.cache/
+
+# Codeception integration-suite runtime artifacts (config files ARE committed)
+tests/_output/
+tests/_craft/storage/
+tests/_support/_generated/
+
+# Published asset-bundle copies (regenerated from src/web/assets at runtime)
+cpresources/
+
+# Generated browser-smoke run reports + screenshots (the runner is committed, its output isn't)
+scripts/browser-smoke/report-*.md
+scripts/browser-smoke/challenge-report-*.md
+scripts/browser-smoke/challenge-shots/

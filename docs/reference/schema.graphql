@@ -1,0 +1,337 @@
+# Simple Form — GraphQL schema (SDL)
+#
+# A curated extract of the Simple Form types from the Craft GraphQL schema, so a
+# headless client has the schema without booting Craft. It is committed for
+# reference; the running schema is always authoritative.
+#
+# Scopes (schema components):
+#   simpleForms:read              -> the `simpleForm` / `simpleForms` queries
+#   simpleFormSubmissions:create  -> the `submitForm` mutation
+#   simpleFormSubmissions:edit    -> the `updateSubmission` mutation
+#
+# Submission data is deliberately NOT queryable: there is no submissions query
+# and no submission object type, so a read token can never read what was
+# submitted.
+#
+# Regenerate (full project schema, then extract the SimpleForm* types):
+#   ddev exec 'php craft graphql/print-schema --full-schema=1' > schema.full.graphql
+
+type Query {
+  """Returns a single form schema by handle or id, or null when not found."""
+  simpleForm(
+    """Fetch the form with this handle."""
+    handle: String
+
+    """Fetch the form with this id."""
+    id: Int
+
+    """Resolve labels/title for this site. Defaults to the primary site."""
+    siteId: Int
+  ): SimpleForm
+
+  """Returns all form schemas for the given (or primary) site."""
+  simpleForms(
+    """Resolve labels/titles for this site. Defaults to the primary site."""
+    siteId: Int
+  ): [SimpleForm!]!
+}
+
+type Mutation {
+  """
+  Submits a form. Returns a payload with success/errors; invalid input is
+  reported via the errors list, not a hard failure.
+  """
+  submitForm(
+    """The handle of the form to submit to."""
+    handle: String
+
+    """The id of the form to submit to (alternative to handle)."""
+    id: Int
+
+    """Site to submit against. Defaults to the form's/primary site."""
+    siteId: Int
+
+    """The submitted field values."""
+    values: [SimpleFormFieldValueInput!]!
+
+    """Honeypot value; leave empty. A non-empty value is treated as spam and silently dropped."""
+    honeypot: String
+
+    """Captcha token to verify when captcha is enabled (unless the GraphQL captcha bypass is enabled)."""
+    captchaToken: String
+  ): SimpleFormSubmitPayload!
+
+  """
+  Edits an existing submission, re-validated through the same path as a create.
+  Authorized by a valid edit token or by an authenticated owner.
+  """
+  updateSubmission(
+    """The id of the submission to edit."""
+    id: Int!
+
+    """The secure edit token. Required unless an authenticated owner."""
+    token: String
+
+    """The edited field values."""
+    values: [SimpleFormFieldValueInput!]!
+
+    """Honeypot value; leave empty."""
+    honeypot: String
+
+    """Captcha token to verify when captcha is enabled."""
+    captchaToken: String
+  ): SimpleFormSubmitPayload!
+}
+
+type SimpleForm {
+  id: Int!
+
+  """The form handle (globally unique, site-agnostic)."""
+  handle: String!
+
+  """The internal form name (site-agnostic)."""
+  name: String!
+
+  """The public title for the requested site."""
+  title: String
+
+  """The public description for the requested site."""
+  description: String
+  siteId: Int!
+
+  """The form's fields in display order."""
+  fields: [SimpleFormField!]!
+
+  """The form's outbound integrations (name/type/enabled only; never settings or secrets)."""
+  integrations: [SimpleFormIntegration!]!
+}
+
+"""
+A single field in a Simple Form schema. The `type` discriminator (text, email,
+textarea, select, checkbox, radio, date, number, rating, opinion, file, payment,
+and the element-relation types entry, category, tag, user, asset) tells a client
+how to render it; options/validation/relation carry the variant-specific detail.
+"""
+type SimpleFormField {
+  """The field id. Submit values under `field_<id>`."""
+  id: Int!
+
+  """The field handle (site-agnostic)."""
+  name: String!
+
+  """The field-type discriminator."""
+  type: String!
+
+  """The field label for the requested site (falls back to the handle when untranslated)."""
+  label: String!
+
+  """Optional per-site help text."""
+  helpText: String
+
+  """Whether the field is required."""
+  required: Boolean!
+
+  """Display order within the form (ascending)."""
+  sortOrder: Int
+
+  """The 1-based step/page this field belongs to (1 for single-page forms)."""
+  page: Int!
+
+  """Placeholder text, when configured."""
+  placeholder: String
+
+  """Selectable options for choice fields (select, radio, checkbox); empty otherwise."""
+  options: [SimpleFormFieldOption!]!
+
+  """The validation rules the server enforces on submit."""
+  validation: SimpleFormFieldValidation!
+
+  """Conditional show/hide and conditional-required logic, or null when always visible."""
+  conditional: SimpleFormFieldConditional
+
+  """Element-relation configuration for relation field types; null otherwise."""
+  relation: SimpleFormFieldRelation
+}
+
+"""A selectable option for a choice field (select, radio, checkbox)."""
+type SimpleFormFieldOption {
+  """The human-readable option label."""
+  label: String!
+
+  """The value submitted when this option is chosen."""
+  value: String!
+}
+
+"""
+The validation rules a headless client should mirror for a field. Server-side
+validation is always authoritative.
+"""
+type SimpleFormFieldValidation {
+  """Whether a non-empty value must be supplied."""
+  required: Boolean!
+
+  """Minimum string length, when the field type enforces one."""
+  minLength: Int
+
+  """Maximum string length, when the field type enforces one."""
+  maxLength: Int
+
+  """Minimum numeric value, for number fields."""
+  min: Float
+
+  """Maximum numeric value, for number fields."""
+  max: Float
+
+  """A regular expression the value must match, when configured."""
+  pattern: String
+
+  """For rating fields: the icon preset (star, heart, number)."""
+  iconStyle: String
+
+  """For opinion-scale fields: the left anchor label."""
+  leftLabel: String
+
+  """For opinion-scale fields: the right anchor label."""
+  rightLabel: String
+}
+
+"""
+Conditional logic for a field. action + match + rules control visibility; the
+optional requiredMatch + requiredRules make the field conditionally required.
+Server enforcement is authoritative.
+"""
+type SimpleFormFieldConditional {
+  """Visibility behaviour: "show" or "hide"."""
+  action: String!
+
+  """How visibility rules combine: "all" (AND) or "any" (OR)."""
+  match: String!
+
+  """The visibility rules."""
+  rules: [SimpleFormConditionalRule!]!
+
+  """How conditional-required rules combine ("all"/"any"), or null when none."""
+  requiredMatch: String
+
+  """Rules that, when matched, make the field required (empty when none)."""
+  requiredRules: [SimpleFormConditionalRule!]!
+}
+
+"""
+A single conditional rule: the target field handle, a comparison operator, and
+the value to compare against the target field's submitted value.
+"""
+type SimpleFormConditionalRule {
+  """Handle of the field this rule is evaluated against."""
+  field: String!
+
+  """Comparison operator: one of eq, neq, empty, notEmpty, contains, gt, lt."""
+  operator: String!
+
+  """The value compared against the target field's value (ignored for empty/notEmpty)."""
+  value: String
+}
+
+"""
+Element-relation configuration for a relation field (entry, category, tag, user,
+asset). Submit the chosen element ids under `field_<id>`.
+"""
+type SimpleFormFieldRelation {
+  """The related element type: one of entry, category, tag, user, asset."""
+  elementType: String!
+
+  """The allowed source handles, or `["*"]` for any source of this element type."""
+  sources: [String!]!
+
+  """Whether more than one element may be selected."""
+  multiple: Boolean!
+
+  """Maximum selectable elements when multiple, or null for no limit."""
+  limit: Int
+
+  """The allowed elements (id + title) resolved for the requested site."""
+  options: [SimpleFormFieldRelationOption!]!
+}
+
+"""A selectable element in a relation field: its id (the submitted value) and its title."""
+type SimpleFormFieldRelationOption {
+  """The element id — submit this as the field value."""
+  id: Int!
+
+  """The element title for the requested site."""
+  title: String!
+}
+
+"""
+An outbound integration configured on a form. Exposes only its name, type, and
+enabled state — never its settings or secrets.
+"""
+type SimpleFormIntegration {
+  """The integration's display name."""
+  name: String!
+
+  """The integration type handle (e.g. "webhook")."""
+  type: String!
+
+  """Whether this integration is dispatched on submission."""
+  enabled: Boolean!
+}
+
+"""One submitted field value."""
+input SimpleFormFieldValueInput {
+  """The id of the field this value is for (see SimpleFormField.id)."""
+  fieldId: Int!
+
+  """The submitted value. For multi-value fields, join with the field's expected delimiter."""
+  value: String
+
+  """Multiple submitted values, for checkbox-style fields. Takes precedence over `value` when set."""
+  values: [String!]
+}
+
+"""A single validation/processing error for a submit attempt."""
+type SimpleFormSubmissionError {
+  """The error key: `field_<id>` for a field error, or a general key (form, captcha, submission)."""
+  key: String!
+
+  """One or more human-readable messages for this key."""
+  messages: [String!]!
+}
+
+"""
+The result of a submitForm / updateSubmission mutation. On success `success` is
+true and `submissionId` is set; on validation failure `success` is false and
+`errors` lists the problems (no submission is stored).
+"""
+type SimpleFormSubmitPayload {
+  """Whether the submission was accepted and stored."""
+  success: Boolean!
+
+  """The id of the stored submission, or null when not stored."""
+  submissionId: Int
+
+  """The resolved post-submit redirect URL on success, or null for an inline message."""
+  redirectUrl: String
+
+  """
+  The resolved post-submit confirmation message on success (per-form submit
+  message, falling back to the global setting), or null otherwise. Matches the
+  `message` the front-end AJAX SubmitController response returns.
+  """
+  message: String
+
+  """Raw quiz score on a quiz form, or null when the form is not a quiz."""
+  quizScore: Int
+
+  """Maximum attainable quiz score, or null when the form is not a quiz."""
+  quizMaxScore: Int
+
+  """Quiz score as a percentage (0–100), or null when not a quiz / no answer key."""
+  quizPercentage: Int
+
+  """Quiz grade band label, or null when not a quiz / no bands configured."""
+  quizGrade: String
+
+  """Validation/processing errors; empty on success."""
+  errors: [SimpleFormSubmissionError!]!
+}

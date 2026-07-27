@@ -1,0 +1,82 @@
+{% import "_includes/forms.twig" as forms %}
+
+<h2>{{ 'Coupons'|t('simple-form') }}</h2>
+<p class="light">
+    {{ 'Create discount codes that visitors can apply to a form’s payment. A coupon takes a fixed amount or a percentage off the amount due, with an optional expiry date and usage limit.'|t('simple-form') }}
+</p>
+
+{% if not (commerceAvailable ?? false) %}
+    <div class="sf-dispatch-alert">
+        <span class="warning">
+            {{ 'Coupons only apply to forms that collect a payment, which requires Craft Commerce. They can be managed here regardless.'|t('simple-form') }}
+        </span>
+    </div>
+{% endif %}
+
+<div id="sf-coupons"
+     data-toggle-url="{{ cpUrl('simple-form/coupons/toggle') }}"
+     data-delete-url="{{ cpUrl('simple-form/coupons/delete') }}"
+     data-confirm-delete="{{ 'Delete this coupon? Visitors will no longer be able to redeem it.'|t('simple-form') }}"
+     data-error="{{ 'Couldn’t complete that action.'|t('simple-form') }}"
+     data-network-error="{{ 'Network error — please try again.'|t('simple-form') }}">
+{% if coupons is not empty %}
+    <table class="data fullwidth collapsible">
+        <thead>
+            <tr>
+                <th>{{ 'Code'|t('simple-form') }}</th>
+                <th>{{ 'Discount'|t('simple-form') }}</th>
+                <th>{{ 'Expiry'|t('simple-form') }}</th>
+                <th>{{ 'Usage'|t('simple-form') }}</th>
+                <th>{{ 'Enabled'|t('simple-form') }}</th>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for coupon in coupons %}
+                <tr data-id="{{ coupon.id }}">
+                    <td>
+                        <a href="{{ cpUrl('simple-form/settings/coupons/' ~ coupon.id) }}">
+                            <code>{{ coupon.code }}</code>
+                        </a>
+                        {% if coupon.isExpired or coupon.isUsedUp %}
+                            <span class="sf-coupon-flag light">— {{ coupon.isExpired ? 'expired'|t('simple-form') : 'limit reached'|t('simple-form') }}</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if coupon.type == 'percentage' %}
+                            {{ coupon.amount|number ~ '%' }}
+                        {% else %}
+                            {{ currency ? coupon.amount|currency(currency) : coupon.amount|number(2) }}
+                        {% endif %}
+                    </td>
+                    <td>
+                        {{ coupon.expiryDate ? coupon.expiryDate|date('short') : '—' }}
+                    </td>
+                    <td>
+                        {{ coupon.usageCount }}{{ coupon.maxUsages ? ' / ' ~ coupon.maxUsages : '' }}
+                    </td>
+                    <td>
+                        <button type="button" class="status-toggle btn small{{ coupon.enabled ? ' active' : '' }}"
+                                data-id="{{ coupon.id }}">
+                            <span class="status {{ coupon.enabled ? 'on' : 'off' }}"></span>
+                            {{ coupon.enabled ? 'Enabled'|t('simple-form') : 'Disabled'|t('simple-form') }}
+                        </button>
+                    </td>
+                    <td class="thin">
+                        <button type="button" class="delete icon"
+                                title="{{ 'Delete'|t('simple-form') }}"
+                                aria-label="{{ 'Delete coupon {code}'|t('simple-form', { code: coupon.code }) }}"
+                                data-id="{{ coupon.id }}"></button>
+                    </td>
+                </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+{% else %}
+    <div class="zilch sf-empty-state">
+        <p class="sf-empty-heading">{{ 'No coupons yet.'|t('simple-form') }}</p>
+        <p class="light">{{ 'Create one to offer a discount on a form’s payment.'|t('simple-form') }}</p>
+        <a class="btn submit add icon" href="{{ cpUrl('simple-form/settings/coupons/new') }}">{{ 'New Coupon'|t('simple-form') }}</a>
+    </div>
+{% endif %}
+</div>

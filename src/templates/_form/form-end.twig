@@ -1,0 +1,14 @@
+{#
+  Default Simple Form theme — closing controls + </form> (#137).
+
+  For hand-authored single-step forms: emits the captcha, submit button, the
+  asset slot and the closing </form> tag. Pair with form-start.twig.
+
+  Variables: same context as form.twig.
+-#}
+{%- apply spaceless -%}
+{% include partials.captcha with { captcha: captcha } only %}
+<button type="submit" class="simple-form-submit-btn">{{ submitText }}</button>
+</form>
+{%- endapply -%}
+{% include partials.assets with { assets: assets } only %}

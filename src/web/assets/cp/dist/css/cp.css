@@ -1,0 +1,767 @@
+/*
+ * Simple Form — Control Panel styles.
+ *
+ * Consolidated from the per-template inline <style> blocks (#100). Structural
+ * surfaces use Craft theme tokens (--pane-bg, --input-border-color,
+ * --light-text-color, --link-color) so they track light/dark mode; the status
+ * accent colors stay explicit because Craft's themed CSS doesn't expose a
+ * red/blue/green palette as custom properties.
+ */
+
+/* ---------- Shared: submission status badges ----------
+   Scoped to the modifier classes (not bare `.status`) so the full ruleset
+   stays distinct from Craft's core `.status` indicator dot. */
+.status.new,
+.status.read,
+.status.archived,
+.status.spam {
+    display: inline-block;
+    padding: 4px 8px;
+    border-radius: 3px;
+    font-size: 12px;
+    font-weight: bold;
+}
+
+/* Badge colors carry the status text too (not color-only); blue/slate
+   darkened to clear WCAG AA contrast against white (#105). */
+.status.new { background-color: #2563eb; color: #fff; }
+.status.read { background-color: #546e7a; color: #fff; }
+.status.archived { background-color: #ccc; color: #333; }
+.status.spam { background-color: #d0021b; color: #fff; }
+
+/* Integration dispatch outcome labels (submission detail). */
+.status-label {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 3px;
+    font-size: 11px;
+    font-weight: bold;
+}
+.status-success { background: #27ae60; color: #fff; }
+.status-failed { background: #d0021b; color: #fff; }
+.status-pending { background: #f5a623; color: #fff; }
+
+/* ---------- Shared: action buttons row ---------- */
+.buttons {
+    margin-bottom: 20px;
+    display: flex;
+    gap: 10px;
+}
+
+.buttons input,
+.buttons select {
+    padding: 8px 12px;
+    border: 1px solid var(--input-border-color, #ccc);
+    border-radius: 4px;
+}
+
+/* ---------- Shared: pagination ---------- */
+.pagination {
+    margin-top: 20px;
+    text-align: center;
+}
+
+.pagination a,
+.pagination span {
+    margin: 0 5px;
+    padding: 5px 10px;
+    border: 1px solid var(--input-border-color, #ddd);
+    border-radius: 3px;
+    text-decoration: none;
+    display: inline-block;
+}
+
+.pagination a:hover { background-color: var(--button-bg--hover, #f5f5f5); }
+
+.pagination span.current {
+    background-color: var(--link-color, #0066cc);
+    color: #fff;
+    border-color: var(--link-color, #0066cc);
+}
+
+/* ---------- Confirmation dialog (replaces native confirm) ---------- */
+.sf-confirm {
+    border: none;
+    border-radius: 5px;
+    padding: 24px;
+    max-width: 380px;
+    background: var(--pane-bg, #fff);
+    color: var(--text-color, #3f4d5a);
+    box-shadow: 0 6px 30px rgba(0, 0, 0, 0.25);
+}
+.sf-confirm::backdrop { background: rgba(0, 0, 0, 0.4); }
+.sf-confirm-msg { margin: 0 0 18px; font-size: 14px; }
+.sf-confirm-actions { display: flex; justify-content: flex-end; gap: 10px; }
+
+.sf-log-message {
+    max-width: 320px;
+    color: var(--light-text-color, #8a8a8f);
+    font-size: 12px;
+    word-break: break-word;
+}
+.sf-log-message.is-error { color: #d0021b; }
+
+/* ---------- Empty / first-run states ---------- */
+.sf-empty-state {
+    padding: 40px 20px;
+    text-align: center;
+}
+.sf-empty-state .sf-empty-heading {
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--text-color, #3f4d5a);
+    margin-bottom: 6px;
+}
+.sf-empty-state .btn {
+    margin-top: 14px;
+}
+
+/* ---------- Forms index: delete control ---------- */
+.delete {
+    cursor: pointer;
+    opacity: 0.7;
+}
+.delete:hover { opacity: 1; }
+
+/* ---------- Submissions index: stat cards ---------- */
+.submission-stats {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 20px;
+    flex-wrap: wrap;
+}
+
+.stat-card {
+    flex: 1;
+    min-width: 100px;
+    padding: 12px 16px;
+    background: var(--pane-bg, #fff);
+    border: 1px solid var(--input-border-color, #ddd);
+    border-radius: 4px;
+    text-align: center;
+    text-decoration: none;
+    color: inherit;
+    transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+.stat-card:hover { border-color: var(--link-color, #0066cc); }
+
+.stat-card.is-active {
+    border-color: var(--link-color, #0066cc);
+    box-shadow: 0 0 0 1px var(--link-color, #0066cc);
+}
+
+.stat-card .stat-value {
+    display: block;
+    font-size: 22px;
+    font-weight: bold;
+    line-height: 1.2;
+}
+
+.stat-card .stat-label {
+    display: block;
+    font-size: 11px;
+    text-transform: uppercase;
+    color: var(--light-text-color, #8a8a8f);
+    margin-top: 4px;
+}
+
+.stat-card.stat-new .stat-value { color: #2563eb; }
+.stat-card.stat-spam .stat-value { color: #d0021b; }
+
+/* Visually hidden but available to screen readers (builder live region). */
+.sf-sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+}
+
+/* ---------- Submission detail ---------- */
+.sf-section-heading {
+    margin-top: 28px;
+}
+
+.sf-signature-preview {
+    max-width: 240px;
+    max-height: 120px;
+    border: 1px solid var(--hairline-color);
+    background: #fff;
+}
+
+/* ---------- Form builder (forms/edit) ---------- */
+.sf-builder { display: flex; gap: 24px; align-items: flex-start; }
+.sf-canvas-col { flex: 1 1 auto; min-width: 0; }
+.sf-sidebar { flex: 0 0 280px; width: 280px; }
+
+.sf-canvas {
+    min-height: 120px;
+    border: 1px dashed #cdd8e4;
+    border-radius: 5px;
+    padding: 12px;
+    background: #f9fbfd;
+}
+.sf-canvas .sf-empty { margin: 24px 0; text-align: center; }
+
+.sf-field {
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 12px;
+    margin-bottom: 8px;
+    background: #fff;
+    border: 1px solid #dfe5ec;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: border-color .15s, box-shadow .15s;
+}
+.sf-field:hover { border-color: #9aa5b1; }
+.sf-field.sel { border-color: #1f6fff; box-shadow: 0 0 0 1px #1f6fff; }
+.sf-field.dragging { opacity: .45; }
+.sf-field-label { font-weight: 600; }
+.sf-field-req { color: #cf2c2c; font-weight: 700; }
+.sf-field-type { margin-left: auto; font-size: 12px; color: #8a949e; text-transform: capitalize; }
+.sf-field-del {
+    border: none; background: transparent; color: #8a949e;
+    font-size: 18px; line-height: 1; cursor: pointer; padding: 0 4px;
+}
+.sf-field-del:hover { color: #cf2c2c; }
+/* Touch/keyboard reorder arrows (#291) — drag stays available, these are the
+   path that works on tablets and for keyboard users. */
+.sf-field-move {
+    border: none; background: transparent; color: #8a949e;
+    font-size: 14px; line-height: 1; cursor: pointer; padding: 0 3px;
+}
+.sf-field-move:hover:not(:disabled) { color: #1f6fff; }
+.sf-field-move:disabled { color: #d4dae0; cursor: default; }
+.sf-grip { color: #b3bcc6; cursor: grab; user-select: none; letter-spacing: -2px; }
+
+/* Step separators (#292): bracket each page's fields in a multi-page form. */
+.sf-page-sep {
+    display: flex; align-items: center; gap: 8px;
+    margin: 14px 0 6px; font-size: 11px; font-weight: 700;
+    color: #596673; text-transform: uppercase; letter-spacing: .5px;
+}
+.sf-page-sep::before, .sf-page-sep::after {
+    content: ''; flex: 1; border-top: 1px dashed #cdd8e4;
+}
+
+/* Multi-column rows in the canvas mirror the front-end grid so paired fields
+   preview side by side; widths come from the inline --sf-cols custom property. */
+.sf-builder-row {
+    display: grid;
+    gap: 8px;
+    grid-template-columns: var(--sf-cols, 1fr);
+    margin-bottom: 8px;
+}
+.sf-builder-row .sf-field { margin-bottom: 0; min-width: 0; }
+
+/* Drop indicators: a bold insertion bar shows where a dragged field will land.
+   A horizontal bar (top/bottom) means a vertical reorder; a vertical bar at the
+   edge — plus a highlight on the target — means a side-by-side pairing. */
+.sf-field.drop-before::after,
+.sf-field.drop-after::after,
+.sf-field.drop-left::after,
+.sf-field.drop-right::after {
+    content: '';
+    position: absolute;
+    background: #1f6fff;
+    border-radius: 3px;
+    z-index: 3;
+    pointer-events: none;
+}
+.sf-field.drop-before::after { left: 0; right: 0; top: -6px; height: 4px; }
+.sf-field.drop-after::after { left: 0; right: 0; bottom: -6px; height: 4px; }
+.sf-field.drop-left::after { top: -2px; bottom: -2px; left: -6px; width: 4px; }
+.sf-field.drop-right::after { top: -2px; bottom: -2px; right: -6px; width: 4px; }
+/* The side-by-side target lights up so it's obvious the field joins this column. */
+.sf-field.drop-left,
+.sf-field.drop-right {
+    border-color: #1f6fff;
+    background: #eef4ff;
+    box-shadow: 0 0 0 1px #1f6fff;
+}
+/* Tint the whole row when a column will be added, reinforcing "side by side". */
+.sf-builder-row:has(.drop-left),
+.sf-builder-row:has(.drop-right) {
+    outline: 1px dashed #9cc0ff;
+    outline-offset: 4px;
+    border-radius: 4px;
+}
+
+/* Layout blocks read as presentational, not as input rows. */
+.sf-field--layout { background: #f7f9fc; border-style: dashed; }
+.sf-field--layout .sf-field-label { font-weight: 500; color: #596673; font-style: italic; }
+.sf-palette-item--layout { background: #fbf7f2; }
+.sf-panel-title--group { margin-top: 16px; }
+
+/* Palette filter + grouping (#296). */
+.sf-palette-search { margin-bottom: 10px; }
+.sf-palette-group:first-of-type .sf-panel-title--group { margin-top: 4px; }
+.sf-palette-noresults { margin: 8px 2px 0; font-size: 13px; }
+
+/* Inline handle-collision warning under the Handle input (#296). */
+.sf-handle-error { margin: 5px 0 0; font-size: 12px; }
+
+.sf-panel {
+    border: 1px solid #dfe5ec;
+    border-radius: 5px;
+    padding: 14px;
+    background: #fff;
+    position: sticky;
+    top: 12px;
+}
+.sf-panel-title { font-size: 13px; text-transform: uppercase; letter-spacing: .04em; color: #8a949e; margin: 0 0 10px; }
+
+.sf-palette-item {
+    display: flex; align-items: center; gap: 8px; width: 100%;
+    text-align: left; padding: 9px 10px; margin-bottom: 6px;
+    border: 1px solid #dfe5ec; border-radius: 4px; background: #f7f9fc;
+    cursor: grab; font-size: 14px;
+}
+.sf-palette-item:hover { background: #eef3fb; border-color: #9aa5b1; }
+.sf-palette-item:active { cursor: grabbing; }
+
+/* Standard-only palette entries shown to Solo: visible but not interactive (no
+   .sf-palette-item class, so the builder JS never wires click/drag). */
+.sf-palette-locked {
+    display: flex; align-items: center; gap: 8px; width: 100%;
+    text-align: left; padding: 9px 10px; margin-bottom: 6px;
+    border: 1px dashed #dfe5ec; border-radius: 4px; background: #f4f6f9;
+    font-size: 14px; color: #9aa5b1; cursor: not-allowed;
+}
+.sf-edition-badge {
+    margin-left: auto; font-size: 11px; font-weight: 600;
+    text-transform: uppercase; letter-spacing: .04em;
+    color: #c2410c; background: #ffedd5; border-radius: 3px; padding: 1px 6px;
+}
+
+.sf-inspector-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
+.sf-inspector .field { margin-bottom: 14px; }
+.sf-inspector-back { padding: 4px 12px; }
+
+.sf-option-row { display: flex; gap: 6px; margin-bottom: 6px; }
+.sf-option-row .text { flex: 1; min-width: 0; }
+.sf-option-del { padding: 4px 10px; }
+.sf-option-add { margin-top: 4px; }
+
+.sf-cond { margin-top: 4px; }
+.sf-cond hr { margin: 14px 0 10px; }
+.sf-cond-line { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+.sf-cond-match { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; font-size: 13px; color: #5f6b7a; }
+.sf-cond-rules { border-left: 2px solid #dfe5ec; padding-left: 10px; margin-bottom: 12px; }
+.sf-cond-rule { display: flex; gap: 6px; margin-bottom: 6px; align-items: center; }
+.sf-cond-rule .select, .sf-cond-rule .sf-cond-value { flex: 1; min-width: 0; }
+.sf-cond-del { padding: 4px 9px; }
+.sf-cond-add { margin-top: 2px; }
+
+/* Conditional submit messages (#266) */
+.sf-submit-messages { margin: 4px 0 8px; }
+.sf-sm-row {
+    border: 1px solid var(--hairline-color, #e3e5e8);
+    border-radius: 5px;
+    padding: 12px 14px;
+    margin-bottom: 10px;
+    background: var(--gray-050, #f9fafb);
+}
+.sf-sm-row-head { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+.sf-sm-grip { cursor: grab; color: #8a949e; }
+.sf-sm-row-title { font-weight: 600; flex: 1; }
+.sf-sm-del { padding: 2px 9px; }
+.sf-sm-when { margin: 0 0 6px; }
+.sf-sm-warning { margin: 6px 0; }
+.sf-sm-msg-label { display: block; font-weight: 500; margin: 8px 0 4px; }
+.sf-sm-empty { margin: 0 0 10px; }
+.sf-sm-add-locked { opacity: .65; cursor: not-allowed; }
+
+@media (max-width: 800px) {
+    .sf-builder { flex-direction: column; }
+    .sf-sidebar { width: 100%; flex-basis: auto; }
+    .sf-panel { position: static; }
+}
+
+/* Submissions analytics (#111) */
+.sf-analytics-ranges { display: flex; gap: 6px; margin-bottom: 16px; }
+.sf-analytics-ranges .btn.active { background: var(--gray-200, #e4e7eb); font-weight: 600; }
+/* Daily bars sit on a hairline baseline; empty days stay empty so the shape of
+   the series reads at a glance. Colours come from Craft's CP palette variables
+   so both light and dark themes work. */
+.sf-bar-chart {
+    display: flex;
+    align-items: flex-end;
+    gap: 2px;
+    height: 160px;
+    padding: 0;
+    border-bottom: 1px solid var(--hairline-color, rgba(51, 64, 77, 0.1));
+}
+.sf-bar-col {
+    flex: 1 1 0;
+    display: flex;
+    align-items: flex-end;
+    height: 100%;
+    min-width: 3px;
+    border-radius: 2px 2px 0 0;
+}
+/* The whole day-column is the hover target (it's wider than the bar). */
+.sf-bar-col:hover { background: var(--gray-100, #edf0f5); }
+.sf-bar {
+    width: 100%;
+    background: var(--blue-600, #2563eb);
+    border-radius: 2px 2px 0 0;
+}
+/* Non-zero days keep a visible sliver even when dwarfed by the peak. */
+.sf-bar.has-count { min-height: 2px; }
+.sf-bar-col:hover .sf-bar { background: var(--blue-700, #1d4ed8); }
+/* Chart header (title + total/peak summary) and the date axis below the bars.
+   The axis mirrors the bar row's flex layout so each tick sits under its bar. */
+.sf-chart-head {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 8px;
+    margin-bottom: 14px;
+}
+.sf-chart-head h2 { margin: 0; }
+.sf-chart-sub { font-size: 12px; font-variant-numeric: tabular-nums; }
+.sf-chart-axis { display: flex; gap: 2px; margin-top: 6px; }
+.sf-chart-tick {
+    flex: 1 1 0;
+    min-width: 3px;
+    font-size: 10px;
+    line-height: 1.2;
+    color: var(--medium-text-color, #606d7b);
+    text-align: center;
+    white-space: nowrap;
+}
+/* Keep the first/last labels from spilling outside the pane. */
+.sf-chart-tick:first-child { text-align: left; }
+.sf-chart-tick:last-child { text-align: right; }
+
+/* Inline approve/delete actions in the spam review queue. */
+.sf-inline-action {
+    display: inline-block;
+    margin-right: 5px;
+}
+
+/* Failed-dispatch alert banner on the Integrations settings tab. */
+.sf-dispatch-alert {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin: 14px 0;
+    padding: 10px 14px;
+    border-radius: 4px;
+    background: #fdf2f2;
+    border: 1px solid #e3a3a3;
+}
+
+/* Approval workflow (#248): inline transition forms + add-row forms. */
+.sf-inline-form {
+    display: inline-block;
+    margin: 0;
+}
+.sf-workflow-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+.sf-workflow-add {
+    margin: 12px 0;
+}
+.sf-workflow-add .flex {
+    align-items: flex-end;
+    gap: 8px;
+}
+
+/* Survey report (#240): date-range filter, per-field cards, horizontal bars. */
+.sf-report-filter {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    gap: 14px;
+    margin-bottom: 18px;
+}
+.sf-report-filter-field { display: flex; flex-direction: column; gap: 4px; }
+.sf-report-filter-field label { font-weight: bold; }
+.sf-report-filter-actions { display: flex; gap: 6px; }
+.sf-report-summary { margin-bottom: 8px; }
+
+.sf-report-field {
+    margin: 18px 0;
+    padding-top: 14px;
+    border-top: 1px solid var(--hairline-color, #e3e5e8);
+}
+.sf-report-field:first-of-type { border-top: 0; }
+.sf-report-field h2 { margin-bottom: 6px; }
+
+.sf-report-bars { list-style: none; margin: 8px 0 0; padding: 0; }
+.sf-report-bar-row {
+    display: grid;
+    grid-template-columns: minmax(80px, 22%) 1fr minmax(80px, auto);
+    align-items: center;
+    gap: 10px;
+    padding: 3px 0;
+}
+.sf-report-bar-label { word-break: break-word; }
+.sf-report-bar-track {
+    display: block;
+    height: 14px;
+    border-radius: 3px;
+    background: var(--gray-100, #f3f4f6);
+    overflow: hidden;
+}
+.sf-report-bar-fill {
+    display: block;
+    height: 100%;
+    min-width: 2px;
+    border-radius: 3px;
+    background: var(--enabled-color, #3a85ee);
+}
+.sf-report-bar-value {
+    text-align: right;
+    color: var(--medium-text-color, #606d7b);
+    font-variant-numeric: tabular-nums;
+}
+
+/* Quiz answer-key controls in the field-builder option editor (#241). */
+.sf-answer-key {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    margin-left: 4px;
+    white-space: nowrap;
+}
+.sf-answer-key label { margin: 0; color: var(--medium-text-color, #606d7b); }
+.sf-answer-points { width: 56px; }
+
+/* Lifted from inline styles (#235): a tight top margin utility, and the static
+   distribution-bar rules (only width stays computed inline). The bar colour is a
+   theme token, not a hardcoded hex. */
+.sf-tight-top { margin-top: -8px; }
+
+/* Attribution detail list on the submission view (#249). */
+.sf-attribution {
+    display: grid;
+    grid-template-columns: minmax(90px, max-content) 1fr;
+    gap: 2px 10px;
+    margin: 6px 0 0;
+}
+.sf-attribution dt { font-weight: bold; color: var(--medium-text-color, #606d7b); margin: 0; }
+.sf-attribution dd { margin: 0; word-break: break-word; }
+.sf-dist-bar {
+    display: inline-block;
+    height: .9em;
+    min-width: 2px;
+    vertical-align: middle;
+    background: var(--enabled-color, #3a85ee);
+    border-radius: 2px;
+}
+
+
+/* ==========================================================================
+   Dashboard landing page.
+   Native CP building blocks (.pane, .data, .status, .zilch, .go) arranged as
+   a stat-tile row + a main/side grid. Every colour is a Craft CP custom
+   property (with a light-theme fallback) so dark mode inherits for free.
+   ========================================================================== */
+.sf-dash {
+    --sf-dash-gap: 14px;
+    display: flex;
+    flex-direction: column;
+    gap: var(--sf-dash-gap);
+}
+/* The grid gaps own the vertical rhythm, not the panes' default margins. */
+.sf-dash .pane { margin: 0; }
+
+/* --- At-a-glance stat tiles (linked panes) --- */
+.sf-dash-tiles {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+    gap: var(--sf-dash-gap);
+}
+a.sf-tile {
+    display: block;
+    padding: 16px 20px;
+    color: var(--text-color, #3f4d5a);
+    text-decoration: none;
+}
+a.sf-tile:hover {
+    text-decoration: none;
+    border-color: var(--medium-hairline-color, #cfd8e3);
+}
+a.sf-tile:focus-visible { box-shadow: var(--focus-ring, 0 0 0 3px #5e9eff); }
+.sf-tile-label {
+    display: block;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--medium-text-color, #606d7b);
+}
+.sf-tile-value {
+    display: block;
+    margin-top: 2px;
+    font-size: 26px;
+    font-weight: 600;
+    line-height: 1.2;
+    font-variant-numeric: tabular-nums;
+}
+.sf-tile-meta {
+    display: flex;
+    align-items: center;
+    margin-top: 4px;
+    font-size: 12px;
+    color: var(--light-text-color, #8b97a3);
+}
+/* A scaled-down native status dot inside the small meta line. */
+.sf-tile-meta .status {
+    width: 0.5rem;
+    height: 0.5rem;
+    margin-inline-end: 5px;
+}
+
+/* --- Main/side grid --- */
+.sf-dash-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 5fr) minmax(240px, 2fr);
+    gap: var(--sf-dash-gap);
+    align-items: start;
+}
+.sf-dash-main,
+.sf-dash-side {
+    display: flex;
+    flex-direction: column;
+    gap: var(--sf-dash-gap);
+    min-width: 0;
+}
+@media (max-width: 973px) {
+    .sf-dash-grid { grid-template-columns: minmax(0, 1fr); }
+}
+
+/* Hairline-separated pane footer holding a native .go link. */
+.sf-pane-footer {
+    margin-top: 14px;
+    padding-top: 12px;
+    border-top: 1px solid var(--hairline-color, rgba(51, 64, 77, 0.1));
+}
+
+/* --- Needs attention --- */
+.sf-attention { border-inline-start: 3px solid var(--bg-pending, #fdd069); }
+.sf-attention-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+.sf-attention-list li { display: flex; align-items: flex-start; }
+.sf-attention-list .status {
+    flex: 0 0 auto;
+    margin-top: 4px;
+}
+
+/* --- Top forms (quick links with proportion bars) --- */
+.sf-topforms {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+.sf-topform-head {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 10px;
+}
+.sf-topform-head a {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.sf-topform-head .light {
+    flex: 0 0 auto;
+    font-size: 12px;
+    font-variant-numeric: tabular-nums;
+}
+.sf-topform-track {
+    margin-top: 4px;
+    height: 4px;
+    border-radius: 2px;
+    background: var(--gray-100, #edf0f5);
+    overflow: hidden;
+}
+.sf-topform-bar {
+    display: block;
+    height: 100%;
+    min-width: 2px;
+    border-radius: 2px;
+    background: var(--blue-600, #2563eb);
+}
+
+/* --- By weekday (horizontal labelled bars) --- */
+.sf-hbars { display: flex; flex-direction: column; gap: 8px; }
+.sf-hbar-row { display: flex; align-items: center; gap: 10px; }
+.sf-hbar-label {
+    flex: 0 0 36px;
+    font-size: 12px;
+    color: var(--light-text-color, #8b97a3);
+}
+.sf-hbar-track {
+    flex: 1;
+    height: 8px;
+    background: var(--gray-100, #edf0f5);
+    border-radius: 4px;
+    overflow: hidden;
+}
+.sf-hbar-fill {
+    display: block;
+    height: 100%;
+    background: var(--blue-600, #2563eb);
+    border-radius: 4px;
+}
+.sf-hbar-val {
+    flex: 0 0 auto;
+    min-width: 20px;
+    text-align: right;
+    font-size: 12px;
+    color: var(--medium-text-color, #606d7b);
+    font-variant-numeric: tabular-nums;
+}
+
+/* --- First-run empty state --- */
+.sf-dash-empty .zilch {
+    flex-direction: column;
+    gap: 6px;
+    padding-block: 72px;
+    padding-inline: 24px;
+}
+.sf-dash-empty .zilch p { margin: 0; }
+.sf-dash-empty-icon {
+    width: 56px;
+    height: 56px;
+    color: var(--gray-300, #cdd8e4);
+    stroke: currentColor;
+}
+.sf-dash-empty-sub {
+    max-width: 40em;
+    font-size: 14px;
+}
+.sf-dash-empty .btn { margin-top: 10px; }
+
+/* Flush tables inside dashboard panes: no left/right cell padding. */
+.sf-dash .data th:first-child,
+.sf-dash .data td:first-child { padding-left: 0; }
+.sf-dash .data th:last-child,
+.sf-dash .data td:last-child { padding-right: 0; }
+.sf-dash .data tbody th { font-weight: normal; }
+/* Right-align the trailing (date) column. */
+.sf-dash .data .sf-cell-end { text-align: right; }

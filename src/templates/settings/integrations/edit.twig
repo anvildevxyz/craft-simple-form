@@ -1,0 +1,90 @@
+{% extends '_layouts/cp.twig' %}
+{% import '_includes/forms.twig' as forms %}
+
+{% set title = integration and integration.id
+    ? 'Edit Integration'|t('simple-form')
+    : 'New Integration'|t('simple-form') %}
+{% set selectedSubnavItem = 'settings' %}
+{% do craft.app.view.registerAssetBundle('anvildev\\simpleform\\web\\assets\\cp\\SimpleFormCpAsset') %}
+
+{% set crumbs = [
+    { label: 'Simple Form'|t('simple-form'), url: cpUrl('simple-form/forms') },
+    { label: 'Settings'|t('simple-form'), url: cpUrl('simple-form/settings') },
+    { label: 'Integrations'|t('simple-form'), url: cpUrl('simple-form/settings/integrations') },
+] %}
+
+{# Editing an existing integration locks the type — changing it would orphan the
+   saved settings. New integrations pick a type from the dropdown, which loads
+   that type's fields. #}
+{% set isExisting = integration and integration.id %}
+
+{% block content %}
+<div class="field">
+    <div class="heading">
+        <label id="integration-type-label" for="sf-integration-type">{{ 'Integration type'|t('simple-form') }}</label>
+    </div>
+    <div class="input">
+        <div class="select{{ isExisting ? ' disabled' : '' }}">
+            <select id="sf-integration-type"
+                    aria-labelledby="integration-type-label"
+                    {{ isExisting ? 'disabled' : '' }}
+                    {% if not isExisting %}data-new-url="{{ cpUrl('simple-form/settings/integrations/new') }}"{% endif %}>
+                <option value="">{{ 'Choose a type…'|t('simple-form') }}</option>
+                {% set selectedType = integration ? integration.type : null %}
+                {% for handle, name in availableTypes %}
+                    <option value="{{ handle }}"{{ selectedType == handle ? ' selected' : '' }}>{{ name }}</option>
+                {% endfor %}
+            </select>
+        </div>
+    </div>
+</div>
+
+{% if type is null %}
+    <p class="light">{{ 'Choose an integration type to configure it.'|t('simple-form') }}</p>
+{% else %}
+    <form method="post" accept-charset="UTF-8">
+        {{ csrfInput() }}
+        <input type="hidden" name="action" value="simple-form/integrations/save">
+        {{ redirectInput('simple-form/settings/integrations') }}
+        {% if integration.id %}<input type="hidden" name="integrationId" value="{{ integration.id }}">{% endif %}
+        <input type="hidden" name="type" value="{{ integration.type }}">
+
+        {{ forms.textField({
+            label: 'Name'|t('simple-form'),
+            id: 'name',
+            name: 'name',
+            value: integration.name,
+            required: true,
+        }) }}
+
+        {{ forms.lightswitchField({
+            label: 'Enabled'|t('simple-form'),
+            id: 'enabled',
+            name: 'enabled',
+            on: integration.enabled,
+            instructions: 'When off, this integration is skipped on every form it is enabled on.'|t('simple-form'),
+        }) }}
+
+        <hr>
+        <h2>{{ type.displayName() }} {{ 'settings'|t('simple-form') }}</h2>
+
+        {% if errors is not empty %}
+            <ul class="errors">
+                {% for attr, attrErrors in errors %}
+                    {% for err in attrErrors %}<li>{{ err }}</li>{% endfor %}
+                {% endfor %}
+            </ul>
+        {% endif %}
+
+        {% namespace 'settings' %}
+            {# displaySettings has stored literal secrets blanked (#429); env
+               references stay visible. Falls back to the raw settings for safety. #}
+            {{ type.settingsHtml(displaySettings ?? integration.settings)|raw }}
+        {% endnamespace %}
+
+        <div class="buttons">
+            <button type="submit" class="btn submit">{{ 'Save'|t('simple-form') }}</button>
+        </div>
+    </form>
+{% endif %}
+{% endblock %}

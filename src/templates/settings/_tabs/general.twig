@@ -1,0 +1,89 @@
+{% import "_includes/forms.twig" as forms %}
+
+<h2>{{ 'General'|t('simple-form') }}</h2>
+
+{{ forms.textField({
+    label: 'Default Submit Message'|t('simple-form'),
+    name: 'submitMessage',
+    value: settings.submitMessage ?? 'Thank you! Your submission has been received.',
+    instructions: 'Message shown to users after successful form submission.'|t('simple-form'),
+    errors: settings.getErrors('submitMessage') ?? [],
+}) }}
+
+{{ forms.textField({
+    label: 'Default Error Message'|t('simple-form'),
+    name: 'errorMessage',
+    value: settings.errorMessage ?? 'There was an error submitting your form. Please try again.',
+    instructions: 'Message shown to users if form submission fails.'|t('simple-form'),
+    errors: settings.getErrors('errorMessage') ?? [],
+}) }}
+
+{{ forms.selectField({
+    label: 'Storage Location'|t('simple-form'),
+    name: 'storageLocation',
+    options: {
+        'database': 'Database (Default)'|t('simple-form'),
+    },
+    value: settings.storageLocation ?? 'database',
+    instructions: 'Currently only database storage is supported.'|t('simple-form'),
+    errors: settings.getErrors('storageLocation') ?? [],
+}) }}
+
+{% set uploadVolumeOptions = [{ label: 'First available volume'|t('simple-form'), value: '' }] %}
+{% for volume in craft.app.volumes.allVolumes %}
+    {% set uploadVolumeOptions = uploadVolumeOptions|merge([{ label: volume.name, value: volume.handle }]) %}
+{% endfor %}
+
+{{ forms.selectField({
+    label: 'Default upload volume'|t('simple-form'),
+    name: 'uploadVolume',
+    options: uploadVolumeOptions,
+    value: settings.uploadVolume ?? '',
+    instructions: 'Where File Upload and Signature field assets are stored when the field doesn’t choose its own volume. Leave on “First available volume” to keep the previous behaviour.'|t('simple-form'),
+    errors: settings.getErrors('uploadVolume') ?? [],
+}) }}
+
+{{ forms.autosuggestField({
+    label: 'Default render template path'|t('simple-form'),
+    name: 'templatePath',
+    suggestEnvVars: false,
+    value: settings.templatePath,
+    errors: settings.getErrors('templatePath') ?? [],
+    instructions: 'A folder of Twig partials in your site’s templates/ (e.g. `_simple-form`) used as the default custom template. It applies to a form only when that form has “Use a custom render template” enabled, and a per-form path there overrides this. Leave blank to use the built-in markup.'|t('simple-form'),
+    placeholder: '_simple-form',
+}) }}
+
+<hr>
+<h2>{{ 'Address Autocomplete'|t('simple-form') }}</h2>
+<p class="light">{{ 'An Address field can offer type-ahead address lookup (enable it per field in the form builder). Choose the geocoding provider here. Photon and Nominatim are keyless OpenStreetMap services; addresses typed by visitors are sent to the provider to fetch suggestions.'|t('simple-form') }}</p>
+
+{{ forms.selectField({
+    label: 'Provider'|t('simple-form'),
+    name: 'addressAutocompleteProvider',
+    options: {
+        'photon': 'Photon (OpenStreetMap, no key)'|t('simple-form'),
+        'nominatim': 'Nominatim (OpenStreetMap, no key)'|t('simple-form'),
+    },
+    value: settings.addressAutocompleteProvider ?? 'photon',
+    instructions: 'Which geocoding service powers address suggestions.'|t('simple-form'),
+    errors: settings.getErrors('addressAutocompleteProvider') ?? [],
+}) }}
+
+{{ forms.autosuggestField({
+    label: 'Endpoint override'|t('simple-form'),
+    name: 'addressAutocompleteEndpoint',
+    suggestEnvVars: true,
+    value: settings.addressAutocompleteEndpoint,
+    errors: settings.getErrors('addressAutocompleteEndpoint') ?? [],
+    instructions: 'Optional. Point at a self-hosted Photon/Nominatim instance. Leave blank to use the provider’s public endpoint.'|t('simple-form'),
+    placeholder: 'https://photon.example.com/api/',
+}) }}
+
+{{ forms.autosuggestField({
+    label: 'API key'|t('simple-form'),
+    name: 'addressAutocompleteApiKey',
+    suggestEnvVars: true,
+    value: settings.addressAutocompleteApiKey,
+    errors: settings.getErrors('addressAutocompleteApiKey') ?? [],
+    instructions: 'Optional. Only needed for providers that require a key. The keyless OpenStreetMap providers ignore it. Use an environment variable for secrets.'|t('simple-form'),
+}) }}

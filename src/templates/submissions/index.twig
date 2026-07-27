@@ -1,0 +1,33 @@
+{% extends '_layouts/elementindex' %}
+
+{# Native Craft element index for submissions: per-form + per-status sources,
+   customizable/sortable columns, native bulk status actions, CSV exporter, and
+   saved views. Column rendering + sources live on the Submission element; the
+   `cp.layouts.elementindex` hook derives display names, sources, and column
+   config from the element type, so this template only names it and keeps the
+   Analytics shortcut. #}
+
+{% set title = 'Submissions'|t('simple-form') %}
+{% set elementType = 'anvildev\\simpleform\\elements\\Submission' %}
+{% set selectedSubnavItem = 'submissions' %}
+
+{# Preserve the CP's existing deep links: a `?formId=`/`?status=` query (from the
+   Dashboard, the Forms index, or a form chip) opens the index on the matching
+   native source instead of being silently ignored. #}
+{% set qFormId = craft.app.request.getQueryParam('formId') %}
+{% set qStatus = craft.app.request.getQueryParam('status') %}
+{% if qFormId %}
+    {% set defaultSource = 'form:' ~ qFormId %}
+{% elseif qStatus and qStatus != 'all' %}
+    {% set defaultSource = 'status:' ~ qStatus %}
+{% endif %}
+
+{% block actionButton %}
+    {# Carry the deep-link filters (#317) so the column picker + export scope to
+       the same form/status the operator arrived on. #}
+    {% set exportParams = {} %}
+    {% if qFormId %}{% set exportParams = exportParams|merge({ formId: qFormId }) %}{% endif %}
+    {% if qStatus %}{% set exportParams = exportParams|merge({ status: qStatus }) %}{% endif %}
+    <a class="btn" href="{{ cpUrl('simple-form/submissions/export-options', exportParams) }}">{{ 'Export CSV'|t('simple-form') }}</a>
+    <a class="btn" href="{{ cpUrl('simple-form/submissions/analytics') }}">{{ 'Analytics'|t('simple-form') }}</a>
+{% endblock %}

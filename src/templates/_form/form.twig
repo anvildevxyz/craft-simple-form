@@ -1,0 +1,103 @@
+{#
+  Default Simple Form theme — whole-form wrapper (#137).
+
+  Variables (see FormRenderService::buildContext()):
+    form           Form element
+    handle         the form handle (string)
+    fields         resolved field rows (see field.twig)
+    rows           fields grouped into layout rows (FormRows::group), each a list
+    steps          list of field groups (FormSteps::group)
+    stepRows       per-step layout-row grouping (list of rows per step)
+    options        caller render options
+    submitText     translated submit-button text
+    formClass      space-joined class string ("simple-form …")
+    formId         extra id on <form>, or null
+    extraAttributes  map of extra attrs on <form>
+    action         submit endpoint URL
+    hasFileField   whether a multipart enctype is needed
+    errorMessage   configured (localized) error message
+    flashSuccess   no-JS round-trip: flashed success message or '' (#287)
+    flashErrors    no-JS round-trip: flashed list<string> of errors (#287)
+    csrfInput      Markup — place verbatim
+    honeypot       Markup|'' — hidden honeypot input
+    captcha        Markup|'' — captcha widget
+    assets         Markup|'' — inline CSS/JS or '' (bundle)
+    resume         { enabled, values, token, url, labels } or null
+    partials       map of resolved partial template paths
+
+  A theme may override this file wholesale or any included partial individually.
+-#}
+{%- apply spaceless -%}
+<form class="{{ formClass }}" method="POST"{% if hasFileField %} enctype="multipart/form-data"{% endif %}{% if errorMessage %} data-sf-error="{{ errorMessage }}"{% endif %}{% if captureUrl %} data-sf-capture="{{ captureUrl }}"{% endif %}{% if jumpsAttr %} data-sf-jumps="{{ jumpsAttr }}"{% endif %}{% if resume and resume.enabled %} data-sf-resume="{{ resume.url }}" data-sf-resume-label="{{ resume.labels.saved }}" data-sf-resume-copy="{{ resume.labels.copy }}" data-sf-resume-copied="{{ resume.labels.copied }}"{% if resume.token %} data-sf-resume-token="{{ resume.token }}"{% endif %}{% endif %}{% if formId %} id="{{ formId }}"{% endif %}{% for name, value in extraAttributes %} {{ name }}="{{ value }}"{% endfor %} action="{{ action }}">
+{%- if flashSuccess is defined and flashSuccess -%}
+<p class="simple-form-success" role="status">{{ flashSuccess }}</p>
+{%- endif -%}
+{%- if flashErrors is defined and flashErrors|length -%}
+{% include partials.errors with { errors: flashErrors } only %}
+{%- endif -%}
+{{- csrfInput -}}
+<input type="hidden" name="formHandle" value="{{ handle }}">
+{{- honeypot -}}
+{{- attributionInput -}}
+{{- captureInput -}}
+{%- if renderMode == 'conversational' and screens|length > 1 -%}
+  {#- Built-in conversational theme progress bar (#243); JS fills its width. The
+      text progress in step-nav stays the a11y live region. -#}
+  <div class="simple-form-progressbar" aria-hidden="true"><span data-sf-progressbar></span></div>
+  {%- for i, screenRows in screens -%}
+    <div class="simple-form-step" data-sf-step="{{ i }}"{% if i > 0 %} hidden{% endif %}>
+    {%- for row in screenRows -%}
+      {%- if row|length > 1 -%}
+        <div class="simple-form-row" data-cols="{{ row|length }}" style="--sf-cols: {{ row|map(field => (field.config.width ?? 1) ~ 'fr')|join(' ') }};">
+        {%- for field in row -%}
+          <div class="simple-form-col">{% include partials.field with { field: field, partials: partials, values: resume ? resume.values : {} } only %}</div>
+        {%- endfor -%}
+        </div>
+      {%- else -%}
+        {% include partials.field with { field: row[0], partials: partials, values: resume ? resume.values : {} } only %}
+      {%- endif -%}
+    {%- endfor -%}
+    {%- if i == (screens|length - 1) -%}
+      {% include partials.captcha with { captcha: captcha } only %}
+    {%- endif -%}
+    </div>
+  {%- endfor -%}
+  {% include partials['step-nav'] with { steps: screens, submitText: submitText, resume: resume, progressLabel: progressLabel } only %}
+{%- elseif steps|length <= 1 -%}
+  {%- for row in rows -%}
+    {%- if row|length > 1 -%}
+      <div class="simple-form-row" data-cols="{{ row|length }}" style="--sf-cols: {{ row|map(field => (field.config.width ?? 1) ~ 'fr')|join(' ') }};">
+      {%- for field in row -%}
+        <div class="simple-form-col">{% include partials.field with { field: field, partials: partials, values: resume ? resume.values : {} } only %}</div>
+      {%- endfor -%}
+      </div>
+    {%- else -%}
+      {% include partials.field with { field: row[0], partials: partials, values: resume ? resume.values : {} } only %}
+    {%- endif -%}
+  {%- endfor -%}
+  {% include partials.captcha with { captcha: captcha } only %}
+  <button type="submit" class="simple-form-submit-btn">{{ submitText }}</button>
+{%- else -%}
+  {%- for i, stepFields in steps -%}
+    <div class="simple-form-step" data-sf-step="{{ i }}"{% if i > 0 %} hidden{% endif %}>
+    {%- for row in stepRows[i] -%}
+      {%- if row|length > 1 -%}
+        <div class="simple-form-row" data-cols="{{ row|length }}" style="--sf-cols: {{ row|map(field => (field.config.width ?? 1) ~ 'fr')|join(' ') }};">
+        {%- for field in row -%}
+          <div class="simple-form-col">{% include partials.field with { field: field, partials: partials, values: resume ? resume.values : {} } only %}</div>
+        {%- endfor -%}
+        </div>
+      {%- else -%}
+        {% include partials.field with { field: row[0], partials: partials, values: resume ? resume.values : {} } only %}
+      {%- endif -%}
+    {%- endfor -%}
+    {%- if i == (steps|length - 1) -%}
+      {% include partials.captcha with { captcha: captcha } only %}
+    {%- endif -%}
+    </div>
+  {%- endfor -%}
+  {% include partials['step-nav'] with { steps: steps, submitText: submitText, resume: resume, progressLabel: progressLabel } only %}
+{%- endif -%}
+</form>
+{%- endapply -%}
+{% include partials.assets with { assets: assets } only %}

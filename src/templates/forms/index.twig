@@ -1,0 +1,199 @@
+{% extends '_layouts/cp.twig' %}
+{% import "_includes/forms.twig" as cpForms %}
+
+{% set title = 'Forms'|t('simple-form') %}
+{% set selectedSubnavItem = 'forms' %}
+{% do craft.app.view.registerAssetBundle('anvildev\\simpleform\\web\\assets\\cp\\SimpleFormCpAsset') %}
+
+{% block actionButton %}
+    <div class="btngroup">
+        <button type="button" class="btn" id="sf-import-btn">
+            {{ 'Import a form'|t('simple-form') }}
+        </button>
+        {% if stencils|length %}
+            <a class="btn submit add icon" href="{{ cpUrl('simple-form/forms/new') }}">
+                {{ 'New Form'|t('simple-form') }}
+            </a>
+            <button type="button" class="btn submit menubtn" title="{{ 'New form from stencil'|t('simple-form') }}" aria-label="{{ 'New form from stencil'|t('simple-form') }}"></button>
+            <div class="menu">
+                <ul>
+                    <li>
+                        <a href="{{ cpUrl('simple-form/forms/new') }}">{{ 'Blank form'|t('simple-form') }}</a>
+                    </li>
+                </ul>
+                <hr>
+                <h6>{{ 'Start from a stencil'|t('simple-form') }}</h6>
+                <ul>
+                    {% for stencil in stencils %}
+                        <li>
+                            {# data-form="false": this page has no fullPageForm (and
+                               Garnish detaches menus to <body>), so Craft must build
+                               the hidden CSRF form itself. #}
+                            <a class="formsubmit"
+                               data-form="false"
+                               data-action="simple-form/forms/new-from-stencil"
+                               data-params="{{ { stencil: stencil.handle }|json_encode }}"
+                               title="{{ stencil.description }}">
+                                {{ stencil.name }}
+                            </a>
+                        </li>
+                    {% endfor %}
+                </ul>
+            </div>
+        {% else %}
+            <a class="btn submit add icon" href="{{ cpUrl('simple-form/forms/new') }}">
+                {{ 'New Form'|t('simple-form') }}
+            </a>
+        {% endif %}
+    </div>
+{% endblock %}
+
+{% block content %}
+{% if forms %}
+    <table class="data fullwidth collapsible">
+        <thead>
+            <tr>
+                <th>{{ 'Name'|t('simple-form') }}</th>
+                <th>{{ 'Handle'|t('simple-form') }}</th>
+                <th>{{ 'Status'|t('simple-form') }}</th>
+                <th class="rightalign">{{ 'Submissions'|t('simple-form') }}</th>
+                <th>{{ 'Last submission'|t('simple-form') }}</th>
+                <th>{{ 'Date Created'|t('simple-form') }}</th>
+                <th></th>
+                <th></th>
+                <th></th>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for form in forms %}
+                {% set fstat = formStats[form.id] ?? { count: 0, spam: 0, last: null } %}
+                <tr>
+                    <td>
+                        <a href="{{ cpUrl('simple-form/forms/edit/' ~ form.id) }}">
+                            {{ form.title ?: form.name }}
+                        </a>
+                    </td>
+                    <td>{{ form.handle }}</td>
+                    <td>
+                        <span class="status {{ form.status == 'live' or form.status == 'enabled' ? 'enabled' : 'disabled' }}"></span>
+                        {{ form.status == 'live' or form.status == 'enabled' ? 'Enabled'|t('simple-form') : 'Disabled'|t('simple-form') }}
+                    </td>
+                    <td class="rightalign">
+                        {% if fstat.count %}
+                            <a href="{{ cpUrl('simple-form/submissions', { formId: form.id, status: 'all' }) }}">{{ fstat.count }}</a>
+                            {%- if fstat.spam %} <span class="light">({{ fstat.spam }} {{ 'spam'|t('simple-form') }})</span>{% endif %}
+                        {% else %}
+                            <span class="light">0</span>
+                        {% endif %}
+                    </td>
+                    <td>{{ fstat.last ? fstat.last|timestamp('short') : '—' }}</td>
+                    <td>{{ form.dateCreated|date('short') }}</td>
+                    <td class="thin">
+                        <a class="btn small"
+                           href="{{ cpUrl('simple-form/forms/' ~ form.id ~ '/integrations') }}">
+                            {{ 'Integrations'|t('simple-form') }}
+                        </a>
+                    </td>
+                    <td class="thin">
+                        <a class="btn small formsubmit"
+                           data-form="false"
+                           data-action="simple-form/forms/duplicate"
+                           data-params="{{ { formId: form.id }|json_encode }}">
+                            {{ 'Duplicate'|t('simple-form') }}
+                        </a>
+                    </td>
+                    <td class="thin">
+                        <a class="btn small icon download"
+                           title="{{ 'Export'|t('simple-form') }}"
+                           href="{{ cpUrl('simple-form/forms/export/' ~ form.id) }}">
+                            {{ 'Export'|t('simple-form') }}
+                        </a>
+                    </td>
+                    <td class="thin">
+                        <a class="delete icon formsubmit"
+                           title="{{ 'Delete'|t('simple-form') }}"
+                           role="button"
+                           tabindex="0"
+                           data-form="false"
+                           data-action="simple-form/forms/delete"
+                           data-confirm="{{ 'Delete this form?'|t('simple-form') }}"
+                           data-param="formId"
+                           data-value="{{ form.id }}">
+                        </a>
+                    </td>
+                </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+{% else %}
+    <div class="zilch sf-empty-state">
+        <p class="sf-empty-heading">{{ 'No forms yet.'|t('simple-form') }}</p>
+        <p class="light">{{ 'Create your first form to start collecting submissions.'|t('simple-form') }}</p>
+        <div class="btngroup">
+            <a class="btn submit add icon" href="{{ cpUrl('simple-form/forms/new') }}">{{ 'New Form'|t('simple-form') }}</a>
+            {% if stencils|length %}
+                <button type="button" class="btn submit menubtn" title="{{ 'New form from stencil'|t('simple-form') }}" aria-label="{{ 'New form from stencil'|t('simple-form') }}"></button>
+                <div class="menu">
+                    <h6>{{ 'Start from a stencil'|t('simple-form') }}</h6>
+                    <ul>
+                        {% for stencil in stencils %}
+                            <li>
+                                {# data-form="false": this page has no fullPageForm (and
+                                   Garnish detaches menus to <body>), so Craft must build
+                                   the hidden CSRF form itself. #}
+                                <a class="formsubmit"
+                                   data-form="false"
+                                   data-action="simple-form/forms/new-from-stencil"
+                                   data-params="{{ { stencil: stencil.handle }|json_encode }}"
+                                   title="{{ stencil.description }}">
+                                    {{ stencil.name }}
+                                </a>
+                            </li>
+                        {% endfor %}
+                    </ul>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+{% endif %}
+
+{# =========================================================================
+   Import modal — file upload + conflict mode, posted to forms/import.
+   ========================================================================= #}
+<form id="sf-import-modal"
+      class="modal fitted"
+      method="post"
+      accept-charset="UTF-8"
+      enctype="multipart/form-data"
+      style="display:none;">
+    {{ csrfInput() }}
+    {{ actionInput('simple-form/forms/import') }}
+    <div class="body">
+        <h2>{{ 'Import a form'|t('simple-form') }}</h2>
+        <p class="light">{{ 'Upload a form definition JSON file exported from Simple Form. Secrets are never included and must be re-entered after import.'|t('simple-form') }}</p>
+
+        {{ cpForms.field({
+            label: 'Form definition (.json)'|t('simple-form'),
+            required: true,
+        }, tag('input', { type: 'file', name: 'file', accept: '.json,application/json' })) }}
+
+        {{ cpForms.selectField({
+            label: 'If the handle already exists'|t('simple-form'),
+            name: 'mode',
+            options: [
+                { value: 'rename', label: 'Import under a new handle'|t('simple-form') },
+                { value: 'replace', label: 'Replace the existing form (discards its submissions)'|t('simple-form') },
+                { value: 'abort', label: 'Abort the import'|t('simple-form') },
+            ],
+            value: 'rename',
+        }) }}
+    </div>
+    <div class="footer">
+        <div class="buttons right">
+            <button type="button" class="btn" data-sf-import-cancel>{{ 'Cancel'|t('simple-form') }}</button>
+            <button type="submit" class="btn submit">{{ 'Import'|t('simple-form') }}</button>
+        </div>
+    </div>
+</form>
+{% endblock %}

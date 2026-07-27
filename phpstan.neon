@@ -1,0 +1,66 @@
+includes:
+    - vendor/craftcms/phpstan/phpstan.neon
+
+parameters:
+    level: 7
+    paths:
+        - src
+        - tests/unit
+    excludePaths:
+        - vendor
+        # Codeception-backed integration suite + its support/bootstrap: the actor
+        # pattern, _generated helpers, and craft\test framework magic aren't
+        # statically analysable. The unit suite (tests/unit) stays analysed.
+        - tests/integration
+        - tests/smoke
+        - tests/_support
+        - tests/_bootstrap.php
+    bootstrapFiles:
+        - vendor/autoload.php
+        - vendor/craftcms/cms/bootstrap/console.php
+    ignoreErrors:
+        - '#Plugin::\$plugin#'
+        # Craft convention: migrations call `addColumn($table, $name, $this->string())`
+        # where `$this->string()` returns a ColumnSchemaBuilder. Yii's runtime
+        # accepts both string and ColumnSchemaBuilder (via __toString), but the
+        # phpstub is stricter. Suppress the consistent false positive.
+        -
+            message: '#Parameter \#3 \$type of method yii\\db\\Migration::addColumn\(\) expects string, yii\\db\\ColumnSchemaBuilder given#'
+            path: src/migrations/
+        # Craft Commerce is a SOFT dependency (#116): the Payment field + order
+        # flow are guarded by class_exists()/commerceAvailable() and only run when
+        # Commerce is installed, which the plugin's standalone vendor does not
+        # include. Without the package the whole order/charge path is unanalysable
+        # (unknown classes + the by-ref $redirect that processPayment() mutates
+        # reads as always-null). Ignore the resulting noise on the guarded paths only.
+        -
+            message: '#unknown class craft\\commerce\\#'
+            paths:
+                - src/Plugin.php
+                - src/services/PaymentsService.php
+        -
+            message: '#(invalid (return )?type|Instantiated class|Class|Caught class) craft\\commerce\\#'
+            path: src/services/PaymentsService.php
+        -
+            message: '#\$element of method craft\\services\\Elements::saveElement\(\) expects craft\\base\\ElementInterface, craft\\commerce\\#'
+            path: src/services/PaymentsService.php
+        -
+            message: '#(Call to function is_string\(\) with null will always evaluate to false|Result of && is always false)#'
+            path: src/services/PaymentsService.php
+        # Yii's InlineValidator rebinds the rule Closure's `$this` to the model
+        # being validated (the DynamicModel in IntegrationsService::validateSettings)
+        # via Closure::bindTo, so `$this->addError()` resolves at runtime even
+        # though the closure is lexically a static factory. PHPStan can't see the
+        # rebind. This is the documented Yii pattern for the SSRF URL save-time
+        # check (F3), single-sourced in SafeUrl::settingUrlRule().
+        -
+            message: '#Undefined variable: \$this#'
+            path: src/helpers/SafeUrl.php
+        # Same Yii InlineValidator `$this` rebind, for connectors that keep their
+        # own non-URL save-time validators (e.g. GoogleSheetsIntegration's
+        # service-account-key / column-mapping rules call `$this->addError()` on
+        # the rebound DynamicModel). PHPStan can't see the rebind here either.
+        -
+            message: '#Call to an undefined method anvildev\\simpleform\\integrations\\.+::addError\(\)#'
+            path: src/integrations/
+    reportUnmatchedIgnoredErrors: false

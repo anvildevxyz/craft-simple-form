@@ -1,0 +1,128 @@
+{% extends '_layouts/cp.twig' %}
+
+{% set title = 'Submissions Analytics'|t('simple-form') %}
+{% set selectedSubnavItem = 'submissions' %}
+{% do craft.app.view.registerAssetBundle('anvildev\\simpleform\\web\\assets\\cp\\SimpleFormCpAsset') %}
+
+{% set crumbs = [
+    { label: 'Simple Form'|t('simple-form'), url: cpUrl('simple-form/forms') },
+    { label: 'Submissions'|t('simple-form'), url: cpUrl('simple-form/submissions') },
+] %}
+
+{% block actionButton %}
+    <a class="btn" href="{{ cpUrl('simple-form/submissions') }}">{{ '← Back to submissions'|t('simple-form') }}</a>
+{% endblock %}
+
+{% block content %}
+    {# Range selector #}
+    <div class="sf-analytics-ranges">
+        {% for r in ranges %}
+            <a class="btn{{ r == days ? ' active' : '' }}"
+               href="{{ cpUrl('simple-form/submissions/analytics', { range: r, formId: formId }) }}">
+                {{ 'Last {n} days'|t('simple-form', { n: r }) }}
+            </a>
+        {% endfor %}
+    </div>
+
+    {# Status breakdown #}
+    <div class="submission-stats">
+        {% set cards = [
+            { label: 'Total'|t('simple-form'), value: stats.total, key: '' },
+            { label: 'New'|t('simple-form'), value: stats.new, key: 'new' },
+            { label: 'Read'|t('simple-form'), value: stats.read, key: 'read' },
+            { label: 'Archived'|t('simple-form'), value: stats.archived, key: 'archived' },
+            { label: 'Spam'|t('simple-form'), value: stats.spam, key: 'spam' },
+        ] %}
+        {% for card in cards %}
+            <div class="stat-card{{ card.key ? ' stat-' ~ card.key : '' }}">
+                <span class="stat-value">{{ card.value }}</span>
+                <span class="stat-label">{{ card.label }}</span>
+            </div>
+        {% endfor %}
+    </div>
+
+    {# Submissions over time — shared chart partial (bars + date axis + summary). #}
+    {% include 'simple-form/_partials/timechart' with { perDay: perDay, days: days } only %}
+
+    {# Spam vs ham #}
+    <h2>{{ 'Spam'|t('simple-form') }}</h2>
+    <p class="light">
+        {{ '{spam} spam / {ham} legitimate'|t('simple-form', { spam: spam.spam, ham: spam.ham }) }}
+        {% if (spam.spam + spam.ham) > 0 %}
+            ({{ (spam.spam / (spam.spam + spam.ham) * 100)|round }}% {{ 'spam'|t('simple-form') }})
+        {% endif %}
+    </p>
+
+    {# Per-form totals #}
+    <h2>{{ 'By form'|t('simple-form') }}</h2>
+    {% if perForm|length %}
+        <table class="data fullwidth">
+            <thead>
+                <tr>
+                    <th>{{ 'Form'|t('simple-form') }}</th>
+                    <th>{{ 'Submissions'|t('simple-form') }}</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for row in perForm %}
+                    <tr>
+                        <td><a href="{{ cpUrl('simple-form/submissions', { formId: row.formId, status: 'all' }) }}">{{ row.name }}</a></td>
+                        <td>{{ row.count }}</td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    {% else %}
+        <p class="light">{{ 'No forms yet.'|t('simple-form') }}</p>
+    {% endif %}
+
+    {# Rating / opinion-scale numeric stats (single-form view only) #}
+    {% if scales|length %}
+        <h2>{{ 'Ratings & scales'|t('simple-form') }}</h2>
+        {% for scale in scales %}
+            <div class="sf-scale-stat">
+                <h3>{{ scale.label }}</h3>
+                {% if scale.count %}
+                    <p class="light">
+                        {{ 'Average'|t('simple-form') }}:
+                        <strong>{{ scale.average }}</strong>
+                        ({{ '{n} responses'|t('simple-form', { n: scale.count }) }})
+                    </p>
+                    {% set maxBar = 1 %}
+                    {% for c in scale.distribution %}{% set maxBar = max(maxBar, c) %}{% endfor %}
+                    <table class="data fullwidth">
+                        <thead>
+                            <tr>
+                                <th>{{ 'Value'|t('simple-form') }}</th>
+                                <th>{{ 'Responses'|t('simple-form') }}</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for value, count in scale.distribution %}
+                                <tr>
+                                    <td>{{ value }}</td>
+                                    <td>
+                                        <span class="sf-dist-bar" style="width:{{ (count / maxBar * 100)|round }}%"></span>
+                                        {{ count }}
+                                    </td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                {% else %}
+                    <p class="light">{{ 'No responses yet.'|t('simple-form') }}</p>
+                {% endif %}
+            </div>
+        {% endfor %}
+    {% endif %}
+
+    {# Integration dispatch health #}
+    {% if (dispatch.success + dispatch.failed + dispatch.pending) > 0 %}
+        <h2>{{ 'Integration dispatches'|t('simple-form') }}</h2>
+        <div class="submission-stats">
+            <div class="stat-card stat-read"><span class="stat-value">{{ dispatch.success }}</span><span class="stat-label">{{ 'Success'|t('simple-form') }}</span></div>
+            <div class="stat-card stat-spam"><span class="stat-value">{{ dispatch.failed }}</span><span class="stat-label">{{ 'Failed'|t('simple-form') }}</span></div>
+            <div class="stat-card"><span class="stat-value">{{ dispatch.pending }}</span><span class="stat-label">{{ 'Pending'|t('simple-form') }}</span></div>
+        </div>
+    {% endif %}
+{% endblock %}

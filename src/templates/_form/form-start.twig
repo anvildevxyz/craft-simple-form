@@ -1,0 +1,18 @@
+{#
+  Default Simple Form theme — opening <form> + plumbing only (#137).
+
+  For hand-authored single-step forms: emits the opening <form> tag, CSRF,
+  honeypot and the hidden formHandle, then leaves the body to the developer.
+  Pair with form-end.twig. Multi-step is unsupported via this path (use the
+  whole-form `craft.simpleForm.form()` for steps).
+
+  Variables: same context as form.twig.
+-#}
+{%- apply spaceless -%}
+<form class="{{ formClass }}" method="POST"{% if hasFileField %} enctype="multipart/form-data"{% endif %}{% if errorMessage %} data-sf-error="{{ errorMessage }}"{% endif %}{% if captureUrl %} data-sf-capture="{{ captureUrl }}"{% endif %}{% if jumpsAttr is defined and jumpsAttr %} data-sf-jumps="{{ jumpsAttr }}"{% endif %}{% if formId %} id="{{ formId }}"{% endif %}{% for name, value in extraAttributes %} {{ name }}="{{ value }}"{% endfor %} action="{{ action }}">
+{{- csrfInput -}}
+<input type="hidden" name="formHandle" value="{{ handle }}">
+{{- honeypot -}}
+{{- attributionInput -}}
+{{- captureInput -}}
+{%- endapply -%}

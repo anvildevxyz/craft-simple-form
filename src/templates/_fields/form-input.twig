@@ -1,0 +1,14 @@
+{% import "_includes/forms.twig" as forms %}
+
+{% if locked %}
+    <div class="text readable">
+        {{ formName }} <span class="light">({{ 'set in field settings'|t('simple-form') }})</span>
+    </div>
+{% else %}
+    {{ forms.select({
+        id: id,
+        name: name,
+        options: options,
+        value: value,
+    }) }}
+{% endif %}

@@ -1,0 +1,198 @@
+{# =========================================================================
+   Dashboard landing screen
+   At-a-glance stat tiles, the 30-day submissions chart, recent submissions,
+   and a needs-attention / top-forms / by-weekday side column — built from
+   native CP components (.pane, .data, .status, .zilch, .go) so it reads as
+   a first-party Craft screen in both light and dark themes.
+   ========================================================================= #}
+{% extends '_layouts/cp.twig' %}
+
+{% set title = 'Dashboard'|t('simple-form') %}
+{% set selectedSubnavItem = 'dashboard' %}
+{% do craft.app.view.registerAssetBundle('anvildev\\simpleform\\web\\assets\\cp\\SimpleFormCpAsset') %}
+
+{% block actionButton %}
+    {% if canManageForms %}
+        <a class="btn submit add icon" href="{{ cpUrl('simple-form/forms/new') }}">{{ 'New Form'|t('simple-form') }}</a>
+    {% endif %}
+{% endblock %}
+
+{% block content %}
+<div class="sf-dash">
+    {# Native CP status-dot colour for each read status. #}
+    {% set statusDot = { new: 'blue', read: 'green', archived: 'grey', spam: 'red' } %}
+
+    {# What needs a human: unread submissions + dead-lettered dispatches. #}
+    {% set attention = [] %}
+    {% if stats.new > 0 %}
+        {% set attention = attention|merge([{
+            label: '{n} new submission(s) to review'|t('simple-form', { n: stats.new }),
+            url: cpUrl('simple-form/submissions', { status: 'new' }),
+            dot: 'blue',
+        }]) %}
+    {% endif %}
+    {% if failedDispatches > 0 %}
+        {% set attention = attention|merge([{
+            label: '{n} failed integration dispatch(es)'|t('simple-form', { n: failedDispatches }),
+            url: cpUrl('simple-form/integrations/failures'),
+            dot: 'red',
+        }]) %}
+    {% endif %}
+
+    {% set attentionPane %}
+        {% if attention|length %}
+            <div class="pane sf-attention">
+                <h2>{{ 'Needs attention'|t('simple-form') }}</h2>
+                <ul class="sf-attention-list">
+                    {% for item in attention %}
+                        <li>
+                            <span class="status {{ item.dot }}" aria-hidden="true"></span>
+                            <a href="{{ item.url }}">{{ item.label }}</a>
+                        </li>
+                    {% endfor %}
+                </ul>
+            </div>
+        {% endif %}
+    {% endset %}
+
+    {% if not hasAnySubmissions %}
+        {{ attentionPane }}
+
+        {# First-run: one inviting empty state instead of a grid of zeros. #}
+        <div class="pane sf-dash-empty">
+            <div class="zilch">
+                {{ svg('@anvildev/simpleform/icon.svg')|attr({
+                    class: 'sf-dash-empty-icon',
+                    aria: { hidden: 'true' },
+                }) }}
+                <p>{{ 'No submissions yet.'|t('simple-form') }}</p>
+                {% if canManageForms %}
+                    <p class="sf-dash-empty-sub">{{ 'Create a form and embed it on your site to start collecting submissions.'|t('simple-form') }}</p>
+                    <a class="btn submit add icon" href="{{ cpUrl('simple-form/forms/new') }}">{{ 'New Form'|t('simple-form') }}</a>
+                {% endif %}
+            </div>
+        </div>
+    {% else %}
+        {# At-a-glance tiles — native panes, all linked. #}
+        <div class="sf-dash-tiles">
+            <a class="pane sf-tile" href="{{ cpUrl('simple-form/forms') }}">
+                <span class="sf-tile-label">{{ 'Forms'|t('simple-form') }}</span>
+                <span class="sf-tile-value">{{ formCount|number }}</span>
+                <span class="sf-tile-meta">{{ '{n} enabled'|t('simple-form', { n: enabledFormCount|number }) }}</span>
+            </a>
+            <a class="pane sf-tile" href="{{ cpUrl('simple-form/submissions') }}">
+                <span class="sf-tile-label">{{ 'Submissions'|t('simple-form') }}</span>
+                <span class="sf-tile-value">{{ stats.total|number }}</span>
+                {% if stats.new > 0 %}
+                    <span class="sf-tile-meta"><span class="status blue" aria-hidden="true"></span>{{ '{n} new'|t('simple-form', { n: stats.new|number }) }}</span>
+                {% endif %}
+            </a>
+            <a class="pane sf-tile" href="{{ cpUrl('simple-form/submissions/analytics') }}">
+                <span class="sf-tile-label">{{ 'Last 7 days'|t('simple-form') }}</span>
+                <span class="sf-tile-value">{{ last7|number }}</span>
+                <span class="sf-tile-meta">{{ '{n} today'|t('simple-form', { n: today|number }) }}</span>
+            </a>
+            <a class="pane sf-tile" href="{{ cpUrl('simple-form/submissions', { status: 'spam' }) }}">
+                <span class="sf-tile-label">{{ 'Spam blocked'|t('simple-form') }}</span>
+                <span class="sf-tile-value">{{ stats.spam|number }}</span>
+                {% if stats.spam > 0 %}
+                    <span class="sf-tile-meta"><span class="status red" aria-hidden="true"></span>{{ 'Held for review'|t('simple-form') }}</span>
+                {% endif %}
+            </a>
+        </div>
+
+        <div class="sf-dash-grid">
+            <div class="sf-dash-main">
+                {# Submissions over time — shared chart partial (bars + date axis + summary). #}
+                <div class="pane">
+                    {% include 'simple-form/_partials/timechart' with { perDay: perDay, days: chartDays } only %}
+                    <div class="sf-pane-footer">
+                        <a class="go" href="{{ cpUrl('simple-form/submissions/analytics') }}">{{ 'View analytics'|t('simple-form') }}</a>
+                    </div>
+                </div>
+
+                {# Recent submissions — native data table with linked rows. #}
+                <div class="pane">
+                    <h2>{{ 'Recent submissions'|t('simple-form') }}</h2>
+                    {% if recent|length %}
+                        <table class="data fullwidth">
+                            <thead>
+                                <tr>
+                                    <th scope="col">{{ 'Form'|t('simple-form') }}</th>
+                                    <th scope="col">{{ 'Status'|t('simple-form') }}</th>
+                                    <th scope="col" class="sf-cell-end">{{ 'Date'|t('simple-form') }}</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for submission in recent %}
+                                    {% set form = submission.getForm() %}
+                                    <tr>
+                                        <th scope="row"><a href="{{ cpUrl('simple-form/submissions/' ~ submission.id) }}">{{ form ? (form.title ?? form.name) : '#' ~ submission.formId }}</a></th>
+                                        <td><span class="status {{ statusDot[submission.readStatus] ?? 'grey' }}"></span>{{ submission.readStatus|t('simple-form')|title }}</td>
+                                        <td class="sf-cell-end light">{{ submission.dateCreated ? submission.dateCreated|timestamp('short') : '—' }}</td>
+                                    </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    {% else %}
+                        <p class="zilch small">{{ 'No submissions yet.'|t('simple-form') }}</p>
+                    {% endif %}
+                    <div class="sf-pane-footer">
+                        <a class="go" href="{{ cpUrl('simple-form/submissions') }}">{{ 'All submissions'|t('simple-form') }}</a>
+                    </div>
+                </div>
+            </div>
+
+            <div class="sf-dash-side">
+                {{ attentionPane }}
+
+                {# Top forms — per-form totals as quick links with proportion bars. #}
+                <div class="pane">
+                    <h2>{{ 'Top forms'|t('simple-form') }}</h2>
+                    {% if perForm|length %}
+                        {% set formMax = max(perForm|map(row => row.count)) %}
+                        <ul class="sf-topforms">
+                            {% for row in perForm %}
+                                <li>
+                                    <div class="sf-topform-head">
+                                        <a href="{{ cpUrl('simple-form/submissions', { formId: row.formId, status: 'all' }) }}">{{ row.name }}</a>
+                                        <span class="light">{{ row.count|number }}</span>
+                                    </div>
+                                    <div class="sf-topform-track" aria-hidden="true">
+                                        <span class="sf-topform-bar" style="width: {{ formMax ? (row.count / formMax * 100)|round : 0 }}%"></span>
+                                    </div>
+                                </li>
+                            {% endfor %}
+                        </ul>
+                        {% if canManageForms %}
+                            <div class="sf-pane-footer">
+                                <a class="go" href="{{ cpUrl('simple-form/forms') }}">{{ 'All forms'|t('simple-form') }}</a>
+                            </div>
+                        {% endif %}
+                    {% else %}
+                        <p class="light">{{ 'No forms yet.'|t('simple-form') }}</p>
+                    {% endif %}
+                </div>
+
+                {# When submissions arrive, bucketed Mon→Sun over the chart window. #}
+                <div class="pane">
+                    <h2>{{ 'By weekday'|t('simple-form') }}</h2>
+                    {% set weekdayMax = max(byWeekday) %}
+                    <div class="sf-hbars">
+                        {% for count in byWeekday %}
+                            {# byWeekday is Monday-first; Locale::getWeekDayName() is Sunday-based. #}
+                            <div class="sf-hbar-row">
+                                <span class="sf-hbar-label">{{ craft.app.locale.getWeekDayName((loop.index0 + 1) % 7, 'medium') }}</span>
+                                <span class="sf-hbar-track" aria-hidden="true">
+                                    <span class="sf-hbar-fill" style="width: {{ weekdayMax ? (count / weekdayMax * 100)|round : 0 }}%"></span>
+                                </span>
+                                <span class="sf-hbar-val">{{ count|number }}</span>
+                            </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    {% endif %}
+</div>
+{% endblock %}

@@ -1,0 +1,191 @@
+{% extends '_layouts/cp.twig' %}
+{% import '_includes/forms.twig' as forms %}
+
+{% set title = (notification.id ? 'Edit notification' : 'New notification')|t('simple-form') %}
+{% set selectedSubnavItem = 'forms' %}
+{% do craft.app.view.registerAssetBundle('anvildev\\simpleform\\web\\assets\\cp\\SimpleFormCpAsset') %}
+
+{% set crumbs = [
+    { label: 'Simple Form'|t('simple-form'), url: cpUrl('simple-form/forms') },
+    { label: (form.title ?: form.name), url: cpUrl('simple-form/forms/edit/' ~ form.id) },
+    { label: 'Notifications'|t('simple-form'), url: cpUrl('simple-form/forms/' ~ form.id ~ '/notifications') },
+] %}
+
+{% set conditional = notification.conditional ?? {} %}
+{% set condEnabled = conditional.enabled ?? false %}
+{% set condRules = conditional.rules ?? [] %}
+{% set cond = condRules is not empty ? condRules|first : {} %}
+
+{% block content %}
+<form method="post" accept-charset="UTF-8">
+    {{ csrfInput() }}
+    <input type="hidden" name="action" value="simple-form/notifications/save">
+    <input type="hidden" name="formId" value="{{ form.id }}">
+    {% if notification.id %}<input type="hidden" name="notificationId" value="{{ notification.id }}">{% endif %}
+    {{ redirectInput('simple-form/forms/' ~ form.id ~ '/notifications') }}
+
+    {% if errors is not empty %}
+        <ul class="errors">
+            {% for attr, attrErrors in errors %}{% for err in attrErrors %}<li>{{ err }}</li>{% endfor %}{% endfor %}
+        </ul>
+    {% endif %}
+
+    {{ forms.textField({
+        label: 'Name'|t('simple-form'),
+        id: 'name', name: 'name', value: notification.name, required: true,
+    }) }}
+
+    {{ forms.lightswitchField({
+        label: 'Enabled'|t('simple-form'),
+        id: 'enabled', name: 'enabled', on: notification.enabled,
+    }) }}
+
+    {{ forms.selectField({
+        label: 'Recipient type'|t('simple-form'),
+        instructions: 'A fixed address, or a form field whose submitted value is the recipient (autoresponder).'|t('simple-form'),
+        id: 'recipientType', name: 'recipientType',
+        options: [
+            { label: 'Fixed address'|t('simple-form'), value: 'fixed' },
+            { label: 'Form field (autoresponder)'|t('simple-form'), value: 'field' },
+        ],
+        value: notification.recipientType,
+    }) }}
+
+    {# Fixed address vs. autoresponder field-select. Both post as `recipient`; the
+       inactive one is disabled so only the active input is submitted. cp.js
+       toggles visibility/disabled from the Recipient type dropdown. #}
+    <div id="sf-recipient-fixed"{% if notification.recipientType == 'field' %} class="hidden"{% endif %}>
+        {{ forms.textField({
+            label: 'Recipient'|t('simple-form'),
+            instructions: 'One or more email addresses (comma separated) for a fixed recipient.'|t('simple-form'),
+            id: 'recipientFixed', name: 'recipient', required: true,
+            value: notification.recipientType == 'fixed' ? notification.recipient : '',
+            disabled: notification.recipientType == 'field',
+        }) }}
+    </div>
+    <div id="sf-recipient-field"{% if notification.recipientType != 'field' %} class="hidden"{% endif %}>
+        {{ forms.selectField({
+            label: 'Recipient field'|t('simple-form'),
+            instructions: 'The form field whose submitted value is used as the recipient address (autoresponder).'|t('simple-form'),
+            id: 'recipientField', name: 'recipient', required: true,
+            options: recipientFieldOptions,
+            value: notification.recipientType == 'field' ? notification.recipient : '',
+            disabled: notification.recipientType != 'field',
+        }) }}
+    </div>
+
+    {{ forms.textField({
+        label: 'Subject'|t('simple-form'),
+        instructions: 'Leave blank for a default subject.'|t('simple-form'),
+        id: 'subject', name: 'subject', value: notification.subject,
+    }) }}
+
+    {{ forms.textField({
+        label: 'Reply-to'|t('simple-form'),
+        id: 'replyTo', name: 'replyTo', value: notification.replyTo,
+    }) }}
+
+    {{ forms.textField({
+        label: 'CC'|t('simple-form'),
+        instructions: 'One or more email addresses (comma separated) to copy on this notification.'|t('simple-form'),
+        id: 'cc', name: 'cc', value: notification.cc,
+    }) }}
+
+    {{ forms.textField({
+        label: 'BCC'|t('simple-form'),
+        instructions: 'One or more email addresses (comma separated) to blind-copy on this notification.'|t('simple-form'),
+        id: 'bcc', name: 'bcc', value: notification.bcc,
+    }) }}
+
+    {{ forms.textareaField({
+        label: 'Body'|t('simple-form'),
+        instructions: 'Optional Twig template. Leave blank for the default submission-table layout.'|t('simple-form'),
+        id: 'body', name: 'body', value: notification.body, rows: 6,
+    }) }}
+
+    <div class="field">
+        <div class="heading">
+            <label>{{ 'Available variables'|t('simple-form') }}</label>
+        </div>
+        <div class="instructions">
+            <p>{{ 'The body is rendered as a Twig template with these variables:'|t('simple-form') }}</p>
+            <ul>
+                <li><code>form</code> — {{ 'the form, e.g.'|t('simple-form') }} <code>{% verbatim %}{{ form.title }}{% endverbatim %}</code></li>
+                <li><code>submission</code> — {{ 'the submission, e.g.'|t('simple-form') }} <code>{% verbatim %}{{ submission.id }}{% endverbatim %}</code>, <code>{% verbatim %}{{ submission.dateCreated|date('Y-m-d') }}{% endverbatim %}</code></li>
+                <li><code>data</code> — {{ 'every submitted field, e.g.'|t('simple-form') }} <code>{% verbatim %}{% for field in data %}{{ field.label }}: {{ field.value }}{% endfor %}{% endverbatim %}</code></li>
+            </ul>
+        </div>
+    </div>
+
+    <hr>
+    <h2>{{ 'Attachments'|t('simple-form') }}</h2>
+
+    {{ forms.lightswitchField({
+        label: 'Attach a submission PDF'|t('simple-form'),
+        instructions: pdfAvailable
+            ? 'Attach a rendered PDF of the submission to this notification.'|t('simple-form')
+            : 'Install the dompdf library to enable PDF attachments.'|t('simple-form'),
+        id: 'attachPdf', name: 'attachPdf',
+        on: notification.attachPdf and pdfAvailable,
+        disabled: not pdfAvailable,
+    }) }}
+
+    {{ forms.lightswitchField({
+        label: 'Attach uploaded files'|t('simple-form'),
+        instructions: 'Attach the submission’s file-field uploads. Over the configured size cap they fall back to in-body links.'|t('simple-form'),
+        id: 'attachUploads', name: 'attachUploads', on: notification.attachUploads,
+    }) }}
+
+    <hr>
+    <h2>{{ 'Send condition'|t('simple-form') }}</h2>
+
+    {{ forms.lightswitchField({
+        label: 'Only send when a condition is met'|t('simple-form'),
+        id: 'conditionEnabled', name: 'conditionEnabled', on: condEnabled,
+    }) }}
+
+    {{ forms.selectField({
+        label: 'Field'|t('simple-form'),
+        id: 'conditionField', name: 'conditionField',
+        options: [{ label: '—', value: '' }]|merge(fieldOptions|map((label, handle) => { label: label, value: handle })|values),
+        value: cond.field ?? '',
+    }) }}
+
+    {{ forms.selectField({
+        label: 'Operator'|t('simple-form'),
+        id: 'conditionOperator', name: 'conditionOperator',
+        options: operatorOptions,
+        value: cond.operator ?? 'eq',
+    }) }}
+
+    {{ forms.textField({
+        label: 'Value'|t('simple-form'),
+        id: 'conditionValue', name: 'conditionValue', value: cond.value ?? '',
+    }) }}
+
+    <div class="buttons">
+        <button type="submit" class="btn submit">{{ 'Save'|t('simple-form') }}</button>
+    </div>
+</form>
+
+{% if notification.id %}
+    {# Separate sibling form so a test send never posts the edit fields, and its
+       flash redirect returns here. Tests the saved notification with sample data. #}
+    <form method="post" accept-charset="UTF-8" class="sf-test-send">
+        {{ csrfInput() }}
+        <input type="hidden" name="action" value="simple-form/notifications/test-send">
+        <input type="hidden" name="formId" value="{{ form.id }}">
+        <input type="hidden" name="notificationId" value="{{ notification.id }}">
+        <hr>
+        <h2>{{ 'Send a test'|t('simple-form') }}</h2>
+        {{ forms.textField({
+            label: 'Test recipient'|t('simple-form'),
+            instructions: 'Sends one test copy of the saved notification using sample data. Leave blank to send to your account email.'|t('simple-form'),
+            id: 'testEmail', name: 'testEmail', placeholder: currentUser.email ?? '',
+        }) }}
+        <div class="buttons">
+            <button type="submit" class="btn">{{ 'Send test'|t('simple-form') }}</button>
+        </div>
+    </form>
+{% endif %}
+{% endblock %}

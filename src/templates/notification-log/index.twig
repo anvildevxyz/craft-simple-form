@@ -1,0 +1,110 @@
+{% extends '_layouts/cp.twig' %}
+
+{% set title = 'Notifications'|t('simple-form') %}
+{% set selectedSubnavItem = 'notifications' %}
+{% do craft.app.view.registerAssetBundle('anvildev\\simpleform\\web\\assets\\cp\\SimpleFormCpAsset') %}
+
+{% block content %}
+{% if hasAny %}
+    <div class="submission-stats">
+        {% set cards = [
+            { key: '', label: 'Total'|t('simple-form'), value: stats.total ?? 0 },
+            { key: 'success', label: 'Sent'|t('simple-form'), value: stats.success ?? 0 },
+            { key: 'failed', label: 'Failed'|t('simple-form'), value: stats.failed ?? 0 },
+        ] %}
+        {% for card in cards %}
+            <a class="stat-card{{ status == card.key ? ' is-active' : '' }}{{ card.key == 'failed' ? ' stat-spam' : '' }}"
+               href="{{ cpUrl('simple-form/notifications', { formId: formId, status: card.key }) }}">
+                <span class="stat-value">{{ card.value }}</span>
+                <span class="stat-label">{{ card.label }}</span>
+            </a>
+        {% endfor %}
+    </div>
+
+    <form method="get" action="{{ cpUrl('simple-form/notifications') }}" class="buttons">
+        {% if status %}<input type="hidden" name="status" value="{{ status }}">{% endif %}
+        <div class="select">
+        <select name="formId" onchange="this.form.submit()">
+            <option value="">{{ 'All Forms'|t('simple-form') }}</option>
+            {% for form in forms %}
+                <option value="{{ form.id }}"{% if formId == form.id %} selected{% endif %}>
+                    {{ form.title ?? form.name }}
+                </option>
+            {% endfor %}
+        </select>
+        </div>
+        {% if formId or status %}
+            <a class="btn" href="{{ cpUrl('simple-form/notifications') }}">{{ 'Clear filters'|t('simple-form') }}</a>
+        {% endif %}
+    </form>
+{% endif %}
+
+{% if entries is not empty %}
+    <p class="light">{{ 'Every notification email dispatched for a form submission, including failures.'|t('simple-form') }}</p>
+    <table class="data fullwidth">
+        <thead>
+            <tr>
+                <th>{{ 'When'|t('simple-form') }}</th>
+                <th>{{ 'Form'|t('simple-form') }}</th>
+                <th>{{ 'Notification'|t('simple-form') }}</th>
+                <th>{{ 'Submission'|t('simple-form') }}</th>
+                <th>{{ 'Recipients'|t('simple-form') }}</th>
+                <th>{{ 'Subject'|t('simple-form') }}</th>
+                <th>{{ 'Status'|t('simple-form') }}</th>
+                <th>{{ 'Message'|t('simple-form') }}</th>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for entry in entries %}
+                <tr>
+                    <td>{{ entry.dateDisplay }}</td>
+                    <td>{{ entry.formName }}</td>
+                    <td>{{ entry.notificationName ?? '—' }}</td>
+                    <td>
+                        {% if entry.submissionId %}
+                            <a href="{{ cpUrl('simple-form/submissions/' ~ entry.submissionId) }}">#{{ entry.submissionId }}</a>
+                        {% else %}—{% endif %}
+                    </td>
+                    <td>{{ entry.recipientsDisplay ?: '—' }}</td>
+                    <td>{{ entry.subject ?: '—' }}</td>
+                    <td>
+                        {% if entry.status == 'success' %}
+                            <span class="status green"></span> {{ 'Sent'|t('simple-form') }}
+                        {% else %}
+                            <span class="status red"></span> {{ 'Failed'|t('simple-form') }}
+                        {% endif %}
+                    </td>
+                    <td class="sf-log-message{{ entry.status == 'failed' ? ' is-error' : '' }}">
+                        {{ entry.message ?: '—' }}
+                        {% if entry.resentFromId %}
+                            <span class="light">{{ 'Resend of #{id}'|t('simple-form', { id: entry.resentFromId }) }}</span>
+                        {% endif %}
+                    </td>
+                    <td class="thin">
+                        {% if entry.submissionId %}
+                            <form method="post" accept-charset="UTF-8">
+                                {{ csrfInput() }}
+                                {{ actionInput('simple-form/notification-log/resend') }}
+                                {{ redirectInput('simple-form/notifications' ~ (formId ? '?formId=' ~ formId : '')) }}
+                                <input type="hidden" name="logId" value="{{ entry.id }}">
+                                <button type="submit" class="btn small">{{ 'Resend'|t('simple-form') }}</button>
+                            </form>
+                        {% endif %}
+                    </td>
+                </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+{% else %}
+    <div class="zilch sf-empty-state">
+        {% if hasAny and hasFilters %}
+            <p class="sf-empty-heading">{{ 'No notifications match your filters.'|t('simple-form') }}</p>
+            <p class="light"><a href="{{ cpUrl('simple-form/notifications') }}">{{ 'Clear filters'|t('simple-form') }}</a></p>
+        {% else %}
+            <p class="sf-empty-heading">{{ 'No notifications yet.'|t('simple-form') }}</p>
+            <p class="light">{{ 'Notification emails dispatched for form submissions will appear here, including failed sends.'|t('simple-form') }}</p>
+        {% endif %}
+    </div>
+{% endif %}
+{% endblock %}

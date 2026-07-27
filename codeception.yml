@@ -1,0 +1,28 @@
+actor: Tester
+paths:
+  tests: tests
+  output: tests/_output
+  data: tests/_data
+  support: tests/_support
+  envs: tests/_envs
+bootstrap: _craft_bootstrap.php
+settings:
+  params:
+    - tests/.env
+modules:
+  config:
+    \craft\test\Craft:
+      configFile: 'tests/_craft/config/test.php'
+      entryUrl: 'https://craft-plugin-dev.ddev.site/index.php'
+      projectConfig: {}
+      # Installing the plugin runs its Install migration, which creates the full
+      # schema — so no explicit `migrations:` entry is needed (listing Install
+      # here too would run it twice and collide on the existing tables).
+      plugins:
+        - handle: simple-form
+          class: anvildev\simpleform\Plugin
+      cleanup: true
+      transaction: true
+      dbSetup:
+        clean: true
+        setupCraft: true

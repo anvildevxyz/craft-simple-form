@@ -1,0 +1,13 @@
+{# ===========================================================================
+   Standard-upsell notice — shown to Solo above a Standard-only settings area.
+   Param: feature (human label of the gated feature).
+   The Solo edition can't enable or reconfigure these; a site downgraded from Standard
+   keeps whatever it already had running (the runtime is edition-blind) and can
+   turn it off here.
+   =========================================================================== #}
+{% if not craft.simpleForm.isStandard() %}
+    <blockquote class="note">
+        <strong>{{ 'Standard feature.'|t('simple-form') }}</strong>
+        {{ '{feature} is part of the Standard edition. The Solo edition can’t enable or reconfigure it; a site downgraded from Standard keeps anything it already had running and can switch it off here.'|t('simple-form', { feature: feature ?? 'This feature'|t('simple-form') }) }}
+    </blockquote>
+{% endif %}

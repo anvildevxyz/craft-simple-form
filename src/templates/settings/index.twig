@@ -1,0 +1,55 @@
+{% extends "_layouts/cp.twig" %}
+{% import "_includes/forms.twig" as forms %}
+
+{% set title = 'Settings'|t('simple-form') %}
+{% set selectedSubnavItem = 'settings' %}
+{% do craft.app.view.registerAssetBundle('anvildev\\simpleform\\web\\assets\\cp\\SimpleFormCpAsset') %}
+{% set selectedSettingsSubnavItem = selectedSettingsSubnavItem ?? 'general' %}
+
+{# Native Craft header tabs for the settings sub-sections. Each tab is a real
+   URL; selectedTab highlights the active one. #}
+{% set tabs = {
+    general: { label: 'General'|t('simple-form'), url: cpUrl('simple-form/settings/general') },
+    email: { label: 'Email'|t('simple-form'), url: cpUrl('simple-form/settings/email') },
+    spam: { label: 'Spam Protection'|t('simple-form'), url: cpUrl('simple-form/settings/spam') },
+    privacy: { label: 'Privacy'|t('simple-form'), url: cpUrl('simple-form/settings/privacy') },
+    integrations: { label: 'Integrations'|t('simple-form'), url: cpUrl('simple-form/settings/integrations') },
+    coupons: { label: 'Coupons'|t('simple-form'), url: cpUrl('simple-form/settings/coupons') },
+    workflow: { label: 'Workflow'|t('simple-form'), url: cpUrl('simple-form/settings/workflow') },
+    audit: { label: 'Audit Log'|t('simple-form'), url: cpUrl('simple-form/settings/audit') },
+    mcp: { label: 'MCP Server'|t('simple-form'), url: cpUrl('simple-form/settings/mcp') },
+} %}
+{% set selectedTab = selectedSettingsSubnavItem %}
+
+{# The MCP and Integrations tabs own their own independent forms / AJAX
+   actions, so they cannot live inside a single full-page form. Every other tab
+   posts through the shared settings/save form. #}
+{% set standaloneTabs = ['mcp', 'integrations', 'coupons', 'workflow', 'audit'] %}
+{% set fullPageForm = selectedSettingsSubnavItem not in standaloneTabs %}
+
+{% block actionButton %}
+    {% if selectedSettingsSubnavItem == 'integrations' %}
+        <a class="btn submit add icon" href="{{ cpUrl('simple-form/settings/integrations/new') }}">
+            {{ 'New Integration'|t('simple-form') }}
+        </a>
+    {% elseif selectedSettingsSubnavItem == 'coupons' %}
+        <a class="btn submit add icon" href="{{ cpUrl('simple-form/settings/coupons/new') }}">
+            {{ 'New Coupon'|t('simple-form') }}
+        </a>
+    {% elseif fullPageForm %}
+        {{ parent() }}
+    {% endif %}
+{% endblock %}
+
+{% block content %}
+    {% if selectedSettingsSubnavItem in standaloneTabs %}
+        {% include 'simple-form/settings/_tabs/' ~ selectedSettingsSubnavItem %}
+    {% else %}
+        <input type="hidden" name="action" value="simple-form/settings/save">
+        <input type="hidden" name="tab" value="{{ selectedSettingsSubnavItem }}">
+        {{ redirectInput('simple-form/settings/' ~ selectedSettingsSubnavItem) }}
+        {{ csrfInput() }}
+
+        {% include 'simple-form/settings/_tabs/' ~ selectedSettingsSubnavItem %}
+    {% endif %}
+{% endblock %}

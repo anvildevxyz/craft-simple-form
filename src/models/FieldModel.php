@@ -1,0 +1,195 @@
+<?php
+
+namespace anvildev\simpleform\models;
+
+use anvildev\simpleform\fields\FieldType;
+use anvildev\simpleform\helpers\ConditionalEvaluator;
+use anvildev\simpleform\Plugin;
+use Craft;
+use yii\base\Model;
+
+class FieldModel extends Model
+{
+    /**
+     * @param array<string, mixed> $config
+     * @param string|null $errorMessage optional per-site validation message override
+     */
+    public function __construct(
+        private int $id,
+        private string $type,
+        private string $name,
+        private ?string $label = null,
+        /** @var array<string, mixed> */
+        private array $config = [],
+        private ?string $errorMessage = null,
+    ) {
+        parent::__construct();
+    }
+
+    public function getId(): int
+    {
+        return $this->id;
+    }
+
+    public function getType(): string
+    {
+        return $this->type;
+    }
+
+    public function getName(): string
+    {
+        return $this->name;
+    }
+
+    public function getLabel(): ?string
+    {
+        return $this->label;
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    public function getConfig(): array
+    {
+        return $this->config;
+    }
+
+    /**
+     * Whether this field collects a submission value.
+     *
+     * Resolves the field type via the registry and delegates to
+     * {@see \anvildev\simpleform\fields\FieldType::isInput()}, mirroring how
+     * {@see self::isVisible()}/{@see self::isRequired()} delegate. Presentational
+     * layout blocks (heading, divider, html) return false: they render but are
+     * never validated, stored, or exported. An unknown type is treated as an
+     * input so a typo can never silently drop a value.
+     */
+    public function isInputType(): bool
+    {
+        $fieldType = $this->resolveFieldType();
+        return $fieldType?->isInput() ?? true;
+    }
+
+    /**
+     * Is this field visible given the full set of submitted values?
+     *
+     * Fields with no conditional logic are always visible, so this is a no-op
+     * for existing forms.
+     *
+     * @param array<string, mixed> $formData posted values keyed by field handle
+     */
+    public function isVisible(array $formData = []): bool
+    {
+        return ConditionalEvaluator::isVisible($this->config, $formData);
+    }
+
+    /**
+     * Is this field required for the given submitted values?
+     *
+     * The static `required` flag and any conditional-required rule are ORed
+     * together. (Callers must still treat hidden fields as not-required via
+     * {@see self::isVisible()} — visibility wins.)
+     *
+     * @param array<string, mixed> $formData posted values keyed by field handle
+     */
+    public function isRequired(array $formData = []): bool
+    {
+        return ($this->config['required'] ?? false)
+            || ConditionalEvaluator::isRequiredByCondition($this->config, $formData);
+    }
+
+    /**
+     * Validate a single field value against the full submitted snapshot.
+     *
+     * Conditional logic is honored: a field hidden by its conditions is never
+     * validated, and its effective required-ness is the OR of the static flag
+     * and any conditional-required rule.
+     *
+     * @param array<string, mixed> $formData posted values keyed by field handle
+     * @return string[]
+     */
+    public function validateValue(mixed $value, array $formData): array
+    {
+        // Hidden fields are never validated — their value is moot.
+        if (!$this->isVisible($formData)) {
+            return [];
+        }
+
+        // Resolve effective required-ness (static OR conditional) and let the
+        // field type enforce it, so there is a single required code path.
+        $config = $this->config;
+        $config['required'] = $this->isRequired($formData);
+
+        $fieldType = Plugin::getInstance()->getFieldTypeRegistry()->getFieldType($this->type, $config);
+
+        // An unregistered type is a recoverable data state (e.g. a field whose
+        // type was removed from the plugin), so it degrades to a validation
+        // error rather than a thrown exception. A genuine programmer/data
+        // defect (a malformed stored config tripping a TypeError, say) is
+        // deliberately left to propagate to the controller/Twig boundary, just
+        // as it already does on the render path in TwigExtension — surfacing the
+        // real bug instead of papering over it with a vague message.
+        if (!$fieldType) {
+            Craft::warning(sprintf('Unknown field type: %s', $this->type), 'simple-form');
+            return ['Unknown field type: ' . $this->type];
+        }
+
+        return self::applyOverride($fieldType->validate($value), $this->errorMessage);
+    }
+
+    /**
+     * Transform a validated value into the shape persisted in the submission's
+     * `data` payload. For most field types this is an identity pass-through; the
+     * Consent field replaces the raw `"1"` with its auditable consent record.
+     *
+     * @param array<string, mixed> $context per-submission context (e.g. `siteId`)
+     */
+    public function persistValue(mixed $value, array $context = []): mixed
+    {
+        $fieldType = $this->resolveFieldType();
+        return $fieldType ? $fieldType->persistValue($value, $context) : $value;
+    }
+
+    /**
+     * Coerce a submitted value into the canonical form the field type stores
+     * (e.g. an int for the rating/opinion scale types). Unknown types or a
+     * resolution failure pass the value through unchanged.
+     */
+    public function normalizeValue(mixed $value): mixed
+    {
+        try {
+            $fieldType = $this->resolveFieldType();
+            return $fieldType !== null ? $fieldType->normalizeValue($value) : $value;
+        } catch (\Throwable $e) {
+            Craft::warning(sprintf('Field normalize error: %s', $e->getMessage()), 'simple-form');
+            return $value;
+        }
+    }
+
+    /**
+     * Replace a field's default validation errors with the editor's per-site
+     * override message when one is set, so a failed submission speaks in the
+     * site's own wording. With no override (the common case) the localized
+     * defaults pass through untouched, so messages are never blank.
+     *
+     * Pure and side-effect free for straightforward unit testing.
+     *
+     * @param string[] $errors
+     * @return string[]
+     */
+    public static function applyOverride(array $errors, ?string $override): array
+    {
+        $override = trim($override ?? '');
+        return ($errors === [] || $override === '') ? $errors : [$override];
+    }
+
+    /**
+     * Resolve this field's type instance from the registry, or null when the
+     * type is unknown. Shared by {@see self::isInputType()},
+     * {@see self::persistValue()} and {@see self::normalizeValue()}.
+     */
+    private function resolveFieldType(): ?FieldType
+    {
+        return Plugin::getInstance()->getFieldTypeRegistry()->getFieldType($this->type, $this->config);
+    }
+}
