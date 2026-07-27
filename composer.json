@@ -1,13 +1,21 @@
 {
   "name": "anvildev/craft-simple-form",
   "description": "A lightweight, translatable form builder for Craft CMS",
+  "version": "1.0.0",
   "type": "craft-plugin",
   "license": "proprietary",
   "keywords": ["craft", "cms", "craftcms", "forms", "form-builder", "translatable"],
+  "authors": [
+    {
+      "name": "Anvil Dev",
+      "homepage": "https://anvildev.xyz"
+    }
+  ],
   "support": {
-    "issues": "https://github.com/anvildev/craft-simple-form/issues",
-    "source": "https://github.com/anvildev/craft-simple-form",
-    "docs": "https://github.com/anvildev/craft-simple-form/blob/main/README.md"
+    "email": "hello@anvildev.xyz",
+    "issues": "https://github.com/anvildevxyz/craft-simple-form/issues",
+    "source": "https://github.com/anvildevxyz/craft-simple-form",
+    "docs": "https://github.com/anvildevxyz/craft-simple-form/tree/main/docs"
   },
   "require": {
     "php": "^8.2",
@@ -42,10 +50,10 @@
     "name": "Simple Form",
     "handle": "simple-form",
     "class": "anvildev\\simpleform\\Plugin",
-    "developer": "Fabian Haefliger",
-    "developerUrl": "https://github.com/anvildev",
-    "documentationUrl": "https://github.com/anvildev/craft-simple-form/tree/main/docs",
-    "changelogUrl": "https://raw.githubusercontent.com/anvildev/craft-simple-form/main/CHANGELOG.md"
+    "developer": "Anvil Dev",
+    "developerUrl": "https://anvildev.xyz",
+    "documentationUrl": "https://github.com/anvildevxyz/craft-simple-form/tree/main/docs",
+    "changelogUrl": "https://raw.githubusercontent.com/anvildevxyz/craft-simple-form/main/CHANGELOG.md"
   },
   "config": {
     "allow-plugins": {

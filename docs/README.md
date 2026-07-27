@@ -12,7 +12,7 @@ first form, and what to configure first.
   multi-column layouts, conversational (one-question-per-screen) mode,
   save-and-continue-later, passive partial capture, UTM/attribution capture,
   post-submit behaviour, sharing & embedding, stencils, and duplicating forms.
-- **[Field types](field-types.md)** — reference for all 29 field types and their
+- **[Field types](field-types.md)** — reference for all 33 field types and their
   configuration options, including address autocomplete.
 - **[Conditional logic](conditional-logic.md)** — show/hide fields and make them
   conditionally required based on other fields' values, with live client-side

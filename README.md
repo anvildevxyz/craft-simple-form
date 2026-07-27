@@ -5,7 +5,7 @@ A lightweight, translatable form builder for Craft CMS. Create forms in the Cont
 ## Features
 
 - **Form Builder** — drag-and-drop field builder in the Control Panel, with multi-step pages, multi-column layouts, conditional logic, save-and-continue-later, stencils, and duplication ([guide](docs/building-forms.md))
-- **29 Field Types** — text, email, textarea, number, phone, date, hidden; select, checkbox, radio, rating, opinion scale, consent (GDPR); name & address; file upload, signature, calculation, repeater, payment; entry/category/tag/user/asset relations; and heading/divider/HTML/text layout blocks ([guide](docs/field-types.md))
+- **33 Field Types** — text, email, url, textarea, number, phone, date, time, date & time, hidden; select, checkbox, radio, rating, opinion scale, consent (GDPR); name & address; file upload, signature, calculation, repeater, payment; entry/category/tag/user/asset relations; and heading/divider/HTML/text/callout layout blocks ([guide](docs/field-types.md))
 - **Conditional Logic** — show/hide fields and make them required based on other fields' values ([guide](docs/conditional-logic.md))
 - **Spam Protection** — honeypot, rate limiting, reCAPTCHA / hCaptcha / Turnstile, Akismet, keyword/email/IP denylists, duplicate prevention, and a spam-review queue ([guide](docs/spam-protection.md))
 - **Availability & Limits** — open/close windows, submission quotas, login-required, and per-user submission limits ([guide](docs/form-availability.md))
@@ -93,7 +93,7 @@ by default** — run the Pro edition to unlock the full feature set.
 | | **Solo** | **Pro** |
 |---|---|---|
 | Unlimited forms, stored submissions, CSV export | ✅ | ✅ |
-| Core field types (text, email, select, file, name, address, consent…) | ✅ (18) | ✅ (all 29) |
+| Core field types (text, email, select, file, name, address, consent…) | ✅ (22) | ✅ (all 33) |
 | Email notifications + autoresponder | ✅ | ✅ |
 | Spam protection (honeypot, rate-limit, CAPTCHA) | ✅ | ✅ + Akismet & denylists |
 | Multi-site / per-site translation | ✅ | ✅ |

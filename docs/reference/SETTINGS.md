@@ -62,6 +62,7 @@ Each section links to the guide that explains the feature in depth.
 | `submitMessage` | "Thank you! Your submission has been received." | Default success message (a form may override it per site). |
 | `errorMessage` | "There was an error…" | Default error message (per-form override available). |
 | `editPath` | `''` | Site path of the front-end edit template that renders `craft.simpleForm.editForm()`. Used by `editUrl(submission)` to build the tokenized edit link; empty = pass a path explicitly. See [Twig & API](../twig-and-api.md). |
+| `uploadVolume` | `null` | Default asset-volume handle for File and Signature uploads when a field doesn't name its own. Resolution order: per-field volume → this default → first available volume. |
 
 ## Rendering & assets — see [Theming / render templates](../render-templates.md)
 
@@ -94,8 +95,10 @@ Each section links to the guide that explains the feature in depth.
 
 | Setting | Default | Purpose |
 | --- | --- | --- |
-| `collectIpAddresses` | `true` | When off, the visitor's IP is never stored on submissions (GDPR data minimization). Rate limiting still works (nothing persisted); IP-based duplicate detection degrades to the other keys. |
+| `ipCapturePolicy` | `full` | How much of the visitor's IP is stored on a submission: `full`, `anonymized` (last IPv4 octet / low 80 bits of an IPv6 address masked before storage), or `off` (never stored). Rate limiting works under every mode (nothing is persisted beyond the window); IP-based duplicate detection degrades to the other keys when IPs aren't captured in full. |
+| `collectIpAddresses` | `true` | **Deprecated**, kept for backward compatibility — the boolean predecessor of `ipCapturePolicy`. `false` maps to `off`, `true` to `full`; setting `ipCapturePolicy` supersedes it. |
 | `retainSubmissionsDays` | `0` | Prune submissions older than N days on GC. `0` = keep forever. |
+| `retainSpamDays` | `30` | Prune submissions flagged as spam older than N days on GC, independently of `retainSubmissionsDays`, so a flag-mode spam pile can't grow without bound. `0` = keep forever. |
 | `retainIntegrationLogsDays` | `90` | Prune integration dispatch logs older than N days. |
 | `retainNotificationLogsDays` | `90` | Prune [notification-log](../notifications.md#the-notification-log) rows older than N days. `0` = keep forever. |
 | `retainAuditLogDays` | `365` | Prune audit-log entries older than N days. |
@@ -108,7 +111,10 @@ Each section links to the guide that explains the feature in depth.
 | Setting | Default | Purpose |
 | --- | --- | --- |
 | `enableMcp` | `false` | Enable the token-authenticated MCP endpoint at `simple-form/mcp`. **Off by default** (remotely reachable API surface). |
-| `mcpTokens` | `[]` | Configured MCP access tokens, stored hash-only (the plaintext secret is never stored). Managed from the CP. |
+
+MCP access tokens are **not** a setting: they live in their own database table
+(`simpleform_mcp_tokens`), hash-only, so the keyed hashes never sync into git or
+across environments through project config. Manage them from the CP.
 
 ## Payments — see [Payments](../payments.md)
 

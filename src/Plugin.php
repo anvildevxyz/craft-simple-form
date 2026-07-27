@@ -161,7 +161,7 @@ class Plugin extends BasePlugin
     /** The full-featured edition. */
     public const EDITION_PRO = Editions::PRO;
 
-    public string $schemaVersion = '2.18.0';
+    public string $schemaVersion = '1.0.0';
     public bool $hasCpSection = true;
     public bool $hasCpSettings = false;
     public bool $hasCpPermissions = true;
@@ -396,13 +396,14 @@ class Plugin extends BasePlugin
      * counterpart on first reference. This is what lets persisted/serialized old
      * FQCNs keep resolving after the rename — most importantly queued jobs in
      * `{{%queue}}` (whose serialized class name a migration can't safely rewrite)
-     * and project-config field types on read-only installs the rename migration
-     * can't write to. The DB type columns are still normalized by
-     * {@see \anvildev\simpleform\migrations\m260628_000001_rename_fqcns}, but
-     * read-only (allowAdminChanges=false) installs keep the old FQCN in their
-     * deployed YAML, so this alias must stay until every such install has updated
-     * its project config — treat removing it as a documented breaking change, not a
-     * routine cleanup.
+     * and project-config field types on read-only installs a migration can't
+     * write to.
+     *
+     * The rename predates 1.0.0, so no distributed install carries the old FQCNs
+     * and the normalizing migration was dropped in the pre-release migration
+     * collapse. This alias is kept for pre-1.0.0 development installs whose
+     * queue rows or deployed YAML still name the old classes; it can be removed
+     * once those are gone.
      */
     private function _registerLegacyClassAliases(): void
     {

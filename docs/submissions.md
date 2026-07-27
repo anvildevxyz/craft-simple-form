@@ -113,6 +113,7 @@ plugin settings:
 | Setting | Default | Purpose |
 |---------|---------|---------|
 | `retainSubmissionsDays` | `0` (keep) | Prune submissions older than N days. |
+| `retainSpamDays` | `30` | Prune spam-flagged submissions older than N days, independently of `retainSubmissionsDays`. `0` = keep forever. |
 | `retainIntegrationLogsDays` | `90` | Prune integration dispatch-log rows. |
 | `retainNotificationLogsDays` | `90` | Prune [notification-log](notifications.md#the-notification-log) rows. |
 | `retainAuditLogDays` | `365` | Prune audit-log rows. |
@@ -120,13 +121,24 @@ plugin settings:
 | `partialRetentionDays` | `7` | Drop [passively-captured partials](building-forms.md#passive-partial-capture-abandoned-attempts). |
 | `anonymizeInsteadOfDelete` | `false` | Anonymize submissions instead of deleting them. |
 
-### Not storing IP addresses
+### How much of an IP address to store
 
-For GDPR data minimization, the **Collect IP addresses** setting
-(`collectIpAddresses`, on by default) can be turned off so the visitor's IP is
-**never stored** on submissions. Rate limiting keeps working (it only reads the
-request IP transiently, persisting nothing), and IP-based duplicate detection
-degrades to its other keys.
+For GDPR data minimization, **IP capture** (`ipCapturePolicy`) is a three-state
+choice rather than an on/off switch:
+
+| Policy | What is stored |
+|--------|----------------|
+| `full` (default) | The visitor's IP address as received. |
+| `anonymized` | A masked address — the last IPv4 octet, or the low 80 bits of an IPv6 address, are zeroed **before** storage, so the stored value can't identify a single host. |
+| `off` | Nothing. The IP is never written to the submission. |
+
+Rate limiting keeps working under every policy: it reads the request IP
+transiently and persists nothing beyond the window. IP-based duplicate detection
+degrades to its other keys whenever IPs aren't captured in full.
+
+The older boolean **Collect IP addresses** setting (`collectIpAddresses`) is
+still honored for backward compatibility — `false` maps to `off` and `true` to
+`full` — but `ipCapturePolicy` supersedes it.
 
 ### Anonymize instead of delete
 

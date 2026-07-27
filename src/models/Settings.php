@@ -277,10 +277,12 @@ class Settings extends Model
     public int $maxAttachmentSizeMb = 10;
 
     /**
-     * @deprecated MCP tokens now live in the `simpleform_mcp_tokens` table (see
-     * {@see \anvildev\simpleform\mcp\TokenManager}), not in settings/project
-     * config. Retained only so the m260724_000001 migration can read and clear any
-     * pre-migration tokens; it stays empty afterwards. Do not read or write it.
+     * @deprecated MCP tokens live in the `simpleform_mcp_tokens` table (see
+     * {@see \anvildev\simpleform\mcp\TokenManager}), never in settings/project
+     * config — keeping the keyed hashes out of git and out of environment syncs.
+     * This property only remains so a pre-1.0.0 development install whose project
+     * config still carries an `mcpTokens` key can boot; it is always empty and is
+     * never read or written. Do not use it.
      *
      * @var array<int, TokenArray>
      */

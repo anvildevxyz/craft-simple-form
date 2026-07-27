@@ -1,6 +1,6 @@
 # Field Types
 
-Simple Form ships **29 field types**, covering everything from a plain text box
+Simple Form ships **33 field types**, covering everything from a plain text box
 to composite name/address blocks, element pickers, a drawn signature, and a
 server-computed calculation. This guide is a reference for every type and the
 real config options each one exposes.
@@ -53,6 +53,14 @@ A single-line `<input type="text">`.
 ### Email (`email`)
 
 A single-line `<input type="email">`, validated as a well-formed address.
+
+- `placeholder`
+
+### URL (`url`)
+
+A single-line `<input type="url">`, validated as a well-formed URL. A
+scheme-less entry is normalized before storage, so `example.com` is stored and
+validated as `https://example.com`.
 
 - `placeholder`
 
@@ -113,6 +121,17 @@ export/CP column heading.
 
 An `<input type="date">`, validated as a parseable date. No extra options beyond
 the shared ones.
+
+### Time (`time`)
+
+An `<input type="time">` — a time of day (24-hour `HH:MM`) independent of any
+date. No extra options beyond the shared ones.
+
+### Date & Time (`datetime`)
+
+An `<input type="datetime-local">` capturing a date and a time in one control,
+stored as `YYYY-MM-DDTHH:MM` and validated with the same mechanism as the Date
+field. No extra options beyond the shared ones.
 
 ---
 
@@ -378,6 +397,18 @@ labels it **Text**.
 
 - Body text — per-site translatable multi-line copy. An empty body renders
   nothing.
+
+### Callout (`callout`)
+
+A toned panel of guidance between fields — the same escaped plain-text handling
+as the Text block, wrapped in a tone-classed container with an optional icon.
+Use it to draw the eye to something the Text block would state too quietly.
+
+- `tone` — `info` | `success` | `warning` | `error` (default `info`). An
+  unrecognized tone falls back to `info`.
+- `icon` — an optional short glyph or label shown alongside the body.
+- Body text — per-site translatable multi-line copy. A callout with neither a
+  body nor an icon renders nothing.
 
 ### HTML Block (`html`)
 

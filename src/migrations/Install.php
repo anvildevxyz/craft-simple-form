@@ -7,9 +7,14 @@ use craft\db\Migration;
 /**
  * Install migration — the plugin's full schema in one place.
  *
- * Collapsed from the original `m240614_000001_init` + the incremental column/table
- * migrations (pre-launch, so there is no upgrade history to preserve). Craft runs
- * this automatically on `plugin/install`; no separate `migrate/all` is needed.
+ * This is the plugin's only migration. Everything that was an incremental
+ * pre-launch migration is folded in here: 1.0.0 is the first distributed
+ * release, so there is no install in the wild whose upgrade path needs
+ * preserving. Craft runs this automatically on `plugin/install`; no separate
+ * `migrate/all` is needed.
+ *
+ * From 1.0.0 on, schema changes ship as dated `m*` migrations alongside their
+ * edit to this file, so fresh installs and upgrades stay in parity.
  *
  * @author Fabian Haefliger
  */
@@ -378,6 +383,7 @@ class Install extends Migration
     {
         // Drop children before parents (FK-safe order).
         $this->dropTableIfExists('{{%simpleform_mcp_tokens}}');
+        $this->dropTableIfExists('{{%simpleform_coupons}}');
         $this->dropTableIfExists('{{%simpleform_audit_log}}');
         $this->dropTableIfExists('{{%simpleform_submit_messages_sites}}');
         $this->dropTableIfExists('{{%simpleform_submit_messages}}');

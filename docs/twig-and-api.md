@@ -485,9 +485,13 @@ Simple Form ships a transport-agnostic MCP server so an AI agent can manage form
 and analyse submissions over JSON-RPC 2.0. It is exposed at `simple-form/mcp`.
 
 **Off by default.** The endpoint returns 404 unless the `enableMcp` setting is
-turned on, and every request must carry a bearer token. Tokens are stored
-hash-only (`mcpTokens` setting) — the plaintext secret is shown once at creation
-and never persisted.
+turned on, and every request must carry a bearer token. Tokens live in their own
+`simpleform_mcp_tokens` table — not in plugin settings or project config, so the
+keyed hashes never sync into git or across environments — and are stored
+hash-only: the plaintext secret is shown once at creation and never persisted.
+A token can be given an optional **expiry** (in days) when it is created; an
+expired token is rejected at authentication. No expiry means it never expires.
+Creating or revoking a token requires an admin with an elevated session.
 
 **Request/response only — no SSE streaming.** The endpoint implements the
 POST (request → JSON response) half of MCP's *Streamable HTTP* transport.
