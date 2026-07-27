@@ -16,7 +16,7 @@ use yii\db\Expression;
  * case-insensitive lookup, server-side evaluation against an amount, and the
  * usage counter the payment path bumps on a successful charge.
  *
- * @author Fabian Haefliger
+ * @author Anvil Dev
  * @since 1.0.0
  */
 class CouponsService extends Component

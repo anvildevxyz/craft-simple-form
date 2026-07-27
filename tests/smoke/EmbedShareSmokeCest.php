@@ -12,7 +12,7 @@ use SmokeTester;
  * Embed & share smoke tests (#247): the standalone page wraps the form in a full
  * HTML document, and the embed loader script is present with its markers.
  *
- * @author Fabian Haefliger
+ * @author Anvil Dev
  * @since 1.0.0
  */
 class EmbedShareSmokeCest extends BaseSmokeCest

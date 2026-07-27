@@ -16,7 +16,7 @@ use SmokeTester;
  * Registers stub connectors and exercises the after-save dispatch path that
  * fires when a visitor submits through the shared {@see SubmissionService}.
  *
- * @author Fabian Haefliger
+ * @author Anvil Dev
  * @since 1.0.0
  */
 class IntegrationsSmokeCest extends BaseSmokeCest

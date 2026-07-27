@@ -18,7 +18,7 @@ use Craft;
  *
  * @phpstan-type RepeaterInnerField array{handle: string, type: string, label: string, config: array<string, mixed>}
  *
- * @author Fabian Haefliger
+ * @author Anvil Dev
  * @since 1.0.0
  */
 class RepeaterFieldType extends FieldType

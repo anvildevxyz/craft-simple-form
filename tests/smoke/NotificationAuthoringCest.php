@@ -18,7 +18,7 @@ use Symfony\Component\Mime\Email;
  * Playwright craft-smoke-test scenarios; the service/controller behaviour behind
  * this feature is exercised here.
  *
- * @author Fabian Haefliger
+ * @author Anvil Dev
  * @since 1.0.0
  */
 class NotificationAuthoringCest extends BaseSmokeCest

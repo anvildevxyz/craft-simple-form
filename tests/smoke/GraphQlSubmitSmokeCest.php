@@ -12,7 +12,7 @@ use SmokeTester;
  * submission through the same pipeline as the HTTP path, and surfaces validation
  * errors as structured payload (not a transport error).
  *
- * @author Fabian Haefliger
+ * @author Anvil Dev
  * @since 1.0.0
  */
 class GraphQlSubmitSmokeCest extends BaseSmokeCest

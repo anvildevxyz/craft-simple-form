@@ -18,7 +18,7 @@ use SmokeTester;
  * The suite pins Pro by default; each test flips the edition explicitly and
  * {@see _after} restores it.
  *
- * @author Fabian Haefliger
+ * @author Anvil Dev
  * @since 2.17.0
  */
 class EditionDowngradeCest extends BaseSmokeCest

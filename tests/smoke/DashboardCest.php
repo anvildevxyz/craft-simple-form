@@ -22,7 +22,7 @@ use yii\web\Response;
  * data-panel tests assert them directly; a second test drives the whole
  * controller action (template render included) under an authenticated admin.
  *
- * @author Fabian Haefliger
+ * @author Anvil Dev
  * @since 2.17.0
  */
 class DashboardCest extends BaseSmokeCest

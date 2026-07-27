@@ -18,7 +18,7 @@ use yii\base\Component;
  * The lists live as newline-separated text blobs in {@see \anvildev\simpleform\models\Settings};
  * this service parses/normalises them and performs the matching.
  *
- * @author Fabian Haefliger
+ * @author Anvil Dev
  * @since 1.0.0
  */
 class DenylistService extends Component

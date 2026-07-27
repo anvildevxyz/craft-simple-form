@@ -24,7 +24,7 @@ use yii\base\Component;
  * returns false and the PDF features degrade gracefully (CP toggles disabled,
  * the notification email still sends without the attachment).
  *
- * @author Fabian Haefliger
+ * @author Anvil Dev
  * @since 1.0.0
  */
 class PdfService extends Component

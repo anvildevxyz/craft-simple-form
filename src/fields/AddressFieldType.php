@@ -12,7 +12,7 @@ use Craft;
  * never hardcoded). line1 / city / postalCode / country are primary, so the
  * field-level `required` shorthand makes them mandatory.
  *
- * @author Fabian Haefliger
+ * @author Anvil Dev
  * @since 1.0.0
  */
 class AddressFieldType extends CompositeFieldType

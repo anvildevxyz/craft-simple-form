@@ -9,7 +9,7 @@ use SmokeTester;
 /**
  * Conditional logic smoke tests (functional).
  *
- * @author Fabian Haefliger
+ * @author Anvil Dev
  * @since 1.0.0
  */
 class ConditionalLogicSmokeCest extends BaseSmokeCest

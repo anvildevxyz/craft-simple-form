@@ -50,7 +50,7 @@ use yii\base\Component;
  *
  * @phpstan-type ResumePrefill array{values: array<string, mixed>, token: string}
  *
- * @author Fabian Haefliger
+ * @author Anvil Dev
  * @since 1.0.0
  */
 class FormRenderService extends Component

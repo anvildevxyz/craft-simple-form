@@ -20,7 +20,7 @@ use yii\web\ForbiddenHttpException;
  * Exercises the full submit → queue/send notification path for both legacy
  * form email columns and per-form notification rows.
  *
- * @author Fabian Haefliger
+ * @author Anvil Dev
  * @since 1.0.0
  */
 class NotificationsSmokeCest extends BaseSmokeCest

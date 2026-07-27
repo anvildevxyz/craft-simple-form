@@ -12,7 +12,7 @@ use SmokeTester;
  * Covers hidden, consent, phone, rating, and opinion-scale fields through the
  * public submit request path.
  *
- * @author Fabian Haefliger
+ * @author Anvil Dev
  * @since 1.0.0
  */
 class FieldTypesSmokeCest extends BaseSmokeCest

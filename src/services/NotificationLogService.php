@@ -15,7 +15,7 @@ use yii\base\Component;
  * attempt is recorded so operators can review delivery history in the CP.
  * Logging is best-effort — a log write failure must never break email delivery.
  *
- * @author Fabian Haefliger
+ * @author Anvil Dev
  */
 class NotificationLogService extends Component
 {

@@ -9,7 +9,7 @@ use SmokeTester;
  * first/last sub-inputs, and a submission stores the parts as one structured
  * value (extra crafted keys clamped to the rendered sub-fields).
  *
- * @author Fabian Haefliger
+ * @author Anvil Dev
  * @since 1.0.0
  */
 class NameFieldSmokeCest extends BaseSmokeCest

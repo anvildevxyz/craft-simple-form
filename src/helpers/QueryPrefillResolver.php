@@ -22,7 +22,7 @@ namespace anvildev\simpleform\helpers;
  *
  * @phpstan-type PrefillField array{key: string, handle: string, config: array<string, mixed>, acceptsList: bool}
  *
- * @author Fabian Haefliger
+ * @author Anvil Dev
  * @since 1.0.0
  */
 class QueryPrefillResolver

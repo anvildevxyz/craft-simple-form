@@ -20,7 +20,7 @@ use SmokeTester;
  * {@see \anvildev\simpleform\services\SubmitMessagesService::save()}); the suite
  * pins Pro by default. {@see _after} restores the edition.
  *
- * @author Fabian Haefliger
+ * @author Anvil Dev
  * @since 2.17.0
  */
 class EditionPauseResumeCest extends BaseSmokeCest

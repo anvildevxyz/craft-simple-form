@@ -14,7 +14,7 @@ namespace anvildev\simpleform\stencils;
  * verbatim, so the handle resolves against the new form's fields.
  *
  * @since 1.0.0
- * @author Fabian Haefliger
+ * @author Anvil Dev
  */
 class Stencil
 {

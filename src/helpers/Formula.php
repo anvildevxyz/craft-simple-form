@@ -30,7 +30,7 @@ use anvildev\simpleform\exceptions\FormulaException;
  *
  * @phpstan-type Token array{type: string, value: string}
  *
- * @author Fabian Haefliger
+ * @author Anvil Dev
  * @since 1.0.0
  */
 final class Formula

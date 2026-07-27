@@ -18,7 +18,7 @@ use SmokeTester;
  * — the exact resolution the SubmitController and GraphQL mutation both use.
  * Forms and fields are seeded through the data layer (see {@see BaseSmokeCest}).
  *
- * @author Fabian Haefliger
+ * @author Anvil Dev
  * @since 1.0.0
  */
 class PostSubmitBehaviorCest extends BaseSmokeCest

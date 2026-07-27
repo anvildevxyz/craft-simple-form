@@ -10,7 +10,7 @@ use craft\elements\User;
  * An element-relation field that lets a visitor select one or more users,
  * constrained to a configured set of user groups.
  *
- * @author Fabian Haefliger
+ * @author Anvil Dev
  * @since 1.0.0
  */
 class UserRelationFieldType extends ElementRelationFieldType

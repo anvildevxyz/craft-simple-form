@@ -18,7 +18,7 @@ use yii\web\Response;
  * Both actions are anonymous reads — the form itself still posts through the
  * unchanged {@see SubmitController} pipeline (CSRF, spam, validation intact).
  *
- * @author Fabian Haefliger
+ * @author Anvil Dev
  * @since 1.0.0
  */
 class FormController extends Controller

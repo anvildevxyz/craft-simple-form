@@ -23,7 +23,7 @@ use craft\elements\db\ElementQueryInterface;
  *  - `multiple` (bool) — single vs. multi select.
  *  - `limit` (int|null) — max selectable when `multiple`.
  *
- * @author Fabian Haefliger
+ * @author Anvil Dev
  * @since 1.0.0
  */
 abstract class ElementRelationFieldType extends FieldType

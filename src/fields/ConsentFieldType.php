@@ -25,7 +25,7 @@ use craft\helpers\DateTimeHelper;
  *                     `[label](url)` token (rendered safely via {@see ConsentText}).
  *  - requiredMessage: overrides the default translatable "must agree" error.
  *
- * @author Fabian Haefliger
+ * @author Anvil Dev
  * @since 1.0.0
  */
 class ConsentFieldType extends FieldType

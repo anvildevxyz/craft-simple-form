@@ -10,7 +10,7 @@ use craft\base\Model;
  * the recreated {@see Form} plus any non-fatal warnings (skipped sites, integrations
  * needing credentials, schema upgrades applied) the caller should surface (#139).
  *
- * @author Fabian Haefliger
+ * @author Anvil Dev
  * @since 1.0.0
  */
 class ImportResult extends Model

@@ -16,7 +16,7 @@ use SmokeTester;
  * (the service the `simpleForm()` Twig function delegates to) and the submit path
  * through the shared submission service.
  *
- * @author Fabian Haefliger
+ * @author Anvil Dev
  * @since 2.17.0
  */
 class LayoutBlocksRenderCest extends BaseSmokeCest

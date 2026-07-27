@@ -16,7 +16,7 @@ use yii\web\Response;
  * The plugin Settings screens: renders each settings tab and persists a per-tab
  * save without clobbering the other tabs' stored fields.
  *
- * @author Fabian Haefliger
+ * @author Anvil Dev
  * @since 1.0.0
  */
 class SettingsController extends Controller

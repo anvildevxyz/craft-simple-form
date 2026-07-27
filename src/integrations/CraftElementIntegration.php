@@ -28,7 +28,7 @@ use craft\elements\User;
  *
  * @phpstan-import-type SelectOption from ElementMapping
  *
- * @author Fabian Haefliger
+ * @author Anvil Dev
  * @since 1.0.0
  */
 class CraftElementIntegration implements IntegrationTypeInterface

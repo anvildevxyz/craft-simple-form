@@ -8,7 +8,7 @@ namespace anvildev\simpleform\pdf;
  * selects one only when its backing library is installed, so the feature degrades
  * gracefully when no engine is available.
  *
- * @author Fabian Haefliger
+ * @author Anvil Dev
  * @since 1.0.0
  */
 interface PdfEngineInterface

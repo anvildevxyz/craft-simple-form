@@ -15,7 +15,7 @@ use SmokeTester;
  * Covers draft persistence, the save-draft controller endpoint, resume prefill
  * rendering, and opt-in gating on the form.
  *
- * @author Fabian Haefliger
+ * @author Anvil Dev
  * @since 1.0.0
  */
 class SaveResumeSmokeCest extends BaseSmokeCest

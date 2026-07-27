@@ -28,7 +28,7 @@ use yii\mail\MessageInterface;
  * {@see SubmissionService::createFromRequest()} — genuinely new HTTP/Twig/
  * controller coverage versus the service-only integration suite.
  *
- * @author Fabian Haefliger
+ * @author Anvil Dev
  * @since 1.0.0
  */
 abstract class BaseSmokeCest

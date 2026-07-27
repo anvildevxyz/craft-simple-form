@@ -10,7 +10,7 @@ use SmokeTester;
  * the configured provider when enabled, the field degrades to plain sub-inputs
  * when not, and the live geocoder/JS fill (browser-only) is out of scope here.
  *
- * @author Fabian Haefliger
+ * @author Anvil Dev
  * @since 1.0.0
  */
 class AddressAutocompleteSmokeCest extends BaseSmokeCest

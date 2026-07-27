@@ -14,7 +14,7 @@ use SmokeTester;
  * prunes flagged-spam submissions older than `retainSpamDays`, while sparing
  * recent spam and every non-spam submission of the same age.
  *
- * @author Fabian Haefliger
+ * @author Anvil Dev
  * @since 2.17.0
  */
 class SpamRetentionCest extends BaseSmokeCest

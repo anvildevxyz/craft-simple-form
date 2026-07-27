@@ -12,7 +12,7 @@ use Twig\TwigFunction;
  * which resolves the form's (overridable) Twig theme. With no custom template
  * path configured the output is identical to the built-in default theme.
  *
- * @author Fabian Haefliger
+ * @author Anvil Dev
  * @since 1.0.0
  */
 class TwigExtension extends AbstractExtension

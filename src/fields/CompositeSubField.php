@@ -8,7 +8,7 @@ namespace anvildev\simpleform\fields;
  * whether it is a "primary" part that the field-level `required` shorthand makes
  * mandatory.
  *
- * @author Fabian Haefliger
+ * @author Anvil Dev
  * @since 1.0.0
  */
 final class CompositeSubField

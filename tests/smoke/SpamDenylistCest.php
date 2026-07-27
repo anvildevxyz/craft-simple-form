@@ -22,7 +22,7 @@ use SmokeTester;
  * Playwright craft-smoke-test scenarios; the enforcement is covered here and in
  * the integration DenylistEnforcementTest.
  *
- * @author Fabian Haefliger
+ * @author Anvil Dev
  * @since 1.0.0
  */
 class SpamDenylistCest extends BaseSmokeCest

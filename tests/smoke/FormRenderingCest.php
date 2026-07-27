@@ -19,7 +19,7 @@ use SmokeTester;
  * {@see \anvildev\simpleform\web\assets\form\FormAsset} bundle, not inline in
  * the markup, unless the `inlineFormAssets` setting forces the escape hatch.
  *
- * @author Fabian Haefliger
+ * @author Anvil Dev
  * @since 1.0.0
  */
 class FormRenderingCest extends BaseSmokeCest

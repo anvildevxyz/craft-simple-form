@@ -12,7 +12,7 @@ namespace anvildev\simpleform\helpers;
  * platforms. Masking is applied at capture time so a full IP is never written
  * to the database in anonymized mode.
  *
- * @author Fabian Haefliger
+ * @author Anvil Dev
  * @since 1.0.0
  */
 final class IpHelper

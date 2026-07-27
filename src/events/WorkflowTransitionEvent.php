@@ -12,7 +12,7 @@ use yii\base\Event;
  * hardcoding any. Carries the submission, the from/to stage handles, and the
  * acting user (null for a programmatic move).
  *
- * @author Fabian Haefliger
+ * @author Anvil Dev
  * @since 1.0.0
  */
 class WorkflowTransitionEvent extends Event

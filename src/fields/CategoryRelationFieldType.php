@@ -10,7 +10,7 @@ use craft\elements\db\ElementQueryInterface;
  * An element-relation field that lets a visitor select one or more categories,
  * constrained to a configured set of category groups.
  *
- * @author Fabian Haefliger
+ * @author Anvil Dev
  * @since 1.0.0
  */
 class CategoryRelationFieldType extends ElementRelationFieldType

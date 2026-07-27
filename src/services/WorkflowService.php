@@ -23,7 +23,7 @@ use yii\base\Component;
  * @phpstan-type WorkflowStatus array{handle: string, label: string, color: string}
  * @phpstan-type WorkflowTransition array{from: string, to: string, label: string, groups: list<string>}
  *
- * @author Fabian Haefliger
+ * @author Anvil Dev
  * @since 1.0.0
  */
 class WorkflowService extends Component

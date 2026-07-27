@@ -11,7 +11,7 @@ use SmokeTester;
  * Quiz scoring smoke tests (#241): the answer key drives a stored score and
  * grade band, the result surfaces in the success message and the CSV export.
  *
- * @author Fabian Haefliger
+ * @author Anvil Dev
  * @since 1.0.0
  */
 class QuizScoringSmokeCest extends BaseSmokeCest

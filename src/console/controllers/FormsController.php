@@ -18,7 +18,7 @@ use yii\console\ExitCode;
  * Export a form's full, secret-free definition to versioned JSON and import it on
  * any install to recreate the form. See {@see FormPortabilityService}.
  *
- * @author Fabian Haefliger
+ * @author Anvil Dev
  * @since 1.0.0
  */
 class FormsController extends Controller

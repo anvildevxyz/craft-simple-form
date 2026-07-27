@@ -14,7 +14,7 @@ namespace anvildev\simpleform\helpers;
  * {@see self::MAX_COLUMNS} columns; a field that would overflow spills into a
  * new row sharing the same `row` value.
  *
- * @author Fabian Haefliger
+ * @author Anvil Dev
  * @since 1.0.0
  */
 final class FormRows

@@ -14,7 +14,7 @@ use craft\elements\db\ElementQueryInterface;
  * attachments, and zero submissions. Returned from {@see Form::defineActions()}.
  *
  * @since 1.0.0
- * @author Fabian Haefliger
+ * @author Anvil Dev
  */
 class DuplicateForm extends ElementAction
 {

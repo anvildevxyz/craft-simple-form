@@ -16,7 +16,7 @@ use yii\web\Response;
  * to template routing (no controller), so the template's `failures` variable was
  * undefined — now routed to actionFailures() which supplies it.
  *
- * @author Fabian Haefliger
+ * @author Anvil Dev
  * @since 2.17.0
  */
 class IntegrationFailuresScreenCest extends BaseSmokeCest

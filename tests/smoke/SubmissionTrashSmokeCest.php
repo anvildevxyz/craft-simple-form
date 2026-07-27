@@ -12,7 +12,7 @@ use SmokeTester;
  * normal queries while keeping its plugin row (restorable), and a permanent
  * delete cascades the plugin row away.
  *
- * @author Fabian Haefliger
+ * @author Anvil Dev
  * @since 1.0.0
  */
 class SubmissionTrashSmokeCest extends BaseSmokeCest

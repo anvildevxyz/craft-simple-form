@@ -16,7 +16,7 @@ use craft\db\Migration;
  * From 1.0.0 on, schema changes ship as dated `m*` migrations alongside their
  * edit to this file, so fresh installs and upgrades stay in parity.
  *
- * @author Fabian Haefliger
+ * @author Anvil Dev
  */
 class Install extends Migration
 {

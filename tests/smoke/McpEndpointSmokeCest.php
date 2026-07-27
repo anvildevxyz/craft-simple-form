@@ -14,7 +14,7 @@ use SmokeTester;
  * (an enabled server refuses an unauthenticated request with 401). The full
  * authenticated JSON-RPC flow is covered by the integration suite.
  *
- * @author Fabian Haefliger
+ * @author Anvil Dev
  * @since 1.0.0
  */
 class McpEndpointSmokeCest extends BaseSmokeCest

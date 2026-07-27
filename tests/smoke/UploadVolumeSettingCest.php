@@ -24,7 +24,7 @@ use Throwable;
  * already has configured (it ships with none); creation is skipped-past only if
  * the environment forbids it.
  *
- * @author Fabian Haefliger
+ * @author Anvil Dev
  * @since 2.17.0
  */
 class UploadVolumeSettingCest extends BaseSmokeCest

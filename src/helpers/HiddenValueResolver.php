@@ -15,7 +15,7 @@ namespace anvildev\simpleform\helpers;
  *
  * @phpstan-type HiddenUserAttrs array{email?: ?string, id?: int|string|null, username?: ?string}
  *
- * @author Fabian Haefliger
+ * @author Anvil Dev
  * @since 1.0.0
  */
 class HiddenValueResolver

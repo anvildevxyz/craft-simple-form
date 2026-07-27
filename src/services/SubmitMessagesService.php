@@ -29,7 +29,7 @@ use yii\base\Component;
  * skipped entirely on Solo (see {@see SubmissionService::resolvePostSubmit()}),
  * so stored rows never error — they simply fall back to the default message.
  *
- * @author Fabian Haefliger
+ * @author Anvil Dev
  * @since 2.14.0
  */
 class SubmitMessagesService extends Component

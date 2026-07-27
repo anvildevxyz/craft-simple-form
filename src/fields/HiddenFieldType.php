@@ -31,7 +31,7 @@ use craft\elements\User;
  *
  * @phpstan-import-type HiddenUserAttrs from HiddenValueResolver
  *
- * @author Fabian Haefliger
+ * @author Anvil Dev
  * @since 1.0.0
  */
 class HiddenFieldType extends FieldType

@@ -10,7 +10,7 @@ use SmokeTester;
 /**
  * Duplicate-prevention smoke tests (functional).
  *
- * @author Fabian Haefliger
+ * @author Anvil Dev
  * @since 1.0.0
  */
 class DuplicatePreventionSmokeCest extends BaseSmokeCest

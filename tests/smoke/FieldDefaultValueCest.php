@@ -11,7 +11,7 @@ use SmokeTester;
  * the input on a fresh render, but any resume / query / submitted value takes
  * precedence so a visitor's own input always wins.
  *
- * @author Fabian Haefliger
+ * @author Anvil Dev
  * @since 2.17.0
  */
 class FieldDefaultValueCest extends BaseSmokeCest

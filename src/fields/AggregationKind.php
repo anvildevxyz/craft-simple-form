@@ -9,7 +9,7 @@ namespace anvildev\simpleform\fields;
  * so {@see \anvildev\simpleform\services\ReportsService::fieldReport()} builds
  * the report straight from the form's field set with no hardcoded type list.
  *
- * @author Fabian Haefliger
+ * @author Anvil Dev
  * @since 1.0.0
  */
 enum AggregationKind: string

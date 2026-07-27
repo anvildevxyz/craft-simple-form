@@ -17,7 +17,7 @@ use SmokeTester;
  * HTML form was never rendered. Forms and fields are seeded through the data
  * layer (see {@see BaseSmokeCest}).
  *
- * @author Fabian Haefliger
+ * @author Anvil Dev
  * @since 1.0.0
  */
 class FormSchedulingCest extends BaseSmokeCest

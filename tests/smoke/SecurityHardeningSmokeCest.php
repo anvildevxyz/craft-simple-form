@@ -12,7 +12,7 @@ use SmokeTester;
  * Covers redirect URL validation, save-draft rate limiting, and payment amount
  * bounds through the public submit paths.
  *
- * @author Fabian Haefliger
+ * @author Anvil Dev
  * @since 1.0.0
  */
 class SecurityHardeningSmokeCest extends BaseSmokeCest

@@ -11,7 +11,7 @@ use SmokeTester;
  * Passive partial capture smoke tests (#242): the public form exposes the
  * capture endpoint + token input only when the form opted in.
  *
- * @author Fabian Haefliger
+ * @author Anvil Dev
  * @since 1.0.0
  */
 class PartialCaptureSmokeCest extends BaseSmokeCest

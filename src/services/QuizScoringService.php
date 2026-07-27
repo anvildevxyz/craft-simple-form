@@ -19,7 +19,7 @@ use yii\base\Component;
  * submit and stored on the submission, so it never shifts when the answer key
  * later changes.
  *
- * @author Fabian Haefliger
+ * @author Anvil Dev
  * @since 1.0.0
  */
 class QuizScoringService extends Component

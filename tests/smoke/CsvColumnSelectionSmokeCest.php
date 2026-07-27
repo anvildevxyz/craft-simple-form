@@ -16,7 +16,7 @@ use SmokeTester;
  * column key, not the display label — two fields can share a label (e.g. two
  * fields both "Comments") and must still be selectable independently (#328).
  *
- * @author Fabian Haefliger
+ * @author Anvil Dev
  * @since 1.0.0
  */
 class CsvColumnSelectionSmokeCest extends BaseSmokeCest

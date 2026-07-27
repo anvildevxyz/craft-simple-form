@@ -13,7 +13,7 @@ use yii\base\Event;
  * `values` is the field_<id> => value map captured so far; `token` addresses the
  * stored partial (its hash is what's persisted); `siteId` is the capture site.
  *
- * @author Fabian Haefliger
+ * @author Anvil Dev
  * @since 1.0.0
  */
 class PartialCaptureEvent extends Event

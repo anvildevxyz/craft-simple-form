@@ -17,7 +17,7 @@ use Craft;
  * Config: `required`, optional `volume` (asset-volume handle), optional
  * presentational `penColor` / `background`.
  *
- * @author Fabian Haefliger
+ * @author Anvil Dev
  * @since 1.0.0
  */
 class SignatureFieldType extends FieldType

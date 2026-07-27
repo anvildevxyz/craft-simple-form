@@ -21,7 +21,7 @@ use yii\base\Event;
  * ```
  *
  * @since 1.0.0
- * @author Fabian Haefliger
+ * @author Anvil Dev
  */
 class RegisterStencilsEvent extends Event
 {

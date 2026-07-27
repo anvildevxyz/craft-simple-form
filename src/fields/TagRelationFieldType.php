@@ -10,7 +10,7 @@ use craft\elements\Tag;
  * An element-relation field that lets a visitor select one or more tags,
  * constrained to a configured set of tag groups.
  *
- * @author Fabian Haefliger
+ * @author Anvil Dev
  * @since 1.0.0
  */
 class TagRelationFieldType extends ElementRelationFieldType

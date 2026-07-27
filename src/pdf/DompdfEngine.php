@@ -11,7 +11,7 @@ use Dompdf\Options;
  * file without the library installed never fatals at runtime (the autoloader only
  * resolves it lazily through {@see PdfService}).
  *
- * @author Fabian Haefliger
+ * @author Anvil Dev
  * @since 1.0.0
  */
 class DompdfEngine implements PdfEngineInterface

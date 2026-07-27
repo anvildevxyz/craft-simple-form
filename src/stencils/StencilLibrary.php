@@ -15,7 +15,7 @@ use yii\base\Component;
  * {@see \anvildev\simpleform\services\FormCloneService::createFromStencil()}.
  *
  * @since 1.0.0
- * @author Fabian Haefliger
+ * @author Anvil Dev
  */
 class StencilLibrary extends Component
 {

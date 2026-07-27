@@ -17,7 +17,7 @@ use SmokeTester;
  * a user who has hit it and rejects their over-cap submission. Forms and fields
  * are seeded through the data layer (see {@see BaseSmokeCest}).
  *
- * @author Fabian Haefliger
+ * @author Anvil Dev
  * @since 1.0.0
  */
 class UserLimitsCest extends BaseSmokeCest

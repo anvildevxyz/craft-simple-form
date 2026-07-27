@@ -8,7 +8,7 @@ use Craft;
  * The plugin's user permissions and their labels — the single source of truth
  * shared by permission registration and the requirePermission() guards.
  *
- * @author Fabian Haefliger
+ * @author Anvil Dev
  * @since 1.0.0
  */
 class SimpleFormPermissions

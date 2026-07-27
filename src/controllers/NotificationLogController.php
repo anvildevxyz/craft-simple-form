@@ -13,7 +13,7 @@ use yii\web\Response;
 /**
  * CP index of outbound notification emails sent for form submissions.
  *
- * @author Fabian Haefliger
+ * @author Anvil Dev
  */
 class NotificationLogController extends Controller
 {

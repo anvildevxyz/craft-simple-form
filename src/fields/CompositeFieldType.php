@@ -13,7 +13,7 @@ use Craft;
  * the render loop, posted-value coercion, per-sub validation, and the flatten
  * helpers all live here so Name and Address don't duplicate the machinery.
  *
- * @author Fabian Haefliger
+ * @author Anvil Dev
  * @since 1.0.0
  */
 abstract class CompositeFieldType extends FieldType

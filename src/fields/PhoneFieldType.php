@@ -22,7 +22,7 @@ use Craft;
  *     built-in default.
  *  - `minDigits` / `maxDigits`: bounds on the digit count (defaults 7 / 15).
  *
- * @author Fabian Haefliger
+ * @author Anvil Dev
  * @since 1.0.0
  */
 class PhoneFieldType extends FieldType

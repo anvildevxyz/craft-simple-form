@@ -14,7 +14,7 @@ namespace anvildev\simpleform\fields;
  * paragraph block the body is plain text — never HTML or Twig — so it is "safe
  * by construction" with no sandbox or purifier pass.
  *
- * @author Fabian Haefliger
+ * @author Anvil Dev
  * @since 2.15.0
  */
 class CalloutFieldType extends FieldType

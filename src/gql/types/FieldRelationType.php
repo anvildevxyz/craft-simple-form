@@ -12,7 +12,7 @@ use GraphQL\Type\Definition\Type;
  *
  * @phpstan-import-type GqlFieldDefinitionMap from \anvildev\simpleform\gql\types\SimpleFormObjectType
  *
- * @author Fabian Haefliger
+ * @author Anvil Dev
  * @since 1.0.0
  */
 class FieldRelationType extends SimpleFormObjectType

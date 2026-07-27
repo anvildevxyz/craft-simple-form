@@ -10,7 +10,7 @@ use craft\elements\db\ElementQueryInterface;
  * An element-relation field that lets a visitor select one or more assets,
  * constrained to a configured set of volumes.
  *
- * @author Fabian Haefliger
+ * @author Anvil Dev
  * @since 1.0.0
  */
 class AssetRelationFieldType extends ElementRelationFieldType

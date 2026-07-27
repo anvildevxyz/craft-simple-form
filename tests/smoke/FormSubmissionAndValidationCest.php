@@ -14,7 +14,7 @@ use SmokeTester;
  * fields through the data layer (see {@see BaseSmokeCest}). Assertions are made
  * against the returned envelope and the persisted {@see Submission} element.
  *
- * @author Fabian Haefliger
+ * @author Anvil Dev
  * @since 1.0.0
  */
 class FormSubmissionAndValidationCest extends BaseSmokeCest

@@ -11,7 +11,7 @@ namespace anvildev\simpleform\fields;
  * keyboard-navigable and works without JavaScript. The chosen value is stored as
  * an integer so analytics and the exporter treat it numerically.
  *
- * @author Fabian Haefliger
+ * @author Anvil Dev
  * @since 1.0.0
  */
 class OpinionScaleFieldType extends FieldType

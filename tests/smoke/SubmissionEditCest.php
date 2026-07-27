@@ -17,7 +17,7 @@ use SmokeTester;
  * {@see \anvildev\simpleform\services\SubmissionService::update()} path (the same
  * re-validate + re-snapshot core the front-end tokenized editor uses).
  *
- * @author Fabian Haefliger
+ * @author Anvil Dev
  * @since 2.17.1
  */
 class SubmissionEditCest extends BaseSmokeCest

@@ -17,7 +17,7 @@ use yii\console\ExitCode;
  * retention window while sparing recent ones, and anonymize mode keeps the row
  * but scrubs the submitted data.
  *
- * @author Fabian Haefliger
+ * @author Anvil Dev
  * @since 1.0.0
  */
 class RetentionSmokeCest extends BaseSmokeCest

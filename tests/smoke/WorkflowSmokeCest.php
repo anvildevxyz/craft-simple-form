@@ -12,7 +12,7 @@ use SmokeTester;
  * initial stage, an allowed transition moves it and is audit-logged, an
  * unconfigured move is refused, and the whole pipeline is inert when disabled.
  *
- * @author Fabian Haefliger
+ * @author Anvil Dev
  * @since 1.0.0
  */
 class WorkflowSmokeCest extends BaseSmokeCest

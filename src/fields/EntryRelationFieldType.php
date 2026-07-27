@@ -10,7 +10,7 @@ use craft\elements\Entry;
  * An element-relation field that lets a visitor select one or more entries,
  * constrained to a configured set of sections.
  *
- * @author Fabian Haefliger
+ * @author Anvil Dev
  * @since 1.0.0
  */
 class EntryRelationFieldType extends ElementRelationFieldType

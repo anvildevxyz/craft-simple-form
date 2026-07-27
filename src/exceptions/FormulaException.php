@@ -9,7 +9,7 @@ namespace anvildev\simpleform\exceptions;
  * catches it and surfaces a translated field error; runtime evaluation of an
  * already-validated formula is total and never throws.
  *
- * @author Fabian Haefliger
+ * @author Anvil Dev
  * @since 1.0.0
  */
 class FormulaException extends \RuntimeException

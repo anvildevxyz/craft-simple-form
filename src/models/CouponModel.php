@@ -10,7 +10,7 @@ use DateTime;
  * applied to a Commerce payment-form's amount, with an optional expiry and usage
  * limit.
  *
- * @author Fabian Haefliger
+ * @author Anvil Dev
  * @since 1.0.0
  */
 class CouponModel extends Model

@@ -17,7 +17,7 @@ use Craft;
  *
  * @phpstan-type DialCode array{dial: string, label: string}
  *
- * @author Fabian Haefliger
+ * @author Anvil Dev
  * @since 1.0.0
  */
 final class DialCodes

@@ -13,7 +13,7 @@ use SmokeTester;
  * scenarios under docs/smoke-tests/. The data-layer behaviour behind it is
  * additionally covered by the tests/integration suite.
  *
- * @author Fabian Haefliger
+ * @author Anvil Dev
  * @since 1.0.0
  */
 class ColumnLayoutCest

@@ -11,7 +11,7 @@ use SmokeTester;
  * as `data-sf-jumps` for the navigator, a non-branching form emits none, and a
  * backward jump target is rejected at save (#245 save validation).
  *
- * @author Fabian Haefliger
+ * @author Anvil Dev
  * @since 1.0.0
  */
 class LogicJumpsSmokeCest extends BaseSmokeCest

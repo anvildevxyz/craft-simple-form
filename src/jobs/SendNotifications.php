@@ -15,7 +15,7 @@ use craft\queue\BaseJob;
  * {@see \anvildev\simpleform\services\EmailService::sendSubmissionEmail()} path
  * the synchronous (Commerce/test) callers use.
  *
- * @author Fabian Haefliger
+ * @author Anvil Dev
  * @since 1.0.0
  */
 class SendNotifications extends BaseJob

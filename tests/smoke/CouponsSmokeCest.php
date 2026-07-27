@@ -15,7 +15,7 @@ use SmokeTester;
  * path is exercised by the live smoke suite (Commerce isn't in the test app), so
  * these cover the Commerce-agnostic discount logic + the preview HTTP path.
  *
- * @author Fabian Haefliger
+ * @author Anvil Dev
  * @since 1.0.0
  */
 class CouponsSmokeCest extends BaseSmokeCest

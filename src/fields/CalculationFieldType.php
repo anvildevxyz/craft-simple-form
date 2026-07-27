@@ -20,7 +20,7 @@ use anvildev\simpleform\helpers\Formula;
  *  - suffix (string):    display suffix, e.g. ` kg` (optional, translatable)
  *  - missingAsZero (bool): missing/non-numeric reference → 0 (default true)
  *
- * @author Fabian Haefliger
+ * @author Anvil Dev
  * @since 1.0.0
  */
 class CalculationFieldType extends FieldType

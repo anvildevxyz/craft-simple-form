@@ -11,7 +11,7 @@ namespace anvildev\simpleform\helpers;
  * and every other character is HTML-escaped. This keeps XSS off the table while
  * still letting non-technical creators link the policy.
  *
- * @author Fabian Haefliger
+ * @author Anvil Dev
  * @since 1.0.0
  */
 final class ConsentText

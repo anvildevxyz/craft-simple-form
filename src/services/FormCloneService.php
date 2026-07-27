@@ -33,7 +33,7 @@ use yii\base\InvalidArgumentException;
  * per-site option/label/error-message translations are written per site.
  *
  * @since 1.0.0
- * @author Fabian Haefliger
+ * @author Anvil Dev
  */
 class FormCloneService extends Component
 {

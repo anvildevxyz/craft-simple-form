@@ -16,7 +16,7 @@ use yii\web\Response;
  * CP management of payment coupons (#246): list, add/edit/delete, and an
  * enable toggle, rendered as the Settings → Coupons tab. Gated by manageSettings.
  *
- * @author Fabian Haefliger
+ * @author Anvil Dev
  * @since 1.0.0
  */
 class CouponsController extends Controller

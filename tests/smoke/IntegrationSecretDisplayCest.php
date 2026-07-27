@@ -12,7 +12,7 @@ use SmokeTester;
  * save keeps its value instead of wiping it, while environment references stay
  * visible so they can be edited (#429).
  *
- * @author Fabian Haefliger
+ * @author Anvil Dev
  * @since 2.17.0
  */
 class IntegrationSecretDisplayCest extends BaseSmokeCest

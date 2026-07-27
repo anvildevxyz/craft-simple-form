@@ -11,7 +11,7 @@ use SmokeTester;
  * survey field report and the analytics status breakdown, the same aggregations
  * the CP report and analytics dashboards render.
  *
- * @author Fabian Haefliger
+ * @author Anvil Dev
  * @since 1.0.0
  */
 class ReportsSmokeCest extends BaseSmokeCest

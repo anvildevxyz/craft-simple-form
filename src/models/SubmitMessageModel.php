@@ -21,7 +21,7 @@ use craft\base\Model;
  * matches the submitted values wins; if none match, the form's default
  * `submitMessage` is used, unchanged.
  *
- * @author Fabian Haefliger
+ * @author Anvil Dev
  * @since 2.14.0
  */
 class SubmitMessageModel extends Model

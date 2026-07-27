@@ -7,7 +7,7 @@ namespace anvildev\simpleform\fields;
  * each individually toggleable. Defaults to first + last enabled (both primary,
  * so the field-level `required` shorthand makes them mandatory); the rest off.
  *
- * @author Fabian Haefliger
+ * @author Anvil Dev
  * @since 1.0.0
  */
 class NameFieldType extends CompositeFieldType

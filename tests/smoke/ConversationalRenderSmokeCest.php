@@ -10,7 +10,7 @@ use SmokeTester;
  * conversational form renders one screen per question with the navigator + the
  * centered-card theme's progress bar, while standard mode is unaffected.
  *
- * @author Fabian Haefliger
+ * @author Anvil Dev
  * @since 1.0.0
  */
 class ConversationalRenderSmokeCest extends BaseSmokeCest

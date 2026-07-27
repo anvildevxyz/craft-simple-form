@@ -11,7 +11,7 @@ use SmokeTester;
  * UTM/referrer auto-capture smoke tests (#249): a real submit records the
  * attribution, and it surfaces in the CSV export.
  *
- * @author Fabian Haefliger
+ * @author Anvil Dev
  * @since 1.0.0
  */
 class AttributionCaptureSmokeCest extends BaseSmokeCest

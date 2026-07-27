@@ -15,7 +15,7 @@ use SmokeTester;
  * `protected static`, so they're reached via reflection exactly as Craft's
  * element-index machinery invokes them.
  *
- * @author Fabian Haefliger
+ * @author Anvil Dev
  * @since 2.17.0
  */
 class SubmissionIndexCest extends BaseSmokeCest

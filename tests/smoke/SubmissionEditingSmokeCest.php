@@ -12,7 +12,7 @@ use SmokeTester;
 /**
  * Front-end submission editing smoke tests (functional).
  *
- * @author Fabian Haefliger
+ * @author Anvil Dev
  * @since 1.0.0
  */
 class SubmissionEditingSmokeCest extends BaseSmokeCest

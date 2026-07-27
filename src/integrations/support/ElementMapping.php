@@ -12,7 +12,7 @@ use craft\helpers\StringHelper;
  *
  * @phpstan-type SelectOption array{label: string, value: string}
  *
- * @author Fabian Haefliger
+ * @author Anvil Dev
  * @since 1.0.0
  */
 final class ElementMapping

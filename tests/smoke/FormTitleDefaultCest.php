@@ -12,7 +12,7 @@ use SmokeTester;
  * defaults a blank title to the Name so saving a form without a Title succeeds,
  * matching how the editor presents it (#428).
  *
- * @author Fabian Haefliger
+ * @author Anvil Dev
  * @since 2.17.0
  */
 class FormTitleDefaultCest extends BaseSmokeCest
