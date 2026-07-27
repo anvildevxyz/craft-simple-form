@@ -32,6 +32,9 @@ The set of field types you can add, and each type's options, are covered in
 
 ## Multi-step (multi-page) forms
 
+> **Pro edition.** Multi-page forms require [Pro](editions.md). See [Editions](editions.md).
+
+
 A form becomes multi-step the moment its fields span more than one **page**.
 
 - Each field carries a 1-based **Page** number in its inspector (default `1`).
@@ -68,6 +71,9 @@ theme can restyle the row/column wrappers (see
 
 ## Conversational mode
 
+> **Pro edition.** Conversational mode requires [Pro](editions.md). See [Editions](editions.md).
+
+
 A form can render **one question per screen** — typeform-style — instead of the
 whole form at once. It's a per-form display choice, picked under the Rules tab's
 **Display** section: **Render mode** (`renderMode`), either **Standard form**
@@ -97,6 +103,9 @@ to branch the question flow.
 
 ## Save & continue later
 
+> **Pro edition.** Save & continue later requires [Pro](editions.md). See [Editions](editions.md).
+
+
 Opt a form into partial submissions so a visitor can save their progress and
 return via a link.
 
@@ -116,6 +125,9 @@ return via a link.
 - On a completed submission, the draft for that token is deleted.
 
 ## Passive partial capture (abandoned attempts)
+
+> **Pro edition.** Partial capture requires [Pro](editions.md). See [Editions](editions.md).
+
 
 Where save-&-continue is visitor-initiated, **partial capture** is passive: the
 form quietly auto-saves answers as they are entered, so an abandoned attempt is

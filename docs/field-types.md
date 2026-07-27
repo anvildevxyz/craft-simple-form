@@ -5,6 +5,10 @@ to composite name/address blocks, element pickers, a drawn signature, and a
 server-computed calculation. This guide is a reference for every type and the
 real config options each one exposes.
 
+Eleven of them are **Pro** — Signature, Payment, Rating, Opinion Scale,
+Calculation, Repeater, and the five element relations — and are marked as such
+below. The other 22 are available on Solo. See [Editions](editions.md).
+
 ## Adding fields
 
 Fields are added in the **form builder** (a form's edit screen in the Control
@@ -163,6 +167,8 @@ A single-choice radio group.
 
 ### Rating (`rating`)
 
+> **Pro edition.** This field type requires [Pro](editions.md).
+
 A star / heart / number rating over a configurable maximum. Rendered as an
 accessible native radio group (keyboard-navigable, works without JS) styled into
 glyphs by the asset bundle. The chosen value is stored as an **integer** so
@@ -172,6 +178,8 @@ analytics and exports treat it numerically.
 - `iconStyle` — `star` | `heart` | `number` (default `star`).
 
 ### Opinion Scale / NPS (`opinion`)
+
+> **Pro edition.** This field type requires [Pro](editions.md).
 
 A horizontal opinion / Net Promoter scale over a configurable integer range,
 with optional left/right anchor labels. Like Rating, it renders as an accessible
@@ -269,6 +277,8 @@ script payloads even when disguised by extension.
 
 ### Signature (`signature`)
 
+> **Pro edition.** This field type requires [Pro](editions.md).
+
 The visitor signs on an HTML `<canvas>`; the drawing is serialized to a PNG data
 URL, decoded server-side into a Craft **Asset**, and stored as an asset id list
 (same shape as File Upload) — so the signature gets thumbnails, permissions,
@@ -279,6 +289,8 @@ deletion, and retention for free.
 - `background` — pad background color (default `#ffffff`).
 
 ### Calculation (`calculation`)
+
+> **Pro edition.** This field type requires [Pro](editions.md).
 
 A read-only, computed display field whose value is derived from a formula
 referencing other fields of the same form by handle, e.g. `{quantity} *
@@ -296,6 +308,8 @@ value is never trusted.
 
 ### Repeater (`repeater`)
 
+> **Pro edition.** This field type requires [Pro](editions.md).
+
 A container holding a small set of inner sub-fields the visitor can repeat ("Add
 another"). The submitted value is an ordered array of row objects keyed by inner
 handle; wholly-empty rows are dropped and unknown keys stripped. v1 is
@@ -311,6 +325,8 @@ inner types.
 - `addButtonLabel` — custom "Add another" label.
 
 ### Payment (`payment`)
+
+> **Pro edition.** This field type requires [Pro](editions.md).
 
 Collects a payment as part of the submission via **Craft Commerce** (a soft
 dependency). On the front end it renders the configured gateway's embedded
@@ -334,6 +350,9 @@ informational note. The field collects no posted value of its own.
 ---
 
 ## Element relations
+
+> **Pro edition.** All five relation types (`entry`, `category`, `tag`, `user`,
+> `asset`) require [Pro](editions.md).
 
 These let a visitor select one or more live Craft elements of a single type,
 constrained to configured sources. The selected element **ids** are stored

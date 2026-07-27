@@ -199,6 +199,9 @@ site, optionally to one form):
 
 ## Audit log
 
+> **Pro edition.** The audit log requires [Pro](editions.md). See [Editions](editions.md).
+
+
 Simple Form keeps an **append-only audit trail** of who changed what — forms,
 fields, integrations, notifications and submission statuses. Each entry records
 the acting user, an action, a target, a short summary and a timestamp. Logging

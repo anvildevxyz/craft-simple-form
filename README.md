@@ -99,6 +99,7 @@ by default** — run the Pro edition to unlock the full feature set.
 | Multi-site / per-site translation | ✅ | ✅ |
 | Webhook + Craft entry/user integrations | ✅ | ✅ |
 | Attribution / UTM capture, address autocomplete, submission analytics | ✅ | ✅ |
+| Import / export and forms-as-code | ✅ | ✅ |
 | Logic jumps, submission approval workflow | ✅ | ✅ |
 | Advanced fields (signature, payment, rating, calculation, repeater, relations…) | — | ✅ |
 | Conditional logic, multi-page, save & continue later | — | ✅ |
@@ -106,7 +107,7 @@ by default** — run the Pro edition to unlock the full feature set.
 | Payment coupons | — | ✅ |
 | Third-party integrations (Slack, Discord, Mailchimp, HubSpot, Google Sheets…) | — | ✅ |
 | Commerce payments, PDF attachments, audit log, retention automation | — | ✅ |
-| MCP server + forms-as-code | — | ✅ |
+| MCP server | — | ✅ |
 
 The edition gate governs *authoring*, never the visitor-facing runtime: a form
 built on Pro keeps rendering and accepting submissions after a downgrade to
@@ -115,6 +116,9 @@ retention keep running so data hygiene never regresses; the Pro-only back-office
 services (conditional submit-message resolution, PDF attachments, audit logging)
 pause gracefully — the default submit message is shown, emails send without the
 PDF, no audit rows are written — and resume on returning to Pro.
+
+Full breakdown, including exactly what a downgrade freezes:
+**[Editions](docs/editions.md)**.
 
 ## License & Pricing
 

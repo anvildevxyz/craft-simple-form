@@ -83,7 +83,7 @@ deliberately has no equivalent (see [GraphQL](#graphql)).
 | --- | --- | --- |
 | `edition()` | `string` | The active edition handle: `solo` or `pro`. |
 | `isPro()` | `bool` | Whether the active edition is Pro. |
-| `can(capability)` | `bool` | Whether the active edition may use a capability, e.g. `craft.simpleForm.can('payments')`. |
+| `can(capability)` | `bool` | Whether the active edition may use a capability, e.g. `craft.simpleForm.can('conditionalLogic')`. Handles: `conditionalLogic`, `multiPage`, `saveAndContinue`, `conversational`, `quiz`, `partialCapture`, `pdf`, `governance`, `devTools` — see [Editions](editions.md). |
 
 #### Rendering
 
@@ -480,6 +480,9 @@ from your own `init()` still works and is equivalent; `EVENT_REGISTER_FIELD_TYPE
 is the recommended, uniform entry point.
 
 ## MCP server (Model Context Protocol)
+
+> **Pro edition.** The MCP server requires [Pro](editions.md). See [Editions](editions.md).
+
 
 Simple Form ships a transport-agnostic MCP server so an AI agent can manage forms
 and analyse submissions over JSON-RPC 2.0. It is exposed at `simple-form/mcp`.

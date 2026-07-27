@@ -99,6 +99,9 @@ token — ideally paired with a scoped token.
 
 ## Akismet
 
+> **Pro edition.** Akismet requires [Pro](editions.md). See [Editions](editions.md).
+
+
 > **Spam Protection → Akismet → Enable Akismet** (off by default)
 
 Content-based spam scoring that complements CAPTCHA. Akismet inspects the
@@ -120,6 +123,9 @@ visitor because of a third-party outage.
 ---
 
 ## Denylists
+
+> **Pro edition.** Denylists require [Pro](editions.md). See [Editions](editions.md).
+
 
 > **Spam Protection → Denylists → Enable denylists** (off by default)
 

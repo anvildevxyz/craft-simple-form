@@ -19,17 +19,21 @@ and fields*).
 All connectors share the same async dispatch, retry, dispatch-log, and resend
 framework described below — the only difference is where the submission lands.
 
-| Connector | Type handle | What it does |
-|-----------|-------------|--------------|
-| **Webhook** | `webhook` | POST/PUT the submission JSON to any URL, optionally HMAC-SHA256 signed. |
-| **Slack** | `slack` | Post a submission message to a Slack channel via incoming webhook. |
-| **Discord** | `discord` | Post a submission message to a Discord channel via webhook. |
-| **Mailchimp** | `mailchimp` | Subscribe the submitter to a Mailchimp audience. |
-| **ActiveCampaign** | `activecampaign` | Create/update a contact in ActiveCampaign. |
-| **HubSpot** | `hubspot` | Create/update a contact in HubSpot. |
-| **Pipedrive** | `pipedrive` | Create a person/lead in Pipedrive. |
-| **Google Sheets** | `google-sheets` | Append one row per submission to a worksheet ([details](#google-sheets)). |
-| **Create Craft Element** | `craft-element` | Build a native Craft Entry or User from the submission ([details](#create-craft-element)). |
+> **Editions.** Solo can use **Webhook** and **Create Craft Element**; every
+> other connector requires [Pro](editions.md). An integration configured on Pro
+> keeps dispatching after a downgrade — you just can't add another of a Pro type.
+
+| Connector | Type handle | Edition | What it does |
+|-----------|-------------|---------|--------------|
+| **Webhook** | `webhook` | Solo | POST/PUT the submission JSON to any URL, optionally HMAC-SHA256 signed. |
+| **Slack** | `slack` | Pro | Post a submission message to a Slack channel via incoming webhook. |
+| **Discord** | `discord` | Pro | Post a submission message to a Discord channel via webhook. |
+| **Mailchimp** | `mailchimp` | Pro | Subscribe the submitter to a Mailchimp audience. |
+| **ActiveCampaign** | `activecampaign` | Pro | Create/update a contact in ActiveCampaign. |
+| **HubSpot** | `hubspot` | Pro | Create/update a contact in HubSpot. |
+| **Pipedrive** | `pipedrive` | Pro | Create a person/lead in Pipedrive. |
+| **Google Sheets** | `google-sheets` | Pro | Append one row per submission to a worksheet ([details](#google-sheets)). |
+| **Create Craft Element** | `craft-element` | Solo | Build a native Craft Entry or User from the submission ([details](#create-craft-element)). |
 
 The Slack, Discord, Mailchimp, ActiveCampaign, HubSpot, and Pipedrive connectors
 take the credentials/identifiers their service needs (a webhook URL, API key, or

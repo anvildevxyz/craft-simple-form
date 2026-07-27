@@ -6,6 +6,9 @@ installation live in the [project README](../README.md).)
 **New here? Start with [Getting started](getting-started.md)** — install, your
 first form, and what to configure first.
 
+**[Editions](editions.md)** — what Solo includes, what Pro adds, and exactly
+what changes on a downgrade. Pro-only features are marked in the guides below.
+
 ## Feature guides
 
 - **[Building forms](building-forms.md)** — the form builder, multi-step pages,

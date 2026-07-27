@@ -118,6 +118,9 @@ naturally: write each site's wording into that site's notification (and use
 
 ## PDF generation
 
+> **Pro edition.** PDF attachments require [Pro](editions.md) and the optional dompdf dependency. See [Editions](editions.md).
+
+
 A notification can attach a **PDF of the submission**, and you can download the
 same PDF from the CP submission detail screen.
 

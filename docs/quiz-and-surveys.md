@@ -11,6 +11,9 @@ They are independent: a survey report works on any form, quiz or not.
 
 ## Quiz mode
 
+> **Pro edition.** Quiz scoring requires [Pro](editions.md); survey reporting is available on both editions. See [Editions](editions.md).
+
+
 ### Turning it on
 
 On the form's edit screen, under the **Rules** tab's **Quiz** section, toggle

@@ -1,5 +1,8 @@
 # Payments
 
+> **Pro edition.** Payments and coupons require [Pro](editions.md), plus Craft
+> Commerce as an optional dependency.
+
 Simple Form can **collect a payment as part of a form submission** through
 [Craft Commerce](https://plugins.craftcms.com/commerce). Add a **Payment** field
 to a form, and the visitor pays on the same page they fill it out — the charge is

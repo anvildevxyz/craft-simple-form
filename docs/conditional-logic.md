@@ -1,5 +1,10 @@
 # Conditional Logic
 
+> **Pro edition.** Conditional logic requires [Pro](editions.md). A form that
+> already uses it keeps evaluating rules after a downgrade to Solo — you just
+> can't add it to a form that doesn't have it yet. See
+> [Editions](editions.md#what-happens-on-a-downgrade).
+
 Show or hide a field — and make it required — based on what the visitor has
 already entered in other fields. For example: show a *VAT number* field only
 when *Account type* is *Business*, or require an *Other (please specify)* box
