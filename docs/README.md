@@ -56,8 +56,6 @@ what changes on a downgrade. Standard-only features are marked in the guides bel
 
 - **[Running tests](testing/RUNNING_TESTS.md)** — the canonical guide:
   `composer check` (the gate), `test`, `test:js`, `test:integration`, `test:smoke`.
-- [Smoke-test scenarios](smoke-tests/SMOKE_TESTS.md) — the Playwright / CP-UI
-  scenario library, run via the `/craft-smoke-test` skill.
 
 ## Extending & API stability
 

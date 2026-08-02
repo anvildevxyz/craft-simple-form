@@ -60,6 +60,5 @@ composer test:smoke        # run inside DDEV, like the integration suite
 ```
 
 CP-builder UI and browser-rendering scenarios that need a real browser are kept
-as a Playwright scenario library in
-[../smoke-tests/SMOKE_TESTS.md](../smoke-tests/SMOKE_TESTS.md) and run via the
-`/craft-smoke-test` skill.
+as a Playwright scenario library maintained outside this repository, driven by
+`scripts/browser-smoke/run-all.mjs`.
