@@ -566,7 +566,7 @@ All commands live under the `simple-form/` namespace:
 
 | Command | Does |
 | --- | --- |
-| `simple-form/doctor` | Read-only configuration + data health check. |
+| `simple-form/doctor` | Read-only configuration + data health check: data counts, spam protection, [payment readiness](payments.md#checking-it-before-you-go-live), MCP, retention. |
 | `simple-form/cache/warm` | Pre-build the form-structure cache for every form (all sites). |
 | `simple-form/cache/clear` | Invalidate the cached structure for every form. |
 | `simple-form/forms/export --form=<handle> [--out=path.json]` | Export a form definition to JSON. |

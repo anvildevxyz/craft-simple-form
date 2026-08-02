@@ -32,7 +32,9 @@ letting a paid form through for free.
 
 2. **Configure at least one payment gateway** in *Commerce → Settings →
    Gateways* (Stripe, etc.). For local testing Commerce ships a **Dummy** gateway
-   that approves the test card `4242 4242 4242 4242`.
+   that approves the test card `4242 4242 4242 4242`. It decides by the card's
+   **last digit** — even approves, odd declines — so `4242 4242 4242 4241`
+   is a handy way to exercise the decline path.
 
 3. **Enable the Donation purchasable** in *Commerce → Store Settings → Donation*
    — toggle **Available for purchase** on and save. Simple Form charges each
@@ -44,6 +46,28 @@ letting a paid form through for free.
 4. **(Optional) Choose the gateway** Simple Form should use. By default it uses
    the store's first customer-enabled gateway. To pin a specific one, set the
    `paymentGatewayHandle` setting (see [Settings](#settings)).
+
+### Checking it before you go live
+
+`php craft simple-form/doctor` reports all of the above under a **Payments**
+heading — whether Commerce is installed, which gateway will actually be charged,
+whether the Donation purchasable is available for purchase, how many forms
+collect a payment, and how many submissions are currently pending.
+
+It is worth running after setting `paymentGatewayHandle`: a handle that matches
+no gateway does **not** fail, it silently falls back to the store's first
+customer-enabled gateway. A typo therefore bills live cards through whichever
+gateway happens to be first. Doctor flags the mismatch explicitly:
+
+```
+Payments
+  Commerce            installed
+  Payment forms       3
+  Gateway             'stripe-typo' NOT FOUND — falling back to Dummy
+  Donation            available
+  Pending TTL         60 min
+  Pending now         0
+```
 
 ---
 
@@ -92,6 +116,13 @@ failed payment never leaves a stray submission behind:
 
 When an offsite payment completes back in Commerce, Simple Form catches the
 order-completed event and releases the submission automatically.
+
+> **Spam is never charged.** A submission caught by the spam filters skips the
+> payment step entirely: it is stored as spam, no order is created, and no card
+> is charged. The trade-off is deliberate — a false positive costs a lost
+> submission rather than an unrefunded charge — but it means a payment form with
+> aggressive spam settings can look like it is "losing" payments. Check
+> *Submissions → Spam* before suspecting the gateway.
 
 ### Gating: nothing fires until paid
 

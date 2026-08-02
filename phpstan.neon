@@ -38,6 +38,7 @@ parameters:
             paths:
                 - src/Plugin.php
                 - src/services/PaymentsService.php
+                - src/console/controllers/DoctorController.php
         -
             message: '#(invalid (return )?type|Instantiated class|Class|Caught class) craft\\commerce\\#'
             path: src/services/PaymentsService.php
