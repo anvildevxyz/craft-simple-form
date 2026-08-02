@@ -138,8 +138,22 @@ Editions::fieldTypeAllowed('signature');
 Editions::integrationAllowed('slack');
 ```
 
-`Editions` is **default-open**: anything other than an explicitly Solo license
-resolves to Standard, so an unresolvable edition never silently restricts a site.
+`Editions` is **default-open**: anything other than an explicitly Solo edition
+resolves to Standard.
+
+That default only applies to editions Craft hands over. Craft normalizes the
+stored edition *before* the plugin sees it, and the two failure modes go in
+opposite directions:
+
+| Stored in project config | Craft resolves it to | Effect |
+| --- | --- | --- |
+| `solo` / `standard` | as stored | Normal. |
+| *missing* | `standard` | Runs as the paid edition. |
+| Any other value (typo, a handle from an older build) | `solo` — Craft coerces an unrecognized edition to the **first** one the plugin declares | Runs as the free edition: **a paid site silently loses its Standard features.** |
+
+The last row is the one to watch, because nothing about it looks like an error —
+the site simply stops offering Standard capabilities. `php craft simple-form/doctor`
+reports the running edition and flags a stored value that had to be coerced.
 
 ## A note on logic jumps
 

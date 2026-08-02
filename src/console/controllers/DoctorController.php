@@ -2,6 +2,7 @@
 
 namespace anvildev\simpleform\console\controllers;
 
+use anvildev\simpleform\Editions;
 use anvildev\simpleform\Plugin;
 use Craft;
 use craft\console\Controller;
@@ -19,6 +20,8 @@ class DoctorController extends Controller
         $settings = Plugin::getInstance()->getSettings();
 
         $this->stdout("Simple Form — health check\n\n", Console::FG_CYAN, Console::BOLD);
+
+        $this->editionLine();
 
         $this->stdout("Data\n", Console::BOLD);
         $this->line('Forms', (string) (new Query())->from('{{%simpleform_forms}}')->count());
@@ -51,6 +54,28 @@ class DoctorController extends Controller
 
         $this->stdout("\n");
         return ExitCode::OK;
+    }
+
+    /**
+     * The running edition, plus a warning when project config holds a value
+     * Craft had to coerce. An unrecognized edition handle is silently coerced to
+     * the *first* declared edition (solo), so a paid site can drop to the free
+     * one with nothing anywhere reporting it. See {@see Editions::STANDARD}.
+     */
+    private function editionLine(): void
+    {
+        $running = Editions::current();
+        $stored = Craft::$app->getProjectConfig()->get('plugins.simple-form.edition');
+
+        $this->stdout("Edition\n", Console::BOLD);
+
+        if (is_string($stored) && !in_array($stored, Plugin::editions(), true)) {
+            $this->line('Running as', "{$running} — project config says '{$stored}', which is not a valid edition", false);
+        } else {
+            $this->line('Running as', $running);
+        }
+
+        $this->stdout("\n");
     }
 
     /**
