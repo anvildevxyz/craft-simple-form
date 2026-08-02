@@ -28,12 +28,23 @@ final class Editions
      * Note the handle collides with Craft's own fallback literal: `Plugins`
      * reads `$info['edition'] ?? 'standard'` and then coerces anything not in
      * {@see \anvildev\simpleform\Plugin::editions()} to the first entry (solo).
-     * Because 'standard' *is* in our list, an install whose stored edition is
-     * missing — hand-edited project config, a partial deploy — resolves to the
-     * paid edition rather than the free one, and `PluginTrait::$edition`
-     * defaults to the same literal. This is a deliberate, accepted trade for the
-     * edition name; don't "fix" it by renaming without checking the Store,
-     * whose issued licenses carry the handle.
+     * Those two steps fail in *opposite* directions, and the second one is the
+     * dangerous one:
+     *
+     *  - stored edition **missing** (hand-edited project config, a partial
+     *    deploy) → the 'standard' literal, which is in our list, so it survives
+     *    and the install runs as the paid edition. `PluginTrait::$edition`
+     *    defaults to the same literal.
+     *  - stored edition **present but unrecognized** (a typo, or a handle from
+     *    an older build) → coerced to solo, so a *paid* install silently drops
+     *    to the free edition with no error anywhere. Nothing below ever sees
+     *    the original value, so the default-open behaviour of
+     *    {@see self::current()} cannot compensate; `simple-form/doctor` reports
+     *    the coercion instead.
+     *
+     * This is a deliberate, accepted trade for the edition name; don't "fix" it
+     * by renaming without checking the Store, whose issued licenses carry the
+     * handle.
      */
     public const STANDARD = 'standard';
 
