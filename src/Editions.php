@@ -10,7 +10,7 @@ namespace anvildev\simpleform;
  * already-saved data: that path stays edition-blind (see
  * {@see \anvildev\simpleform\services\FieldTypeRegistry}) so a Standard form keeps
  * working after a downgrade to Solo. The gate only governs adding/enabling new
- * Standard capabilities. See docs/launch/editions-implementation.md.
+ * Standard capabilities. See docs/editions.md.
  *
  * Default-open: anything other than an explicit Solo license is treated as Standard,
  * so the active edition has to be *explicitly* Solo before anything is

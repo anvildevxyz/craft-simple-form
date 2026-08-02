@@ -2,12 +2,7 @@
 # Packagist/`composer install --prefer-dist` archive. Source installs are unaffected.
 /tests              export-ignore
 /scripts            export-ignore
-/docs/cleanup       export-ignore
-/docs/smoke-tests   export-ignore
 /docs/testing       export-ignore
-/docs/launch        export-ignore
-/docs/optimize      export-ignore
-/run-smoke-tests.sh export-ignore
 /codeception.yml    export-ignore
 /phpunit.xml        export-ignore
 /phpstan.neon       export-ignore

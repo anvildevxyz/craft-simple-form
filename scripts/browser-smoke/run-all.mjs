@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /**
  * Sequential browser smoke runner for simple-form.
- * Executes scenarios from docs/smoke-tests/plugins/simple-form/scenarios.md
+ * Drives the control panel and the front end through the browser smoke scenarios.
  * plus CP route coverage for Playwright-only Codeception Cests.
  */
 import { chromium } from '@playwright/test';
@@ -16,10 +16,22 @@ const PROJECT_ROOT = join(__dir, '../../../../');
 const BASE = process.env.SF_SMOKE_BASE ?? 'https://craft-plugin-dev.ddev.site';
 const CP = `${BASE}/admin`;
 const FRONT = `${BASE}/smoke/simple-form`;
+// Required, never defaulted. A convenient fallback here is a real credential
+// committed to a public repository, which is how the previous pair ended up
+// published — so the script refuses to run rather than carrying one.
 const LOGIN = {
-  email: process.env.SF_SMOKE_USER ?? 'admin@10vu10.ch',
-  password: process.env.SF_SMOKE_PASS ?? 'nHWoQL2sN-_@V._H*R3xddd',
+  email: process.env.SF_SMOKE_USER,
+  password: process.env.SF_SMOKE_PASS,
 };
+
+if (!LOGIN.email || !LOGIN.password) {
+  console.error(
+    'SF_SMOKE_USER and SF_SMOKE_PASS are required.\n' +
+    '  SF_SMOKE_USER=admin@example.test SF_SMOKE_PASS=… node scripts/browser-smoke/run-all.mjs\n' +
+    'Optional: SF_SMOKE_BASE (defaults to the local DDEV site), SF_SMOKE_FORM_ID.',
+  );
+  process.exit(2);
+}
 
 /** @type {{ id: string, status: 'PASS'|'FAIL'|'SKIP', notes: string }[]} */
 const results = [];

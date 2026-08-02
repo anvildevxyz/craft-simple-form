@@ -10,7 +10,7 @@ use SmokeTester;
  * Skipped in the functional smoke suite: this scenario drives the JS Control
  * Panel / a real browser flow that the console-booted Codeception actor cannot
  * exercise. It is covered end-to-end by the Playwright craft-smoke-test
- * scenarios under docs/smoke-tests/. The data-layer behaviour behind it is
+ * the browser smoke suite. The data-layer behaviour behind it is
  * additionally covered by the tests/integration suite.
  *
  * @author Anvil Dev
@@ -22,7 +22,7 @@ class FormStencilsDuplicateCest
     // CONST PROPERTIES
     // =========================================================================
 
-    private const SKIP_REASON = 'CP UI / browser-only — covered by the Playwright craft-smoke-test scenarios in docs/smoke-tests/';
+    private const SKIP_REASON = 'CP UI / browser-only — covered by the browser smoke suite';
 
     // =========================================================================
     // PUBLIC METHODS

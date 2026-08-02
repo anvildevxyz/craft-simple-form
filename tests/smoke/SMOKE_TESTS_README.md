@@ -42,10 +42,10 @@ Two kinds of Cests live here:
 
 2. **Playwright-only Cests** — every test method is `markTestSkipped()` with the
    reason _"CP UI / browser-only — covered by the Playwright craft-smoke-test
-   scenarios in docs/smoke-tests/"_. These drive the JS form builder, the CP
+   scenarios in the browser smoke suite"_. These drive the JS form builder, the CP
    submission index, Mailpit delivery, canvas/signature capture, or Twig-tag site
    rendering that the console-booted Codeception actor cannot exercise. They are
-   covered end-to-end by the Playwright scenarios under `docs/smoke-tests/`, and
+   covered end-to-end by the Playwright browser smoke suite, and
    their data-layer behaviour is additionally covered by `tests/integration`.
 
 ### Functional Cests (run for real)
