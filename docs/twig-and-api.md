@@ -575,6 +575,8 @@ All commands live under the `simple-form/` namespace:
 | `simple-form/forms/status` | Report which forms are config-managed vs database-only. |
 | `simple-form/submissions/purge --days=<n> [--form=<handle>]` | Delete (or anonymize) submissions older than `--days`. |
 | `simple-form/submissions/export [--form=<handle>] [--out=<path>]` | Export submissions as CSV to stdout or a file. |
+| `simple-form/submissions/export-by-email --email=<address> [--out=<path>]` | Export every submission from one email address — a GDPR subject-access response. |
+| `simple-form/submissions/erase-by-email --email=<address> [--anonymize] [--dryRun]` | Erase every submission from one address — a right-to-erasure request. `--dryRun` reports the count and changes nothing. |
 | `simple-form/submissions/expire-payments` | Cancel submissions whose payment stayed pending past the TTL (also runs on GC). See [Payments](payments.md). |
 | `simple-form/integrations/redispatch …` | Re-queue integration dispatch for a submission (all enabled, or one `--integration`). |
 | `simple-form/make/field-type [Class] [--namespace=] [--path=]` | Scaffold a custom field type (extends `fields\FieldType`) from a working stub. |

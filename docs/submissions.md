@@ -121,6 +121,29 @@ plugin settings:
 | `partialRetentionDays` | `7` | Drop [passively-captured partials](building-forms.md#passive-partial-capture-abandoned-attempts). |
 | `anonymizeInsteadOfDelete` | `false` | Anonymize submissions instead of deleting them. |
 
+### Answering a subject request
+
+Retention handles the routine pruning. A named individual asking for their data —
+or asking you to delete it — is a separate job, and there are two commands for it.
+Both match on the submitted email address across every form and site.
+
+```bash
+# Subject access: everything this person has ever submitted, as CSV
+php craft simple-form/submissions/export-by-email --email=person@example.com --out=subject.csv
+
+# Right to erasure: see what would go first…
+php craft simple-form/submissions/erase-by-email --email=person@example.com --dryRun
+
+# …then do it
+php craft simple-form/submissions/erase-by-email --email=person@example.com
+```
+
+Erasure follows the `anonymizeInsteadOfDelete` setting: on, the rows are scrubbed
+in place so counts and analytics stay meaningful; off, they are deleted. Pass
+`--anonymize` to force scrubbing for one request regardless of the setting.
+
+Omitting `--out` on the export writes the CSV to stdout, so it can be piped.
+
 ### How much of an IP address to store
 
 For GDPR data minimization, **IP capture** (`ipCapturePolicy`) is a three-state
