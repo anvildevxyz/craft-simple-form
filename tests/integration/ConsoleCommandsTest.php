@@ -95,6 +95,21 @@ class ConsoleCommandsTest extends SimpleFormTestCase
         $this->assertSame(ExitCode::OK, $controller->actionIndex());
     }
 
+    /**
+     * The payments section reaches into Commerce, which is a soft dependency and
+     * absent here — so this covers the branch that has to survive without it,
+     * including the case where forms collect payments but Commerce is missing.
+     */
+    public function testDoctorSurvivesPaymentFormsWithoutCommerce(): void
+    {
+        $this->requireCraft();
+        $form = $this->createForm('Paid', 'console_doctor_paid');
+        $this->createField((int) $form->id, 'payment', 'payment', 'Payment', false);
+
+        $controller = new DoctorController('doctor', Craft::$app);
+        $this->assertSame(ExitCode::OK, $controller->actionIndex());
+    }
+
     public function testRedispatchRejectsUnknownSubmission(): void
     {
         $this->requireCraft();
