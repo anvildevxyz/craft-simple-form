@@ -6,7 +6,7 @@
  */
 import { chromium } from '@playwright/test';
 import { execSync } from 'node:child_process';
-import { writeFileSync } from 'node:fs';
+import { readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -44,6 +44,23 @@ function mysql(sql) {
     encoding: 'utf8',
     stdio: ['pipe', 'pipe', 'pipe'],
   }).trim();
+}
+
+/**
+ * The edition the site is actually running as. Not cosmetic: the connector
+ * palette and parts of the builder are gated on it, so a suite that assumes
+ * Standard reports a pile of false failures on a Solo install (which is exactly
+ * what happened when an older 'pro' handle stopped resolving).
+ */
+function runningEdition() {
+  try {
+    const out = execSync('ddev craft simple-form/doctor', {
+      cwd: PROJECT_ROOT, encoding: 'utf8', stdio: 'pipe',
+    });
+    return /Running as\s+(\w+)/.exec(out)?.[1] ?? 'standard';
+  } catch {
+    return 'standard';
+  }
 }
 
 function queueRun() {
@@ -101,9 +118,17 @@ async function main() {
   // ── S0: shared smoke form ────────────────────────────────────────────────
   await run('S0', async () => {
     await page.goto(`${CP}/simple-form/forms/edit/${formId}?site=default`);
-    await page.getByRole('textbox', { name: /^Name Required|^Name/i }).first().fill('Smoke Form');
-    await page.getByRole('textbox', { name: /^Handle Required|^Handle/i }).first().fill('smokeForm');
-    await page.getByRole('textbox', { name: /Email To/i }).fill('ops@example.test');
+    await page.waitForLoadState('networkidle');
+    // The screen opens on Build; name/handle/emailTo live on Details, and a
+    // hidden tab pane is out of the accessibility tree entirely.
+    await page.locator('#tabs a[href="#sf-details"]').click();
+    await page.waitForTimeout(500);
+    await page.locator('#name').fill('Smoke Form');
+    await page.locator('#handle').fill('smokeForm');
+    const emailTo = page.locator('#emailTo');
+    if (await emailTo.count()) await emailTo.fill('ops@example.test');
+    await page.locator('#tabs a[href="#sf-build"]').click();
+    await page.waitForTimeout(500);
     const hasName = await page.getByRole('button', { name: /— Name|Name —/i }).count();
     if (hasName === 0) {
       await addFieldType(page, 'Text');
@@ -159,10 +184,31 @@ async function main() {
   });
 
   // ── S5: connector settings forms render ──────────────────────────────────
+  // Only webhook + craft-element are available on Solo; the other seven are
+  // Standard. So the palette is checked against the running edition — on Solo the
+  // absence of a Standard connector is the correct result, not a failure.
+  const SOLO_CONNECTORS = ['webhook', 'craft-element'];
   const connectors = ['webhook', 'slack', 'discord', 'mailchimp', 'activecampaign', 'hubspot', 'pipedrive', 'google-sheets'];
+  const edition = runningEdition();
+  console.log(`   (running as ${edition})`);
+
   for (const type of connectors) {
+    const gated = edition === 'solo' && !SOLO_CONNECTORS.includes(type);
     await run(`S5-${type}`, async () => {
       await page.goto(`${CP}/simple-form/settings/integrations/new?site=default`);
+      const offered = await page.locator('#sf-integration-type option').evaluateAll(
+        els => els.map(e => e.value));
+
+      if (gated) {
+        if (offered.includes(type)) {
+          throw new Error(`${type} is Standard-only but the Solo palette offers it`);
+        }
+        return;
+      }
+
+      if (!offered.includes(type)) {
+        throw new Error(`${type} missing from the palette (offered: ${offered.join(', ')})`);
+      }
       await page.locator('#sf-integration-type').selectOption(type);
       await page.waitForTimeout(1200);
       const name = page.locator('#name');
@@ -248,15 +294,23 @@ async function main() {
 
   // ── S11: CSV export ──────────────────────────────────────────────────────
   await run('S11', async () => {
-    await page.goto(`${CP}/simple-form/submissions?site=default`);
+    // "Export CSV" is a link to an options screen now, not a direct download —
+    // the file only arrives after submitting that form. (The previous version
+    // caught the timeout into `[null]`, a truthy array, and then died on
+    // `.path is not a function` instead of reporting anything useful.)
+    await page.goto(`${CP}/simple-form/submissions/export-options?site=default`);
+    await page.waitForLoadState('networkidle');
+
     const [download] = await Promise.all([
-      page.waitForEvent('download', { timeout: 10000 }).catch(() => [null]),
-      page.getByRole('link', { name: /Export|Exportieren/i }).click(),
+      page.waitForEvent('download', { timeout: 20000 }),
+      page.locator('button[type=submit], .btn.submit').first().click(),
     ]);
-    if (download) {
-      const path = await download.path();
-      if (!path) throw new Error('No CSV downloaded');
-    }
+
+    const path = await download.path();
+    if (!path) throw new Error('Export produced no file');
+    const csv = readFileSync(path, 'utf8');
+    if (!csv.includes(',')) throw new Error(`Export is not CSV: ${csv.slice(0, 80)}`);
+    if (csv.trim().split('\n').length < 2) throw new Error('Export has a header but no rows');
   });
 
   // ── S12: dashboard widgets ───────────────────────────────────────────────
