@@ -3,6 +3,7 @@
 namespace anvildev\simpleform\tests\integration;
 
 use anvildev\simpleform\elements\Form;
+use anvildev\simpleform\elements\Submission;
 use Craft;
 use craft\elements\User;
 use craft\web\View;
@@ -188,5 +189,42 @@ class CpScreensRenderTest extends SimpleFormTestCase
         $this->assertStringContainsString('Last submission', $html);
         // The count links through to that form's filtered submissions.
         $this->assertStringContainsString('formId=' . $form->id, $html);
+    }
+
+    public function testSubmissionViewRendersStatusDotBesideLabel(): void
+    {
+        $this->requireCraft();
+
+        $form = $this->createForm('Status Chip Form', 'status_chip_' . uniqid());
+
+        $submission = new Submission();
+        $submission->formId = (int) $form->id;
+        $submission->siteId = Craft::$app->getSites()->getCurrentSite()->id;
+        $submission->data = ['name' => ['type' => 'text', 'label' => 'Name', 'value' => 'Ada']];
+        $submission->readStatus = 'read';
+        $this->assertTrue(Craft::$app->getElements()->saveElement($submission), implode(', ', $submission->getFirstErrors()));
+
+        $html = $this->render('simple-form/submissions/view', [
+            'submission' => $submission,
+            'form' => $form,
+            'data' => $submission->getDisplayData(),
+            'integrationLogs' => [],
+            'integrationNames' => [],
+            'elementLinks' => [],
+            'canManageSubmissions' => true,
+            'canManageIntegrations' => false,
+            'pdfAvailable' => false,
+            'workflowEnabled' => false,
+            'workflowStatus' => null,
+            'workflowTransitions' => [],
+        ]);
+
+        // The CP `.status` class styles a span as a colored dot, so the label
+        // must sit beside an empty dot span — a label nested inside the span is
+        // swallowed by the dot styling. The color class must be a CP color
+        // (green), never the raw status value (`read` is not a CP color).
+        $this->assertStringContainsString('<span class="status green"></span>', $html);
+        $this->assertStringNotContainsString('class="status read"', $html);
+        $this->assertStringContainsString('Read', $html);
     }
 }
