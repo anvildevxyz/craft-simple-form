@@ -15,6 +15,7 @@
     archived: 'Archived'|t('simple-form'),
     spam: 'Spam'|t('simple-form'),
 } %}
+{% set readStatusDots = { new: 'blue', read: 'green', archived: 'grey', spam: 'red' } %}
 {% set dispatchStatusLabels = {
     success: 'Success'|t('simple-form'),
     failed: 'Failed'|t('simple-form'),
@@ -76,9 +77,8 @@
         <div class="data">
             <h5 class="heading">{{ 'Status'|t('simple-form') }}</h5>
             <div class="value">
-                <span class="status {{ submission.readStatus }}">
-                    {{ readStatusLabels[submission.readStatus] ?? submission.readStatus }}
-                </span>
+                <span class="status {{ readStatusDots[submission.readStatus] ?? 'grey' }}"></span>
+                {{ readStatusLabels[submission.readStatus] ?? submission.readStatus }}
             </div>
         </div>
 
