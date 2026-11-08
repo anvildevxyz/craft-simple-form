@@ -1,7 +1,7 @@
 {
   "name": "anvildev/craft-simple-form",
   "description": "A lightweight, translatable form builder for Craft CMS",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "type": "craft-plugin",
   "license": "proprietary",
   "keywords": ["craft", "cms", "craftcms", "forms", "form-builder", "translatable"],
