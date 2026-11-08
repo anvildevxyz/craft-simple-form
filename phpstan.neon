@@ -20,6 +20,11 @@ parameters:
         - vendor/craftcms/cms/bootstrap/console.php
     ignoreErrors:
         - '#Plugin::\$plugin#'
+        # Craft 5.12 MCP classes. Absent on the locked CMS, and class_exists-guarded.
+        - '#Mcp\\Schema\\ToolAnnotations#'
+        - '#Mcp\\Capability\\Attribute\\#'
+        - '#craft\\mcp\\#'
+        - '#craft\\services\\Mcp#'
         # Craft convention: migrations call `addColumn($table, $name, $this->string())`
         # where `$this->string()` returns a ColumnSchemaBuilder. Yii's runtime
         # accepts both string and ColumnSchemaBuilder (via __toString), but the

@@ -186,6 +186,7 @@ class Plugin extends BasePlugin
     public function init(): void
     {
         parent::init();
+        $this->registerCraftMcp();
 
         $this->setComponents([
             'fieldTypeRegistry' => FieldTypeRegistry::class,
@@ -840,5 +841,37 @@ class Plugin extends BasePlugin
         $event->rules['simple-form/fields/edit'] = 'simple-form/fields/edit';
         $event->rules['simple-form/fields/delete'] = 'simple-form/fields/delete';
         $event->rules['simple-form/fields/reorder'] = 'simple-form/fields/reorder';
+    }
+
+    /**
+     * Registers the existing MCP tools with Craft's server (5.12+). The
+     * plugin's own token endpoint is unchanged. Older Craft has no Mcp
+     * service, so the guard leaves those installs alone.
+     */
+    private function registerCraftMcp(): void
+    {
+        if (!class_exists(\craft\services\Mcp::class)) {
+            return;
+        }
+
+        Event::on(
+            \craft\services\Mcp::class,
+            \craft\services\Mcp::EVENT_REGISTER_CAPABILITY_TYPES,
+            static function(RegisterComponentTypesEvent $event): void {
+                $event->types[] = \anvildev\simpleform\mcp\CraftTools::class;
+            },
+        );
+
+        if (!class_exists(\craft\mcp\AdminInstructions::class)) {
+            return;
+        }
+
+        Event::on(
+            \craft\mcp\AdminInstructions::class,
+            \craft\mcp\AdminInstructions::EVENT_COLLECT_INSTRUCTIONS,
+            static function(\craft\mcp\events\CollectingAdminInstructions $event): void {
+                $event->instructions[] = 'Use the simple_form_* tools to list and edit forms and to read submissions. Deletes require confirm=true. The plugin’s own MCP token endpoint is separate.';
+            },
+        );
     }
 }
